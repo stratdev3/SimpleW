@@ -1,5 +1,55 @@
 version: 25
 jobs:
+- name: CI
+  steps:
+  - !CheckoutStep
+    name: checkout code
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: build
+    runInContainer: true
+    image: docksdev/band:7.1
+    interpreter: !DefaultInterpreter
+      commands:
+      - cd src/SimpleW/
+      - dotnet build -c @param:build_configuration@ SimpleW.csproj
+    useTTY: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PublishArtifactStep
+    name: publish artifact
+    sourcePath: src/SimpleW/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.dll'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  paramSpecs:
+  - !ChoiceParam
+    name: build_configuration
+    description: Build Configuration
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider: !SpecifiedChoices
+      choices:
+      - value: Release
+        color: '#0d87e9'
+      - value: Debug
+        color: '#0d87e9'
+    defaultValueProvider: !SpecifiedDefaultValue
+      value: Release
+  triggers:
+  - !BranchUpdateTrigger
+    params:
+    - name: build_configuration
+      valuesProvider: !SpecifiedValues
+        values:
+        - - Release
+      secret: false
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
 - name: CD
   steps:
   - !CheckoutStep
@@ -16,7 +66,7 @@ jobs:
     interpreter: !DefaultInterpreter
       commands:
       - cd src/SimpleW
-      - dotnet pack -c Release
+      - dotnet pack -c Release SimpleW.csproj
     useTTY: false
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   - !PublishArtifactStep
