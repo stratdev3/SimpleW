@@ -81,7 +81,7 @@ jobs:
     interpreter: !DefaultInterpreter
       commands:
       - cd src/SimpleW/bin/Release
-      - dotnet nuget push *.nupkg --api-key @secret:nuget_token_simplew@ --source https://api.nuget.org/v3/index.json
+      - dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
   retryCondition: never
