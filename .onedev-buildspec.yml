@@ -1,0 +1,40 @@
+version: 25
+jobs:
+- name: CD
+  steps:
+  - !CheckoutStep
+    name: checkout code
+    cloneCredential: !DefaultCredential {}
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: build
+    runInContainer: true
+    image: docksdev/band:7.1
+    interpreter: !DefaultInterpreter
+      commands:
+      - cd src/SimpleW
+      - dotnet pack -c Release
+    useTTY: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !PublishArtifactStep
+    name: publish artifact
+    sourcePath: src/SimpleW/bin/Release/
+    artifacts: '*.nupkg'
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  - !CommandStep
+    name: deploy to nuget.org
+    runInContainer: true
+    image: docksdev/band:7.1
+    interpreter: !DefaultInterpreter
+      commands:
+      - cd src/SimpleW/bin/Release
+      - dotnet nuget push *.nupkg --api-key @secret:nuget_token_simplew@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
