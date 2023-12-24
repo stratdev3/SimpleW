@@ -1,0 +1,52 @@
+
+# editor
+.git
+.idea
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+
+#
+# dotnet
+#
+
+# project/solution
+.vs
+*.csproj.user
+*.sln
+ConfCustomVersion.cs
+
+# build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+
+
+#
+# node/npm
+#
+
+# project
+node_modules
+
+# build results
+dist
+dist-ssr
+
+
+#
+# data
+#
+storage/
+
+#
+# log
+#
+logs
+*.log

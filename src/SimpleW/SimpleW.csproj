@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
+    <StartupObject />
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Authors>stratdev.fr</Authors>
+    <PackageTags>http websocket server webserver restapi mvc</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>SimpleW is a Simple Webserver library in NET7 (windows/linux/macos).
+It brings an easy layer on top of the great NetCoreServer in pure C#.</Description>
+    <AssemblyVersion>11.3.3</AssemblyVersion>
+    <FileVersion>11.3.3</FileVersion>
+    <Version>11.3.3</Version>
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <PackageProjectUrl>https://github.com/stratdev3/SimpleW</PackageProjectUrl>
+    <PackageIcon>logo.png</PackageIcon> <!-- for LitJWT package-->
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1591;8632</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>1591;8632</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="logo.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
