@@ -50,7 +50,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD
+- name: CD nuget
   steps:
   - !CheckoutStep
     name: checkout code
@@ -81,9 +81,39 @@ jobs:
     interpreter: !DefaultInterpreter
       commands:
       - cd src/SimpleW/bin/Release
-      - dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+      - dotnet nuget push *.nupkg --api-key @secret:nuget_token_simplew@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    jobParams:
+    - name: build_configuration
+      valuesProvider: !SpecifiedValues
+        values:
+        - - Release
+      secret: false
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: CM github
+  steps:
+  - !PushRepository
+    name: push
+    remoteUrl: https://github.com/stratdev3/SimpleW
+    passwordSecret: github_token
+    force: true
+    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    jobParams:
+    - name: build_configuration
+      valuesProvider: !SpecifiedValues
+        values:
+        - - Release
+      secret: false
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
