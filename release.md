@@ -1,6 +1,39 @@
 # RELEASE
 
 
+Notes :
+- it does not strictly follow the semver convention.
+- when something break, it's written.
+- no long time support or backporting for major version, just use the last update.
+- if you find bug/optimization, feel free to send patch.
+
+
+
+## v11.3.3 / _(2023-12-24)_
+Maintenance
+
+### feature
+
+- update nuget package settings
+
+
+## v11.3.2 / _(2023-12-23)_
+Maintenance
+
+### feature
+
+- update nuget package settings
+
+
+
+## v11.3.1 / _(2023-12-23)_
+Maintenance
+
+### bug
+
+- fix wrong label and status for `OnWsDisconnected` logging
+
+
 
 ## v11.3.1 / _(2023-12-23)_
 Maintenance
@@ -57,9 +90,9 @@ Maintenance
 ## v11.0.0 / _(2023-11-01)_
 New Major Version
 
-### fix
+### bug
 
-- huge performances degradation due to old `Trace.Trace*()` methods
+- fix huge performances degradation due to old `Trace.Trace*()` methods
 
 
 
@@ -247,7 +280,7 @@ Maintenance
 ## v6.2.1 / _(2022-10-20)_
 Maintenance
 
-### fix
+### bug
 
 - logging error and exception
 
@@ -323,7 +356,7 @@ Maintenance
 ## v4.4.3 / _(2022-08-29)_
 Maintenance
 
-### fix
+### bug
 
 - replace `X-Scheme` header by `X-Forwarded-Proto`
 
@@ -356,7 +389,7 @@ Maintenance
 ## v4.4.0 / _(2022-08-24)_
 Maintenance
 
-### fix
+### bug
 
 - `shouldSerializeContractResolver()` handle nested class
 
@@ -365,7 +398,7 @@ Maintenance
 ## v4.3.2 / _(2022-08-12)_
 Maintenance
 
-### fix
+### bug
 
 - sync with upstream (NetCoreServer v6.5.0 fix websocket regression)
 

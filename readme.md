@@ -2,40 +2,43 @@
 
 [![NuGet](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
 
-SimpleW is a Simple Web Server library in NET7 (windows/linux/macos).<br>
-It brings an easy layer on top of the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server write by [chronoxor](https://github.com/chronoxor) in pure C#.
+<img src="src/SimpleW/logo.svg" alt="logo" width="100" />
+
+SimpleW is a Simple Web server library in .NET (windows/linux/macos).<br />
+It brings an easy layer on top of the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server written by [chronoxor](https://github.com/chronoxor) in pure C#.
 
 
 # Summary
 
-  * [Features](#features)
-  * [Installation](#installation)
-  * [Usage](#usage)
-    * [Routes](#routes)
-    * [Serve Statics Files](#serve-statics-files)
-      * [Basic Static Example](#basic-static-example)
-      * [Multiples Directories](#multiples-directories)
-      * [Options](#options)
-      * [Cache](#cache)
-    * [Serve RestAPI](#serve-restapi)
-      * [Basic RestAPI Example](#basic-restapi-example)
-      * [Return Type](#return-type)
-      * [Return Helpers](#return-helpers)
-      * [Routing](#routing)
-    * [OpenTelemetry](#opentelemetry)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Routes](#routes)
+  - [Serve Statics Files](#serve-statics-files)
+    - [Basic Static Example](#basic-static-example)
+    - [Multiples Directories](#multiples-directories)
+    - [Options](#options)
+    - [Cache](#cache)
+  - [Serve RestAPI](#serve-restapi)
+    - [Basic RestAPI Example](#basic-restapi-example)
+    - [Return Type](#return-type)
+    - [Return Helpers](#return-helpers)
+    - [Routing](#routing)
+    - [Post Body](#post-body)
+  - [OpenTelemetry](#opentelemetry)
 
 
 ### Features
 
 1. Routing
 2. Serve Static Files
-3. Serve RestAPI (Controller/Medthod + automatic json serialization/deserialization)
+3. Serve RestAPI (Controller/Method + automatic json serialization/deserialization)
 4. Integrated JWT Authentication
 5. Websocket
 
 ### Installation
 
-Using [SimpleW nuget package](https://www.nuget.org/packages/SimpleW)
+Using the [SimpleW](https://www.nuget.org/packages/SimpleW) nuget package, prefer always the last [version](release.md).
 
 ```
 dotnet add package SimpleW
@@ -92,6 +95,7 @@ namespace Sample {
 
             // block console for debug
             Console.ReadKey();
+
         }
     }
 }
@@ -101,7 +105,7 @@ Then just point your browser to http://localhost:2015/.
 
 Note : if `AutoIndex` is false and the directory does not contain a default document `index.html`, an http 404 error will return.
 
-Note : on Windows, the Firewall can block this simple console app even if expose on localhost and port > 1024. You need to allow access else you will not reach the server.
+Note : on Windows, the Firewall can block this simple console app even if exposed on localhost and port > 1024. You need to allow access else you will not reach the server.
 
 ### Multiples Directories
 
@@ -130,6 +134,7 @@ namespace Sample {
 
             // block console for debug
             Console.ReadKey();
+
         }
     }
 }
@@ -176,8 +181,7 @@ server.AddStaticContent(
 
 ### Basic RestAPI Example
 
-As already said, the RestAPI is based on **routes**.<br />
-So juste add a `RouteAttribute` to target **methods** of a `Controller` base class.<br />
+The RestAPI is based on **routes**, so just add a `RouteAttribute` to target **methods** of a `Controller` base class.<br />
 The return is serialized into json and sent as response to the client.
 
 Use `server.AddDynamicContent()` to handle RestAPI.
@@ -204,6 +208,7 @@ namespace Sample {
 
             // block console for debug
             Console.ReadKey();
+
         }
     }
 
@@ -257,6 +262,7 @@ namespace Sample {
 
             // block console for debug
             Console.ReadKey();
+
         }
     }
 
@@ -331,18 +337,9 @@ namespace Sample {
     class Program {
 
         static void Main() {
-
-            // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // find all Controllers class and serve on the "/api/" endpoint
             server.AddDynamicContent("/api/");
-
             server.Start();
-
-            Console.WriteLine("server started at http://localhost:2015/api/");
-
-            // block console for debug
             Console.ReadKey();
         }
     }
@@ -447,7 +444,7 @@ namespace Sample {
     }
 
     public class TestController : Controller {
-        
+
         // call on GET http://localhost:2015/api/test/index
         [Route("GET", "test/index")]
         public object Index() {
@@ -461,6 +458,7 @@ namespace Sample {
         }
 
     }
+
 }
 ```
 
@@ -498,10 +496,11 @@ namespace Sample {
         }
 
     }
+
 }
 ```
 
-You can override a method `Route` with the parameter `isAbsolutePath: true`.
+You can override a path with the parameter `isAbsolutePath: true`.
 
 ```csharp
 using System;
@@ -509,7 +508,7 @@ using System.Net;
 using SimpleW;
 
 namespace Sample {
-    
+
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -550,6 +549,7 @@ namespace Sample {
         }
 
     }
+
 }
 ```
 
@@ -568,7 +568,7 @@ using System.Net;
 using SimpleW;
 
 namespace Sample {
-    
+
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -590,6 +590,7 @@ namespace Sample {
         }
 
     }
+
 }
 ```
 
@@ -666,13 +667,15 @@ namespace Sample {
         }
 
     }
+
 }
 ```
 
 Notes : 
-- `QueryString` are map by name to the parameter method.
+- query string are map by name to the parameter method.
 - Only declared parameters are map.
 - When a method has a mandatory parameter (without default value), the route will not match if not provided in the url (return HTTP CODE 404).
+- `Route.ParseQueryString(this.Request.Url)` to get all query string
 
 
 #### Path Parameters
@@ -687,7 +690,7 @@ using System.Net;
 using SimpleW;
 
 namespace Sample {
-    
+
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -706,9 +709,9 @@ namespace Sample {
             return $"Hello {login}";
         }
 
-        // test with http://localhost:2015/api/test/stratdev/2023
+        // test with http://localhost:2015/api/test/user/stratdev/2023
         // but
-        // test with http://localhost:2015/api/test/stratdev/xx will
+        // test with http://localhost:2015/api/test/user/stratdev/xx will
         // return a http code 500 as the "xx" cast to integer
         // will thrown an exception
         [Route("GET", "user/{login}/{year}")]
@@ -717,6 +720,7 @@ namespace Sample {
         }
 
     }
+
 }
 ```
 
@@ -728,43 +732,114 @@ Note :
 - all declared parameters in `Route` path are mandatory.
 
 
-### POST body (application/json) deserialization
+### POST Body
 
-You can use the `BodyMap()` method for reading POST body and deserialize to an object instance.
+You can use the `Request.Body` property to retrieve POST body data.
 
-Frontend send POST json data
+Frontend send POST data
 
-```javascript
-var json_payload = {
-    id: "c037a13c-5e77-11ec-b466-e33ffd960c3a",
-    name: "test",
-    creation: "2021-12-21T15:06:58",
-    enabled: true
-};
-axios.post("http://localhost:2015/api/user/save", json_payload);
+```bash
+curl -X POST "http://localhost:2015/api/user/save" -d 'user'
 ```
 
 Backend receive
 
 ```csharp
-public class User {
-    public Guid id;
-    public string name;
-    public DateTime creation;
-    public bool enabled;
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("user/")]
+    public class UserController : Controller {
+
+        [Route("POST", "save")]
+        public object Save() {
+            return $"You sent {Request.Body}";
+        }
+
+    }
+
 }
+```
 
-[Route("POST", "user/save")]
-public object Save() {
 
-    var user = new User();
+#### POST body (application/json) deserialization helper
 
-    // map POST body JSON to object instance
-    Request.BodyMap(user);
+You can use the `BodyMap()` method for reading POST body and deserialize to an object instance.
 
-    return new {
-        user
-    };
+Frontend send POST json data
+
+```bash
+curl -X POST "http://localhost:2015/api/user/save" \
+     -H "Content-Type: application/json" \
+     -d '{
+            id: "c037a13c-5e77-11ec-b466-e33ffd960c3a",
+            name: "test",
+            creation: "2021-12-21T15:06:58",
+            enabled: true
+        }'
+```
+
+Backend receive
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("user/")]
+    public class UserController : Controller {
+
+        [Route("POST", "save")]
+        public object Save() {
+
+            // instanciate User class
+            var user = new User();
+
+            try {
+                // map POST body JSON to object instance
+                Request.BodyMap(user);
+
+                return new {
+                    user
+                };
+            }
+            catch (Exception ex) {
+                return MakeInternalServerErrorResponse(ex.Message);
+            }
+        }
+
+    }
+
+    public class User {
+        public Guid id;
+        public string name;
+        public DateTime creation;
+        public bool enabled;
+    }
+
 }
 ```
 
@@ -774,55 +849,149 @@ Note :
   the default for axios.
 
 
-### POST body (application/x-www-form-urlencoded) deserialization
+#### POST body (application/x-www-form-urlencoded) deserialization helper
 
 You can use the `BodyMap()` method for reading POST body and deserialize to an object instance.
 
 Frontend send POST json data
 
-```javascript
-const form_payload = {
-    id: "c037a13c-5e77-11ec-b466-e33ffd960c3a",
-    name: "test",
-    creation: "2021-12-21T15:06:58",
-    enabled: true
-};
-
-const options = {
-  method: "POST",
-  headers: { "content-type": "application/x-www-form-urlencoded" },
-  // encode payload to format "key=value&key=value.."
-  data: Object.keys(form_payload)
-              .map((key) => `${key}=${encodeURIComponent(form_payload[key])}`)
-              .join('&')
-  url: "http://localhost:2015/api/user/save",
-};
-axios(options);
+```bash
+curl -X POST "http://localhost:2015/api/user/save" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d 'id=c037a13c-5e77-11ec-b466-e33ffd960c3a&name=test&creation=2021-12-21T15%3A06%3A58&enabled=true'
 ```
 
 Backend receive
 
 ```csharp
-public class User {
-    public Guid id;
-    public string name;
-    public DateTime creation;
-    public bool enabled;
-}
+using System;
+using System.Net;
+using SimpleW;
 
-[Route("POST", "user/save")]
-public object Save() {
+namespace Sample {
 
-    var user = new User();
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
 
-    // map POST body FORM to object instance
-    Request.BodyMap(user);
+    [Route("user/")]
+    public class UserController : Controller {
 
-    return new {
-        user
-    };
+        [Route("POST", "save")]
+        public object Save() {
+
+            // instanciate User class
+            var user = new User();
+
+            try {
+                // map POST body JSON to object instance
+                Request.BodyMap(user);
+
+                return new {
+                    user
+                };
+            }
+            catch (Exception ex) {
+                return MakeInternalServerErrorResponse(ex.Message);
+            }
+        }
+
+    }
+
+    public class User {
+        public Guid id;
+        public string name;
+        public DateTime creation;
+        public bool enabled;
+    }
+
 }
 ```
+
+The code is exactly the same but there are some limitations due to the nature of `x-www-form-urlencoded`
+specification. That's why : 
+- array : only support string value and key must contain "[]" (ie: `colors[]=red,green,blue`).
+- nested types (ie: `object in object`) are not supported.
+
+
+
+#### POST body file (multipart/form-data)
+
+You can use the `BodyFile()` method for reading POST body containing files.
+
+Frontend send POST json data
+
+```bash
+echo "user preferences" > prefs.json
+curl -F "file=@prefs.json" "http://localhost:2015/api/user/upload" 
+```
+
+Backend receive
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("user/")]
+    public class UserController : Controller {
+
+        [Route("POST", "save")]
+        public object Save() {
+
+            var parser = Request.BodyFile();
+            if (!parser.Files.Any(f => f.Data.Length >= 0)) {
+                return "no file found in the body";
+            }
+
+            var file = parser.Files.First();
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            // check file extension and size
+            if (extension != ".json") {
+                return "wrong extension";
+            }
+            if (file.Data.Length > 1024 * 1000) {
+                return "the file size exceeds the maximum of 1Mo";
+            }
+
+            // save file
+            using (var ms = new MemoryStream()) {
+                try {
+                    file.Data.CopyTo(ms);
+                    // WARN : do not use file.FileName directly
+                    //        always check and sanitize FileName to avoid injection
+                    File.WriteAllBytes(file.FileName, ms.ToArray());
+                }
+                catch (Exception ex) {
+                    return this.MakeInternalServerErrorResponse(ex.Message);
+                }
+            }
+
+            return "the file has been uploaded";
+        }
+
+    }
+
+}
+```
+
 
 
 ### Serialization
@@ -830,17 +999,37 @@ public object Save() {
 
 #### Default
 
-The `public object method` will be serialized to json using the excellent `JsonConvert.SerializeObject()` from [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json/)
+The return of the `method` will be serialized to json using the excellent `JsonConvert.SerializeObject()` from [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json/)
 
 ```csharp
-[Route("GET", "test")]
-public object Test() {
-    return new {
-        hello = "Hello World !",
-        current = Datetime.Now,
-        i = 0,
-        d = new Dictionary<string, string>() { { "Foo", "Bar" } }
-    };
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    public class TestController : Controller {
+        [Route("GET", "test")]
+        public object Test() {
+            return new {
+                hello = "Hello World !",
+                current = Datetime.Now,
+                i = 0,
+                enable = true,
+                d = new Dictionary<string, string>() { { "Foo", "Bar" } }
+            };
+        }
+    }
+
 }
 ```
 
@@ -849,8 +1038,9 @@ Requesting to `http://localhost:2015/api/test` will result to
 ```json
 {
     "hello": "Hello World !",
-    "current": "2021-12-15T11:44:29.1249399+01:00",
+    "current": "2024-03-01T13:17:29.1249399+01:00",
     "i": 0,
+    "enable": true,
     "d": {"Foo":"Bar"}
 }
 ```
@@ -901,17 +1091,9 @@ namespace Sample {
             // subscribe to all SimpleW events
             openTelemetryObserver("SimpleW");
 
-            // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // find all Controllers class and serve on the "/api/" endpoint
             server.AddDynamicContent("/api/");
-
             server.Start();
-
-            Console.WriteLine("server started at http://localhost:2015/api/");
-
-            // block console for debug
             Console.ReadKey();
         }
 
@@ -932,7 +1114,8 @@ namespace Sample {
     class LogProcessor : BaseProcessor<Activity> {
         // write log to console
         public override void OnEnd(Activity activity) {
-              Console.WriteLine($"{activity.GetTagItem("http.request.method")} \"{activity.GetTagItem("url.full")}\" {activity.GetTagItem("http.response.status_code")} {(int)activity.Duration.TotalMilliseconds}ms session-{activity.GetTagItem("session")} {activity.GetTagItem("client.address")} \"{activity.GetTagItem("user_agent.original")}\"");
+            // WARNING : use for local debug only not production
+            Console.WriteLine($"{activity.GetTagItem("http.request.method")} \"{activity.GetTagItem("url.full")}\" {activity.GetTagItem("http.response.status_code")} {(int)activity.Duration.TotalMilliseconds}ms session-{activity.GetTagItem("session")} {activity.GetTagItem("client.address")} \"{activity.GetTagItem("user_agent.original")}\"");
         }
     }
 
@@ -973,17 +1156,9 @@ namespace Sample {
             // subscribe to all SimpleW events
             openTelemetryObserver("SimpleW");
 
-            // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // find all Controllers class and serve on the "/api/" endpoint
             server.AddDynamicContent("/api/");
-
             server.Start();
-
-            Console.WriteLine("server started at http://localhost:2015/");
-
-            // block console for debug
             Console.ReadKey();
         }
 
@@ -991,7 +1166,7 @@ namespace Sample {
             return Sdk.CreateTracerProviderBuilder()
                               .AddSource(source)
                               // see https://uptrace.dev/get/get-started.html#dsn
-                              .AddUptrace(uptrace_connection_string)
+                              .AddUptrace("uptrace_connection_string_api_key")
                               .SetResourceBuilder(
                                   ResourceBuilder
                                       .CreateEmpty()
