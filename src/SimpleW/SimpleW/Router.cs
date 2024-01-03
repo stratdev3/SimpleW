@@ -12,6 +12,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Enable Regular Expression for Route.Path
+        /// Consider RegExpEnabled to be slower
         /// </summary>
         public bool RegExpEnabled { get; set; } = false;
 
@@ -32,7 +33,7 @@ namespace SimpleW {
         /// <param name="route"></param>
         public void AddRoute(Route route) {
             // detect if Path contains RegExp
-            if ((new[] { "^", "$", ".", "*", "{", "(" }).Any(route.Attribute.Path.Contains)) {
+            if (!RegExpEnabled && (new[] { "^", "$", ".", "*", "{", "(" }).Any(route.Attribute.Path.Contains)) {
                 RegExpEnabled = true;
             }
             _routes.Add(route);
