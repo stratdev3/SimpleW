@@ -7,12 +7,13 @@ Notes :
 - no long time support or backporting for major version, just use the last update.
 - if you find bug/optimization, feel free to send patch.
 
-## vNEXT / _(2024-01-xx)_
+## v11.4.0 / _(2024-01-04)_
 Maintenance
 
 ### feature
 
-- property `RegExpEnabled` must be explicitly enabled to allow regular expression in route path.
+- property `RegExpEnabled` must be explicitly enabled to allow regular expression in route path (#2).
+- refactor(Router): use `Dictionnary<Key, Route>` when `RegExpEnabled` is false, performances improvement (#1)
 
 
 
