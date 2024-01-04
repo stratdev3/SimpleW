@@ -17,12 +17,28 @@ namespace SimpleW {
         public bool RegExpEnabled { get; set; } = false;
 
         /// <summary>
-        /// List of all declare and handle Routes
+        /// Dictionnary of all declared and handle Routes
+        /// Fill when RegExpEnabled = false
         /// </summary>
-        private List<Route> _routes = new();
+        private Dictionary<string, Route> _routes_dict = new();
+
+        /// <summary>
+        /// List of all declared and handle Routes
+        /// Fill when RegExpEnabled = true
+        /// </summary>
+        private List<Route> _routes_list = new();
+
+        /// <summary>
+        /// Public Property List of all declared and handle Routes
+        /// </summary>
         public List<Route> Routes {
             get {
-                return _routes;
+                if (RegExpEnabled) {
+                    return _routes_list;
+                }
+                else {
+                    return _routes_dict.Select(d => d.Value).ToList();
+                }
             }
         }
 
@@ -32,7 +48,12 @@ namespace SimpleW {
         /// </summary>
         /// <param name="route"></param>
         public void AddRoute(Route route) {
-            _routes.Add(route);
+            if (RegExpEnabled) {
+                _routes_list.Add(route);
+            }
+            else {
+                _routes_dict.Add(route.Method.ToUpper()+route.Attribute.Path, route);
+            }
         }
 
         /// <summary>
@@ -42,13 +63,11 @@ namespace SimpleW {
         /// <returns></returns>
         public Route Match(Route requestRoute) {
             if (RegExpEnabled) {
-                return _routes.FirstOrDefault(r => string.Equals(r.Method, requestRoute.Method, StringComparison.OrdinalIgnoreCase)
-                                                   && r.regex.Match(requestRoute.Url.AbsolutePath).Success);
+                return _routes_list.FirstOrDefault(r => string.Equals(r.Method, requestRoute.Method, StringComparison.OrdinalIgnoreCase)
+                                                        && r.regex.Match(requestRoute.Url.AbsolutePath).Success);
             }
-            else {
-                return _routes.FirstOrDefault(r => string.Equals(r.Method, requestRoute.Method, StringComparison.OrdinalIgnoreCase)
-                                                   && string.Equals(r.Attribute.Path, requestRoute.Url.AbsolutePath));
-            }
+            _routes_dict.TryGetValue(requestRoute.Method.ToUpper() + requestRoute.Url.AbsolutePath, out Route found_dict);
+            return found_dict;
         }
 
         /// <summary>
@@ -57,8 +76,8 @@ namespace SimpleW {
         /// <param name="message"></param>
         /// <returns></returns>
         public Route Match(WebSocketMessage message) {
-            return _routes.FirstOrDefault(r => string.Equals(r.Method, "WEBSOCKET", StringComparison.OrdinalIgnoreCase)
-                                               && string.Equals(r.RawUrl, message.url));
+            _routes_dict.TryGetValue("WEBSOCKET" + message.url, out Route found_dict);
+            return found_dict;
         }
 
     }
