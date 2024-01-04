@@ -13,6 +13,7 @@ namespace SimpleW {
         /// <summary>
         /// Enable Regular Expression for Route.Path
         /// Consider RegExpEnabled to be slower
+        /// scope : global to all AddDynamicContent()
         /// </summary>
         public bool RegExpEnabled { get; set; } = false;
 
