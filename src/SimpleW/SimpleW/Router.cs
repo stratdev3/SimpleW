@@ -20,7 +20,7 @@ namespace SimpleW {
         /// List of all declare and handle Routes
         /// </summary>
         private List<Route> _routes = new();
-        public List<Route> Routes { 
+        public List<Route> Routes {
             get {
                 return _routes;
             }
@@ -32,10 +32,6 @@ namespace SimpleW {
         /// </summary>
         /// <param name="route"></param>
         public void AddRoute(Route route) {
-            // detect if Path contains RegExp
-            if (!RegExpEnabled && (new[] { "^", "$", ".", "*", "{", "(" }).Any(route.Attribute.Path.Contains)) {
-                RegExpEnabled = true;
-            }
             _routes.Add(route);
         }
 

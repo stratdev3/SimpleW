@@ -560,7 +560,7 @@ Note :
 
 #### Regexp
 
-`Route` path support regulars expressions.
+`Route` path support regulars expressions when `Router.RegExpEnabled` is true
 
 ```csharp
 using System;
@@ -572,6 +572,10 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // allow regular expression in route path
+            server.Router.RegExpEnabled = true;
+
             server.AddDynamicContent("/api/");
             server.Start();
             Console.ReadKey();
@@ -593,6 +597,9 @@ namespace Sample {
 
 }
 ```
+
+Note : the property `RegExpEnabled` is global to all controllers and must be
+       set before any `AddDynamicContent()` call.
 
 
 #### QueryString Parameters

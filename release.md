@@ -7,6 +7,13 @@ Notes :
 - no long time support or backporting for major version, just use the last update.
 - if you find bug/optimization, feel free to send patch.
 
+## vNEXT / _(2024-01-xx)_
+Maintenance
+
+### feature
+
+- property `RegExpEnabled` must be explicitly enabled to allow regular expression in route path.
+
 
 
 ## v11.3.3 / _(2023-12-24)_
