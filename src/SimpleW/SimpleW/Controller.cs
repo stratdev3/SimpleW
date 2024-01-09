@@ -108,7 +108,7 @@ namespace SimpleW {
 
                 // jwt token is valid and webuser must be refresh
                 if (wu != null) {
-                    return wu.Refresh
+                    return wu.Refresh && GetWebUserCallback != null
                                 ? GetWebUserCallback(wu.Id)
                                 : wu;
                 }
