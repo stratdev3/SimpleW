@@ -13,6 +13,7 @@ Maintenance
 ### breakingChange
 
 - rename `SimpleW.SetTokenWebUserCallback()` method to `SimpleW.SetToken()` and reorder parameters (#3).
+- rename `Controller.OnBeforeHandler()` method to `Controller.OnBeforeMethod()`.
 
 ### feature
 

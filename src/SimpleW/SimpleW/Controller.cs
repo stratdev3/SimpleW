@@ -12,26 +12,37 @@ namespace SimpleW {
     public delegate IWebUser DelegateSetTokenWebUser(Guid id = new Guid());
 
     /// <summary>
-    /// Inherit from this class and define your own Web API methods
-    /// Autoregistered when starting server
+    /// <para>Controller is mandatory base class of all Controllers.</para>
+    /// <para>Inherit from this class or subclass</para>
     /// </summary>
     public abstract class Controller {
 
         /// <summary>
-        /// <para>Gets the HTTP Session.</para>
-        /// <para>This property is automatically initialized upon controller creation by a runtime-compiled lambda.</para>
+        /// Gets the current HTTP Session
         /// </summary>
-        public SimpleWSession Session { get; internal set; }
+        protected SimpleWSession Session;
+
         /// <summary>
-        /// <para>Gets the HTTP Request.</para>
-        /// <para>This property is automatically initialized upon controller creation by a runtime-compiled lambda.</para>
+        /// Gets the current HTTP Request
         /// </summary>
-        public HttpRequest Request { get; internal set; }
+        protected HttpRequest Request;
+
         /// <summary>
-        /// <para>Gets the HTTP Response.</para>
-        /// <para>This property is automatically initialized upon controller creation by a runtime-compiled lambda.</para>
+        /// Gets the current prepared HTTP Response
         /// </summary>
-        public HttpResponse Response => Session.Response;
+        protected HttpResponse Response => Session.Response;
+
+        /// <summary>
+        /// Inject Session and Request after instanciation by Router and ControllerMethodExecutor.
+        /// This way to avoid define a constructor in all inherited controllers
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="request"></param>
+        public void Initialize(SimpleWSession session, HttpRequest request) {
+            Session = session;
+            Request = request;
+            Session.webuser = webuser;
+        }
 
         #region webuser
 
@@ -135,17 +146,9 @@ namespace SimpleW {
         #endregion webuser
 
         /// <summary>
-        /// Do not used as it's already called by server.
+        /// Override this Handler to call code before any Controller.Method()
         /// </summary>
-        public void OnBeforeHandlerInternal() {
-            Session.webuser = webuser;
-            OnBeforeHandler();
-        }
-
-        /// <summary>
-        /// Override this Handler to call code just after controller initialization.
-        /// </summary>
-        protected virtual void OnBeforeHandler() { }
+        public virtual void OnBeforeMethod() { }
 
         #region response
 

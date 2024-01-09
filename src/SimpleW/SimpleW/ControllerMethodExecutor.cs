@@ -20,19 +20,14 @@ namespace SimpleW {
         private static readonly Type BaseController = typeof(Controller);
 
         /// <summary>
-        /// MethodInfo to Controller.Session Setter Property
+        /// MethodInfo to Controller.Initialize()
         /// </summary>
-        private static readonly MethodInfo HttpSessionSetter = BaseController.GetProperty(nameof(Controller.Session)).GetSetMethod(true);
+        private static readonly MethodInfo InitializeSetter = BaseController.GetMethod(nameof(Controller.Initialize), new Type[] { typeof(SimpleWSession), typeof(HttpRequest) });
 
         /// <summary>
-        /// MethodInfo to Controller.Request Setter Property
+        /// MethodInfo to Controller.OnBeforeMethodInternal()
         /// </summary>
-        private static readonly MethodInfo HttpRequestSetter = BaseController.GetProperty(nameof(Controller.Request)).GetSetMethod(true);
-
-        /// <summary>
-        /// MethodInfo to Controller.OnBeforeHandlerInternal()
-        /// </summary>
-        private static readonly MethodInfo OnBeforeHandlerInternal = BaseController.GetMethod(nameof(Controller.OnBeforeHandlerInternal));
+        private static readonly MethodInfo OnBeforeMethod = BaseController.GetMethod(nameof(Controller.OnBeforeMethod));
 
         /// <summary>
         /// MethodInfo to Controller.SendResponseAsync()
@@ -67,7 +62,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Create an ControllerMethodExecutor
+        /// Create a ControllerMethodExecutor
         /// </summary>
         /// <param name="method">The MethodInfo to add</param>
         /// <returns></returns>
@@ -81,12 +76,12 @@ namespace SimpleW {
             //
 
             // lambda parameters
-            var sessionInLambda = Expression.Parameter(typeof(SimpleWSession), "session");
-            var requestInLambda = Expression.Parameter(typeof(HttpRequest), "request");
-            var argsInLambda = Expression.Parameter(typeof(object[]), "args");
+            var sessionInLambda = Expression.Parameter(typeof(SimpleWSession));
+            var requestInLambda = Expression.Parameter(typeof(HttpRequest));
+            var argsInLambda = Expression.Parameter(typeof(object[]));
 
             // creation variable C# : ControllerType controller;
-            var controller = Expression.Variable(controllerType, "controller");
+            var controller = Expression.Variable(controllerType);
             // add to expression tree locals
             locals.Add(controller);
 
@@ -94,22 +89,16 @@ namespace SimpleW {
             // add to expression tree body
             body.Add(Expression.Assign(controller, Expression.New(controllerType)));
 
-            // set Session propertie C# : controller.Session = session;
+            // call Controller.Initialize() and pass session and request from the lambda
             // controller is the instance controller type
-            // HttpSessionSetter is a methodinfo pointing to controller.Session
+            // InitializeSetter is a methodinfo pointing to controller.Initialize()
             // sessionInLambda is the lambda parameter pointing to session
-            // add to expression tree body
-            body.Add(Expression.Call(controller, HttpSessionSetter, sessionInLambda));
-
-            // set Request propertie C# : controller.Request = request;
-            // controller is the instance controller type
-            // HttpRequestSetter is a methodinfo pointing to controller.Request
             // requestInLambda is the lambda parameter pointing to request
             // add to expression tree body
-            body.Add(Expression.Call(controller, HttpRequestSetter, requestInLambda));
+            body.Add(Expression.Call(controller, InitializeSetter, new List<ParameterExpression>() { sessionInLambda, requestInLambda }));
 
-            // call Controller.OnBeforeHandler()
-            body.Add(Expression.Call(controller, OnBeforeHandlerInternal));
+            // call Controller.OnBeforeMethod()
+            body.Add(Expression.Call(controller, OnBeforeMethod));
 
             //
             // get method parameter
