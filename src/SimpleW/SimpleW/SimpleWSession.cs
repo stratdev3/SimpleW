@@ -23,7 +23,10 @@ namespace SimpleW {
         public string jwt { get; set; }
 
         /// <summary>
-        /// WebUser
+        /// <para>Get Current IWebUser</para>
+        /// <para>set by the underlying Controller.webuser
+        ///       The only use case to have a webuser
+        ///       property here is for logging</para>
         /// </summary>
         public IWebUser webuser { get; set; }
 

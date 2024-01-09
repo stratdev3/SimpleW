@@ -41,6 +41,8 @@ namespace SimpleW {
         public void Initialize(SimpleWSession session, HttpRequest request) {
             Session = session;
             Request = request;
+
+            // we need to set Session.webuser (mostly for logging purpose)
             Session.webuser = webuser;
         }
 
@@ -68,30 +70,27 @@ namespace SimpleW {
         /// </summary>
         protected IWebUser webuser {
             get {
-                if (!_webuser_init) {
-                    _webuser_init = true;
-                    SetWebUser();
+                if (!_webuser_set) {
+                    _webuser_set = true;
+                    _webuser = JwtToWebUser(GetJwt());
                 }
                 return _webuser;
             }
         }
 
         /// <summary>
-        /// Current webuser instance
+        /// cache for webuser property
         /// </summary>
         private IWebUser _webuser;
 
         /// <summary>
         /// Flag : cache _webuser to avoid multi request
+        ///        as in some edge case JwtToWebUser()
+        ///        can return null (if GetWebUserCallback() return null)
+        ///        that's why we can't check _webuser = null and so
+        ///        use a specific flag
         /// </summary>
-        private bool _webuser_init;
-
-        /// <summary>
-        /// Set the _webuser
-        /// </summary>
-        protected void SetWebUser() {
-            _webuser = JwtToWebUser(GetJwt());
-        }
+        private bool _webuser_set;
 
         /// <summary>
         /// Return IWebUser from a jwt token
