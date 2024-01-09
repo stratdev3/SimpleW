@@ -71,25 +71,21 @@ namespace SimpleW {
             var body = new List<Expression>();
             var locals = new List<ParameterExpression>();
 
-            //
-            // instanciate and populate class properties
-            //
+            // creation variable C# : `ControllerType controller;`
+            var controller = Expression.Variable(controllerType);
+            // add to expression tree locals
+            locals.Add(controller);
+
+            // assign variable C# : `ControllerType controller = new ControllerType();`
+            // add to expression tree body
+            body.Add(Expression.Assign(controller, Expression.New(controllerType)));
 
             // lambda parameters
             var sessionInLambda = Expression.Parameter(typeof(SimpleWSession));
             var requestInLambda = Expression.Parameter(typeof(HttpRequest));
             var argsInLambda = Expression.Parameter(typeof(object[]));
 
-            // creation variable C# : ControllerType controller;
-            var controller = Expression.Variable(controllerType);
-            // add to expression tree locals
-            locals.Add(controller);
-
-            // assign variable C# : ControllerType controller = new ControllerType();
-            // add to expression tree body
-            body.Add(Expression.Assign(controller, Expression.New(controllerType)));
-
-            // call Controller.Initialize() and pass session and request from the lambda
+            // call method C# : `controller.Initialize(session, request);`
             // controller is the instance controller type
             // InitializeSetter is a methodinfo pointing to controller.Initialize()
             // sessionInLambda is the lambda parameter pointing to session
@@ -97,7 +93,7 @@ namespace SimpleW {
             // add to expression tree body
             body.Add(Expression.Call(controller, InitializeSetter, new List<ParameterExpression>() { sessionInLambda, requestInLambda }));
 
-            // call Controller.OnBeforeMethod()
+            // call method C# : `Controller.OnBeforeMethod();`
             body.Add(Expression.Call(controller, OnBeforeMethod));
 
             //
@@ -148,21 +144,6 @@ namespace SimpleW {
                     values.Add(parameter, parameter.ParameterType);
                 }
             }
-            /*
-            var callParameters = parameters.Select(
-                                    (parameter, i) => {
-                                        var etry = Expression.Convert(Expression.ArrayIndex(argsInLambda, Expression.Constant(i)), 
-                                                                      parameter.ParameterType);
-                                        Expression ecatch = parameter.HasDefaultValue
-                                                                ? Expression.Constant(parameter.DefaultValue)
-                                                                : Expression.Default(parameter.ParameterType);
-
-                                        return Expression.TryCatch(etry, Expression.Catch(typeof(NullReferenceException), ecatch));
-                                    }
-                                 )
-                                 .Cast<Expression>()
-                                 .ToList();
-            */
 
             //
             // call method
@@ -188,8 +169,7 @@ namespace SimpleW {
             }
             body.Add(call);
 
-            // if the controller type implements IDisposable,
-            // (controller as IDisposable).Dispose();
+            // call method C# : `(controller as IDisposable).Dispose();`
             if (typeof(IDisposable).IsAssignableFrom(controllerType)) {
                 body.Add(Expression.Call(Expression.TypeAs(controller, typeof(IDisposable)), DisposeMethod));
             }
