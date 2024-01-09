@@ -16,9 +16,9 @@ It brings an easy layer on top of the great NetCoreServer in pure C#.</Descripti
     <Version>11.4.0</Version>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
     <PackageProjectUrl>https://github.com/stratdev3/SimpleW</PackageProjectUrl>
-    <PackageIcon>logo.png</PackageIcon> <!-- for LitJWT package-->
+    <PackageIcon>logo.png</PackageIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
