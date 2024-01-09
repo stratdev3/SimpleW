@@ -7,6 +7,19 @@ Notes :
 - no long time support or backporting for major version, just use the last update.
 - if you find bug/optimization, feel free to send patch.
 
+## vNEXT / _(2024-01-??)_
+Maintenance
+
+### breakingChange
+
+- rename `SimpleW.SetTokenWebUserCallback()` method to `SimpleW.SetToken()` and reorder parameters (#3).
+
+### feature
+
+- comment
+
+
+
 ## v11.4.0 / _(2024-01-04)_
 Maintenance
 

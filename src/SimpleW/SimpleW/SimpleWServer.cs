@@ -155,17 +155,25 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Add delegate called by TokenWebUser to refresh webuser
+        /// Set Token settings and set delegate called by TokenWebUser to refresh webuser
         /// </summary>
-        /// <param name="tokenWebUserCallback">The DelegateSetTokenWebUser setTokenWebUser</param>
-        /// <param name="tokenPassphrase">The String tokenPassphrase.</param>
+        /// <param name="tokenPassphrase">The String token secret passphrase (min 17 chars).</param>
         /// <param name="issuer">The String issuer.</param>
-        /// <param name="expiration">The double expiration time.</param>
-        public void SetTokenWebUserCallback(DelegateSetTokenWebUser tokenWebUserCallback, string tokenPassphrase, string issuer, double expiration) {
-            Controller.GetWebUserCallback = tokenWebUserCallback;
+        /// <param name="expiration">The expiration time in seconds (default 15 minutes).</param>
+        /// <param name="tokenWebUserCallback">The DelegateSetTokenWebUser setTokenWebUser</param>
+        public void SetToken(string tokenPassphrase, string issuer, double expiration = 15 * 60, DelegateSetTokenWebUser tokenWebUserCallback = null) {
+
+            if (string.IsNullOrWhiteSpace(tokenPassphrase) || tokenPassphrase.Length <= 16) {
+                throw new ArgumentException($"{nameof(tokenPassphrase)} must be 17 char length minimum");
+            }
             Controller.TokenKey = tokenPassphrase;
+
             Controller.TokenIssuer = issuer;
             Controller.TokenExpiration = expiration;
+            
+            if (tokenWebUserCallback != null) {
+                Controller.GetWebUserCallback = tokenWebUserCallback;
+            }
         }
 
         #endregion restapi
