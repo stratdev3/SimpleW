@@ -75,12 +75,12 @@ namespace SimpleW {
                 return _webuser;
             }
         }
-        
+
         /// <summary>
         /// Current webuser instance
         /// </summary>
         private IWebUser _webuser;
-        
+
         /// <summary>
         /// Flag : cache _webuser to avoid multi request
         /// </summary>
@@ -123,7 +123,7 @@ namespace SimpleW {
             catch {
                 return new WebUser();
             }
-        } 
+        }
 
         /// <summary>
         /// Get the JWT by order :
