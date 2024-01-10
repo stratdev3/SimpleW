@@ -1,6 +1,11 @@
 # SimpleW
 
 [![NuGet](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<br/>
+[![Linux](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml)
+[![MacOS](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml)
+[![Windows (Visual Studio)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml)
 
 <img src="src/SimpleW/logo.svg" alt="logo" width="100" />
 
@@ -24,7 +29,17 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
     - [Return Type](#return-type)
     - [Return Helpers](#return-helpers)
     - [Routing](#routing)
+      - [Examples](#examples)
+      - [Regexp](#regexp)
+      - [Query String Parameters](#query-string-parameters)
+      - [Path Parameters](#path-parameters)
     - [Post Body](#post-body)
+      - [Post Body (application/json) deserialization helper](#post-body-applicationjson-deserialization-helper)
+      - [Post Body (application/x-www-form-urlencoded) deserialization helper](#post-body-applicationx-www-form-urlencoded-deserialization-helper)
+      - [Post Body (multipart/form-data) deserialization helper](#post-body-multipartform-data-deserialization-helper)
+    - [Serialization](#serialization)
+  - [JWT Authentication](#jwt-authentication)
+  - [Websockets](#websockets)
   - [OpenTelemetry](#opentelemetry)
 
 
@@ -46,7 +61,7 @@ dotnet add package SimpleW
 
 Note : SimpleW depends [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) package for json serialization/deserialization.
 
-It will be replaced in futur by the native `System.Text.Json` as soon as
+It will be replaced in futur by the native `System.Text.Json` as long as
 some advanced features will be covered (`Populate` and `streamingContextObject`, see [WIP](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/migrate-from-newtonsoft?pivots=dotnet-8-0#table-of-differences)).
 
 
@@ -177,7 +192,6 @@ server.AddStaticContent(
 
 
 ## Serve RestAPI
-
 
 ### Basic RestAPI Example
 
@@ -410,11 +424,6 @@ Note : all these helpers support differents types of parameters and options to d
 most of the use cases. Just browse to discover all the possibilities.
 
 
-### Edge Cases of Return
-
-Documentation in progress...
-
-
 ### Routing
 
 Each route is a concatenation of :
@@ -602,7 +611,7 @@ Note : the property `RegExpEnabled` is global to all controllers and must be
        set before any `AddDynamicContent()` call.
 
 
-#### QueryString Parameters
+#### Query String Parameters
 
 Query String parameters are also supported in a similar way.
 The library will map query string parameter to the method parameter.
@@ -613,7 +622,7 @@ using System.Net;
 using SimpleW;
 
 namespace Sample {
-    
+
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -927,7 +936,7 @@ specification. That's why :
 
 
 
-#### POST body file (multipart/form-data)
+#### POST body (multipart/form-data) deserialization helper
 
 You can use the `BodyFile()` method for reading POST body containing files.
 
@@ -1003,7 +1012,6 @@ namespace Sample {
 
 ### Serialization
 
-
 #### Default
 
 The return of the `method` will be serialized to json using the excellent `JsonConvert.SerializeObject()` from [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json/)
@@ -1063,12 +1071,12 @@ You can access the `Request` property inside any controller.
 You can access the `Response` property inside any controller.
 
 
-## 3. JWT Authentication
+## JWT Authentication
 
 Documentation in progress...
 
 
-## 4. Websockets
+## Websockets
 
 Documentation in progress...
 
