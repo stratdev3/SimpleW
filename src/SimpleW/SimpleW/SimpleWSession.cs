@@ -163,16 +163,6 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Websocket disconnect
-        /// </summary>
-        public override void OnWsDisconnected() {
-            var activity = ActivitySource.StartActivity();
-            ((SimpleWServer)Server).UnregisterWebUser(Id);
-            SetDefaultActivity(activity, $"DISCONNECT {((SimpleWServer)Server)._websocket_prefix_route}", Id);
-            StopWithStatusCodeActivity(activity, 200);
-        }
-
-        /// <summary>
         /// Websocket received
         /// </summary>
         /// <param name="buffer"></param>
@@ -214,6 +204,16 @@ namespace SimpleW {
             catch (Exception ex) {
                 StopWithStatusCodeActivity(activity, 500, exception: ex);
             }
+        }
+
+        /// <summary>
+        /// Websocket disconnect
+        /// </summary>
+        public override void OnWsDisconnected() {
+            var activity = ActivitySource.StartActivity();
+            ((SimpleWServer)Server).UnregisterWebUser(Id);
+            SetDefaultActivity(activity, $"DISCONNECT {((SimpleWServer)Server)._websocket_prefix_route}", Id);
+            StopWithStatusCodeActivity(activity, 200);
         }
 
         #endregion websocket
