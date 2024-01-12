@@ -37,6 +37,7 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
       - [Post Body (application/json) deserialization helper](#post-body-applicationjson-deserialization-helper)
       - [Post Body (application/x-www-form-urlencoded) deserialization helper](#post-body-applicationx-www-form-urlencoded-deserialization-helper)
       - [Post Body (multipart/form-data) deserialization helper](#post-body-multipartform-data-deserialization-helper)
+    - [CORS](#cors)
     - [Serialization](#serialization)
   - [JWT Authentication](#jwt-authentication)
   - [Websockets](#websockets)
@@ -1008,6 +1009,54 @@ namespace Sample {
 }
 ```
 
+
+### CORS
+
+Internet Browser (Firefox, Chrome, IE...) blocks javascript requesting RestAPI from a different domain. That's why [CORS](https://developer.mozilla.org/fr/docs/Web/HTTP/CORS) was created, to define permission and sharing data.
+
+To set CORS policy, use the `server.AddCORS()` method :
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+    class Program {
+
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+
+            // set CORS policy
+            server.AddCORS(
+                "*",                // Access-Control-Allow-Origin
+                "*",                // Access-Control-Allow-Headers
+                "GET,POST,OPTIONS", // Access-Control-Allow-Methods
+                "true"              // Access-Control-Allow-Credentials
+            );
+
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    // a Controller base class
+    public class SomeController : Controller {
+
+        // use the Route attribute to target a public method
+        [Route("GET", "test")]
+        public object SomePublicMethod() {
+            // the return will be serialized to json
+            return new {
+                hello = "world"
+            };
+        }
+
+    }
+
+}
+```
 
 
 ### Serialization
