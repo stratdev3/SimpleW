@@ -1132,7 +1132,7 @@ Documentation in progress...
 
 ## OpenTelemetry
 
-SimpleW handle an opentelemetry `Activity` and publish `Event`.
+SimpleW handle an [opentelemetry](https://github.com/open-telemetry/opentelemetry-dotnet) `Activity` and publish `Event`.
 As such, you can subscribe to this `source` and ...
 
 See an example which log all request to console (do not use for production).
@@ -1144,6 +1144,7 @@ using System.Net;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using OpenTelemetry;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SimpleW;
 
