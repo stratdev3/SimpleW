@@ -15,9 +15,13 @@ Maintenance
 - rename `SimpleW.SetTokenWebUserCallback()` method to `SimpleW.SetToken()` and reorder parameters (#3).
 - rename `Controller.OnBeforeHandler()` method to `Controller.OnBeforeMethod()`.
 
+### bug
+
+- fix(AutoIndex): do not show ".." in root path (#10).
+
 ### feature
 
-- comment
+- feature(WebSocket): handle multiple socket endpoints and not just once (#9).
 
 
 
