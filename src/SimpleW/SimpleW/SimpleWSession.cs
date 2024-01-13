@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
@@ -68,15 +69,15 @@ namespace SimpleW {
                     }
                     // autoindex
                     else if (server.AutoIndex) {
-                        var files = Cache.List(requestRoute.Url.AbsolutePath).OrderBy(f => f);
+                        (IEnumerable<string> files, bool hasParent) = Cache.List(requestRoute.Url.AbsolutePath);
                         var html = @$"
                             <html>
                                 <head><title>Index of {requestRoute.Url.AbsolutePath}</title></head>
                                 <body>
                                     <h1>Index of {requestRoute.Url.AbsolutePath}</h1>
                                     <hr /><pre>"
-                                        +@$"<a href=""../"">../</a>{Environment.NewLine}"
-                                        +$"{string.Join(Environment.NewLine, files.Select(f => $"<a href=\"{f}\">{f}</a>"))}"
+                                        +(hasParent ? @$"<a href=""../"">../</a>{Environment.NewLine}" : "")
+                                        +$"{string.Join(Environment.NewLine, files.OrderBy(f => f).Select(f => $"<a href=\"{f}\">{f}</a>"))}"
                                     +@"</pre><hr />
                                 </body>
                             </html>";

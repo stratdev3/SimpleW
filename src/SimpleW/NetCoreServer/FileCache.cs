@@ -83,15 +83,18 @@ namespace NetCoreServer
         /// <summary>
         /// List files contains on the root path in the given key
         /// </summary>
-        /// <param name="key">Key to find</param>
-        /// <returns></returns>
-        public IEnumerable<string> List(string key) {
+        /// <param name="key">Key to find (a directory path)</param>
+        /// <returns>list of files and if there is a parent directory</returns>
+        public (IEnumerable<string>, bool) List(string key) {
             var start = key.Length;
             var files = new HashSet<string>();
+            var hasParent = false;
+
             using (new ReadLock(_lockEx)) {
                 foreach (var entry in _entriesByKey.Keys) {
                     try {
                         if (!entry.StartsWith(key)) {
+                            hasParent = true;
                             continue;
                         }
                         var slashPos = entry.IndexOf("/", start);
@@ -106,7 +109,8 @@ namespace NetCoreServer
                     }
                     catch { }
                 }
-                return files;
+
+                return (files, hasParent);
             }
         }
 
