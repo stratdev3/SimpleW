@@ -1,6 +1,6 @@
 # SimpleW
-
-[![NuGet](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
+[![NuGet Package](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
+![NuGet Downloads](https://img.shields.io/nuget/dt/SimpleW)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](licence)
 <br/>
 [![Linux](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml)
@@ -41,6 +41,7 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
     - [Serialization](#serialization)
   - [JWT Authentication](#jwt-authentication)
   - [Websockets](#websockets)
+    - [Example Server pushing data to client](#example-server-pushing-data-to-client)
   - [OpenTelemetry](#opentelemetry)
 
 
@@ -1131,7 +1132,7 @@ The advantage of Websockets over HTTP is the two-way communication channels : se
 
 More clearly : websocket avoid client polling request to server to get fresh data.
 
-### Basic Websocket Example Server pushing data to client
+### Example Server pushing data to client
 
 This example illustrates how SimpleW can be used to serve :
 1. an index.html static file which contains javascript code to connect to websocket
@@ -1194,7 +1195,6 @@ namespace Sample {
 
             // serve directory which contains the index.html
             server.AddStaticContent(@"C:\www\client", "/");
-            server.AutoIndex = true;
 
             // find all Controllers class and serve on the "/websocket/" endpoint
             server.AddWebSocketContent("/websocket");
