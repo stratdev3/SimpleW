@@ -83,7 +83,7 @@ namespace SimpleW {
         #region restapi
 
         /// <summary>
-        /// List of all API controllers handle
+        /// List of all API controllers
         /// </summary>
         private readonly HashSet<Type> _controllers_api = new();
 
@@ -181,14 +181,14 @@ namespace SimpleW {
         #region websocket
 
         /// <summary>
-        /// List of all Websocket controllers handle
+        /// List of all Websocket controllers
         /// </summary>
         private readonly HashSet<Type> _controllers_websocket = new();
 
         /// <summary>
-        /// Prefix of websocket route
+        /// Prefixes of websocket route
         /// </summary>
-        public string _websocket_prefix_route;
+        public readonly HashSet<string> _websocket_prefix_routes = new();
 
         /// <summary>
         /// Add WEBSOCKET controller content by registered all controllers which inherit from Controller
@@ -196,6 +196,13 @@ namespace SimpleW {
         /// <param name="path">path (default is "/websocket")</param>
         /// <param name="excepts">List of Controller to not auto load</param>
         public void AddWebSocketContent(string path = "/websocket", IEnumerable<Type> excepts = null) {
+
+            // case when no controller is defined, we need to store the prefix
+            // for socket the handshake complete (see SimpleWSession.OnReceivedRequest() return).
+            if (!_websocket_prefix_routes.Contains(path)) {
+                _websocket_prefix_routes.Add(path);
+            }
+
             foreach (var controller in ControllerMethodExecutor.Controllers(excepts)) {
                 AddWebSocketContent(controller, path);
             }
@@ -207,6 +214,10 @@ namespace SimpleW {
         /// <param name="controllerType">controllerType</param>
         /// <param name="path">path (default is "/websocket")</param>
         public void AddWebSocketContent(Type controllerType, string path = "/websocket") {
+
+            if (!_websocket_prefix_routes.Contains(path)) {
+                _websocket_prefix_routes.Add(path);
+            }
 
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new ArgumentNullException(nameof(path));
@@ -226,7 +237,6 @@ namespace SimpleW {
             var constructor = controllerType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 0)
                               ?? throw new ArgumentException("Controller type must have a public parameterless constructor.", nameof(controllerType));
 
-            _websocket_prefix_route = path;
             path += controllerType.GetCustomAttributes()
                                     .OfType<RouteAttribute>()
                                     .Select(r => r.Path).DefaultIfEmpty("").FirstOrDefault();

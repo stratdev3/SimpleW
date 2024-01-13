@@ -87,7 +87,7 @@ namespace SimpleW {
                 }
 
                 // websocket force here to return cause no matching will return 404 and browser will close websocket connection
-                if (requestRoute.Url.AbsolutePath == server._websocket_prefix_route) {
+                if (server._websocket_prefix_routes.Contains(requestRoute.Url.AbsolutePath)) {
                     return;
                 }
 
@@ -212,7 +212,7 @@ namespace SimpleW {
         public override void OnWsDisconnected() {
             var activity = ActivitySource.StartActivity();
             ((SimpleWServer)Server).UnregisterWebUser(Id);
-            SetDefaultActivity(activity, $"DISCONNECT {((SimpleWServer)Server)._websocket_prefix_route}", Id);
+            SetDefaultActivity(activity, $"DISCONNECT", Id);
             StopWithStatusCodeActivity(activity, 200);
         }
 
@@ -228,7 +228,7 @@ namespace SimpleW {
             activity.SetStatus(ActivityStatusCode.Error);
             var tagsCollection = new ActivityTagsCollection {
                     { "exception.type", nameof(SocketError) },
-                };
+            };
             activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
             activity.Stop();
         }
