@@ -1127,7 +1127,106 @@ Documentation in progress...
 
 ## Websockets
 
-Documentation in progress...
+The advantage of Websockets over HTTP is the two-way communication channels : server can push data to the client without it has to request (except first time to connect socket).
+
+More clearly : websocket avoid client polling request to server to get fresh data.
+
+### Basic Websocket Example Server pushing data to client
+
+This example illustrates how SimpleW can be used to serve :
+1. an index.html static file which contains javascript code to connect to websocket
+2. a websocket endpoint
+
+Content of the `index.html` located in the `C:\www\client\` directory
+
+```html
+<html>
+<head>
+    <script>
+        document.addEventListener("DOMContentLoaded", function(event) {
+            // logging
+            function logs(message, color) {
+                let logs = document.querySelector('#logs');
+                let log = document.createElement('li');
+                log.textContent = message;
+                log.style.color = color;
+                logs.append(log);
+            }
+            // websocket client
+            var ws = new WebSocket('ws://localhost:2015/websocket');
+            ws.onopen = function(e) {
+                logs('[connected] connection established to server.', 'green');
+                logs('// you can press S key from the server console.', 'blue');
+            };
+            ws.onmessage = function(event) {
+                logs(`[message] Data received from server: ${event.data}`, 'green');
+            };
+            ws.onclose = function(event) {
+                logs('[close] connection ' + (event.wasClean ? 'closed cleanly' : 'died'), 'red');
+            };
+            ws.onerror = function(error) {
+                logs(`[error] ${error}`, 'red');
+            };
+        });
+    </script>
+</head>
+<body>
+    <h1>Example Websocket Client</h1>
+    <ol id="logs"></ol>
+</body>
+</html>
+```
+
+Use `server.AddWebSocketContent()` to handle WebSocket endpoint.
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+    class Program {
+
+        static void Main() {
+
+            // listen to all IPs port 2015
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // serve directory which contains the index.html
+            server.AddStaticContent(@"C:\www\client", "/");
+            server.AutoIndex = true;
+
+            // find all Controllers class and serve on the "/websocket/" endpoint
+            server.AddWebSocketContent("/websocket");
+
+            server.Start();
+            Console.WriteLine("http server started at http://localhost:2015/");
+            Console.WriteLine("websocket server started at ws://localhost:2015/websocket");
+
+            // menu
+            while (true) {
+                Console.WriteLine("\nMenu : (S)end or (Q)uit ?\n");
+                var key = Console.ReadKey().KeyChar.ToString().ToLower();
+                if (key == "q") {
+                    Environment.Exit(0);
+                }
+                if (key == "s") {
+                    // multicast message to all connected sessions
+                    Console.WriteLine($"\nsend hello to all clients\n");
+                    server.MulticastText("hello");
+                }
+            }
+
+        }
+    }
+
+}
+```
+
+Open your browser to `http://localhost:2015/` :
+- your browser will connect to websocket and show logs connections
+- press `s` key from the server console to send a websocket message to all clients.
+- see logs in both side.
 
 
 ## OpenTelemetry
