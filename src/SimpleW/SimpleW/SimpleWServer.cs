@@ -193,9 +193,9 @@ namespace SimpleW {
         /// <summary>
         /// Add WEBSOCKET controller content by registered all controllers which inherit from Controller
         /// </summary>
-        /// <param name="path">path (default is "/")</param>
+        /// <param name="path">path (default is "/websocket")</param>
         /// <param name="excepts">List of Controller to not auto load</param>
-        public void AddWebSocketContent(string path = "/", IEnumerable<Type> excepts = null) {
+        public void AddWebSocketContent(string path = "/websocket", IEnumerable<Type> excepts = null) {
             foreach (var controller in ControllerMethodExecutor.Controllers(excepts)) {
                 AddWebSocketContent(controller, path);
             }
