@@ -59,13 +59,13 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
 
 ### Installation
 
-Using the [SimpleW](https://www.nuget.org/packages/SimpleW) nuget package, prefer always the last [version](release.md).
+Using the [SimpleW](https://www.nuget.org/packages/SimpleW) nuget package, always prefer the last [version](release.md).
 
 ```
 dotnet add package SimpleW
 ```
 
-Note : SimpleW depends [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) package for json serialization/deserialization.
+Note : SimpleW depends on [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) package for json serialization/deserialization.
 
 It will be replaced in futur by the native `System.Text.Json` as long as
 some advanced features will be covered (`Populate` and `streamingContextObject`, see [WIP](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/migrate-from-newtonsoft?pivots=dotnet-8-0#table-of-differences)).
@@ -76,11 +76,11 @@ some advanced features will be covered (`Populate` and `streamingContextObject`,
 
 ## Routes
 
-In SimpleW, all is about **routing** and there are 2 differents kind of routes :
+In SimpleW, all is about **routing** and there are 2 different kinds of routes :
 * **statics** : for serving statics files _(html, js, css, png...)_
 * **dynamics** : for serving API _(C# code)_
 
-Note : `Reflection` is only used to list routes, once, before server start. 
+Note : `Reflection` is only used to list routes, once, before server starts.
 An `expression tree` is built to call method fast __without__ using any `T.GetMethod().Invoke()`.
 
 
@@ -89,7 +89,7 @@ An `expression tree` is built to call method fast __without__ using any `T.GetMe
 
 ### Basic Static Example
 
-To serve statics files with a very few lines of code :
+To serve statics files with very few lines of code :
 
 ```csharp
 using System;
@@ -104,10 +104,10 @@ namespace Sample {
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // serve static content located in you folder "C:\www\" to "/" endpoint
+            // serve static content located in your folder "C:\www\" to "/" endpoint
             server.AddStaticContent(@"C:\www\", "/");
 
-            // enable autoindex if not index.html exists in the directory
+            // enable autoindex if no index.html exists in the directory
             server.AutoIndex = true;
 
             server.Start();
@@ -126,11 +126,11 @@ Then just point your browser to http://localhost:2015/.
 
 Note : if `AutoIndex` is false and the directory does not contain a default document `index.html`, an http 404 error will return.
 
-Note : on Windows, the Firewall can block this simple console app even if exposed on localhost and port > 1024. You need to allow access else you will not reach the server.
+Note : on Windows, the Firewall can block this simple console app even if exposed on localhost and port > 1024. You need to allow access otherwise you will not reach the server.
 
 ### Multiples Directories
 
-SimpleW can handle multiples directories as soon as they are declared under differents endpoints.
+SimpleW can handle multiple directories as soon as they are declared under different endpoints.
 
 ```csharp
 using System;
@@ -171,7 +171,7 @@ To change the default document
 server.DefaultDocument = "maintenance.html";
 ```
 
-To add custom mimeTypes
+To add custom mime types
 
 ```csharp
 server.AddMimeTypes(".vue", "text/html");
@@ -180,8 +180,8 @@ server.AddMimeTypes(".vue", "text/html");
 
 ### Cache
 
-The `AddStaticContent()` cache all directories/files in RAM (default: 1 hour) on server start.<br />
-Also, an internal filesystem watcher is maintaining this cache up to date.
+The `AddStaticContent()` caches all directories/files in RAM (default: 1 hour) on server start.<br />
+Also, an internal filesystem watcher is keeping this cache up-to-date.
 It supports realtime file editing even when specific lock/write occurs.
 
 To modify cache duration or filter files
@@ -202,7 +202,7 @@ server.AddStaticContent(
 ### Basic RestAPI Example
 
 The RestAPI is based on **routes**, so just add a `RouteAttribute` to target **methods** of a `Controller` base class.<br />
-The return is serialized into json and sent as response to the client.
+The return is serialized into json and sent as a response to the client.
 
 Use `server.AddDynamicContent()` to handle RestAPI.
 
@@ -219,7 +219,7 @@ namespace Sample {
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // find all Controllers class and serve on the "/api/" endpoint
+            // find all Controllers classes and serve on the "/api/" endpoint
             server.AddDynamicContent("/api/");
 
             server.Start();
@@ -258,7 +258,7 @@ Note : the controller __must not__ have a constructor.
 
 Any return type (`object`, `List`, `Dictionary`, `String`...) will be serialized and sent as json to the client.
 
-The following example illustrates differents return types :
+The following example illustrates different return types :
 
 ```csharp
 using System;
@@ -273,7 +273,7 @@ namespace Sample {
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // find all Controllers class and serve on the "/api/" endpoint
+            // find all Controllers classes and serve on the "/api/" endpoint
             server.AddDynamicContent("/api/");
 
             server.Start();
@@ -338,7 +338,7 @@ To see the results, open your browser to :
 - http://localhost:2015/api/users
 
 Note : there is no need to specify the exact type the method will return.
-Most of the time, `object` is enougth and will be passed to a `JsonConvert.SerializeObject(object)`.
+Most of the time, `object` is enough and will be passed to a `JsonConvert.SerializeObject(object)`.
 
 
 ### Return Helpers
@@ -346,7 +346,7 @@ Most of the time, `object` is enougth and will be passed to a `JsonConvert.Seria
 In fact, the `Controller` class is dealing with an `HttpResponse` object which is sent async to the client.<br />
 You can manipulate this object with the property `Response`.
 
-There are also some useful helpers which facilitate returning specific `HttpReponse` :
+There are also some useful helpers that facilitate returning specific `HttpReponse` :
 
 ```csharp
 using System;
@@ -426,7 +426,7 @@ namespace Sample {
 }
 ```
 
-Note : all these helpers support differents types of parameters and options to deal with
+Note : all these helpers support different types of parameters and options to deal with
 most of the use cases. Just browse to discover all the possibilities.
 
 
@@ -570,7 +570,7 @@ namespace Sample {
 
 Note :
 - the `isAbsolutePath` flag will not take the prefix defined in the `AddDynamicContent`.
-- methods can have multiple `Route` Attributes (example above with _delete_, _remove_).
+- methods can have multiple `Route` attributes (example above with _delete_, _remove_).
 
 
 #### Regexp
@@ -694,17 +694,17 @@ namespace Sample {
 ```
 
 Notes : 
-- query string are map by name to the parameter method.
-- Only declared parameters are map.
+- query string are mapped by name to the parameter method.
+- Only declared parameters are mapped.
 - When a method has a mandatory parameter (without default value), the route will not match if not provided in the url (return HTTP CODE 404).
-- `Route.ParseQueryString(this.Request.Url)` to get all query string
+- `Route.ParseQueryString(this.Request.Url)` to get all query strings
 
 
 #### Path Parameters
 
 `Route` path parameters are also supported in a similar way.
-When a `{parameter}` is declared in the path, it's possible to set parameter in `Route` path and retrieve their value in the method.<br />
-The library will map them according to their name.
+When a `{parameter}` is declared in the path, it's possible to set parameters in `Route` path and retrieve their value in the method.<br />
+The library will map them according to their names.
 
 ```csharp
 using System;
@@ -735,7 +735,7 @@ namespace Sample {
         // but
         // test with http://localhost:2015/api/test/user/stratdev/xx will
         // return a http code 500 as the "xx" cast to integer
-        // will thrown an exception
+        // will throw an exception
         [Route("GET", "user/{login}/{year}")]
         public object User(string login, int year) {
             return $"Hello {login}, you're {year} year old.";
@@ -747,10 +747,10 @@ namespace Sample {
 ```
 
 Note : 
-- In this example, the value `stratdev` of `{login}` parameter will be map to `string login`
-  and the value `2023` of `{year}` parameter will be map to `int year`.
+- In this example, the value `stratdev` of `{login}` parameter will be mapped to `string login`
+  and the value `2023` of `{year}` parameter will be mapped to `int year`.
 - the string value of parameter will be cast to the parameter type.
-  If the cast failed, an HTTP CODE 500 will be return to the client.
+  If the cast fails, an HTTP CODE 500 will be returned to the client.
 - all declared parameters in `Route` path are mandatory.
 
 
@@ -867,8 +867,7 @@ namespace Sample {
 
 Note : 
 
-- the content-type set by client need to be `application/json` which is
-  the default for axios.
+- the content-type set by client need to be `application/json` which is the default for axios.
 
 
 #### POST body (application/x-www-form-urlencoded) deserialization helper
@@ -1116,7 +1115,7 @@ Requesting to `http://localhost:2015/api/test` will result to
 
 ### Hooks
 
-There are some place where SimpleW behaviour can be overrided.
+There are some place where SimpleW behavior can be overridden.
 
 #### OnBeforeMethod
 
@@ -1166,7 +1165,7 @@ namespace Sample {
 
 A better approach of adding some logic code to all your controllers is by extending the `Controller` class.
 
-Example using a `BaseController` class which contains common code to all controllers.
+Example using a `BaseController` class that contains common code to all controllers.
 
 ```csharp
 using System;
@@ -1259,14 +1258,14 @@ namespace Sample {
 }
 ```
 
-Note : the method `BaseController.Conf()` with its `Route` attribute is shared accross all controllers. It can be access through :
+Note : the method `BaseController.Conf()` with its `Route` attribute is shared across all controllers. It can be access through :
 - http://localhost:2015/api/user/conf
 - http://localhost:2015/api/department/conf
 
 
 ### Properties
 
-`Controller` class containers some usefull properties.
+`Controller` class containers some useful properties.
 
 #### Request
 
