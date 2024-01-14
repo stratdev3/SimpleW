@@ -7,7 +7,8 @@ Notes :
 - no long time support or backporting for major version, just use the last update.
 - if you find bug/optimization, feel free to send patch.
 
-## vNEXT / _(2024-01-??)_
+
+## v11.5.0 / _(2024-01-14)_
 Maintenance
 
 ### breakingChange
@@ -22,6 +23,7 @@ Maintenance
 ### feature
 
 - feature(WebSocket): handle multiple socket endpoints and not just once (#9).
+- documentation
 
 
 
