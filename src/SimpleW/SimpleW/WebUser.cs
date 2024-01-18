@@ -165,7 +165,7 @@ namespace SimpleW {
         public string Token;
 
         /// <summary>
-        /// Flag to indicate backend must refres
+        /// Flag to indicate backend must refresh
         /// the webuser (role, mail...)
         /// </summary>
         public bool Refresh = true;
