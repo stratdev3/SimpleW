@@ -44,6 +44,7 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
       - [Subclass](#subclass)
     - [Properties](#properties)
   - [JWT Authentication](#jwt-authentication)
+    - [Get the JWT string](#get-the-jwt-string)
   - [Websockets](#websockets)
     - [Example Server pushing data to client](#example-server-pushing-data-to-client)
   - [OpenTelemetry](#opentelemetry)
@@ -1278,6 +1279,75 @@ You can access the `Response` property inside any controller.
 
 
 ## JWT Authentication
+
+[JSON Web Tokens](https://jwt.io/) are an open, industry standard [RFC 7519](https://tools.ietf.org/html/rfc7519) method for representing claims securely between two parties. 
+SimpleW internal use the [LitJWT](https://github.com/Cysharp/LitJWT) project to forge and verify json web token.
+
+### Get the JWT string
+
+The `Controller.GetJwt()` can be used to get the raw JWT string sent by a client.
+
+Backend receive
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("test/")]
+    public class TestController : Controller {
+
+        [Route("GET", "token")]
+        public object Token() {
+            return this.GetJwt();
+        }
+
+    }
+
+}
+```
+
+Frontend send with JWT as a classic `Bearer Authorisation` Header
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" \
+     "http://localhost:2015/api/test/token"
+```
+
+Frontend send with JWT as `jwt` query string
+
+```bash
+curl -H "Authorization: Bearer " \
+     "http://localhost:2015/api/test/token?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+```
+
+#### Notes
+
+There is no need to declare specific argument or parameter in the Controller.
+
+The `GetJwt()` will internally parse the client request looking for, by order of appearance :
+1. `Session.jwt` (websocket only)
+2. `jwt` querystring in the request url (api only)
+3. `Authorization: bearer` in the request header (api only)
+
+#### Why differents ways for passing jwt ?
+
+Passing jwt in the `Header` __should always__ be the preferred method.
+
+But sometimes, header cannot be modified by client and passing jwt in the url is the only way. Example : internet browser trying to render image from `<img src= />` without javascript.
+
+In this case, try to forge a specific JWT with role based access limited to the target ressource only and a very short period expiration (see next chapter to get a working example).
 
 Documentation in progress...
 
