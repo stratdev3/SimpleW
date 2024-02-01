@@ -12,7 +12,7 @@ jobs:
   - !CommandStep
     name: build
     runInContainer: true
-    image: docksdev/band:7.1
+    image: docksdev/band:7.3
     interpreter: !DefaultInterpreter
       commands:
       - cd src/SimpleW/
@@ -62,7 +62,7 @@ jobs:
   - !CommandStep
     name: build
     runInContainer: true
-    image: docksdev/band:7.1
+    image: docksdev/band:7.3
     interpreter: !DefaultInterpreter
       commands:
       - cd src/SimpleW
@@ -77,7 +77,7 @@ jobs:
   - !CommandStep
     name: deploy to nuget.org
     runInContainer: true
-    image: docksdev/band:7.1
+    image: docksdev/band:7.3
     interpreter: !DefaultInterpreter
       commands:
       - cd src/SimpleW/bin/Release
