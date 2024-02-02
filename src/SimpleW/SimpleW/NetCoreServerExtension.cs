@@ -393,19 +393,6 @@ namespace SimpleW {
         #region jwtsecuritytoken
 
         /// <summary>
-        /// Get the Bearer Token from Context
-        /// </summary>
-        /// <returns>String</returns>
-        public static string GetBearer(this HttpRequest request) {
-            var authHeader = request.Header("Authorization");
-
-            if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
-                return null;
-            }
-            return authHeader.Replace("Bearer ", string.Empty);
-        }
-
-        /// <summary>
         /// Validate a JWT Token and return the underlying T type
         /// </summary>
         /// <typeparam name="T"></typeparam>

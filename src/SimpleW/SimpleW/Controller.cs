@@ -124,25 +124,35 @@ namespace SimpleW {
             }
         }
 
+        #endregion webuser
+
         /// <summary>
         /// Get the JWT by order :
         ///     1. Session.jwt (websocket only)
         ///     2. Request url querystring "jwt" (api only)
         ///     3. Request http header "Authorization: bearer " (api only)
         /// </summary>
-        protected string GetJwt() {
-            // websocket
+        protected virtual string GetJwt() {
+            // 1. Session.jwt (websocket only)
             if (Session.jwt != null) {
                 return Session.jwt;
             }
-            // api
+
+            // 2. Request url querystring "jwt" (api only)
             var route = new Route(Request);
             var qs = Route.ParseQueryString(route?.Url?.Query);
-            var jwt = qs["jwt"]?.ToString();
-            return jwt ?? Request.GetBearer();
-        }
+            var qs_jwt = qs["jwt"]?.ToString();
+            if (!string.IsNullOrWhiteSpace(qs_jwt)) {
+                return qs_jwt;
+            }
 
-        #endregion webuser
+            // 3. Request http header "Authorization: bearer " (api only)
+            var header_jwt = Request.Header("Authorization");
+            if (string.IsNullOrWhiteSpace(header_jwt) || !header_jwt.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
+                return null;
+            }
+            return header_jwt["Bearer ".Length..];
+        }
 
         /// <summary>
         /// Override this Handler to call code before any Controller.Method()
