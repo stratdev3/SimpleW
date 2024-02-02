@@ -46,6 +46,7 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
   - [JWT Authentication](#jwt-authentication)
     - [Get the JWT string](#get-the-jwt-string)
     - [Verify](#verify)
+    - [Forge](#forge)
   - [Websockets](#websockets)
     - [Example Server pushing data to client](#example-server-pushing-data-to-client)
   - [OpenTelemetry](#opentelemetry)
@@ -1568,6 +1569,63 @@ namespace Sample {
 
 }
 ```
+
+### Forge
+
+The `NetCoreServerExtension.CreateJwt()` method can be used to forge a json token which will be [Validate](#verify) later.
+
+
+```bash
+curl "http://localhost:2015/api/test/forge"
+```
+
+Backend receive
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("test/")]
+    public class TestController : Controller {
+
+        [Route("GET", "forge")]
+        public object Forge() {
+            var payload = new Dictionary<string, object>() {
+                { "id", Guid.NewGuid() },
+                { "name", "John Doe" },
+                { "roles", new string[] { "account", "infos" } }
+            };
+            // return the json web token string
+            // with payload
+            // crypt by "secret" passphrase (algo: HS256)
+            // and expired in 15 minutes
+            return NetCoreServerExtension.CreateJwt(payload, "secret", expiration: 15*60);
+        }
+
+    }
+
+    public class UserToken {
+        public Guid id { get; set; }
+        public string name { get; set; }
+        public string[] roles { get; set; } = new string[0];
+    }
+
+}
+```
+
+Note: Just browse `NetCoreServerExtension.CreateJwt()` to discover all parameters.
 
 ## Websockets
 
