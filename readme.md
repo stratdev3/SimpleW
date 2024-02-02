@@ -1384,8 +1384,8 @@ namespace Sample {
                 return token;
             }
 
-            // 2. the jwt is extract from "secret" header
-            return Request.Header("secret");
+            // 2. the jwt is extract from "business-rule" http header
+            return Request.Header("business-rule");
         }
     }
 
