@@ -44,9 +44,9 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
       - [Subclass](#subclass)
     - [Properties](#properties)
   - [JWT Authentication](#jwt-authentication)
-    - [Get the JWT string](#get-the-jwt-string)
-    - [Verify](#verify)
-    - [Forge](#forge)
+    - [Get JWT](#get-jwt)
+    - [Verify JWT](#verify-jwt)
+    - [Forge JWT](#forge-jwt)
   - [Websockets](#websockets)
     - [Example Server pushing data to client](#example-server-pushing-data-to-client)
   - [OpenTelemetry](#opentelemetry)
@@ -1285,7 +1285,7 @@ You can access the `Response` property inside any controller.
 [JSON Web Tokens](https://jwt.io/) are an open, industry standard [RFC 7519](https://tools.ietf.org/html/rfc7519) method for representing claims securely between two parties. 
 SimpleW internal use the [LitJWT](https://github.com/Cysharp/LitJWT) project to forge and verify json web token.
 
-### Get the JWT string
+### Get JWT
 
 The `Controller.GetJwt()` can be used to get the raw JWT string sent by a client.
 
@@ -1349,7 +1349,7 @@ Passing jwt in the `Header` __should always__ be the preferred method.
 
 But sometimes, header cannot be modified by client and passing jwt in the url is the only way. Example : internet browser trying to render image from `<img src= />` without javascript.
 
-In this case, try to forge a specific JWT with role based access limited to the target ressource only and a very short period expiration (see next chapter to get a working example).
+In this case, try to forge a specific JWT with role based access limited to the target ressource only and a very short period expiration (see next chapter to [forge jwt](#forge-jwt)).
 
 #### Override GetJwt()
 
@@ -1403,7 +1403,7 @@ namespace Sample {
 }
 ```
 
-### Verify
+### Verify JWT
 
 The `ValidateJwt<T>()` string extension can be used to verify a json token.
 
@@ -1570,9 +1570,9 @@ namespace Sample {
 }
 ```
 
-### Forge
+### Forge JWT
 
-The `NetCoreServerExtension.CreateJwt()` method can be used to forge a json token which will be [Validate](#verify) later.
+The `NetCoreServerExtension.CreateJwt()` method can be used to forge a json token which will be [Validate](#verify-jwt) later.
 
 
 ```bash
