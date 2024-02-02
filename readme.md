@@ -45,6 +45,7 @@ It brings an easy layer on top of the great [NetCoreServer](https://github.com/c
     - [Properties](#properties)
   - [JWT Authentication](#jwt-authentication)
     - [Get the JWT string](#get-the-jwt-string)
+    - [Verify](#verify)
   - [Websockets](#websockets)
     - [Example Server pushing data to client](#example-server-pushing-data-to-client)
   - [OpenTelemetry](#opentelemetry)
@@ -1401,8 +1402,172 @@ namespace Sample {
 }
 ```
 
-Documentation in progress...
+### Verify
 
+The `ValidateJwt<T>()` string extension can be used to verify a json token.
+
+Frontend with a jwt (forge with "secret" as secret, see [jwt.io](https://jwt.io) for details)
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWQiOiJiODRjMDM5Yy0zY2QyLTRlN2ItODEyYy05MTQxZWQ2YzU2ZTQiLCJuYW1lIjoiSm9obiBEb2UiLCJyb2xlcyI6WyJhY2NvdW50Il0sImlhdCI6MjUxNjIzOTAyMn0.QhJ1EiMIt4uAGmYrGAC53PxoHIfX6aiWiLRbhastoB4" \
+     "http://localhost:2015/api/user/account"
+```
+
+Backend receive
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("user/")]
+    public class TestController : Controller {
+
+        [Route("GET", "account")]
+        public object Account() {
+            var jwt = this.GetJwt();
+
+            // ValidateJwt
+            // Success : return an instance of T class and map jwt payload to all public properties
+            // Invalid/Error : return null
+            var userToken = jwt?.ValidateJwt<UserToken>("secret");
+
+            if (userToken == null || !userToken.roles.Contains("account")) {
+                return MakeUnAuthorizedResponse("private access, need account.");
+            }
+
+            return $"you have access to your account {userToken.id}";
+        }
+
+    }
+
+    public class UserToken {
+        public Guid id { get; set; }
+        public string name { get; set; }
+        public string[] roles { get; set; } = new string[0];
+    }
+
+}
+```
+
+The `ValidateJwt<UserToken>()` will verify token and convert payload into a `UserToken` instance.
+Then, you can use `userToken` to check according to your business rules.
+
+
+#### Refactor the JWT verify logic
+
+This example shows how to integrate a global custom jwt verification in all controllers using [subclass](#subclass) and [hooks](#hooks)
+
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWQiOiJiODRjMDM5Yy0zY2QyLTRlN2ItODEyYy05MTQxZWQ2YzU2ZTQiLCJuYW1lIjoiSm9obiBEb2UiLCJyb2xlcyI6WyJhY2NvdW50Il0sImlhdCI6MjUxNjIzOTAyMn0.QhJ1EiMIt4uAGmYrGAC53PxoHIfX6aiWiLRbhastoB4" \
+     "http://localhost:2015/api/user/account"
+```
+
+Backend receive
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+
+            // set secret in order to ControllerBase verify jwt from request
+            BaseController.JWT_SECRET = "secret";
+
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("user/")]
+    public class TestController : BaseController {
+
+        [Route("GET", "account")]
+        public object Account() {
+            if (User == null || !User.roles.Contains("account")) {
+                return MakeUnAuthorizedResponse("private access, need account.");
+            }
+
+            // example get user data
+            // var data = database.user.get(User.id);
+            return $"you have access to your account {User.id}";
+        }
+
+        [Route("GET", "infos")]
+        public object Infos() {
+            if (User == null || !User.roles.Contains("infos")) {
+                return MakeUnAuthorizedResponse("private access, need infos.");
+            }
+            return "you have access to this infos";
+        }
+
+        [Route("GET", "public")]
+        public object Pub() {
+            return "you have access to this public";
+        }
+
+    }
+
+    public class BaseController : Controller {
+
+        // store jwt secret to validate
+        public static string JWT_SECRET;
+
+        // cache for user property
+        private RequestUser _user;
+
+        // flag to avoid multiple user verification in the same request
+        // we can use _user as flag cause ValidateJwt can return null on error
+        // so we need this extra flag to check
+        private bool _user_set = false;
+
+        // current request user
+        protected RequestUser User {
+            get {
+                if (!_user_set) {
+                    _user_set = true;
+                    _user = GetJwt()?.ValidateJwt<RequestUser>(JWT_SECRET);
+                }
+                return _user;
+            }
+        }
+
+        // well: ALL your methods have to do some precheck like is user registered ?
+        // no problem, just uncomment the code bellow
+        //public override void OnBeforeMethod() {
+        //    if (User == null) {
+        //        SendResponseAsync(MakeUnAuthorizedResponse("private access, need account."));
+        //    }
+        //}
+
+    }
+
+    public class RequestUser {
+        public Guid id { get; set; }
+        public string name { get; set; }
+        public string[] roles { get; set; } = new string[0];
+    }
+
+}
+```
 
 ## Websockets
 
