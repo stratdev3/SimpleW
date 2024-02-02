@@ -394,6 +394,8 @@ namespace SimpleW {
 
         /// <summary>
         /// Validate a JWT Token and return the underlying T type
+        /// Success : return an instance of T class and map jwt payload to all public properties
+        /// Invalid/Error : return null
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="token"></param>
