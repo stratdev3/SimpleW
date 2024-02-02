@@ -8,6 +8,20 @@ Notes :
 - if you find bug/optimization, feel free to send patch.
 
 
+## v11.6.0 / _(2024-02-02)_
+Maintenance
+
+### breakingChange
+
+- remove `NetCoreServerExtension.GetBearer()` method.
+
+### feature
+
+- `Controller.GetJwt()` is now virtual and can be overrided in subclass.
+- documentation
+
+
+
 ## v11.5.0 / _(2024-01-14)_
 Maintenance
 
