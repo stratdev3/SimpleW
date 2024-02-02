@@ -1349,6 +1349,58 @@ But sometimes, header cannot be modified by client and passing jwt in the url is
 
 In this case, try to forge a specific JWT with role based access limited to the target ressource only and a very short period expiration (see next chapter to get a working example).
 
+#### Override GetJwt()
+
+You can provide your own implementation of the `GetJwt()` by overriding in a [subclass](#subclass).
+
+Example of overriding
+
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api/");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    class BaseController : Controller {
+
+        // override GetJwt()
+        protected override string GetJwt() {
+            // 1. the jwt is extract from the "token" query string
+            var route = new Route(Request);
+            var qs = Route.ParseQueryString(route?.Url?.Query);
+            var token = qs["token"]?.ToString();
+            if (!string.IsNullOrWhiteSpace(token)) {
+                return token;
+            }
+
+            // 2. the jwt is extract from "secret" header
+            return Request.Header("secret");
+        }
+    }
+
+    [Route("test/")]
+    class TestController : BaseController {
+
+        [Route("GET", "token")]
+        public object Token() {
+            return this.GetJwt();
+        }
+
+    }
+
+}
+```
+
 Documentation in progress...
 
 
