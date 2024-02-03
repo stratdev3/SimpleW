@@ -8,7 +8,7 @@ Notes :
 - if you find bug/optimization, feel free to send patch.
 
 
-## v11.7.0 / _(2024-02-0?)_
+## v11.7.0 / _(2024-02-02)_
 Maintenance
 
 ### breakingChange
