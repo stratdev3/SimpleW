@@ -12,10 +12,19 @@
 SimpleW is a Simple Web server library in .NET (windows/linux/macos).<br />
 It provides a cross-plateform framework for building web applications on top of the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server.
 
+### Features
+
+1. Routing
+2. Static Files
+3. RestAPI (Controller/Method + automatic json serialization/deserialization)
+4. Json Web Token
+5. Websocket
+6. OpenTelemetry
+
+SimpleW is lightweight, easy to integrate, fast, minimal footprint, and only one dependency _(Newtonsoft.Json, will be remove in futur release)_.
 
 # Summary
 
-- [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
   - [Routes](#routes)
@@ -51,14 +60,6 @@ It provides a cross-plateform framework for building web applications on top of 
     - [Example Server pushing data to client](#example-server-pushing-data-to-client)
   - [OpenTelemetry](#opentelemetry)
 
-
-### Features
-
-1. Routing
-2. Serve Static Files
-3. Serve RestAPI (Controller/Method + automatic json serialization/deserialization)
-4. Integrated JWT Authentication
-5. Websocket
 
 ### Installation
 
