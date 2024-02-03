@@ -21,7 +21,7 @@ It provides a cross-plateform framework for building web applications on top of 
 5. Websocket
 6. OpenTelemetry
 
-SimpleW is lightweight, easy to integrate, fast, minimal footprint, and only one dependency _(Newtonsoft.Json, will be remove in futur release)_.
+SimpleW is lightweight, easy to integrate, fast, minimal footprint, written in pure C# 100% managed, and only one dependency _(Newtonsoft.Json, will be remove in futur release)_.
 
 If you wonder [why i wrote this library](#why-i-wrote-this-library) and what are [my needs](#so-my-needs).
 
@@ -239,7 +239,7 @@ namespace Sample {
         }
     }
 
-    // a Controller base class
+    // inherit from Controller to target a class
     public class SomeController : Controller {
 
         // use the Route attribute to target a public method
@@ -258,7 +258,7 @@ namespace Sample {
 
 Then just open your browser to http://localhost:2015/api/test and you will see the `{ "hello": "world" }` json response.
 
-Note : the controller __must not__ have a constructor.
+Note : the controller __CAN NOT__ have a constructor.
 
 
 ### Return Type
@@ -1052,13 +1052,10 @@ namespace Sample {
         }
     }
 
-    // a Controller base class
     public class SomeController : Controller {
 
-        // use the Route attribute to target a public method
         [Route("GET", "test")]
         public object SomePublicMethod() {
-            // the return will be serialized to json
             return new {
                 hello = "world"
             };
@@ -1885,7 +1882,7 @@ I prefer [SPA](https://en.wikipedia.org/wiki/Single-page_application) using [Vit
     - too heavy, sometimes i have a very small API.
 - [IIS](https://iis.net/) an old _« usine à gaz »_ on Windows, Kestrel and SignalR the same on Linux/Mac.
 - [EmbedIO](https://github.com/unosquare/embedio) : long time v2 user, i don't like the rewrite of the v3. Moreover, it uses the old Microsoft `HttpListener` and the `websocket-sharp` alternative was not perfect.
-- [GenHtt](https://genhttp.org) : feels promising but i was in the process of writting my own.
+- [GenHttp](https://genhttp.org) : feels promising but i was in the process of writting my own.
 - __[NetCoreServer](https://github.com/chronoxor/NetCoreServer)__ : WHOA 😮 ! Fast, simple, extremly well design, extendable BUT no RESTAPI... Wait, what if i use the whole `OnReceivedRequest()` event to do exactly what i want 🤔
 
 ### This project
