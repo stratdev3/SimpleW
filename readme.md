@@ -367,6 +367,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -461,6 +462,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -498,6 +500,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -536,6 +539,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -600,6 +604,7 @@ namespace Sample {
 
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -641,6 +646,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -725,6 +731,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -785,6 +792,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -834,6 +842,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -903,6 +912,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -973,6 +983,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1048,6 +1059,7 @@ namespace Sample {
             );
 
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1085,6 +1097,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1137,6 +1150,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1183,6 +1197,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1236,6 +1251,7 @@ namespace Sample {
             server.AddDynamicContent("/api/", new Type[] { typeof(BaseController) });
 
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1304,6 +1320,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1370,6 +1387,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1429,6 +1447,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1495,6 +1514,7 @@ namespace Sample {
             BaseController.JWT_SECRET = "secret";
 
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1594,6 +1614,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
@@ -1760,6 +1781,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
 
@@ -1825,6 +1847,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
             server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
 
