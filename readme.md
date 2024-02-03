@@ -70,9 +70,8 @@ dotnet add package SimpleW
 ```
 
 Note : SimpleW depends on [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) package for json serialization/deserialization.
-
 It will be replaced in futur by the native `System.Text.Json` as long as
-some advanced features will be covered (`Populate` and `streamingContextObject`, see [WIP](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/migrate-from-newtonsoft?pivots=dotnet-8-0#table-of-differences)).
+some advanced features will be covered (`Populate` and `streamingContextObject`, see [work-in-progress](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/migrate-from-newtonsoft?pivots=dotnet-8-0#table-of-differences)).
 
 
 # Usage
@@ -84,8 +83,8 @@ In SimpleW, all is about **routing** and there are 2 different kinds of routes :
 * **statics** : for serving statics files _(html, js, css, png...)_
 * **dynamics** : for serving API _(C# code)_
 
-Note : `Reflection` is only used to list routes, once, before server starts.
-An `expression tree` is built to call method fast __without__ using any `T.GetMethod().Invoke()`.
+Note : `Reflection` is only used to list routes, __once__, before server starts.
+An `expression tree` is built to call method fast __without__ using any slow `T.GetMethod().Invoke()`.
 
 
 ## Serve Statics Files
@@ -108,8 +107,8 @@ namespace Sample {
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // serve static content located in your folder "C:\www\" to "/" endpoint
-            server.AddStaticContent(@"C:\www\", "/");
+            // serve static content located in your folder "C:\www\spa\" to "/" endpoint
+            server.AddStaticContent(@"C:\www\spa\", "/");
 
             // enable autoindex if no index.html exists in the directory
             server.AutoIndex = true;
@@ -168,7 +167,7 @@ namespace Sample {
 
 ### Options
 
-You can change some settings before server start.
+You can change some settings but before server start.
 
 To change the default document
 ```csharp
@@ -1491,7 +1490,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
 
-            // set secret in order to ControllerBase verify jwt from request
+            // set secret in order ControllerBase to verify jwt from request
             BaseController.JWT_SECRET = "secret";
 
             server.Start();
