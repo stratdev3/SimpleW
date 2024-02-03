@@ -1857,7 +1857,7 @@ namespace Sample {
 }
 ```
 
-## Why i wrote this library ?
+## Why i wrote this library
 
 To my opinion, modern web application architecture is based on a REST API which acts as a contract between 2 parts :
 - backend (only one) : developer feels free to use/change the technology he wants (C#, Go, Rust, PHP...) but must provide and follow the REST API.
@@ -1888,7 +1888,7 @@ I prefer [SPA](https://en.wikipedia.org/wiki/Single-page_application) using [Vit
 - [GenHtt](https://genhttp.org) : feels promising but i was in the process of writting my own.
 - __[NetCoreServer](https://github.com/chronoxor/NetCoreServer)__ : WHOA 😮 ! Fast, simple, extremly well design, extendable BUT no RESTAPI... Wait, what if i use the whole `OnReceivedRequest()` event to do exactly what i want 🤔
 
-### SimpleW
+### This project
 
 SimpleW is born after adding basic RESTAPI features to the `OnReceivedRequest()` of [NetCoreServer](https://github.com/chronoxor/NetCoreServer).
 
