@@ -1182,7 +1182,7 @@ namespace Sample {
 
 #### Subclass
 
-A better approach of adding some logic code to all your controllers is by extending the `Controller` class.
+A better approach for adding some logic code to all your controllers is by extending the `Controller` class.
 
 Example using a `BaseController` class that contains common code to all controllers.
 
@@ -1355,14 +1355,14 @@ curl -H "Authorization: Bearer " \
 
 #### Notes
 
-There is no need to declare specific argument or parameter in the Controller.
+There is no need to declare specific parameter in the Controller.
 
 The `GetJwt()` will internally parse the client request looking for, by order of appearance :
 1. `Session.jwt` (websocket only)
 2. `jwt` querystring in the request url (api only)
 3. `Authorization: bearer` in the request header (api only)
 
-#### Why differents ways for passing jwt ?
+#### Why different ways for passing jwt ?
 
 Passing jwt in the `Header` __should always__ be the preferred method.
 
@@ -1487,10 +1487,11 @@ The `ValidateJwt<UserToken>()` will verify token and convert payload into a `Use
 Then, you can use `userToken` to check according to your business rules.
 
 
-#### Refactor the JWT verify logic
+#### Refactor the JWT verification logic
 
 This example shows how to integrate a global custom jwt verification in all controllers using [subclass](#subclass) and [hooks](#hooks)
 
+Frontend send
 
 ```bash
 curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWQiOiJiODRjMDM5Yy0zY2QyLTRlN2ItODEyYy05MTQxZWQ2YzU2ZTQiLCJuYW1lIjoiSm9obiBEb2UiLCJyb2xlcyI6WyJhY2NvdW50Il0sImlhdCI6MjUxNjIzOTAyMn0.QhJ1EiMIt4uAGmYrGAC53PxoHIfX6aiWiLRbhastoB4" \
@@ -1511,7 +1512,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api/");
 
-            // set secret in order ControllerBase to verify jwt from request
+            // set secret in order BaseController to verify jwt from request
             BaseController.JWT_SECRET = "secret";
 
             server.Start();
@@ -1573,8 +1574,8 @@ namespace Sample {
             }
         }
 
-        // well: ALL your methods have to do some precheck like is user registered ?
-        // no problem, just uncomment the code bellow
+        // if ALL your methods have to do some precheck like is user registered ?
+        // just uncomment the code bellow
         //public override void OnBeforeMethod() {
         //    if (User == null) {
         //        SendResponseAsync(MakeUnAuthorizedResponse("private access, need account."));
@@ -1756,9 +1757,11 @@ Open your browser to `http://localhost:2015/` :
 ## OpenTelemetry
 
 SimpleW handle an [opentelemetry](https://github.com/open-telemetry/opentelemetry-dotnet) `Activity` and publish `Event`.
-As such, you can subscribe to this `source` and ...
 
-See an example which log all request to console (do not use for production).
+The example bellow shows how to :
+- subscribe to all SimpleW telemetry events with `openTelemetryObserver()`
+- log each request to console with `LogProcessor` (do not use for production).
+
 Open browser to http://localhost:2015/api/test and console will show log.
 
 ```csharp
@@ -1799,7 +1802,7 @@ namespace Sample {
 
     }
 
-    // custom log processor
+    // custom log processor for opentelemetry
     class LogProcessor : BaseProcessor<Activity> {
         // write log to console
         public override void OnEnd(Activity activity) {
@@ -1823,9 +1826,9 @@ namespace Sample {
 
 For production grade, better to use well known solutions.
 
-Uptrace is one of them can be easily integrate thanks to the [Uptrace nuget package](https://www.nuget.org/packages/Uptrace.OpenTelemetry)
+Uptrace is one of them can be easily integrated thanks to the [Uptrace nuget package](https://www.nuget.org/packages/Uptrace.OpenTelemetry)
 
-See example
+See example with `openTelemetryObserver()`
 
 ```csharp
 using System;
@@ -1880,11 +1883,11 @@ namespace Sample {
 
 ## Why i wrote this library
 
-To my opinion, modern web application architecture is based on a REST API which acts as a contract between 2 parts :
+To my opinion, modern web application architecture should be based on a REST API which acts as a contract between 2 parts :
 - backend (only one) : developer feels free to use/change the technology he wants (C#, Go, Rust, PHP...) but must provide and follow the REST API.
 - frontend (one or many) : developer feels free to use/change the technology he wants (SPA/Vue, SPA/React, Mobile/Android...) but must consume and follow the REST API.
 
-### So, my needs 
+### So, my needs
 
 #### Frontend
 
@@ -1902,18 +1905,18 @@ I prefer [SPA](https://en.wikipedia.org/wiki/Single-page_application) using [Vit
 ### The existings projects
 - [ASP.NET Core](https://learn.microsoft.com/fr-fr/aspnet/core/?view=aspnetcore-8.0) :
     - too many features i don't need, i don't want _(Razor, Blazor...)_.
-    - overcomplicated when i want to customize some behaviour
+    - overcomplicated to customize some behaviour
     - too heavy, sometimes i have a very small API.
-- [IIS](https://iis.net/) an old _« usine à gaz »_ on Windows, Kestrel and SignalR the same on Linux/Mac.
-- [EmbedIO](https://github.com/unosquare/embedio) : long time v2 user, i don't like the rewrite of the v3. Moreover, it uses the old Microsoft `HttpListener` and the `websocket-sharp` alternative was not perfect.
+- [IIS](https://iis.net/) an old _« usine à gaz »_ on Windows, Kestrel and SignalR the same on Linux.
+- [EmbedIO](https://github.com/unosquare/embedio) : long time v2 user, i dislike the rewrite of the v3. Moreover, it uses the old Microsoft `HttpListener` and the `websocket-sharp` alternative was not perfect.
 - [GenHttp](https://genhttp.org) : feels promising but i was in the process of writting my own.
 - __[NetCoreServer](https://github.com/chronoxor/NetCoreServer)__ : WHOA 😮 ! Fast, simple, extremly well design, extendable BUT no RESTAPI... Wait, what if i use the whole `OnReceivedRequest()` event to do exactly what i want 🤔
 
 ### This project
 
-SimpleW is born after adding basic RESTAPI features to the `OnReceivedRequest()` of [NetCoreServer](https://github.com/chronoxor/NetCoreServer).
+SimpleW is the result of adding basic RESTAPI features to the `OnReceivedRequest()` of [NetCoreServer](https://github.com/chronoxor/NetCoreServer).
 
-After 2 years grade production, SimpleW serves many APIs, gains some cool features but still always lightweight and easy to integrate.
+After 2 years grade production, SimpleW serves many APIs without any issue, gains some cool features but still always lightweight and easy to integrate.
 
 Feel free to report issue.
 
