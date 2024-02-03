@@ -857,13 +857,14 @@ namespace Sample {
             var user = new User();
 
             try {
-                // map POST body JSON to object instance
+                // map properties from POST body to object
                 Request.BodyMap(user);
 
                 return new {
                     user
                 };
             }
+            // exception is thrown when type convertion failed
             catch (Exception ex) {
                 return MakeInternalServerErrorResponse(ex.Message);
             }
