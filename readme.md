@@ -10,7 +10,7 @@
 <img src="src/SimpleW/logo.svg" alt="logo" width="100" />
 
 SimpleW is a Simple Web server library in .NET (windows/linux/macos).<br />
-It brings an easy layer on top of the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server written by [chronoxor](https://github.com/chronoxor) in pure C#.
+It provides a cross-plateform framework for building web applications on top of the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server.
 
 
 # Summary
