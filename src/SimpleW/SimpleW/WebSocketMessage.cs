@@ -10,13 +10,10 @@ namespace SimpleW {
     /// </summary>
     public class WebSocketMessage {
 
+        // relative url from websocket endpoint to method
         public string url { get; set; }
 
-        public string entity { get; set; }
-
-        public string action { get; set; }
-
-        public object data { get; set; }
+        public object body { get; set; }
 
         public DateTime datetime { get; set; }
         

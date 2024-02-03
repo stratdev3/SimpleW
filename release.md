@@ -8,6 +8,19 @@ Notes :
 - if you find bug/optimization, feel free to send patch.
 
 
+## v11.7.0 / _(2024-02-0?)_
+Maintenance
+
+### breakingChange
+
+- rename `WebSocketMessage.data` to `WebSocketMessage.body` (#17)
+
+### feature
+
+- documentation
+
+
+
 ## v11.6.0 / _(2024-02-02)_
 Maintenance
 
