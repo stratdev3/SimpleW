@@ -88,7 +88,7 @@ In SimpleW, all is about **routing** and there are 2 different kinds of routes :
 * **statics** : for serving statics files _(html, js, css, png...)_
 * **dynamics** : for serving API _(C# code)_
 
-Note : `Reflection` is only used to list routes, __once__, before server starts.
+Note : `Reflection` is only used to list routes, __once__, before server start.
 An `expression tree` is built to call method fast __without__ using any slow `T.GetMethod().Invoke()`.
 
 
@@ -172,7 +172,7 @@ namespace Sample {
 
 ### Options
 
-You can change some settings but before server start.
+You can change some settings before server start.
 
 To change the default document
 ```csharp
@@ -192,7 +192,7 @@ The `AddStaticContent()` caches all directories/files in RAM (default: 1 hour) o
 Also, an internal filesystem watcher is keeping this cache up-to-date.
 It supports realtime file editing even when specific lock/write occurs.
 
-To modify cache duration or filter files
+To modify cache duration or to filter files
 
 ```csharp
 // serve statics files
@@ -259,7 +259,7 @@ namespace Sample {
 
 Then just open your browser to http://localhost:2015/api/test and you will see the `{ "hello": "world" }` json response.
 
-Note : the controller __CAN NOT__ have a constructor.
+Note : the controller __CAN NOT__ have constructor.
 
 
 ### Return Type
@@ -526,7 +526,7 @@ namespace Sample {
 }
 ```
 
-You can override a path with the parameter `isAbsolutePath: true`.
+You can override a path with `isAbsolutePath: true` parameter.
 
 ```csharp
 using System;
@@ -587,7 +587,7 @@ Note :
 
 #### Regexp
 
-`Route` path support regulars expressions when `Router.RegExpEnabled` is true
+`Route` path support regular expressions when `Router.RegExpEnabled` is true.
 
 ```csharp
 using System;
@@ -709,7 +709,7 @@ namespace Sample {
 
 Notes : 
 - query string are mapped by name to the parameter method.
-- Only declared parameters are mapped.
+- Only declared parameters are mapped (no exception when missing properties).
 - When a method has a mandatory parameter (without default value), the route will not match if not provided in the url (return HTTP CODE 404).
 - `Route.ParseQueryString(this.Request.Url)` to get all query strings
 
@@ -1134,7 +1134,7 @@ Requesting to `http://localhost:2015/api/test` will result to
 
 ### Hooks
 
-There are some place where SimpleW behavior can be overridden.
+There are some places where SimpleW behavior can be overridden.
 
 #### OnBeforeMethod
 
@@ -1767,8 +1767,7 @@ For this to work, the client has to pass a specific json structure, called `WebS
 ```json
 // WebSocketMessage
 {
-    // url is mandatory a property use to route message to the correct controller/method
-    // it acts like a relative path from the websocket endpoint.
+    // url is a mandatory property use to route message to the correct controller/method. it acts like a relative path from the websocket endpoint.
     "url": "",
     // optionnal property to pass data to controller
     "body": null,
@@ -1791,8 +1790,6 @@ Content of the `index.html` located in the `C:\www\client\` directory
 <head>
     <script>
         document.addEventListener("DOMContentLoaded", function(event) {
-            var self = this;
-
             // logging
             function logs(message, color) {
                 let logs = document.querySelector('#logs');
@@ -1847,8 +1844,7 @@ Content of the `index.html` located in the `C:\www\client\` directory
 
 Use `server.AddWebSocketContent()` to declare Controllers to a WebSocket endpoint.
 
-The target method need to have a uniq parameter of type `WebSocketMessage` and Route Attribute
-must have `"WEBSOCKET"` as HTTP Verb.
+The target method need to have a uniq parameter of type `WebSocketMessage` and Route Attribute must have `"WEBSOCKET"` as HTTP Verb.
 
 ```csharp
 using System;
@@ -1903,7 +1899,7 @@ namespace Sample {
 
 Open your browser to `http://localhost:2015/` :
 - your browser will connect to websocket and show logs connections
-- test sur two buttons from the browser to send a websocket message to server.
+- click the two buttons from the browser to send a websocket message to server.
 - see logs in both side.
 
 Note : use `Session.SendText()` will response to the websocket client.
@@ -1920,8 +1916,6 @@ Frontend
 <head>
     <script>
         document.addEventListener("DOMContentLoaded", function(event) {
-            var self = this;
-
             // logging
             function logs(message, color) {
                 let logs = document.querySelector('#logs');
