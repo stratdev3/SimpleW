@@ -393,7 +393,7 @@ namespace SimpleW {
         #region jwtsecuritytoken
 
         /// <summary>
-        /// Validate a JWT Token and return the underlying T type
+        /// Validate a JWT Token (and expiration date) and return the underlying T type
         /// Success : return an instance of T class and map jwt payload to all public properties
         /// Invalid/Error : return null
         /// </summary>
@@ -401,9 +401,8 @@ namespace SimpleW {
         /// <param name="token"></param>
         /// <param name="key"></param>
         /// <param name="issuer"></param>
-        /// <param name="expiration"></param>
         /// <returns>T</returns>
-        public static T ValidateJwt<T>(this string token, string key, string issuer = null, double expiration = 30 * 60) where T : class {
+        public static T ValidateJwt<T>(this string token, string key, string issuer = null) where T : class {
             if (string.IsNullOrWhiteSpace(token)) {
                 return null;
             }

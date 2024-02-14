@@ -18,6 +18,14 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
+## v11.8.0 / _(2024-02-??)_
+Maintenance
+
+### breakingChange
+
+- remove unused `expiration` parameter from `NetCoreServerExtension.ValidateJwt()` (#19)
+
+
 
 ## v11.7.0 / _(2024-02-02)_
 Maintenance
