@@ -159,9 +159,8 @@ namespace SimpleW {
         /// </summary>
         /// <param name="tokenPassphrase">The String token secret passphrase (min 17 chars).</param>
         /// <param name="issuer">The String issuer.</param>
-        /// <param name="expiration">The expiration time in seconds (default 15 minutes).</param>
         /// <param name="tokenWebUserCallback">The DelegateSetTokenWebUser setTokenWebUser</param>
-        public void SetToken(string tokenPassphrase, string issuer, double expiration = 15 * 60, DelegateSetTokenWebUser tokenWebUserCallback = null) {
+        public void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser tokenWebUserCallback = null) {
 
             if (string.IsNullOrWhiteSpace(tokenPassphrase) || tokenPassphrase.Length <= 16) {
                 throw new ArgumentException($"{nameof(tokenPassphrase)} must be 17 char length minimum");
@@ -169,7 +168,6 @@ namespace SimpleW {
             Controller.TokenKey = tokenPassphrase;
 
             Controller.TokenIssuer = issuer;
-            Controller.TokenExpiration = expiration;
             
             if (tokenWebUserCallback != null) {
                 Controller.GetWebUserCallback = tokenWebUserCallback;

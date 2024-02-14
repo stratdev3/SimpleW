@@ -23,7 +23,8 @@ Maintenance
 
 ### breakingChange
 
-- remove unused `expiration` parameter from `NetCoreServerExtension.ValidateJwt()` (#19)
+- refactor: remove unused `expiration` parameter from `NetCoreServerExtension.ValidateJwt()` (#19)
+- refactor: remove unused `Controller.TokenExpiration` property (#18)
 
 ### feature
 
