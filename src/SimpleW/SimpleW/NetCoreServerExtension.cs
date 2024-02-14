@@ -427,9 +427,9 @@ namespace SimpleW {
         /// <param name="payload">The Dictionary payload</param>
         /// <param name="key">The string secret key from which the token is sign</param>
         /// <param name="issuer">The string issuer which is allowed</param>
-        /// <param name="expiration">The int expiration time in second</param>
+        /// <param name="expiration">The int expiration time in second (default: 15 minutes)</param>
         /// <returns>The token string</returns>
-        public static string CreateJwt(Dictionary<string, object> payload, string key, string issuer = null, double expiration = 30*60) {
+        public static string CreateJwt(Dictionary<string, object> payload, string key, string issuer = null, double expiration = 15*60) {
             payload.Add("iss", issuer);
 
             var encoder = new JwtEncoder(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
@@ -469,10 +469,10 @@ namespace SimpleW {
         /// <param name="webuser">The IWebUser</param>
         /// <param name="key">The string secret key from which the token is sign</param>
         /// <param name="issuer">The string issuer which is allowed</param>
-        /// <param name="expiration">The int expiration time in second</param>
+        /// <param name="expiration">The int expiration time in second (default: 15 minutes)</param>
         /// <param name="refresh">The bool refresh</param>
         /// <returns>The token string</returns>
-        public static string CreateJwt(IWebUser webuser, string key, string issuer = null, double expiration = 30 * 60, bool refresh = true) {
+        public static string CreateJwt(IWebUser webuser, string key, string issuer = null, double expiration = 15 * 60, bool refresh = true) {
             var payload = new Dictionary<string, object>() {
                 { nameof(IWebUser.Identity), webuser.Identity },
                 { nameof(IWebUser.Id), webuser.Id },

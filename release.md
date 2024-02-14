@@ -25,6 +25,9 @@ Maintenance
 
 - remove unused `expiration` parameter from `NetCoreServerExtension.ValidateJwt()` (#19)
 
+### feature
+
+- refactor: change jwt default create expiration from 30min to 15min (#20)
 
 
 ## v11.7.0 / _(2024-02-02)_
