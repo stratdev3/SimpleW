@@ -18,7 +18,7 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
-## v11.8.0 / _(2024-02-??)_
+## v11.8.0 / _(2024-02-14)_
 Maintenance
 
 ### breakingChange
@@ -29,6 +29,7 @@ Maintenance
 ### feature
 
 - refactor: change jwt default create expiration from 30min to 15min (#20)
+
 
 
 ## v11.7.0 / _(2024-02-02)_

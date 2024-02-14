@@ -11,9 +11,9 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>SimpleW is a Simple Webserver library in NET7 (windows/linux/macos).
 It provides a cross-plateform framework for building web applications on top of the great NetCoreServer.</Description>
-    <AssemblyVersion>11.7.0</AssemblyVersion>
-    <FileVersion>11.7.0</FileVersion>
-    <Version>11.7.0</Version>
+    <AssemblyVersion>11.8.0</AssemblyVersion>
+    <FileVersion>11.8.0</FileVersion>
+    <Version>11.8.0</Version>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
