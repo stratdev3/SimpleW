@@ -8,6 +8,17 @@ Notes :
 - if you find bug/optimization, feel free to send patch.
 
 
+## Roadmap / _(2024-??-??)_
+
+- rewrite documentation with vuepress, docusaurus or another alternative
+- automatic `Swagger API JSON` generation
+- jwt verify `iss`
+- support `async Task` in controller method return
+- sync `LiteJWT` library with upstream
+- sync `HttpMultipartDataParser` library with upstream
+
+
+
 ## v11.7.0 / _(2024-02-02)_
 Maintenance
 
