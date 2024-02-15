@@ -9,7 +9,12 @@ using Newtonsoft.Json;
 
 namespace SimpleW {
 
-    public delegate IWebUser DelegateSetTokenWebUser(Guid id = new Guid());
+    /// <summary>
+    /// Delegate to redress WebUser
+    /// </summary>
+    /// <param name="webuser"></param>
+    /// <returns>IWebUser (NOT NULL)</returns>
+    public delegate IWebUser DelegateSetTokenWebUser(TokenWebUser webuser = null);
 
     /// <summary>
     /// <para>Controller is mandatory base class of all Controllers.</para>
@@ -70,8 +75,7 @@ namespace SimpleW {
         /// </summary>
         protected IWebUser webuser {
             get {
-                if (!_webuser_set) {
-                    _webuser_set = true;
+                if (_webuser == null) {
                     _webuser = JwtToWebUser(GetJwt());
                 }
                 return _webuser;
@@ -84,15 +88,6 @@ namespace SimpleW {
         private IWebUser _webuser;
 
         /// <summary>
-        /// Flag : cache _webuser to avoid multi request
-        ///        as in some edge case JwtToWebUser()
-        ///        can return null (if GetWebUserCallback() return null)
-        ///        that's why we can't check _webuser = null and so
-        ///        use a specific flag
-        /// </summary>
-        private bool _webuser_set;
-
-        /// <summary>
         /// Return IWebUser from a jwt token
         /// The token is checked
         /// The webuser from the jwt is refresh with data from database
@@ -101,25 +96,17 @@ namespace SimpleW {
         /// <param name="jwt">the string jwt</param>
         /// <returns></returns>
         public static IWebUser JwtToWebUser(string jwt) {
-            // get webuser and update property (to avoid to do it in each controller)
             try {
                 var wu = jwt?.ValidateJwt<TokenWebUser>(TokenKey, TokenIssuer);
-
-                // jwt token is valid and webuser must be refresh
-                if (wu != null) {
-                    return wu.Refresh && GetWebUserCallback != null
-                                ? GetWebUserCallback(wu.Id)
-                                : wu;
+                if (GetWebUserCallback != null) {
+                    return GetWebUserCallback(wu);
                 }
-                // try to get default TokenWebuser if defined in GetWebUserCallback
-                else if (GetWebUserCallback != null) {
-                    return GetWebUserCallback();
-                }
-                else {
-                    return new WebUser();
-                }
+                return wu ?? new WebUser();
             }
             catch {
+                if (GetWebUserCallback != null) {
+                    return GetWebUserCallback();
+                }
                 return new WebUser();
             }
         }

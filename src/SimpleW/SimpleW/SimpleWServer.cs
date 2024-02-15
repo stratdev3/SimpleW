@@ -155,12 +155,13 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Set Token settings and set delegate called by TokenWebUser to refresh webuser
+        /// Set Token settings (passphrase and issuer).
+        /// a delegate can be defined to redress webuser called by Controller.JwtToWebUser().
         /// </summary>
         /// <param name="tokenPassphrase">The String token secret passphrase (min 17 chars).</param>
         /// <param name="issuer">The String issuer.</param>
-        /// <param name="tokenWebUserCallback">The DelegateSetTokenWebUser setTokenWebUser</param>
-        public void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser tokenWebUserCallback = null) {
+        /// <param name="getWebUserCallback">The DelegateSetTokenWebUser getWebUserCallback</param>
+        public void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser getWebUserCallback = null) {
 
             if (string.IsNullOrWhiteSpace(tokenPassphrase) || tokenPassphrase.Length <= 16) {
                 throw new ArgumentException($"{nameof(tokenPassphrase)} must be 17 char length minimum");
@@ -169,8 +170,8 @@ namespace SimpleW {
 
             Controller.TokenIssuer = issuer;
             
-            if (tokenWebUserCallback != null) {
-                Controller.GetWebUserCallback = tokenWebUserCallback;
+            if (getWebUserCallback != null) {
+                Controller.GetWebUserCallback = getWebUserCallback;
             }
         }
 

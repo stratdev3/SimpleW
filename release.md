@@ -18,6 +18,15 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
+## v11.9.0 / _(2024-02-15)_
+Maintenance
+
+### breakingChange
+
+- the `getWebUserCallback` delegate set with `SimpleW.SetToken()`  is new call by `Controller.JwtToWebUser()` to redress `Controller.webuser` on each request.
+
+
+
 ## v11.8.0 / _(2024-02-14)_
 Maintenance
 
