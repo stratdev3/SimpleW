@@ -227,12 +227,12 @@ namespace Sample {
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // find all Controllers classes and serve on the "/api/" endpoint
-            server.AddDynamicContent("/api/");
+            // find all Controllers classes and serve on the "/api" endpoint
+            server.AddDynamicContent("/api");
 
             server.Start();
 
-            Console.WriteLine("server started at http://localhost:2015/api/");
+            Console.WriteLine("server started at http://localhost:2015/");
 
             // block console for debug
             Console.ReadKey();
@@ -244,11 +244,11 @@ namespace Sample {
     public class SomeController : Controller {
 
         // use the Route attribute to target a public method
-        [Route("GET", "test")]
+        [Route("GET", "/test")]
         public object SomePublicMethod() {
             // the return will be serialized to json
             return new {
-                hello = "world"
+                message = "Hello World !"
             };
         }
 
@@ -257,7 +257,7 @@ namespace Sample {
 }
 ```
 
-Then just open your browser to http://localhost:2015/api/test and you will see the `{ "hello": "world" }` json response.
+Then just open your browser to http://localhost:2015/api/test and you will see the `{ "message": "Hello World !" }` json response.
 
 Note : the controller __CAN NOT__ have constructor.
 
@@ -282,11 +282,11 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // find all Controllers classes and serve on the "/api/" endpoint
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
 
             server.Start();
 
-            Console.WriteLine("server started at http://localhost:2015/api/");
+            Console.WriteLine("server started at http://localhost:2015/");
 
             // block console for debug
             Console.ReadKey();
@@ -296,7 +296,7 @@ namespace Sample {
 
     public class TestController : Controller {
 
-        [Route("GET", "test1")]
+        [Route("GET", "/test1")]
         public object Test1() {
             // return: { "hello": "world", "date": "2023-10-23T00:00:00+02:00", "result": true }
             return new {
@@ -306,7 +306,7 @@ namespace Sample {
             };
         }
 
-        [Route("GET", "test2")]
+        [Route("GET", "/test2")]
         public object Test2() {
             // return: ["hello", "world"]
             return new string[] { "hello", "world" };
@@ -316,7 +316,7 @@ namespace Sample {
 
     public class UserController : Controller {
 
-        [Route("GET", "users")]
+        [Route("GET", "/users")]
         public object Users() {
             // return: [{"Email":"user1@localhost","FullName":"user1"},{"Email":"user2@localhost","FullName":"user2"}]
             var users = new List<User>() {
@@ -366,7 +366,7 @@ namespace Sample {
 
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -375,7 +375,7 @@ namespace Sample {
 
     public class TestController : Controller {
 
-        [Route("GET", "test1")]
+        [Route("GET", "/test1")]
         public object Test1() {
             // the object return will be serialized
             // and set as body of the HttpReponse
@@ -384,7 +384,7 @@ namespace Sample {
             return new { hello = "world" };
         }
 
-        [Route("GET", "test2")]
+        [Route("GET", "/test2")]
         public object Test2() {
             try {
                 throw new Exception("test2");
@@ -397,7 +397,7 @@ namespace Sample {
             }
         }
 
-        [Route("GET", "test3")]
+        [Route("GET", "/test3")]
         public object Test3() {
             try {
                 throw new KeyNotFoundException("test3");
@@ -410,7 +410,7 @@ namespace Sample {
             }
         }
 
-        [Route("GET", "test4")]
+        [Route("GET", "/test4")]
         public object Test4() {
             try {
                 throw new UnauthorizedAccessException("test4");
@@ -423,7 +423,7 @@ namespace Sample {
             }
         }
 
-        [Route("GET", "test5")]
+        [Route("GET", "/test5")]
         public object Test5() {
             var content = "download text content";
             // will force download a file "file.txt" with content
@@ -461,7 +461,7 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -471,13 +471,13 @@ namespace Sample {
     public class TestController : Controller {
 
         // call on GET http://localhost:2015/api/test/index
-        [Route("GET", "test/index")]
+        [Route("GET", "/test/index")]
         public object Index() {
             return "test index page";
         }
 
         // call POST http://localhost:2015/api/test/create
-        [Route("POST", "test/create")]
+        [Route("POST", "/test/create")]
         public object Create() {
             return "test create success";
         }
@@ -499,24 +499,24 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     public class TestController : Controller {
 
         // call on GET http://localhost:2015/api/test/index
-        [Route("GET", "index")]
+        [Route("GET", "/index")]
         public object Index() {
             return "test index page";
         }
 
         // call POST http://localhost:2015/api/test/create
-        [Route("POST", "create")]
+        [Route("POST", "/create")]
         public object Create() {
             return "test create success";
         }
@@ -538,7 +538,7 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -549,7 +549,7 @@ namespace Sample {
     public class TestController : Controller {
 
         // test with http://localhost:2015/api/test/index
-        [Route("GET", "index")]
+        [Route("GET", "/index")]
         public object Index() {
             return "test index page";
         }
@@ -561,7 +561,7 @@ namespace Sample {
         }
 
         // test with POST http://localhost:2015/api/test/create
-        [Route("POST", "create")]
+        [Route("POST", "/create")]
         public object Create() {
             return "test create success";
         }
@@ -569,8 +569,8 @@ namespace Sample {
         // test with POST http://localhost:2015/api/test/delete
         // or
         // test with POST http://localhost:2015/api/test/remove
-        [Route("POST", "delete")]
-        [Route("POST", "remove")]
+        [Route("POST", "/delete")]
+        [Route("POST", "/remove")]
         public object Delete() {
             return "test delete success";
         }
@@ -603,20 +603,20 @@ namespace Sample {
             // allow regular expression in route path
             server.Router.RegExpEnabled = true;
 
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     public class TestController : Controller {
 
         // http://localhost:2015/api/test/index
         // or
         // http://localhost:2015/api/test/indexes
-        [Route("GET", "(index|indexes)")]
+        [Route("GET", "/(index|indexes)")]
         public object Index() {
             return "test index page";
         }
@@ -645,7 +645,7 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -659,7 +659,7 @@ namespace Sample {
         //
         // parameter "name" has default value "world" 
         // so the query string "name" is not mandatory
-        [Route("GET", "hello")]
+        [Route("GET", "/hello")]
         public object Hello(string name = "world") {
             return $"Hello {name} !";
         }
@@ -670,7 +670,7 @@ namespace Sample {
         // parameter "name" has no default value
         // so the query string "name" is required
         // not providing it will return an HTTP 404 ERROR
-        [Route("GET", "hi")]
+        [Route("GET", "/hi")]
         public object Hi(string name) {
             return $"Hi {name} !";
         }
@@ -679,13 +679,13 @@ namespace Sample {
         //
         // it does not matter if there are others query strings 
         // than the one declared in the method
-        [Route("GET", "bye")]
+        [Route("GET", "/bye")]
         public object Bye(string name) {
             return $"Bye {name} !";
         }
 
         // test with http://localhost:2015/api/debug?a=bbbb&c=dddd
-        [Route("GET", "debug")]
+        [Route("GET", "/debug")]
         public object Debug() {
             try {
                 // get NameValueCollection
@@ -730,18 +730,18 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     public class TestController : Controller {
 
         // test with http://localhost:2015/api/test/user/stratdev
-        [Route("GET", "user/{login}")]
+        [Route("GET", "/user/{login}")]
         public object User(string login) {
             return $"Hello {login}";
         }
@@ -751,7 +751,7 @@ namespace Sample {
         // test with http://localhost:2015/api/test/user/stratdev/xx will
         // return a http code 500 as the "xx" cast to integer
         // will throw an exception
-        [Route("GET", "user/{login}/{year}")]
+        [Route("GET", "/user/{login}/{year}")]
         public object User(string login, int year) {
             return $"Hello {login}, you're {year} year old.";
         }
@@ -791,17 +791,17 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("user/")]
+    [Route("/user")]
     public class UserController : Controller {
 
-        [Route("POST", "save")]
+        [Route("POST", "/save")]
         public object Save() {
             return $"You sent {Request.Body}";
         }
@@ -841,17 +841,17 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("user/")]
+    [Route("/user")]
     public class UserController : Controller {
 
-        [Route("POST", "save")]
+        [Route("POST", "/save")]
         public object Save() {
 
             // instanciate User class
@@ -912,17 +912,17 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("user/")]
+    [Route("/user")]
     public class UserController : Controller {
 
-        [Route("POST", "save")]
+        [Route("POST", "/save")]
         public object Save() {
 
             // instanciate User class
@@ -983,17 +983,17 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("user/")]
+    [Route("/user")]
     public class UserController : Controller {
 
-        [Route("POST", "save")]
+        [Route("POST", "/save")]
         public object Save() {
 
             var parser = Request.BodyFile();
@@ -1050,7 +1050,7 @@ namespace Sample {
 
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
 
             // set CORS policy
             server.AddCORS(
@@ -1068,10 +1068,10 @@ namespace Sample {
 
     public class SomeController : Controller {
 
-        [Route("GET", "test")]
+        [Route("GET", "/test")]
         public object SomePublicMethod() {
             return new {
-                hello = "world"
+                message = "Hello World !"
             };
         }
 
@@ -1097,7 +1097,7 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -1105,10 +1105,10 @@ namespace Sample {
     }
 
     public class TestController : Controller {
-        [Route("GET", "test")]
+        [Route("GET", "/test")]
         public object Test() {
             return new {
-                hello = "Hello World !",
+                message = "Hello World !",
                 current = Datetime.Now,
                 i = 0,
                 enable = true,
@@ -1124,7 +1124,7 @@ Requesting to `http://localhost:2015/api/test` will result to
 
 ```json
 {
-    "hello": "Hello World !",
+    "message": "Hello World !",
     "current": "2024-03-01T13:17:29.1249399+01:00",
     "i": 0,
     "enable": true,
@@ -1150,14 +1150,14 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     public class TestController : Controller {
 
         // Router will call this methods before another one
@@ -1165,12 +1165,12 @@ namespace Sample {
             Console.WriteLine("OnBeforeMethod()");
         }
 
-        [Route("GET", "index")]
+        [Route("GET", "/index")]
         public object Index() {
             return "test index page";
         }
 
-        [Route("POST", "create")]
+        [Route("POST", "/create")]
         public object Create() {
             return "test create success";
         }
@@ -1197,7 +1197,7 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -1211,10 +1211,10 @@ namespace Sample {
 
     }
 
-    [Route("user/")]
+    [Route("/user")]
     class UserController : BaseController {
 
-        [Route("GET", "index")]
+        [Route("GET", "/index")]
         public object Index() {
             var users = _repo.GetAll<User>();
             return users;
@@ -1222,10 +1222,10 @@ namespace Sample {
 
     }
 
-    [Route("department/")]
+    [Route("/department")]
     class DepartmentController : BaseController {
 
-        [Route("GET", "index")]
+        [Route("GET", "/index")]
         public object Index() {
             var departments = _repo.GetAll<Department>();
             return departments;
@@ -1250,7 +1250,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // exclude BaseController as a regular Controller
-            server.AddDynamicContent("/api/", new Type[] { typeof(BaseController) });
+            server.AddDynamicContent("/api", new Type[] { typeof(BaseController) });
 
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
@@ -1260,19 +1260,19 @@ namespace Sample {
 
     class BaseController : Controller {
 
-        [Route("GET", "conf")]
+        [Route("GET", "/conf")]
         public object Conf() {
             return "conf";
         }
 
     }
 
-    [Route("user/")]
+    [Route("/user")]
     class UserController : BaseController {
 
     }
 
-    [Route("department/")]
+    [Route("/department")]
     class DepartmentController : BaseController {
 
     }
@@ -1320,17 +1320,17 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     public class TestController : Controller {
 
-        [Route("GET", "token")]
+        [Route("GET", "/token")]
         public object Token() {
             return this.GetJwt();
         }
@@ -1387,7 +1387,7 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -1411,10 +1411,10 @@ namespace Sample {
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     class TestController : BaseController {
 
-        [Route("GET", "token")]
+        [Route("GET", "/token")]
         public object Token() {
             return this.GetJwt();
         }
@@ -1447,17 +1447,17 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("user/")]
+    [Route("/user")]
     public class TestController : Controller {
 
-        [Route("GET", "account")]
+        [Route("GET", "/account")]
         public object Account() {
             var jwt = this.GetJwt();
 
@@ -1511,7 +1511,7 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
 
             // set secret in order BaseController to verify jwt from request
             BaseController.JWT_SECRET = "secret";
@@ -1522,10 +1522,10 @@ namespace Sample {
         }
     }
 
-    [Route("user/")]
+    [Route("/user")]
     public class TestController : BaseController {
 
-        [Route("GET", "account")]
+        [Route("GET", "/account")]
         public object Account() {
             if (User == null || !User.roles.Contains("account")) {
                 return MakeUnAuthorizedResponse("private access, need account.");
@@ -1536,7 +1536,7 @@ namespace Sample {
             return $"you have access to your account {User.id}";
         }
 
-        [Route("GET", "infos")]
+        [Route("GET", "/infos")]
         public object Infos() {
             if (User == null || !User.roles.Contains("infos")) {
                 return MakeUnAuthorizedResponse("private access, need infos.");
@@ -1544,7 +1544,7 @@ namespace Sample {
             return "you have access to this infos";
         }
 
-        [Route("GET", "public")]
+        [Route("GET", "/public")]
         public object Pub() {
             return "you have access to this public";
         }
@@ -1615,17 +1615,17 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     public class TestController : Controller {
 
-        [Route("GET", "forge")]
+        [Route("GET", "/forge")]
         public object Forge() {
             var payload = new Dictionary<string, object>() {
                 { "id", Guid.NewGuid() },
@@ -1799,7 +1799,7 @@ Content of the `index.html` located in the `C:\www\client\` directory
                 logs.append(log);
             }
             // websocket client
-            var ws = new WebSocket('ws://localhost:2015/websocket/');
+            var ws = new WebSocket('ws://localhost:2015/websocket');
             ws.onopen = function(e) {
                 logs('[connected] connection established to server.', 'green');
                 document.getElementById('send1').style = 'display: inline;';
@@ -1861,7 +1861,7 @@ namespace Sample {
             server.AddStaticContent(@"C:\www\client\", "/");
 
             // find all Controllers class and serve on the "/websocket/" endpoint
-            server.AddWebSocketContent("/websocket/");
+            server.AddWebSocketContent("/websocket");
 
             server.Start();
             Console.WriteLine("http server started at http://localhost:2015/");
@@ -1871,11 +1871,11 @@ namespace Sample {
         }
     }
 
-    [Route("test/")]
+    [Route("/test")]
     public class TestController : Controller {
 
         // call by websocket with websocketMessage url = "/websocket/test/index"
-        [Route("WEBSOCKET", "index")]
+        [Route("WEBSOCKET", "/index")]
         public void Index(WebSocketMessage message) {
             Console.WriteLine("receive message");
 
@@ -1884,7 +1884,7 @@ namespace Sample {
         }
 
         // call by websocket with websocketMessage url = "/websocket/test/create"
-        [Route("WEBSOCKET", "create")]
+        [Route("WEBSOCKET", "/create")]
         public void Create(WebSocketMessage message) {
             Console.WriteLine("receive message");
 
@@ -1925,7 +1925,7 @@ Frontend
                 logs.append(log);
             }
             // websocket client
-            var ws = new WebSocket('ws://localhost:2015/websocket/');
+            var ws = new WebSocket('ws://localhost:2015/websocket');
             ws.onopen = function(e) {
                 logs('[connected] connection established to server.', 'green');
                 document.getElementById('send1').style = 'display: inline;';
@@ -1983,7 +1983,7 @@ namespace Sample {
             server.AddStaticContent(@"C:\www\client\", "/");
 
             // find all Controllers class and serve on the "/websocket/" endpoint
-            server.AddWebSocketContent("/websocket/");
+            server.AddWebSocketContent("/websocket");
 
             server.Start();
             Console.WriteLine("http server started at http://localhost:2015/");
@@ -1993,11 +1993,11 @@ namespace Sample {
         }
     }
 
-    [Route("user/")]
+    [Route("/user")]
     public class UserController : Controller {
 
         // call by websocket with websocketMessage url = "/websocket/user/index"
-        [Route("WEBSOCKET", "index")]
+        [Route("WEBSOCKET", "/index")]
         public void Index(WebSocketMessage message) {
             Console.WriteLine($"receive message {message.body}");
 
@@ -2006,7 +2006,7 @@ namespace Sample {
         }
 
         // call by websocket with websocketMessage url = "/websocket/user/create"
-        [Route("WEBSOCKET", "create")]
+        [Route("WEBSOCKET", "/create")]
         public void Create(WebSocketMessage message) {
             Console.WriteLine("receive message");
 
@@ -2066,7 +2066,7 @@ namespace Sample {
             openTelemetryObserver("SimpleW");
 
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -2095,10 +2095,10 @@ namespace Sample {
     }
 
     public class SomeController : Controller {
-        [Route("GET", "test")]
+        [Route("GET", "/test")]
         public object SomePublicMethod() {
             return new {
-                hello = "world"
+                message = "Hello World !"
             };
         }
     }
@@ -2132,7 +2132,7 @@ namespace Sample {
             openTelemetryObserver("SimpleW");
 
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api/");
+            server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
             Console.ReadKey();
@@ -2153,10 +2153,10 @@ namespace Sample {
     }
 
     public class SomeController : Controller {
-        [Route("GET", "test")]
+        [Route("GET", "/test")]
         public object SomePublicMethod() {
             return new {
-                hello = "world"
+                message = "Hello World !"
             };
         }
     }
