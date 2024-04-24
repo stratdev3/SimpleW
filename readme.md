@@ -1109,7 +1109,7 @@ namespace Sample {
         public object Test() {
             return new {
                 message = "Hello World !",
-                current = Datetime.Now,
+                current = DateTime.Now,
                 i = 0,
                 enable = true,
                 d = new Dictionary<string, string>() { { "Foo", "Bar" } }
