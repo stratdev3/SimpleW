@@ -6,7 +6,7 @@ namespace NetCoreServer
     /// HTTP session is used to receive/send HTTP requests/responses from the connected HTTP client.
     /// </summary>
     /// <remarks>Thread-safe.</remarks>
-    public class HttpSession : TcpSession
+    public class HttpSession : TcpSession, IHttpSession
     {
         public HttpSession(HttpServer server) : base(server)
         {
@@ -23,7 +23,7 @@ namespace NetCoreServer
         /// <summary>
         /// Get the HTTP request
         /// </summary>
-        protected HttpRequest Request { get; }
+        public HttpRequest Request { get; }
 
         /// <summary>
         /// Get the HTTP response
