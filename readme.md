@@ -2047,6 +2047,9 @@ With a little change the [Basic Static Example](#basic-static-example) can serve
 ```csharp
 using System;
 using System.Net;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
+using NetCoreServer;
 using SimpleW;
 
 namespace Sample {
