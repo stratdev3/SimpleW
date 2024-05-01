@@ -148,18 +148,39 @@ namespace SimpleW {
 
         #region response
 
+        #region cors
+
+        /// <summary>
+        /// CORS Header Origin
+        /// </summary>
+        public static string cors_allow_origin { get; set; }
+        /// <summary>
+        /// CORS Header headers
+        /// </summary>
+        public static string cors_allow_headers { get; set; }
+        /// <summary>
+        /// CORS Header methods
+        /// </summary>
+        public static string cors_allow_methods { get; set; }
+        /// <summary>
+        /// CORS Header credentials
+        /// </summary>
+        public static string cors_allow_credentials { get; set; }
+
         /// <summary>
         /// Set Header when CORS is enabled
         /// </summary>
         protected void SetCORSHeaders() {
-            if (!string.IsNullOrWhiteSpace(((SimpleWServer)Session.Server).cors_allow_origin)) {
-                Response.SetHeader("Access-Control-Allow-Origin", ((SimpleWServer)Session.Server).cors_allow_origin);
-                Response.SetHeader("Access-Control-Allow-Headers", ((SimpleWServer)Session.Server).cors_allow_headers);
-                Response.SetHeader("Access-Control-Allow-Methods", ((SimpleWServer)Session.Server).cors_allow_methods);
-                Response.SetHeader("Access-Control-Allow-Credentials", ((SimpleWServer)Session.Server).cors_allow_credentials);
+            if (!string.IsNullOrWhiteSpace(cors_allow_origin)) {
+                Response.SetHeader("Access-Control-Allow-Origin", cors_allow_origin);
+                Response.SetHeader("Access-Control-Allow-Headers", cors_allow_headers);
+                Response.SetHeader("Access-Control-Allow-Methods", cors_allow_methods);
+                Response.SetHeader("Access-Control-Allow-Credentials", cors_allow_credentials);
                 Response.SetHeader("Access-Control-Max-Age", "86400");
             }
         }
+
+        #endregion cors
 
         /// <summary>
         /// Override this Handler to change how RouteMethod which return object should to.

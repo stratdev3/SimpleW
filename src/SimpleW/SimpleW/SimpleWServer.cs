@@ -319,19 +319,50 @@ namespace SimpleW {
         /// <summary>
         /// CORS Header Origin
         /// </summary>
-        public string cors_allow_origin;
+        public string cors_allow_origin {
+            get {
+                return Controller.cors_allow_origin;
+            }
+            set {
+                Controller.cors_allow_origin = value;
+            }
+        }
+
         /// <summary>
         /// CORS Header headers
         /// </summary>
-        public string cors_allow_headers;
+        public string cors_allow_headers {
+            get {
+                return Controller.cors_allow_headers;
+            }
+            set {
+                Controller.cors_allow_headers = value;
+            }
+        }
+
         /// <summary>
         /// CORS Header methods
         /// </summary>
-        public string cors_allow_methods;
+        public string cors_allow_methods {
+            get {
+                return Controller.cors_allow_methods;
+            }
+            set {
+                Controller.cors_allow_methods = value;
+            }
+        }
+
         /// <summary>
         /// CORS Header credentials
         /// </summary>
-        public string cors_allow_credentials;
+        public string cors_allow_credentials {
+            get {
+                return Controller.cors_allow_credentials;
+            }
+            set {
+                Controller.cors_allow_credentials = value;
+            }
+        }
 
         /// <summary>
         /// Setup CORS
