@@ -18,6 +18,15 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
+## v12.0.0 / _(2024-05-02)_
+Maintenance
+
+### feature
+
+- support HTTPS protocol using the new `SimpleWSServer()` class.
+
+
+
 ## v11.9.0 / _(2024-02-15)_
 Maintenance
 
