@@ -61,7 +61,7 @@ namespace SimpleW {
         /// <summary>
         /// File to get by default (default: "index.html")
         /// </summary>
-        public string DefaultDocument = "index.html";
+        public string DefaultDocument { get; set; } = "index.html";
 
         /// <summary>
         /// Enable AutoIndex when DefaultDocument does not exists
