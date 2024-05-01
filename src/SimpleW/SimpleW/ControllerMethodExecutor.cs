@@ -22,7 +22,7 @@ namespace SimpleW {
         /// <summary>
         /// MethodInfo to Controller.Initialize()
         /// </summary>
-        private static readonly MethodInfo InitializeSetter = BaseController.GetMethod(nameof(Controller.Initialize), new Type[] { typeof(SimpleWSession), typeof(HttpRequest) });
+        private static readonly MethodInfo InitializeSetter = BaseController.GetMethod(nameof(Controller.Initialize), new Type[] { typeof(ISimpleWSession), typeof(HttpRequest) });
 
         /// <summary>
         /// MethodInfo to Controller.OnBeforeMethodInternal()
@@ -44,7 +44,7 @@ namespace SimpleW {
         /// <summary>
         /// The Expression Tree to Execute Method with Parameters
         /// </summary>
-        public readonly Action<SimpleWSession, HttpRequest, object[]> ExecuteMethod;
+        public readonly Action<ISimpleWSession, HttpRequest, object[]> ExecuteMethod;
 
         /// <summary>
         /// Parameters to pass to the ExecuteMethod
@@ -56,7 +56,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="executeMethod"></param>
         /// <param name="parameters"></param>
-        private ControllerMethodExecutor(Action<SimpleWSession, HttpRequest, object[]> executeMethod, Dictionary<ParameterInfo, object> parameters) {
+        private ControllerMethodExecutor(Action<ISimpleWSession, HttpRequest, object[]> executeMethod, Dictionary<ParameterInfo, object> parameters) {
             ExecuteMethod = executeMethod;
             Parameters = parameters;
         }
@@ -81,7 +81,7 @@ namespace SimpleW {
             body.Add(Expression.Assign(controller, Expression.New(controllerType)));
 
             // lambda parameters
-            var sessionInLambda = Expression.Parameter(typeof(SimpleWSession));
+            var sessionInLambda = Expression.Parameter(typeof(ISimpleWSession));
             var requestInLambda = Expression.Parameter(typeof(HttpRequest));
             var argsInLambda = Expression.Parameter(typeof(object[]));
 
@@ -175,7 +175,7 @@ namespace SimpleW {
             }
 
             // final lambda
-            var lambda = Expression.Lambda<Action<SimpleWSession, HttpRequest, object[]>>(Expression.Block(locals, body), sessionInLambda, requestInLambda, argsInLambda);
+            var lambda = Expression.Lambda<Action<ISimpleWSession, HttpRequest, object[]>>(Expression.Block(locals, body), sessionInLambda, requestInLambda, argsInLambda);
 
             return new ControllerMethodExecutor(lambda.Compile(), values);
         }

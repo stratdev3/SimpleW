@@ -12,9 +12,9 @@ using NetCoreServer;
 namespace SimpleW {
 
     /// <summary>
-    /// Main HTTP/WebSocker Server Object
+    /// Main HTTPS/SecureWebSocket Server Object
     /// </summary>
-    public class SimpleWServer : WsServer, ISimpleWServer {
+    public class SimpleWSServer : WssServer, ISimpleWServer {
 
         /// <summary>
         /// API/WEBSOCKET routes to handle
@@ -27,15 +27,16 @@ namespace SimpleW {
         /// <summary>
         /// Herited Mandatory Constructor
         /// </summary>
+        /// <param name="context"></param>
         /// <param name="address"></param>
         /// <param name="port"></param>
-        public SimpleWServer(IPAddress address, int port) : base(address, port) { }
+        public SimpleWSServer(SslContext context, IPAddress address, int port) : base(context, address, port) { }
 
         /// <summary>
-        /// Herited mandatory factory http/ws session builder
+        /// Herited mandatory factory https/wss session builder
         /// </summary>
         /// <returns></returns>
-        protected override SimpleWSession CreateSession() { return new SimpleWSession(this); }
+        protected override SslSession CreateSession() { return new SimpleWSSession(this); }
 
         /// <summary>
         /// Herited Optionnal Override SocketError
@@ -280,7 +281,7 @@ namespace SimpleW {
         public IEnumerable<IWebSocketSession> AllWebUsers(Func<KeyValuePair<Guid, IWebUser>, bool> where) {
             foreach (var wu in WebUsers.Where(where)) {
                 var session = FindSession(wu.Key);
-                if (session is WsSession wsSession) {
+                if (session is WssSession wsSession) {
                     yield return wsSession;
                 }
             }

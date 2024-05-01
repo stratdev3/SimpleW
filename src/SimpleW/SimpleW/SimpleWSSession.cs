@@ -12,9 +12,9 @@ using NetCoreServer;
 namespace SimpleW {
 
     /// <summary>
-    /// Main http/ws session object
+    /// Main https/wss session object
     /// </summary>
-    public class SimpleWSession : WsSession, ISimpleWSession {
+    public class SimpleWSSession : WssSession, ISimpleWSession {
 
         #region properties
 
@@ -37,7 +37,7 @@ namespace SimpleW {
         /// Constructor
         /// </summary>
         /// <param name="server"></param>
-        public SimpleWSession(SimpleWServer server) : base(server) {
+        public SimpleWSSession(SimpleWSServer server) : base(server) {
         }
 
         #region http
@@ -53,7 +53,7 @@ namespace SimpleW {
         protected override void OnReceivedRequest(HttpRequest request) {
             var activity = ActivitySource.StartActivity();
             try {
-                var server = (SimpleWServer)Server;
+                var server = (SimpleWSServer)Server;
 
                 // parse : request.url to route
                 var requestRoute = new Route(request);
@@ -172,7 +172,7 @@ namespace SimpleW {
         public override void OnWsReceived(byte[] buffer, long offset, long size) {
             var activity = ActivitySource.StartActivity();
             try {
-                var server = (SimpleWServer)Server;
+                var server = (SimpleWSServer)Server;
 
                 // parse buffer as WebSocketMessage
                 var text = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
@@ -212,7 +212,7 @@ namespace SimpleW {
         /// </summary>
         public override void OnWsDisconnected() {
             var activity = ActivitySource.StartActivity();
-            ((SimpleWServer)Server).UnregisterWebUser(Id);
+            ((SimpleWSServer)Server).UnregisterWebUser(Id);
             SetDefaultActivity(activity, $"DISCONNECT", Id);
             StopWithStatusCodeActivity(activity, 200);
         }

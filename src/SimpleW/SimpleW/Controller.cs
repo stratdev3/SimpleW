@@ -25,7 +25,7 @@ namespace SimpleW {
         /// <summary>
         /// Gets the current HTTP Session
         /// </summary>
-        protected SimpleWSession Session;
+        protected ISimpleWSession Session;
 
         /// <summary>
         /// Gets the current HTTP Request
@@ -43,7 +43,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="session"></param>
         /// <param name="request"></param>
-        public void Initialize(SimpleWSession session, HttpRequest request) {
+        public void Initialize(ISimpleWSession session, HttpRequest request) {
             Session = session;
             Request = request;
 
