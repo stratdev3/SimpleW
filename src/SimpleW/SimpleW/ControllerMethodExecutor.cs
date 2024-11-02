@@ -67,12 +67,12 @@ namespace SimpleW {
         /// <param name="method">The MethodInfo to add</param>
         /// <returns></returns>
         public static ControllerMethodExecutor Create(MethodInfo method) {
-            var controllerType = method.ReflectedType;
-            var body = new List<Expression>();
-            var locals = new List<ParameterExpression>();
+            Type? controllerType = method.ReflectedType;
+            List<Expression> body = new();
+            List<ParameterExpression> locals = new();
 
             // creation variable C# : `ControllerType controller;`
-            var controller = Expression.Variable(controllerType);
+            ParameterExpression controller = Expression.Variable(controllerType);
             // add to expression tree locals
             locals.Add(controller);
 
@@ -81,9 +81,9 @@ namespace SimpleW {
             body.Add(Expression.Assign(controller, Expression.New(controllerType)));
 
             // lambda parameters
-            var sessionInLambda = Expression.Parameter(typeof(ISimpleWSession));
-            var requestInLambda = Expression.Parameter(typeof(HttpRequest));
-            var argsInLambda = Expression.Parameter(typeof(object[]));
+            ParameterExpression sessionInLambda = Expression.Parameter(typeof(ISimpleWSession));
+            ParameterExpression requestInLambda = Expression.Parameter(typeof(HttpRequest));
+            ParameterExpression argsInLambda = Expression.Parameter(typeof(object[]));
 
             // call method C# : `controller.Initialize(session, request);`
             // controller is the instance controller type
@@ -99,20 +99,20 @@ namespace SimpleW {
             //
             // get method parameter
             //
-            var parameters = method.GetParameters();
-            var parameterCount = parameters.Length;
-            var callParameters = new List<Expression>();
-            var values = new Dictionary<ParameterInfo, object>();
+            ParameterInfo[] parameters = method.GetParameters();
+            int parameterCount = parameters.Length;
+            List<Expression> callParameters = new();
+            Dictionary<ParameterInfo, object> values = new();
 
-            for (var i = 0; i < parameterCount; i++) {
-                var parameter = parameters[i];
+            for (int i = 0; i < parameterCount; i++) {
+                ParameterInfo parameter = parameters[i];
 
                 callParameters.Add(
                     Expression.Convert(Expression.ArrayIndex(argsInLambda, Expression.Constant(i)), parameter.ParameterType)
                 );
 
                 bool hasDefaultValue;
-                var tryToGetDefaultValue = true;
+                bool tryToGetDefaultValue = true;
                 object defaultValue = null;
 
                 try {
@@ -175,7 +175,7 @@ namespace SimpleW {
             }
 
             // final lambda
-            var lambda = Expression.Lambda<Action<ISimpleWSession, HttpRequest, object[]>>(Expression.Block(locals, body), sessionInLambda, requestInLambda, argsInLambda);
+            Expression<Action<ISimpleWSession, HttpRequest, object[]>> lambda = Expression.Lambda<Action<ISimpleWSession, HttpRequest, object[]>>(Expression.Block(locals, body), sessionInLambda, requestInLambda, argsInLambda);
 
             return new ControllerMethodExecutor(lambda.Compile(), values);
         }

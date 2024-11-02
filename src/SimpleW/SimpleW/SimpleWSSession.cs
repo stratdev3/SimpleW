@@ -51,17 +51,17 @@ namespace SimpleW {
         /// </summary>
         /// <param name="request"></param>
         protected override void OnReceivedRequest(HttpRequest request) {
-            var activity = ActivitySource.StartActivity();
+            Activity? activity = ActivitySource.StartActivity();
             try {
-                var server = (SimpleWSServer)Server;
+                SimpleWSServer server = (SimpleWSServer)Server;
 
                 // parse : request.url to route
-                var requestRoute = new Route(request);
+                Route requestRoute = new(request);
                 SetDefaultActivity(activity, Request, requestRoute, Id, Socket);
 
                 // default document
                 if (requestRoute.Method == "GET" && requestRoute.hasEndingSlash) {
-                    var response = Cache.Find(requestRoute.Url.AbsolutePath + server.DefaultDocument);
+                    (bool, byte[]) response = Cache.Find(requestRoute.Url.AbsolutePath + server.DefaultDocument);
                     if (response.Item1) {
                         SendAsync(response.Item2);
                         StopWithStatusCodeActivity(activity, 200, response.Item2.Length);
@@ -70,7 +70,7 @@ namespace SimpleW {
                     // autoindex
                     else if (server.AutoIndex) {
                         (IEnumerable<string> files, bool hasParent) = Cache.List(requestRoute.Url.AbsolutePath);
-                        var html = @$"
+                        string html = @$"
                             <html>
                                 <head><title>Index of {requestRoute.Url.AbsolutePath}</title></head>
                                 <body>
@@ -102,7 +102,7 @@ namespace SimpleW {
                 }
 
                 // get first matching route
-                var routeMatch = server.Router.Match(requestRoute);
+                Route routeMatch = server.Router.Match(requestRoute);
                 if (routeMatch != null) {
                     if (routeMatch.Handler != null) {
                         routeMatch.Handler?.ExecuteMethod(this, request, requestRoute.ParameterValues(routeMatch));
@@ -126,7 +126,7 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <param name="content"></param>
         protected override void OnReceivedCachedRequest(HttpRequest request, byte[] content) {
-            var activity = ActivitySource.StartActivity();
+            Activity? activity = ActivitySource.StartActivity();
             SetDefaultActivity(activity, $"CACHE {request.Url}", request, Id, Socket);
             SendAsync(content);
             StopWithStatusCodeActivity(activity, 200, content.Length);
@@ -138,7 +138,7 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <param name="error"></param>
         protected override void OnReceivedRequestError(HttpRequest request, string error) {
-            var activity = ActivitySource.StartActivity();
+            Activity? activity = ActivitySource.StartActivity();
             SetDefaultActivity(activity, $"ERROR {request.Url}", request, Id, Socket);
             StopWithErrorActivity(activity);
         }
@@ -152,10 +152,10 @@ namespace SimpleW {
         /// </summary>
         /// <param name="request"></param>
         public override void OnWsConnected(HttpRequest request) {
-            var activity = ActivitySource.StartActivity();
+            Activity? activity = ActivitySource.StartActivity();
             try {
                 // parse : request.url to route
-                var requestRoute = new Route(request);
+                Route requestRoute = new(request);
                 SetDefaultActivity(activity, Request, requestRoute, Id, Socket);
             }
             catch (Exception ex) {
@@ -170,20 +170,20 @@ namespace SimpleW {
         /// <param name="offset"></param>
         /// <param name="size"></param>
         public override void OnWsReceived(byte[] buffer, long offset, long size) {
-            var activity = ActivitySource.StartActivity();
+            Activity? activity = ActivitySource.StartActivity();
             try {
-                var server = (SimpleWSServer)Server;
+                SimpleWSServer server = (SimpleWSServer)Server;
 
                 // parse buffer as WebSocketMessage
-                var text = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
-                var message = JsonSerializer.Deserialize<WebSocketMessage>(text);
+                string text = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
+                WebSocketMessage message = JsonSerializer.Deserialize<WebSocketMessage>(text);
                 this.jwt = message.jwt; // for later Controller.GetJwt()
 
                 SetDefaultActivity(activity, message, Id, Socket);
 
                 // register
                 if (message.url == null) {
-                    var wu = Controller.JwtToWebUser(this.jwt);
+                    IWebUser wu = Controller.JwtToWebUser(this.jwt);
                     if (wu != null) {
                         server.RegisterWebUser(Id, wu);
                     }
@@ -191,7 +191,7 @@ namespace SimpleW {
                 }
 
                 // get first matching route
-                var routeMatch = server.Router.Match(message);
+                Route routeMatch = server.Router.Match(message);
                 if (routeMatch != null) {
                     if (routeMatch.Handler != null) {
                         routeMatch.Handler?.ExecuteMethod(this, Request, new object[] { message });
@@ -211,7 +211,7 @@ namespace SimpleW {
         /// Websocket disconnect
         /// </summary>
         public override void OnWsDisconnected() {
-            var activity = ActivitySource.StartActivity();
+            Activity? activity = ActivitySource.StartActivity();
             ((SimpleWSServer)Server).UnregisterWebUser(Id);
             SetDefaultActivity(activity, $"DISCONNECT", Id);
             StopWithStatusCodeActivity(activity, 200);
@@ -224,10 +224,10 @@ namespace SimpleW {
         /// </summary>
         /// <param name="error"></param>
         protected override void OnError(SocketError error) {
-            var activity = ActivitySource.StartActivity();
+            Activity? activity = ActivitySource.StartActivity();
             SetDefaultActivity(activity, "Session OnError()", Id);
             activity.SetStatus(ActivityStatusCode.Error);
-            var tagsCollection = new ActivityTagsCollection {
+            ActivityTagsCollection tagsCollection = new ActivityTagsCollection {
                     { "exception.type", nameof(SocketError) },
             };
             activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
@@ -309,7 +309,7 @@ namespace SimpleW {
 
                 //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
                 //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
-                var url = Route.FQURL(request);
+                string url = Route.FQURL(request);
 
                 activity.SetTag("url.path", url);
                 //activity.SetTag("url.query", requestRoute.Url.Query);

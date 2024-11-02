@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Specialized;
 using System.IO;
 using System.IO.Compression;
 using System.Runtime.Serialization;
@@ -97,7 +98,7 @@ namespace SimpleW {
         /// <returns></returns>
         public static IWebUser JwtToWebUser(string jwt) {
             try {
-                var wu = jwt?.ValidateJwt<TokenWebUser>(TokenKey, TokenIssuer);
+                TokenWebUser wu = jwt?.ValidateJwt<TokenWebUser>(TokenKey, TokenIssuer);
                 if (GetWebUserCallback != null) {
                     return GetWebUserCallback(wu);
                 }
@@ -126,15 +127,15 @@ namespace SimpleW {
             }
 
             // 2. Request url querystring "jwt" (api only)
-            var route = new Route(Request);
-            var qs = Route.ParseQueryString(route?.Url?.Query);
-            var qs_jwt = qs["jwt"]?.ToString();
+            Route route = new(Request);
+            NameValueCollection qs = Route.ParseQueryString(route?.Url?.Query);
+            string qs_jwt = qs["jwt"]?.ToString();
             if (!string.IsNullOrWhiteSpace(qs_jwt)) {
                 return qs_jwt;
             }
 
             // 3. Request http header "Authorization: bearer " (api only)
-            var header_jwt = Request.Header("Authorization");
+            string header_jwt = Request.Header("Authorization");
             if (string.IsNullOrWhiteSpace(header_jwt) || !header_jwt.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
                 return null;
             }
@@ -227,11 +228,11 @@ namespace SimpleW {
             }
 
             if (compress) {
-                var compressTypes = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                string[] compressTypes = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 if (compressTypes != null) {
-                    foreach (var compressType in compressTypes) {
+                    foreach (string compressType in compressTypes) {
                         try {
-                            var compressData = Compress(content, compressType);
+                            byte[] compressData = Compress(content, compressType);
                             Response.SetHeader("Content-Encoding", compressType);
                             Response.SetBody(compressData);
                             Session.SendResponseAsync(Response);
@@ -362,10 +363,10 @@ namespace SimpleW {
             }
 
             if (compress) {
-                var compressTypes = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                foreach (var compressType in compressTypes) {
+                string[] compressTypes = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (string compressType in compressTypes) {
                     try {
-                        var compressData = Compress(content, compressType);
+                        byte[] compressData = Compress(content, compressType);
                         Response.SetHeader("Content-Encoding", compressType);
                         Response.SetBody(compressData);
                         return Response;
@@ -449,9 +450,9 @@ namespace SimpleW {
         /// <param name="data">The Byte Array data.</param>
         /// <param name="algorithm">The String algorithm ("gzip" as default or "deflate").</param>
         public static byte[] Compress(byte[] data, string algorithm = "gzip") {
-            using (var compressedStream = new MemoryStream()) {
+            using (MemoryStream compressedStream = new()) {
                 if (algorithm == "gzip") {
-                    using (var zipStream = new GZipStream(compressedStream, CompressionMode.Compress)) {
+                    using (GZipStream zipStream = new(compressedStream, CompressionMode.Compress)) {
                         zipStream.Write(data, 0, data.Length);
                         zipStream.Close();
                         return compressedStream.ToArray();
@@ -459,7 +460,7 @@ namespace SimpleW {
                 }
 
                 else if (algorithm == "deflate") {
-                    using (var deflateStream = new DeflateStream(compressedStream, CompressionMode.Compress)) {
+                    using (DeflateStream deflateStream = new(compressedStream, CompressionMode.Compress)) {
                         deflateStream.Write(data, 0, data.Length);
                         deflateStream.Close();
                         return compressedStream.ToArray();

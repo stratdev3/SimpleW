@@ -120,7 +120,7 @@ namespace SimpleW {
             if (Roles == null) {
                 return false;
             }
-            foreach (var role in roles.Split(',')) {
+            foreach (string role in roles.Split(',')) {
                 if (Roles.Contains(role.Trim())) {
                     return true;
                 }

@@ -30,7 +30,7 @@ namespace SimpleW {
         /// <param name="name">The Header Name.</param>
         /// <returns><c>string value</c> of the header if exists in the Request; otherwise, <c>null</c>.</returns>
         public static string Header(this HttpRequest request, string name) {
-            for (var i = 0; i < request.Headers; i++) {
+            for (int i = 0; i < request.Headers; i++) {
                 (string headerName, string headerValue) = request.Header(i);
                 if (string.Equals(headerName, name, StringComparison.OrdinalIgnoreCase)) {
                     return headerValue;
@@ -54,8 +54,8 @@ namespace SimpleW {
         /// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
         public static bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, JsonSerializerSettings settings = null) {
-            var contentType = request.Header("Content-Type");
-            var body = request.Body;
+            string contentType = request.Header("Content-Type");
+            string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
                 return false;
@@ -68,7 +68,7 @@ namespace SimpleW {
 
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
-                var kv = BodyForm(body);
+                Dictionary<string, object> kv = BodyForm(body);
                 body = System.Text.Json.JsonSerializer.Serialize(kv);
                 contentType = "application/json";
             }
@@ -88,8 +88,8 @@ namespace SimpleW {
         /// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
         public static bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel model, JsonSerializerSettings settings = null) {
-            var contentType = request.Header("Content-Type");
-            var body = request.Body;
+            string contentType = request.Header("Content-Type");
+            string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
                 return false;
@@ -102,7 +102,7 @@ namespace SimpleW {
 
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
-                var kv = BodyForm(body);
+                Dictionary<string, object> kv = BodyForm(body);
                 body = System.Text.Json.JsonSerializer.Serialize(kv);
                 contentType = "application/json";
             }
@@ -133,7 +133,7 @@ namespace SimpleW {
         /// <param name="request">The HttpRequest request.</param>
         /// <returns>MultipartFormDataParser</returns>
         public static MultipartFormDataParser BodyFile(this HttpRequest request) {
-            var stream = new MemoryStream(request.BodyBytes);
+            MemoryStream stream = new(request.BodyBytes);
             return MultipartFormDataParser.Parse(stream);
         }
 
@@ -151,15 +151,15 @@ namespace SimpleW {
             }
 
             // define a character for KV pairs
-            var kvpSeparator = new[] { '=' };
+            char[] kvpSeparator = new[] { '=' };
 
             // Create the result object
-            var resultDictionary = new Dictionary<string, object>();
+            Dictionary<string, object> resultDictionary = new();
 
             // Split the request body into key-value pair strings
-            var keyValuePairStrings = requestBody.Split('&');
+            string[] keyValuePairStrings = requestBody.Split('&');
 
-            foreach (var kvps in keyValuePairStrings) {
+            foreach (string kvps in keyValuePairStrings) {
                 // Skip KVP strings if they are empty
                 if (string.IsNullOrWhiteSpace(kvps)) {
                     continue;
@@ -168,7 +168,7 @@ namespace SimpleW {
                 // Split by the equals char into key values.
                 // Some KVPS will have only their key, some will have both key and value
                 // Some other might be repeated which really means an array
-                var kvpsParts = kvps.Split(kvpSeparator, 2);
+                string[] kvpsParts = kvps.Split(kvpSeparator, 2);
 
                 // We don't want empty KVPs
                 if (kvpsParts.Length == 0) {
@@ -176,19 +176,19 @@ namespace SimpleW {
                 }
 
                 // Decode the key and the value. Discard Special Characters
-                var key = WebUtility.UrlDecode(kvpsParts[0]);
-                if (key.IndexOf("[]", StringComparison.OrdinalIgnoreCase) > 0) {
+                string? key = WebUtility.UrlDecode(kvpsParts[0]);
+                if (!string.IsNullOrWhiteSpace(key) && key.IndexOf("[]", StringComparison.OrdinalIgnoreCase) > 0) {
                     key = key[..key.IndexOf("[]", StringComparison.OrdinalIgnoreCase)];
                 }
 
-                var value = kvpsParts.Length >= 2 ? WebUtility.UrlDecode(kvpsParts[1]) : null;
+                string value = kvpsParts.Length >= 2 ? WebUtility.UrlDecode(kvpsParts[1]) : null;
 
                 // If the result already contains the key, then turn the value of that key into a List of strings
                 if (resultDictionary.ContainsKey(key)) {
                     // Check if this key has a List value already
                     if (resultDictionary[key] is not List<string> listValue) {
                         // if we don't have a list value for this key, then create one and add the existing item
-                        var existingValue = resultDictionary[key] as string;
+                        string existingValue = resultDictionary[key] as string;
                         resultDictionary[key] = new List<string>();
                         listValue = (List<string>)resultDictionary[key];
                         listValue.Add(existingValue);
@@ -407,10 +407,10 @@ namespace SimpleW {
                 return null;
             }
 
-            var decoder = new JwtDecoder(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
+            JwtDecoder decoder = new(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
             try {
                 // TODO : check issuer
-                var result = decoder.TryDecode(token, x => JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(x)), out var t);
+                DecodeResult result = decoder.TryDecode(token, x => JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(x)), out var t);
                 if (result == DecodeResult.Success) {
                     return t;
                 }
@@ -432,9 +432,9 @@ namespace SimpleW {
         public static string CreateJwt(Dictionary<string, object> payload, string key, string issuer = null, double expiration = 15*60) {
             payload.Add("iss", issuer);
 
-            var encoder = new JwtEncoder(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
+            JwtEncoder encoder = new(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
 
-            var token = encoder.Encode(
+            string token = encoder.Encode(
                 payload,
                 DateTimeOffset.UtcNow.AddSeconds(expiration), // expiration "exp"
                 (x, writer) => writer.Write(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(x))
@@ -453,9 +453,9 @@ namespace SimpleW {
         public static string CreateJwt(Dictionary<string, object> payload, string key, DateTime expiration, string issuer = null) {
             payload.Add("iss", issuer);
 
-            var encoder = new JwtEncoder(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
+            JwtEncoder encoder = new(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
 
-            var token = encoder.Encode(
+            string token = encoder.Encode(
                 payload,
                 expiration, // expiration "exp"
                 (x, writer) => writer.Write(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(x))
@@ -473,7 +473,7 @@ namespace SimpleW {
         /// <param name="refresh">The bool refresh</param>
         /// <returns>The token string</returns>
         public static string CreateJwt(IWebUser webuser, string key, string issuer = null, double expiration = 15 * 60, bool refresh = true) {
-            var payload = new Dictionary<string, object>() {
+            Dictionary<string, object> payload = new() {
                 { nameof(IWebUser.Identity), webuser.Identity },
                 { nameof(IWebUser.Id), webuser.Id },
                 { nameof(IWebUser.Login), webuser.Login },
@@ -498,7 +498,7 @@ namespace SimpleW {
         /// <param name="refresh">The bool refresh</param>
         /// <returns>The token string</returns>
         public static string CreateJwt(IWebUser webuser, string key, DateTime expiration, string issuer = null,bool refresh = true) {
-            var payload = new Dictionary<string, object>() {
+            Dictionary<string, object> payload = new() {
                 { nameof(IWebUser.Identity), webuser.Identity },
                 { nameof(IWebUser.Id), webuser.Id },
                 { nameof(IWebUser.Login), webuser.Login },

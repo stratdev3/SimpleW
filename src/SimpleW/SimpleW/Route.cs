@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using NetCoreServer;
 
@@ -104,13 +105,13 @@ namespace SimpleW {
         private void ParseRoute() {
 
             // url
-            var pos = RawUrl.IndexOf("?");
-            var relativePath = pos > 0 ? RawUrl.Substring(0, pos) : RawUrl;
+            int pos = RawUrl.IndexOf("?");
+            string relativePath = pos > 0 ? RawUrl.Substring(0, pos) : RawUrl;
 
             // parse RouteAttribute looking for "{parameter}"
-            foreach (var parameter in new Regex(@"{([^}]+)}").Matches(relativePath)
-                                                             .Where(m => m.Success)
-                                                             .Select(m => m.Groups[1].Value)
+            foreach (string parameter in new Regex(@"{([^}]+)}").Matches(relativePath)
+                                                                .Where(m => m.Success)
+                                                                .Select(m => m.Groups[1].Value)
             ) {
                 // check for uniqueness
                 if (!parameters_name.Contains(parameter)) {
@@ -119,14 +120,14 @@ namespace SimpleW {
             }
 
             // Construct regex startings with relativePath
-            var pattern = relativePath;
+            string pattern = relativePath;
 
             // the wildcard "*" must be convert to a valid regexp
             pattern = pattern.Replace("*", "(.*)");
 
             // regexp also contains RouteAttribute parameters
             if (parameters_name.Count > 0) {
-                foreach (var parameter in Handler.Parameters.Keys) {
+                foreach (ParameterInfo parameter in Handler.Parameters.Keys) {
                     pattern = pattern.Replace("{" + parameter.Name + "}", "([^/]+)");
                 }
             }
@@ -161,31 +162,31 @@ namespace SimpleW {
         /// <param name="routeHandleMatch"></param>
         /// <returns></returns>
         public object[] ParameterValues(Route routeHandleMatch) {
-            var matches = routeHandleMatch.regex.Match(Url.AbsolutePath).Groups;
+            GroupCollection matches = routeHandleMatch.regex.Match(Url.AbsolutePath).Groups;
 
-            var i = 0;
-            var qs = ParseQueryString(Url.Query);
-            var parameters = new List<object>();
-            foreach (var handlerParameterInfo in routeHandleMatch.Handler.Parameters.Keys) {
+            int i = 0;
+            NameValueCollection qs = ParseQueryString(Url.Query);
+            List<object> parameters = new();
+            foreach (ParameterInfo handlerParameterInfo in routeHandleMatch.Handler.Parameters.Keys) {
 
                 // if a parameterInfo name is found in request.url
                 if (routeHandleMatch.parameters_name.Contains(handlerParameterInfo.Name)) {
                     // matches 0 is full regexp group so start from 1 for first matching brace
-                    var value_string = UrlDecode(matches[routeHandleMatch.parameters_name.IndexOf(handlerParameterInfo.Name) + 1].Value);
-                    var value_type = ChangeType(value_string, handlerParameterInfo.ParameterType);
+                    string value_string = UrlDecode(matches[routeHandleMatch.parameters_name.IndexOf(handlerParameterInfo.Name) + 1].Value);
+                    object? value_type = ChangeType(value_string, handlerParameterInfo.ParameterType);
                     parameters.Add(value_type);
                 }
                 // if a parameterInfo name is found in query in request.url
                 else if (routeHandleMatch.Attribute.QueryStringMappingEnabled
                          && qs[handlerParameterInfo.Name] != null
                 ) {
-                    var value_string = UrlDecode(qs[handlerParameterInfo.Name]);
-                    var value_type = ChangeType(value_string, handlerParameterInfo.ParameterType);
+                    string value_string = UrlDecode(qs[handlerParameterInfo.Name]);
+                    object? value_type = ChangeType(value_string, handlerParameterInfo.ParameterType);
                     parameters.Add(value_type);
                 }
                 else {
                     // default value defined in parameterInfo Handler
-                    var value = routeHandleMatch.Handler.Parameters[handlerParameterInfo];
+                    object value = routeHandleMatch.Handler.Parameters[handlerParameterInfo];
                     parameters.Add(value);
                 }
 
@@ -213,7 +214,7 @@ namespace SimpleW {
                 return DateOnly.Parse(value_string);
             }
             // use the global Convert
-            var value_type = (value_string == null) ? null : Convert.ChangeType(value_string, underlying_type);
+            object? value_type = (value_string == null) ? null : Convert.ChangeType(value_string, underlying_type);
             return value_type;
         }
 
@@ -224,7 +225,7 @@ namespace SimpleW {
         /// <param name="url">The string Url</param>
         /// <returns></returns>
         public static NameValueCollection ParseQueryString(string url) {
-            var qs = new NameValueCollection();
+            NameValueCollection qs = new();
 
             if (string.IsNullOrWhiteSpace(url)) {
                 return qs;
@@ -237,8 +238,8 @@ namespace SimpleW {
                 }
             }
 
-            var pairs = url.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (var pair in pairs) {
+            string[] pairs = url.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (string pair in pairs) {
                 int index2 = pair.IndexOf('=');
                 if (index2 > 0) {
                     qs.Add(pair[..index2], pair[(index2 + 1)..]);

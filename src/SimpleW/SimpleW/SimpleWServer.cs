@@ -42,11 +42,11 @@ namespace SimpleW {
         /// </summary>
         /// <param name="error"></param>
         protected override void OnError(SocketError error) {
-            var activity = source.StartActivity();
+            Activity? activity = source.StartActivity();
             if (activity != null) {
                 activity.DisplayName = "Server OnError()";
                 activity.SetStatus(ActivityStatusCode.Error);
-                var tagsCollection = new ActivityTagsCollection {
+                ActivityTagsCollection tagsCollection = new ActivityTagsCollection {
                     { "exception.type", nameof(SocketError) },
                 };
                 activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
@@ -93,7 +93,7 @@ namespace SimpleW {
         /// <param name="path">path (default is "/")</param>
         /// <param name="excludes">List of Controller to not auto load</param>
         public void AddDynamicContent(string path = "/", IEnumerable<Type> excludes = null) {
-            foreach (var controller in ControllerMethodExecutor.Controllers(excludes)) {
+            foreach (Type controller in ControllerMethodExecutor.Controllers(excludes)) {
                 AddDynamicContent(controller, path);
             }
         }
@@ -120,33 +120,34 @@ namespace SimpleW {
                 throw new ArgumentException($"Controller type must be a non-abstract subclass of {nameof(Controller)}.", nameof(controllerType));
             }
 
-            var constructor = controllerType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 0)
-                              ?? throw new ArgumentException("Controller type must have a public parameterless constructor.", nameof(controllerType));
+            ConstructorInfo constructor = controllerType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 0)
+                                          ??
+                                          throw new ArgumentException("Controller type must have a public parameterless constructor.", nameof(controllerType));
 
             path += controllerType.GetCustomAttributes()
-                                    .OfType<RouteAttribute>()
-                                    .Select(r => r.Path).DefaultIfEmpty("").FirstOrDefault();
+                                  .OfType<RouteAttribute>()
+                                  .Select(r => r.Path).DefaultIfEmpty("").FirstOrDefault();
 
-            var methods = controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                                        .Where(m => !m.ContainsGenericParameters);
+            IEnumerable<MethodInfo> methods = controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                                                            .Where(m => !m.ContainsGenericParameters);
 
             // all method with route attribute
             foreach (MethodInfo method in methods) {
-                var attributes = method.GetCustomAttributes()
-                                       .OfType<RouteAttribute>()
-                                       .ToArray();
+                RouteAttribute[] attributes = method.GetCustomAttributes()
+                                                    .OfType<RouteAttribute>()
+                                                    .ToArray();
 
                 if (attributes.Length < 1) {
                     continue;
                 }
 
                 // a method can have one or more route attribute
-                foreach (var attribute in attributes) {
+                foreach (RouteAttribute attribute in attributes) {
                     if (attribute.Method == "WEBSOCKET") {
                         continue;
                     }
                     attribute.SetPrefix(path);
-                    var route = new Route(attribute, ControllerMethodExecutor.Create(method));
+                    Route route = new(attribute, ControllerMethodExecutor.Create(method));
                     Router.AddRoute(route);
                 }
             }
@@ -202,7 +203,7 @@ namespace SimpleW {
                 _websocket_prefix_routes.Add(path);
             }
 
-            foreach (var controller in ControllerMethodExecutor.Controllers(excepts)) {
+            foreach (Type controller in ControllerMethodExecutor.Controllers(excepts)) {
                 AddWebSocketContent(controller, path);
             }
         }
@@ -233,33 +234,34 @@ namespace SimpleW {
                 throw new ArgumentException($"Controller type must be a non-abstract subclass of {nameof(Controller)}.", nameof(controllerType));
             }
 
-            var constructor = controllerType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 0)
-                              ?? throw new ArgumentException("Controller type must have a public parameterless constructor.", nameof(controllerType));
+            ConstructorInfo constructor = controllerType.GetConstructors().FirstOrDefault(c => c.GetParameters().Length == 0)
+                                          ??
+                                          throw new ArgumentException("Controller type must have a public parameterless constructor.", nameof(controllerType));
 
             path += controllerType.GetCustomAttributes()
-                                    .OfType<RouteAttribute>()
-                                    .Select(r => r.Path).DefaultIfEmpty("").FirstOrDefault();
+                                  .OfType<RouteAttribute>()
+                                  .Select(r => r.Path).DefaultIfEmpty("").FirstOrDefault();
 
-            var methods = controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                                        .Where(m => !m.ContainsGenericParameters);
+            IEnumerable<MethodInfo> methods = controllerType.GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                                                            .Where(m => !m.ContainsGenericParameters);
 
             // all method with route attribute
             foreach (MethodInfo method in methods) {
-                var attributes = method.GetCustomAttributes()
-                                       .OfType<RouteAttribute>()
-                                       .ToArray();
+                RouteAttribute[] attributes = method.GetCustomAttributes()
+                                                    .OfType<RouteAttribute>()
+                                                    .ToArray();
 
                 if (attributes.Length < 1) {
                     continue;
                 }
 
                 // a method can have one or more route attribute
-                foreach (var attribute in attributes) {
+                foreach (RouteAttribute attribute in attributes) {
                     if (attribute.Method != "WEBSOCKET") {
                         continue;
                     }
                     attribute.SetPrefix(path);
-                    var route = new Route(attribute, ControllerMethodExecutor.Create(method));
+                    Route route = new(attribute, ControllerMethodExecutor.Create(method));
                     Router.AddRoute(route);
                 }
             }
@@ -278,8 +280,8 @@ namespace SimpleW {
         /// <param name="where">filter expression</param>
         /// <returns></returns>
         public IEnumerable<IWebSocketSession> AllWebUsers(Func<KeyValuePair<Guid, IWebUser>, bool> where) {
-            foreach (var wu in WebUsers.Where(where)) {
-                var session = FindSession(wu.Key);
+            foreach (KeyValuePair<Guid, IWebUser> wu in WebUsers.Where(where)) {
+                TcpSession session = FindSession(wu.Key);
                 if (session is WsSession wsSession) {
                     yield return wsSession;
                 }

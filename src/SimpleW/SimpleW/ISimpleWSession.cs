@@ -1,5 +1,6 @@
 ﻿using NetCoreServer;
 
+
 namespace SimpleW {
 
     public interface ISimpleWSession : IWebSocketSession, IHttpSession {

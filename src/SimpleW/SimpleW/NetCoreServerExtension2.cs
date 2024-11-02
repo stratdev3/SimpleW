@@ -29,8 +29,8 @@ namespace SimpleW {
         /// <param name="options">JsonSerializerOptions for the PopulateObject() method.</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
         public static bool BodyMapNative<TModel>(this HttpRequest request, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, JsonSerializerOptions options = null) {
-            var contentType = request.Header("Content-Type");
-            var body = request.Body;
+            string contentType = request.Header("Content-Type");
+            string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
                 return false;
@@ -43,7 +43,7 @@ namespace SimpleW {
 
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
-                var kv = BodyForm(body);
+                Dictionary<string, object> kv = BodyForm(body);
                 body = JsonSerializer.Serialize(kv);
                 contentType = "application/json";
             }
@@ -63,8 +63,8 @@ namespace SimpleW {
         /// <param name="options">JsonSerializerOptions for the PopulateObject() method.</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
         public static bool BodyMapAnonymousNative<TModel>(this HttpRequest request, ref TModel model, JsonSerializerOptions options = null) {
-            var contentType = request.Header("Content-Type");
-            var body = request.Body;
+            string contentType = request.Header("Content-Type");
+            string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
                 return false;
@@ -77,7 +77,7 @@ namespace SimpleW {
 
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
-                var kv = BodyForm(body);
+                Dictionary<string, object> kv = BodyForm(body);
                 body = JsonSerializer.Serialize(kv);
                 contentType = "application/json";
             }
@@ -122,7 +122,7 @@ namespace SimpleW {
             if (options.TypeInfoResolver == null
                 && (includeProperties != null || excludeProperties != null)
             ) {
-                var modifier = new ShouldSerializePropertiesWithName(includeProperties, excludeProperties);
+                ShouldSerializePropertiesWithName modifier = new(includeProperties, excludeProperties);
                 options.TypeInfoResolver = new DefaultJsonTypeInfoResolver {
                     Modifiers = { modifier.ModifyTypeInfo }
                 };
@@ -271,7 +271,7 @@ namespace SimpleW {
             }
 
             public JsonTypeInfo? GetTypeInfo(Type type, JsonSerializerOptions options) {
-                var typeInfo = _jsonTypeInfoResolver.GetTypeInfo(type, options);
+                JsonTypeInfo typeInfo = _jsonTypeInfoResolver.GetTypeInfo(type, options);
                 if (typeInfo != null && typeInfo.Kind != JsonTypeInfoKind.None) {
                     Func<object>? defaultCreateObjectDelegate = typeInfo.CreateObject;
                     typeInfo.CreateObject = () =>
