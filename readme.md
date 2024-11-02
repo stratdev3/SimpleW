@@ -731,6 +731,10 @@ namespace Sample {
     class Program {
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // allow regular expression in route path
+            server.Router.RegExpEnabled = true;
+
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
