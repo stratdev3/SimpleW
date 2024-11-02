@@ -46,7 +46,7 @@ namespace SimpleW {
             if (activity != null) {
                 activity.DisplayName = "Server OnError()";
                 activity.SetStatus(ActivityStatusCode.Error);
-                ActivityTagsCollection tagsCollection = new ActivityTagsCollection {
+                ActivityTagsCollection tagsCollection = new() {
                     { "exception.type", nameof(SocketError) },
                 };
                 activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
@@ -387,7 +387,7 @@ namespace SimpleW {
         /// <summary>
         /// ActivitySource
         /// </summary>
-        protected static ActivitySource source = new ActivitySource("SimpleW", Assembly.GetExecutingAssembly().GetName().Version.ToString());
+        protected static ActivitySource source = new("SimpleW", Assembly.GetExecutingAssembly().GetName().Version.ToString());
 
         #endregion OpenTelemetry
 

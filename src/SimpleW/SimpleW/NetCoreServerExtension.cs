@@ -110,10 +110,7 @@ namespace SimpleW {
             if (contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) {
 
                 // create settings is null
-                if (settings == null) {
-                    settings = new JsonSerializerSettings();
-                }
-
+                settings ??= new JsonSerializerSettings();
                 // add custom jsonConverter to convert empty string to null
                 settings.Converters.Add(new EmptyStringToNullConverter());
                 // add custom jsonConverter to convert hh:mm to timeonly
@@ -184,14 +181,12 @@ namespace SimpleW {
                 string value = kvpsParts.Length >= 2 ? WebUtility.UrlDecode(kvpsParts[1]) : null;
 
                 // If the result already contains the key, then turn the value of that key into a List of strings
-                if (resultDictionary.ContainsKey(key)) {
+                if (resultDictionary.TryGetValue(key, out object getValue)) {
                     // Check if this key has a List value already
-                    if (resultDictionary[key] is not List<string> listValue) {
+                    if (getValue is not List<string> listValue) {
                         // if we don't have a list value for this key, then create one and add the existing item
-                        string existingValue = resultDictionary[key] as string;
-                        resultDictionary[key] = new List<string>();
-                        listValue = (List<string>)resultDictionary[key];
-                        listValue.Add(existingValue);
+                        listValue = new List<string>() { getValue as string };
+                        resultDictionary[key] = listValue;
                     }
 
                     // By this time, we are sure listValue exists. Simply add the item
@@ -225,9 +220,7 @@ namespace SimpleW {
             }
 
             // create settings is null
-            if (settings == null) {
-                settings = new JsonSerializerSettings();
-            }
+            settings ??= new JsonSerializerSettings();
 
             // add custom contractResolver to include or exclude properties
             if (settings.ContractResolver == null

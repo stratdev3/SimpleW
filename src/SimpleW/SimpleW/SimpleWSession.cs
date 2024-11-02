@@ -227,7 +227,7 @@ namespace SimpleW {
             Activity? activity = ActivitySource.StartActivity();
             SetDefaultActivity(activity, "Session OnError()", Id);
             activity.SetStatus(ActivityStatusCode.Error);
-            ActivityTagsCollection tagsCollection = new ActivityTagsCollection {
+            ActivityTagsCollection tagsCollection = new() {
                     { "exception.type", nameof(SocketError) },
             };
             activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
@@ -420,10 +420,7 @@ namespace SimpleW {
                 return;
             }
 
-            if (tags == null) {
-                tags = new ActivityTagsCollection();
-            }
-
+            tags ??= new ActivityTagsCollection();
             tags.Add("exception.type", ex.GetType().FullName);
             tags.Add("exception.stacktrace", ex.ToString());
 

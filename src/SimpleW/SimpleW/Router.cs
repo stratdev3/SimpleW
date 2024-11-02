@@ -21,13 +21,13 @@ namespace SimpleW {
         /// Dictionnary of all declared and handle Routes
         /// Fill when RegExpEnabled = false
         /// </summary>
-        private Dictionary<string, Route> _routes_dict = new();
+        private readonly Dictionary<string, Route> _routes_dict = new();
 
         /// <summary>
         /// List of all declared and handle Routes
         /// Fill when RegExpEnabled = true
         /// </summary>
-        private List<Route> _routes_list = new();
+        private readonly List<Route> _routes_list = new();
 
         /// <summary>
         /// Public Property List of all declared and handle Routes

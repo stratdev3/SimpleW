@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 
 
@@ -183,7 +184,7 @@ namespace SimpleW {
         /// <exception cref="ArgumentNullException"></exception>
         public TokenWebUser(IWebUser webuser) {
             if (webuser == null) {
-                throw new ArgumentNullException();
+                throw new ArgumentException($"The argument '{nameof(webuser)}' must be specified.");
             }
             Identity = webuser.Identity;
             Id = webuser.Id;

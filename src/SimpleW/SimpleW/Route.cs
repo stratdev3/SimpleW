@@ -13,7 +13,7 @@ namespace SimpleW {
     /// <summary>
     /// Route class
     /// </summary>
-    public class Route {
+    public partial class Route {
 
         #region properties
 
@@ -100,18 +100,25 @@ namespace SimpleW {
         public Regex regex { get; private set; }
 
         /// <summary>
+        /// Build time Regex to look for parameter in routePath
+        /// </summary>
+        /// <returns></returns>
+        [GeneratedRegex("{([^}]+)}")]
+        private static partial Regex ParameterRegex();
+
+        /// <summary>
         /// Parse Route
         /// </summary>
         private void ParseRoute() {
 
             // url
             int pos = RawUrl.IndexOf("?");
-            string relativePath = pos > 0 ? RawUrl.Substring(0, pos) : RawUrl;
+            string relativePath = pos > 0 ? RawUrl[..pos] : RawUrl;
 
             // parse RouteAttribute looking for "{parameter}"
-            foreach (string parameter in new Regex(@"{([^}]+)}").Matches(relativePath)
-                                                                .Where(m => m.Success)
-                                                                .Select(m => m.Groups[1].Value)
+            foreach (string parameter in ParameterRegex().Matches(relativePath)
+                                                         .Where(m => m.Success)
+                                                         .Select(m => m.Groups[1].Value)
             ) {
                 // check for uniqueness
                 if (!parameters_name.Contains(parameter)) {

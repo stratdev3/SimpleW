@@ -83,12 +83,8 @@ namespace SimpleW {
             }
 
             if (contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) {
-
                 // create options is null
-                if (options == null) {
-                    options = new JsonSerializerOptions();
-                }
-
+                options ??= new JsonSerializerOptions();
                 // deserialize AnonymousType
                 model = JsonSerializerExtension.DeserializeAnonymousType(body, model);
             }
@@ -114,9 +110,7 @@ namespace SimpleW {
             }
 
             // create options is null
-            if (options == null) {
-                options = new JsonSerializerOptions();
-            }
+            options ??= new JsonSerializerOptions();
 
             // add custom contractResolver to include or exclude properties
             if (options.TypeInfoResolver == null
