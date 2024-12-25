@@ -1,188 +1,290 @@
-# Http Multipart Parser
+# Microsoft.IO.RecyclableMemoryStream [![NuGet Version](https://img.shields.io/nuget/v/Microsoft.IO.RecyclableMemoryStream.svg?style=flat)](https://www.nuget.org/packages/Microsoft.IO.RecyclableMemoryStream/) 
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://httpmultipartparser.mit-license.org/)
-![Sourcelink](https://img.shields.io/badge/sourcelink-enabled-brightgreen.svg)
-[![Build status](https://ci.appveyor.com/api/projects/status/t547jmcf10s53h2u?svg=true)](https://ci.appveyor.com/project/Jericho/http-multipart-data-parser)
-[![tests](https://img.shields.io/appveyor/tests/jericho/http-multipart-data-parser)](https://ci.appveyor.com/project/jericho/http-multipart-data-parser/build/tests)
-[![Coverage Status](https://coveralls.io/repos/github/Http-Multipart-Data-Parser/Http-Multipart-Data-Parser/badge.svg?branch=master)](https://coveralls.io/github/Http-Multipart-Data-Parser/Http-Multipart-Data-Parser?branch=master)
-[![CodeFactor](https://www.codefactor.io/repository/github/http-multipart-data-parser/http-multipart-data-parser/badge)](https://www.codefactor.io/repository/github/http-multipart-data-parser/http-multipart-data-parser)
+A library to provide pooling for .NET `MemoryStream` objects to improve application performance, especially in the area of garbage collection.
 
-| Release Notes| NuGet (stable) | MyGet (prerelease) |
-|--------------|----------------|--------------------|
-| [![GitHub release](https://img.shields.io/github/release/http-multipart-data-parser/http-multipart-data-parser.svg)](https://github.com/http-multipart-data-parser/http-multipart-data-parser/releases) | [![Nuget](https://img.shields.io/nuget/v/HttpMultipartParser.svg)](https://www.nuget.org/packages/HttpMultipartParser/) | [![MyGet Pre Release](https://img.shields.io/myget/jericho/vpre/HttpMultipartParser.svg)](http://myget.org/gallery/jericho) |
+## Get Started
 
-## About
-
-The Http Multipart Parser does it exactly what it claims on the tin: parses multipart/form-data. This particular
-parser is well suited to parsing large data from streams as it doesn't attempt to read the entire stream at once and
-procudes a set of streams for file data.
-
-## Installation
-
-The easiest way to include HttpMultipartParser in your project is by adding the nuget package to your project:
+Install the latest version from [NuGet](https://www.nuget.org/packages/Microsoft.IO.RecyclableMemoryStream/)
 
 ```
-PM> Install-Package HttpMultipartParser
+Install-Package Microsoft.IO.RecyclableMemoryStream
 ```
 
-## .NET framework suport
+## Purpose
 
-- The parser was built for and tested on .NET 4.8, .NET standard 2.1, .NET 5.0 and .NET 6.0.
-- Version 5.1.0 was the last version that supported .NET 4.6.1, NET 4.7.2 and .NET standard 2.0.
-- Version 2.2.4 was the last version that supported older .NET platforms such as .NET 4.5 and .NET standard 1.3.
+`Microsoft.IO.RecyclableMemoryStream` is a `MemoryStream` replacement that offers superior behavior for performance-critical systems. In particular it is optimized to do the following:
+
+* Eliminate Large Object Heap allocations by using pooled buffers
+* Incur far fewer gen 2 GCs, and spend far less time paused due to GC
+* Avoid memory leaks by having a bounded pool size
+* Avoid memory fragmentation
+* Allow for multiple ways to read and write data that will avoid extraneous allocations
+* Provide excellent debuggability and logging
+* Provide metrics for performance tracking
+
+## Features
+
+- The semantics are close to the original `System.IO.MemoryStream` implementation, and is intended to be a drop-in replacement as much as possible.
+- Rather than pooling the streams themselves, the underlying buffers are pooled. This allows you to use the simple `Dispose` pattern to release the buffers back to the pool, as well as detect invalid usage patterns (such as reusing a stream after it’s been disposed).
+- `RecyclableMemoryStreamManager` is thread-safe (streams themselves are inherently NOT thread safe).
+- Implementation of `IBufferWrite<byte>`.
+- Support for enormous streams through abstracted buffer chaining.
+- Extensive support for newer memory-related types like `Span<byte>`, `ReadOnlySpan<byte>`, `ReadOnlySequence<byte>`, and `Memory<byte>`.
+- Each stream can be tagged with an identifying string that is used in logging - helpful when finding bugs and memory leaks relating to incorrect pool use.
+- Debug features like recording the call stack of the stream allocation to track down pool leaks
+- Maximum free pool size to handle spikes in usage without using too much memory.
+- Flexible and adjustable limits to the pooling algorithm.
+- Metrics tracking and events so that you can see the impact on the system.
+
+## Build Targets
+
+At least MSBuild 16.8 is required to build the code. You get this with Visual Studio 2019.
+
+Supported build targets in v2.0 are: net462, netstandard2.0, netstandard2.1, and netcoreapp2.1 (net40, net45, net46 and netstandard1.4 were deprecated). Starting with v2.1, net5.0 target has been added.
+
+## Testing
+
+A minimum of .NET 5.0 is required for executing the unit tests. Requirements:
+- NUnit test adapter (VS Extension)
+- Be sure to set the default processor architecture for tests to x64 (or the giant allocation test will fail)
+
+## Benchmark tests
+
+The results are available [here](https://microsoft.github.io/Microsoft.IO.RecyclableMemoryStream/dev/bench/)
+
+## Change Log
+
+Read the change log [here](https://github.com/microsoft/Microsoft.IO.RecyclableMemoryStream/blob/master/CHANGES.md).
+
+## How It Works
+
+`RecyclableMemoryStream` improves GC performance by ensuring that the larger buffers used for the streams are put into the gen 2 heap and stay there forever. This should cause full collections to happen less frequently. If you pick buffer sizes above 85,000 bytes, then you will ensure these are placed on the large object heap, which is touched even less frequently by the garbage collector.
+
+The `RecyclableMemoryStreamManager` class maintains two separate pools of objects:
+
+1. **Small Pool** - Holds small buffers (of configurable size). Used by default for all normal read/write operations. Multiple small buffers are chained together in the `RecyclableMemoryStream` class and abstracted into a single stream.
+2. **Large Pool** - Holds large buffers, which are only used when you must have a single, contiguous buffer, such as when you plan to call `GetBuffer()`. It is possible to create streams larger than is possible to be represented by a single buffer because of .NET's array size limits.
+
+A `RecyclableMemoryStream` starts out by using a small buffer, chaining additional ones as the stream capacity grows. Should you ever call `GetBuffer()` and the length is greater than a single small buffer's capacity, then the small buffers are converted to a single large buffer. You can also request a stream with an initial capacity; if that capacity is larger than the small pool block size, multiple blocks will be chained unless you call an overload with `asContiguousBuffer` set to true, in which case a single large buffer will be assigned from the start. If you request a capacity larger than the maximum poolable size, you will still get a stream back, but the buffers will not be pooled. (Note: This is not referring to the maximum array size. You can limit the poolable buffer sizes in `RecyclableMemoryStreamManager`)
+
+There are two versions of the large pool:
+
+* **Linear** (default) - You specify a multiple and a maximum size, and an array of buffers, from size (1 * multiple), (2 * multiple), (3 * multiple), ... maximum is created. For example, if you specify a multiple of 1 MB and maximum size of 8 MB, then you will have an array of length 8. The first slot will contain 1 MB buffers, the second slot 2 MB buffers, and so on.
+* **Exponential** - Instead of linearly growing, the buffers double in size for each slot. For example, if you specify a multiple of 256KB, and a maximum size of 8 MB, you will have an array of length 6, the slots containing buffers of size 256KB, 512KB, 1MB, 2MB, 4MB, and 8MB.
+
+![Pool Image Comparison](https://raw.githubusercontent.com/microsoft/Microsoft.IO.RecyclableMemoryStream/88e0deeabc11d7da4038329de5093c5a8d4c73be/poolcomparison.png)
+
+Which one should you use? That depends on your usage pattern. If you have an unpredictable large buffer size, perhaps the linear one will be more suitable. If you know that a longer stream length is unlikely, but you may have a lot of streams in the smaller size, picking the exponential version could lead to less overall memory usage (which was the reason this form was added).
+
+Buffers are created, on demand, the first time they are requested and nothing suitable already exists in the pool. After use, these buffers will be returned to the pool through the `RecyclableMemoryStream`'s `Dispose` method. When that return happens, the `RecyclableMemoryStreamManager` will use the properties `MaximumFreeSmallPoolBytes` and `MaximumFreeLargePoolBytes` to determine whether to put those buffers back in the pool, or let them go (and thus be garbage collected). It is through these properties that you determine how large your pool can grow. If you set these to 0, you can have unbounded pool growth, which is essentially indistinguishable from a memory leak. For every application, you must determine through analysis and experimentation the appropriate balance between pool size and garbage collection.
+
+If you forget to call a stream's `Dispose` method, this could cause a memory leak. To help you prevent this, each stream has a finalizer that will be called by the CLR once there are no more references to the stream. This finalizer will raise an event or log a message about the leaked stream.
+
+Note that for performance reasons, the buffers are not ever pre-initialized or zeroed-out. It is your responsibility to ensure their contents are valid and safe to use buffer recycling.
+If you want to avoid accidental data leakage, you can set `ZeroOutBuffer` to true. This will zero out the buffers on allocation and before returning them to the pool. Be aware of the performance implications.
 
 ## Usage
 
-### Non-Streaming (Simple, don't use on very large files)
-1. Parse the stream containing the multipart/form-data by invoking `MultipartFormDataParser.Parse` (or it's asynchronous counterpart `MultipartFormDataParser.ParseAsync`).
-2. Access the data through the parser.
-
-### Streaming (Handles large files)
-1. Create a new StreamingMultipartFormDataParser with the stream containing the multipart/form-data
-2. Set up the ParameterHandler and FileHandler delegates
-3. Call `parser.Run()` (or it's asynchronous counterpart `parser.RunAsync()`)
-4. The delegates will be called as data streams in.
-
-## Examples
-
-### Single file
-
-```
-// stream:
------------------------------41952539122868
-Content-Disposition: form-data; name="username"
-
-example
------------------------------41952539122868
-Content-Disposition: form-data; name="email"
-
-example@data.com
------------------------------41952539122868
-Content-Disposition: form-data; name="files[]"; filename="photo1.jpg"
-Content-Type: image/jpeg
-
-ExampleBinaryData012031203
------------------------------41952539122868--
-```
+You can jump right in with no fuss by just doing a simple replacement of `MemoryStream` with something like this:
 
 ```csharp
-// ===== Simple Parsing ====
-// You can parse synchronously:
-var parser = MultipartFormDataParser.Parse(stream);
-
-// Or you can parse asynchronously:
-var parser = await MultipartFormDataParser.ParseAsync(stream).ConfigureAwait(false);
-
-// From this point the data is parsed, we can retrieve the
-// form data using the GetParameterValue method.
-var username = parser.GetParameterValue("username");
-var email = parser.GetParameterValue("email")
-
-// Files are stored in a list:
-var file = parser.Files.First();
-string filename = file.FileName;
-Stream data = file.Data;
-
-// ==== Advanced Parsing ====
-var parser = new StreamingMultipartFormDataParser(stream);
-parser.ParameterHandler += parameter => DoSomethingWithParameter(parameter);
-parser.FileHandler += (name, fileName, type, disposition, buffer, bytes, partNumber, additionalProperties) =>
+class Program
 {
-    // Write the part of the file we've received to a file stream. (Or do something else)
-    filestream.Write(buffer, 0, bytes);
+    private static readonly RecyclableMemoryStreamManager manager = new RecyclableMemoryStreamManager();
+
+    static void Main(string[] args)
+    {
+        var sourceBuffer = new byte[] { 0, 1, 2, 3, 4, 5, 6, 7 };
+        
+        using (var stream = manager.GetStream())
+        {
+            stream.Write(sourceBuffer, 0, sourceBuffer.Length);
+        }
+    }
 }
-
-// You can parse synchronously:
-parser.Run();
-
-// Or you can parse asynchronously:
-await parser.RunAsync().ConfigureAwait(false);
 ```
+| **_IMPORTANT_** | Note that `RecyclableMemoryStreamManager` should be declared once and it will live for the entire process lifetime. It is perfectly fine to use multiple pools if you desire, especially if you want to configure them differently.|
+|-|:-|
 
-### Multiple Parameters
+To facilitate easier debugging, you can optionally provide a string `tag`, which serves as a human-readable identifier for the stream. This can be something like “ClassName.MethodName”, but it can be whatever you want. Each stream also has a GUID to provide absolute identity if needed, but the `tag` is usually sufficient.
 
-```
-// stream:
------------------------------41952539122868
-Content-Disposition: form-data; name="checkbox"
-
-likes_cake
------------------------------41952539122868
-Content-Disposition: form-data; name="checkbox"
-
-likes_cookies
------------------------------41952539122868--
-```
 ```csharp
-// ===== Simple Parsing ====
-// You can parse synchronously:
-var parser = MultipartFormDataParser.Parse(stream);
-
-// Or you can parse asynchronously:
-var parser = await MultipartFormDataParser.ParseAsync(stream).ConfigureAwait(false);
-
-// From this point the data is parsed, we can retrieve the
-// form data from the GetParameterValues method
-var checkboxResponses = parser.GetParameterValues("checkbox");
-foreach(var parameter in checkboxResponses)
+using (var stream = manager.GetStream("Program.Main"))
 {
-    Console.WriteLine("Parameter {0} is {1}", parameter.Name, parameter.Data)
+    stream.Write(sourceBuffer, 0, sourceBuffer.Length);
 }
 ```
 
-### Multiple Files
+You can also provide an existing buffer. It’s important to note that the data from this buffer will be *copied* into a buffer owned by the pool:
 
-```
-// stream:
------------------------------41111539122868
-Content-Disposition: form-data; name="files[]"; filename="photo1.jpg"
-Content-Type: image/jpeg
-
-MoreBinaryData
------------------------------41111539122868
-Content-Disposition: form-data; name="files[]"; filename="photo2.jpg"
-Content-Type: image/jpeg
-
-ImagineLotsOfBinaryData
------------------------------41111539122868--
-```
 ```csharp
-// ===== Simple Parsing ====
-// You can parse synchronously:
-var parser = MultipartFormDataParser.Parse(stream);
+var stream = manager.GetStream("Program.Main", sourceBuffer, 
+                                    0, sourceBuffer.Length);
+```
 
-// Or you can parse asynchronously:
-var parser = await MultipartFormDataParser.ParseAsync(stream).ConfigureAwait(false);
+You can also change the parameters of the pool itself:
 
-// Loop through all the files
-foreach(var file in parser.Files)
+```csharp
+var options = new RecyclableMemoryStreamManager.Options()
 {
-    Stream data = file.Data;
-
-    // Do stuff with the data.
-}
-
-// ==== Advanced Parsing ====
-var parser = new StreamingMultipartFormDataParser(stream);
-parser.ParameterHandler += parameter => DoSomethingWithParameter(parameter);
-parser.FileHandler += (name, fileName, type, disposition, buffer, bytes, partNumber, additionalProperties) =>
-{
-    // Write the part of the file we've received to a file stream. (Or do something else)
-    // Assume that filesreamsByName is a Dictionary<string, FileStream> of all the files
-    // we are writing.
-    filestreamsByName[name].Write(buffer, 0, bytes);
-};
-parser.StreamClosedHandler += () 
-{
-    // Do things when my input stream is closed
+    BlockSize = 1024,
+    LargeBufferMultiple = 1024 * 1024,
+    MaximumBufferSize = 16 * 1024 * 1024,
+    GenerateCallStacks = true,
+    AggressiveBufferReturn = true,
+    MaximumLargePoolFreeBytes = 16 * 1024 * 1024 * 4,
+    MaximumSmallPoolFreeBytes = 100 * 1024,
 };
 
-// You can parse synchronously:
-parser.Run();
-
-// Or you can parse asynchronously:
-await parser.RunAsync().ConfigureAwait(false);
+var manager = new RecyclableMemoryStreamManager(options);
 ```
-## Licensing
 
-This project is licensed under MIT.
+You should usually set at least `BlockSize`, `LargeBufferMultiple`, `MaximumBufferSize`, `MaximumLargePoolFreeBytes`, and `MaximumSmallPoolFreeBytes` because their appropriate values are highly dependent on the application.
+
+### Usage Guidelines
+
+While this library strives to be very general and not impose too many restraints on how you use it, its purpose is to reduce the cost of garbage collections incurred by frequent large allocations. Thus, there are some general guidelines for usage that may be useful to you:
+
+1. Set the `BlockSize`, `LargeBufferMultiple`, `MaximumBufferSize`, `MaximumLargePoolFreeBytes` and `MaximumSmallPoolFreeBytes` properties to reasonable values for your application and resource requirements. **Important!**: If you do not set `MaximumFreeLargePoolBytes` and `MaximumFreeSmallPoolBytes` there is the possibility for unbounded memory growth!
+2. Always dispose of each stream exactly once.
+3. Most applications should not call `ToArray` and should avoid calling `GetBuffer` if possible. Instead, use `GetReadOnlySequence` for reading and the `IBufferWriter` methods `GetSpan`\\`GetMemory` with `Advance` for writing. There are also miscellaneous `CopyTo` and `WriteTo` methods that may be convenient. The point is to avoid creating unnecessary GC pressure where possible.
+4. Experiment to find the appropriate settings for your scenario.
+
+A working knowledge of the garbage collector is a very good idea before you try to optimize your scenario with this library. An article such as [Garbage Collection](https://docs.microsoft.com/dotnet/standard/garbage-collection/), or a book like *Writing High-Performance .NET Code* will help you understand the design principles of this library.
+
+When configuring the options, consider questions such as these:
+
+* What is the distribution of stream lengths that I expect?
+* How many streams will be in use at one time?
+* Is `GetBuffer` called a lot? How much use of large pool buffers will I need?
+* How resilient to spikes in activity do I need to be? i.e., How many free bytes should I keep around in case?
+* What are my physical memory limitations on the machines where this will be used?
+
+### IBufferWriter\<byte\>: GetMemory, GetSpan, and Advance ###
+
+`RecyclableMemoryStream` implements [IBufferWriter<byte>](https://docs.microsoft.com/en-us/dotnet/api/system.buffers.ibufferwriter-1?view=netstandard-2.1) so it can be used for zero-copy encoding and formatting. You can also directly modify the stream contents using `GetSpan`\\`GetMemory` with `Advance`. For instance, writing a `BigInteger` to a stream:
+
+```csharp
+var bigInt = BigInteger.Parse("123456789013374299100987654321");
+
+using (var stream = manager.GetStream())
+{
+    Span<byte> buffer = stream.GetSpan(bigInt.GetByteCount());
+    bigInt.TryWriteBytes(buffer, out int bytesWritten);
+    stream.Advance(bytesWritten);
+}
+```
+
+### GetReadOnlySequence ###
+
+`GetReadOnlySequence` returns a [ReadOnlySequence<byte>](https://docs.microsoft.com/en-us/dotnet/api/system.buffers.readonlysequence-1?view=netstandard-2.1) that can be used for zero-copy stream processing. For example, hashing the contents of a stream: 
+
+```csharp
+using (var stream = manager.GetStream())
+using (var sha256Hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256))
+{
+    foreach (var memory in stream.GetReadOnlySequence())
+    {
+        sha256Hasher.AppendData(memory.Span);
+    }
+    
+    sha256Hasher.GetHashAndReset();
+}
+```
+
+### GetBuffer and ToArray ###
+
+`RecyclableMemoryStream` is designed to operate primarily on chained small pool blocks. To access these blocks use `GetReadOnlySequence` for reading and `GetSpan`\\`GetMemory` with `Advance` for writing. However, if you still want a contiguous buffer for the whole stream there are two APIs which `RecyclableMemoryStream` overrides from its parent `MemoryStream` class:
+
+* `GetBuffer` - If possible, a reference to the single block will be returned to the caller. If multiple blocks are in use, they will be converted into a single large pool buffer and the data copied into it. In all cases, the caller must use the `Length` property to determine how much usable data is actually in the returned buffer. If the stream length is longer than the maximum allowable stream size, a single buffer will still be returned, but it will not be pooled. If no possible contiguous buffer can be returned due to .NET array-size limitations, then an `OutOfMemoryException` will be thrown.
+* `ToArray` - It looks similar to `GetBuffer` on the surface, but is actually significantly different. In `ToArray` the data is *always* copied into a new array that is exactly the right length for the full contents of the stream. This new buffer is never pooled. Users of this library should consider any call to `ToArray` to be a bug, as it wipes out many of the benefits of `RecyclableMemoryStream` completely. However, the method is included for completeness, especially if you are calling other APIs that only take a `byte` array with no length parameter. An event is logged on all `ToArray` calls.
+
+You can optionally configure the `RecyclableStreamManager.ThrowExceptionOnToArray` property to disallow calls to `RecyclableMemoryStream.ToArray`. If this value is set to true, then any calls to `ToArray` will result in a `NotSupportedException`.
+
+## Metrics and Hooks
+
+### ETW Events ###
+
+`RecyclableMemoryStream` has an `EventSource` provider that produces a number of events for tracking behavior and performance. You can use events to debug leaks or subtle problems with pooled stream usage.
+
+| Name | Level | Description |
+| -----|-------|-------------|
+| MemoryStreamCreated | Verbose | Logged every time a stream object is allocated. Fields: `guid`, `tag`, `requestedSize`, `actualSize`. |
+| MemoryStreamDisposed | Verbose | Logged every time a stream object is disposed. Fields: `guid`, `tag`, `allocationStack`, `disposeStack`. |
+| MemoryStreamDoubleDispose | Critical | Logged if a stream is disposed more than once. This indicates a logic error by the user of the stream. Dispose should happen exactly once per stream to avoid resource usage bugs. Fields: `guid`, `tag`, `allocationStack`, `disposeStack1`, `disposeStack2`. |
+| MemoryStreamFinalized | Error | Logged if a stream has gone out of scope without being disposed. This indicates a resource leak. Fields: `guid`, `tag`, `allocationStack`.|
+| MemoryStreamToArray | Verbose | Logged whenever `ToArray` is called. This indicates a potential problem, as calling `ToArray` goes against the concepts of good memory practice which `RecyclableMemoryStream` is trying to solve. Fields: `guid`, `tag`, `stack`, `size`.|
+| MemoryStreamManagerInitialized| Informational | Logged when the `RecyclableMemoryStreamManager` is initialized. Fields: `blockSize`, `largeBufferMultiple`, `maximumBufferSize`.|
+| MemoryStreamNewBlockCreated | Verbose | Logged whenever a block for the small pool is created. Fields: `smallPoolInUseBytes`.|
+| MemoryStreamNewLargeBufferCreated | Verbose | Logged whenever a large buffer is allocated. Fields: `requiredSize`, `largePoolInUseBytes`.|
+| MemoryStreamNonPooledLargeBufferCreated | Verbose | Logged whenever a buffer is requested that is larger than the maximum pooled size. The buffer is still created and returned to the user, but it can not be re-pooled. Fields: `guid`, `tag`, `requiredSize`, `allocationStack`. |
+| MemoryStreamDiscardBuffer | Warning | Logged whenever a buffer is discarded rather than put back in the pool. Fields: `guid`, `tag`, `bufferType` (`Small`, `Large`), `reason` (`TooLarge`, `EnoughFree`). |
+| MemoryStreamOverCapacity | Error | Logged whenever an attempt is made to set the capacity of the stream beyond the limits of `RecyclableMemoryStreamManager.MaximumStreamCapacity`, if such a limit is set. Fields: `guid`, `tag`, `requestedCapacity`, `maxCapacity`, `allocationStack`.|
+
+### Event Hooks ###
+
+In addition to the logged ETW events, there are a number of .NET event hooks on `RecyclableMemoryStreamManager` that you can use as triggers for your own custom actions:
+
+| Name | Description |
+|---------|------------|
+| `BlockCreated` | A new small pool block has been allocated. |
+| `BufferDiscarded` | A buffer has been refused re-entry to the pool and given over to the garbage collector. |
+| `LargeBufferCreated` | A large buffer has been allocated. |
+| `StreamCreated` | A new stream has been created. |
+| `StreamDisposed` | A stream has been disposed. |
+| `StreamDoubleDisposed` | A stream has been disposed twice, indicating an error. |
+| `StreamFinalized` | A stream has been finalized, which means it was never disposed before it went out of scope. |
+| `StreamLength` | Reports the stream's length upon disposal. Can allow you to track stream metrics. |
+| `StreamConvertedToArray` | Someone called `ToArray` on a stream. |
+| `StreamOverCapacity` | An attempt was made to expand beyond the maximum capacity allowed by the pool manager. |
+| `UsageReport` | Provides stats on pool usage for metrics tracking. |
+
+## Debugging Problems
+
+Once you start introducing re-usable resources like the pooled buffers in `RecyclableMemoryStream`, you are taking some of the duties of the CLR away from it and reserving them for yourself. This can be error-prone. See the Usage section above for some guidelines on making your usage of this library successful.
+
+There are a number of features that will help you debug usage of these streams.
+
+### Stream Identification ###
+
+Each stream is assigned a unique GUID and, optionally, a `tag`.
+
+The GUID is unique for each stream object and serves to identify that stream throughout its lifetime.
+
+A `tag` is an optional, arbitrary string assigned by the caller when a stream is requested. This can be a class name, function name, or some other meaningful string that can help you identify the source of the stream's usage. Note that multiple streams will contain the same tag. They identify where in your code the stream originated; they are not unique stream identifiers.
+
+### Callstack Recording ###
+
+If you set the `GenerateCallStacks` property on `RecyclableMemoryStreamManager` to true, then major operations on the stream, such as allocation and disposal, will record the call stack of those method calls. These will be reported in ETW events in the event of detected programming errors such as double-dispose or finalization. 
+
+Turning this feature on causes a very significant negative performance impact, so should only be done when actively investigating a problem.
+
+### Double-Dispose Protection ###
+
+If `Dispose` is called twice on the same stream, an event is logged with the relevant stream's information. If `GenerateCallStacks` is turned on, this will include the call stacks for allocation and both disposals.
+
+### Non-Dispose Detection ###
+
+If `Dispose` is never called for a stream, the finalizer will eventually be called by the CLR, and an event will be logged with relevant stream information, including the allocation stack, if enabled. Buffers for finalized streams are lost to the pool, and this should be considered a bug.
+
+### Concurrency
+
+Concurrent use of `RecyclableMemoryStream` objects is not supported under any circumstances. However, `RecyclableMemoryStreamManager` is thread-safe and can be used to retrieve streams in a multi-threading scenario.
+
+### ETW Events ###
+
+Use an ETW event monitor such as [PerfView](https://www.microsoft.com/download/details.aspx?id=28567) to collect and analyze ETW events.
+
+Many of these events contain helpful clues about the stream in question, including its tag, guid, and stacks (if enabled).
+
+## Reference
+
+Read the API documentation [here](https://github.com/microsoft/Microsoft.IO.RecyclableMemoryStream/blob/master/docs/Microsoft.IO.RecyclableMemoryStream.md).
+
+## License
+
+This library is released under the [MIT license](https://github.com/microsoft/Microsoft.IO.RecyclableMemoryStream/blob/master/LICENSE).
+
+## Support
+
+Check the support policy [here](SUPPORT.md)
