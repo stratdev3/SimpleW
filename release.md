@@ -18,6 +18,16 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
+## v12.0.1 / _(2024-12-26)_
+Maintenance
+
+### feature
+
+- backport fix from `Microsoft.IO.RecyclableMemoryStream` v3.0.1 to v2.3.
+- backport fix into `HttpMultipartDataParser` v8.4.0
+
+
+
 ## v12.0.0 / _(2024-05-02)_
 Maintenance
 
@@ -32,7 +42,7 @@ Maintenance
 
 ### breakingChange
 
-- the `getWebUserCallback` delegate set with `SimpleW.SetToken()`  is new call by `Controller.JwtToWebUser()` to redress `Controller.webuser` on each request.
+- the `getWebUserCallback` delegate set with `SimpleW.SetToken()` is new call by `Controller.JwtToWebUser()` to redress `Controller.webuser` on each request.
 
 
 
