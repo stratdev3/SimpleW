@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <StartupObject />
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Christophe CHATEAU</Authors>
     <PackageTags>http websocket server webserver restapi mvc</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Description>SimpleW is a Simple Webserver library in NET7 (windows/linux/macos).
+    <Description>SimpleW is a Simple Webserver library in NET8 (windows/linux/macos).
 It provides a cross-plateform framework for building web applications on top of the great NetCoreServer.</Description>
     <AssemblyVersion>12.0.1</AssemblyVersion>
     <FileVersion>12.0.1</FileVersion>
