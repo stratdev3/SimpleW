@@ -32,12 +32,12 @@ namespace LitJWT
             return *(uint*)p;
         }
 
-        struct pair
+        struct Pair
         {
             public ulong first;
             public ulong second;
 
-            public pair(ulong first, ulong second)
+            public Pair(ulong first, ulong second)
             {
                 this.first = first;
                 this.second = second;
@@ -45,9 +45,9 @@ namespace LitJWT
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static pair make_pair(ulong first, ulong second)
+        static Pair make_pair(ulong first, ulong second)
         {
-            return new pair(first, second);
+            return new Pair(first, second);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -235,7 +235,7 @@ namespace LitJWT
         // Return a 16-byte hash for 48 bytes.  Quick and dirty.
         // Callers do best to use "random-looking" values for a and b.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static unsafe pair WeakHashLen32WithSeeds(ulong w, ulong x, ulong y, ulong z, ulong a, ulong b)
+        static unsafe Pair WeakHashLen32WithSeeds(ulong w, ulong x, ulong y, ulong z, ulong a, ulong b)
         {
             unchecked
             {
@@ -252,7 +252,7 @@ namespace LitJWT
         // farmhashna.cc
         // Return a 16-byte hash for s[0] ... s[31], a, and b.  Quick and dirty.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static unsafe pair WeakHashLen32WithSeeds(byte* s, ulong a, ulong b)
+        static unsafe Pair WeakHashLen32WithSeeds(byte* s, ulong a, ulong b)
         {
             return WeakHashLen32WithSeeds(Fetch64(s),
                                           Fetch64(s + 8),
