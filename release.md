@@ -8,7 +8,7 @@ Notes :
 - if you find bug/optimization, feel free to send patch.
 
 
-## Roadmap / _(2024-??-??)_
+## Roadmap / _(2025-??-??)_
 
 - rewrite documentation with vuepress, docusaurus or another alternative
 - automatic `Swagger API JSON` generation
@@ -16,6 +16,19 @@ Notes :
 - support `async Task` in controller method return
 - sync `LiteJWT` library with upstream
 - sync `HttpMultipartDataParser` library with upstream
+
+
+## v13.0.0 / _(2025-02-14)_
+Maintenance
+
+### fix
+
+- fix: possible header mismatch when upgrading to websocket connection (#27)
+
+### feature
+
+- chore: bump to NET8 (#26)
+
 
 
 ## v12.0.1 / _(2024-12-26)_
@@ -95,7 +108,7 @@ Maintenance
 - rename `SimpleW.SetTokenWebUserCallback()` method to `SimpleW.SetToken()` and reorder parameters (#3).
 - rename `Controller.OnBeforeHandler()` method to `Controller.OnBeforeMethod()`.
 
-### bug
+### fix
 
 - fix(AutoIndex): do not show ".." in root path (#10).
 
@@ -136,7 +149,7 @@ Maintenance
 ## v11.3.1 / _(2023-12-23)_
 Maintenance
 
-### bug
+### fix
 
 - fix wrong label and status for `OnWsDisconnected` logging
 
@@ -145,7 +158,7 @@ Maintenance
 ## v11.3.1 / _(2023-12-23)_
 Maintenance
 
-### bug
+### fix
 
 - fix wrong label and status for `OnWsDisconnected` logging
 
@@ -197,7 +210,7 @@ Maintenance
 ## v11.0.0 / _(2023-11-01)_
 New Major Version
 
-### bug
+### fix
 
 - fix huge performances degradation due to old `Trace.Trace*()` methods
 
@@ -215,7 +228,7 @@ New Major Version
 ## v9.0.1 / _(2023-10-22)_
 Maintenance
 
-### bug
+### fix
 
 - throw error on starting static server when containing file which size is 0
 
@@ -387,7 +400,7 @@ Maintenance
 ## v6.2.1 / _(2022-10-20)_
 Maintenance
 
-### bug
+### fix
 
 - logging error and exception
 
@@ -416,7 +429,7 @@ Maintenance
 ## v6.0.0 / _(2022-10-02)_
 New Major Version
 
-### bug
+### fix
 
 - fix null exception in `Controller.GetJwt()` when parsing request url
 
@@ -463,7 +476,7 @@ Maintenance
 ## v4.4.3 / _(2022-08-29)_
 Maintenance
 
-### bug
+### fix
 
 - replace `X-Scheme` header by `X-Forwarded-Proto`
 
@@ -496,7 +509,7 @@ Maintenance
 ## v4.4.0 / _(2022-08-24)_
 Maintenance
 
-### bug
+### fix
 
 - `shouldSerializeContractResolver()` handle nested class
 
@@ -505,7 +518,7 @@ Maintenance
 ## v4.3.2 / _(2022-08-12)_
 Maintenance
 
-### bug
+### fix
 
 - sync with upstream (NetCoreServer v6.5.0 fix websocket regression)
 
@@ -532,7 +545,7 @@ Maintenance
 ## v4.2.8 / _(2022-07-29)_
 Maintenance
 
-### bug
+### fix
 
 - sync with upstream NetCoreServer (fix deadlock in websocker/wssession)
 - sync with upstream NetCoreServer (Add HTTP cookie SameSite=Strict mode)
@@ -662,7 +675,7 @@ Maintenance
 ## v3.1.2 / _(2022-03-10)_
 Maintenance
 
-### bug
+### fix
 
 - ignore case when parsing http header authorization
 
@@ -710,7 +723,7 @@ Maintenance
 ## v2.2.1 / _(2022-02-03)_
 Maintenance
 
-### bug
+### fix
 
 - remove debug message
 
@@ -719,7 +732,7 @@ Maintenance
 ## v2.2 / _(2022-02-03)_
 Maintenance
 
-### bug
+### fix
 
 - fix NetCoreServer `FileCache.InsertFileInternal()` `ReadAllBytes()` error
 
@@ -728,7 +741,7 @@ Maintenance
 ## v2.1.1 / _(2022-01-31)_
 Maintenance
 
-### bug
+### fix
 
 - fix correct timestamp in console log
 
@@ -737,7 +750,7 @@ Maintenance
 ## v2.1 / _(2022-01-30)_
 Maintenance
 
-### bug
+### fix
 
 - fix netcoresever `FileCache`
 - fix compressTypes in `ControllerBase.SendResponseAsync()`
@@ -783,7 +796,7 @@ Maintenance
 ## v1.0.14 / _(2021-12-16)_
 Maintenance
 
-### bug
+### fix
 
 - parameter null converter in `Controller.Method()`
 
