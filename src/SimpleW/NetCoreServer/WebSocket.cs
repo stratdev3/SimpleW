@@ -410,7 +410,16 @@ namespace NetCoreServer
                             }
                         }
 
-                        payload = ((WsReceiveFrameBuffer[2] << 56) | (WsReceiveFrameBuffer[3] << 48) | (WsReceiveFrameBuffer[4] << 40) | (WsReceiveFrameBuffer[5] << 32) | (WsReceiveFrameBuffer[6] << 24) | (WsReceiveFrameBuffer[7] << 16) | (WsReceiveFrameBuffer[8] << 8) | (WsReceiveFrameBuffer[9] << 0));
+                        // payload, force convert to long with 0xFFL
+                        payload = ((WsReceiveFrameBuffer[2] & 0xFFL) << 56) |
+                                  ((WsReceiveFrameBuffer[3] & 0xFFL) << 48) |
+                                  ((WsReceiveFrameBuffer[4] & 0xFFL) << 40) |
+                                  ((WsReceiveFrameBuffer[5] & 0xFFL) << 32) |
+                                  ((WsReceiveFrameBuffer[6] & 0xFFL) << 24) |
+                                  ((WsReceiveFrameBuffer[7] & 0xFFL) << 16) |
+                                  ((WsReceiveFrameBuffer[8] & 0xFFL) << 8)  |
+                                  ((WsReceiveFrameBuffer[9] & 0xFFL));
+
                         WsHeaderSize = 10 + (mask ? 4 : 0);
                         WsPayloadSize = payload;
                     }

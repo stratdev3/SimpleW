@@ -21,6 +21,10 @@ Notes :
 ## v13.1.0 / _(2025-04-??)_
 Maintenance
 
+### fix
+
+- fix payload parsing for 64 byte payloads (#32), PR by [baris-btcturk](https://github.com/chronoxor/NetCoreServer/pull/329)
+
 ### feature
 
 - made possible to append extra response http headers in PerformServerUpgrade stage (#31), PR by [lifeengines](https://github.com/chronoxor/NetCoreServer/pull/297) to fix [bramley-jetcharge
