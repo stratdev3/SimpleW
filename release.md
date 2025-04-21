@@ -18,7 +18,7 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
-## v13.1.0 / _(2025-04-??)_
+## v13.1.0 / _(2025-04-21)_
 Maintenance
 
 ### fix
