@@ -18,6 +18,15 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
+## v13.1.0 / _(2025-04-??)_
+Maintenance
+
+### feature
+
+- made possible to append extra response http headers in PerformServerUpgrade stage (#31), PR by [lifeengines](https://github.com/chronoxor/NetCoreServer/pull/297) to fix [bramley-jetcharge
+issue](https://github.com/chronoxor/NetCoreServer/issues/328)
+
+
 ## v13.0.0 / _(2025-02-14)_
 Maintenance
 

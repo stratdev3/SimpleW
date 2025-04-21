@@ -231,11 +231,13 @@ namespace NetCoreServer
             response.SetHeader("Connection", "Upgrade");
             response.SetHeader("Upgrade", "websocket");
             response.SetHeader("Sec-WebSocket-Accept", accept);
-            response.SetBody();
 
             // Validate WebSocket upgrade request and response
             if (!_wsHandler.OnWsConnecting(request, response))
                 return false;
+
+            // set body here to allow OnWsConnecting() add custom headers
+            response.SetBody();
 
             // Send WebSocket upgrade response
             _wsHandler.SendUpgrade(response);
