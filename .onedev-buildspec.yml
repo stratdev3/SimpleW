@@ -43,6 +43,7 @@ jobs:
       value: Release
   triggers:
   - !BranchUpdateTrigger
+    paths: src/SimpleW/
     paramMatrix:
     - name: build_configuration
       secret: false
