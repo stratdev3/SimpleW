@@ -1,4 +1,4 @@
-version: 25
+version: 40
 jobs:
 - name: CI
   steps:
@@ -8,22 +8,25 @@ jobs:
     withLfs: false
     withSubmodules: false
     cloneDepth: 1
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: build
     runInContainer: true
     image: docksdev/band:8.0
     interpreter: !DefaultInterpreter
-      commands:
-      - cd src/SimpleW/
-      - dotnet build -c @param:build_configuration@ SimpleW.csproj
+      commands: |
+        cd src/SimpleW/
+        dotnet build -c @param:build_configuration@ SimpleW.csproj
     useTTY: false
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !PublishArtifactStep
     name: publish artifact
     sourcePath: src/SimpleW/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.dll'
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   paramSpecs:
   - !ChoiceParam
     name: build_configuration
@@ -40,12 +43,12 @@ jobs:
       value: Release
   triggers:
   - !BranchUpdateTrigger
-    params:
+    paramMatrix:
     - name: build_configuration
+      secret: false
       valuesProvider: !SpecifiedValues
         values:
         - - Release
-      secret: false
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
@@ -58,41 +61,45 @@ jobs:
     withLfs: false
     withSubmodules: false
     cloneDepth: 1
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: build
     runInContainer: true
     image: docksdev/band:8.0
     interpreter: !DefaultInterpreter
-      commands:
-      - cd src/SimpleW
-      - dotnet pack -c Release SimpleW.csproj
+      commands: |
+        cd src/SimpleW
+        dotnet pack -c Release SimpleW.csproj
     useTTY: false
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !PublishArtifactStep
     name: publish artifact
     sourcePath: src/SimpleW/bin/Release/
     artifacts: '*.nupkg'
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   - !CommandStep
     name: deploy to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
     interpreter: !DefaultInterpreter
-      commands:
-      - cd src/SimpleW/bin/Release
-      - dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+      commands: |
+        cd src/SimpleW/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
-    jobParams:
+    paramMatrix:
     - name: build_configuration
+      secret: false
       valuesProvider: !SpecifiedValues
         values:
         - - Release
-      secret: false
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
@@ -104,16 +111,17 @@ jobs:
     remoteUrl: https://github.com/stratdev3/SimpleW
     passwordSecret: github_token
     force: true
-    condition: ALL_PREVIOUS_STEPS_WERE_SUCCESSFUL
+    condition: SUCCESSFUL
+    optional: false
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
-    jobParams:
+    paramMatrix:
     - name: build_configuration
+      secret: false
       valuesProvider: !SpecifiedValues
         values:
         - - Release
-      secret: false
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
