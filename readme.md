@@ -7,7 +7,7 @@
 [![MacOS](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml)
 [![Windows (Visual Studio)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml)
 
-<img src="src/SimpleW/logo.svg" alt="logo" width="100" />
+<img src="src/SimpleW/logo-transparent.png" alt="logo" width="100" />
 
 SimpleW is a Simple Web server library in .NET (windows/linux/macos).<br />
 It provides a cross-plateform framework for building web applications on top of the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server.
