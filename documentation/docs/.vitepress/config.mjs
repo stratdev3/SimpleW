@@ -8,8 +8,8 @@ export default defineConfig({
     description: "Simple Web server library in .NET Core",
     head: [
         ['link', { rel: 'icon', href: '/SimpleW/favicon.ico' }],
-        ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=GTM-PBQ3XQSQ' } ],
-        ['script', {}, `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'GTM-PBQ3XQSQ');`]
+        ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-5X34BRXK43' } ],
+        ['script', {}, `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-5X34BRXK43');`]
     ],
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
