@@ -7,18 +7,17 @@
     <StartupObject />
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Christophe CHATEAU</Authors>
-    <PackageTags>http websocket server webserver restapi mvc</PackageTags>
+    <PackageTags>http api websocket server webserver restapi mvc https ssl tls rest</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Description>SimpleW is a Simple Webserver library in NET8 (windows/linux/macos).
-It provides a cross-plateform framework for building web applications on top of the great NetCoreServer.</Description>
+    <Description>SimpleW is Web server Library for .NET Core. Powerfully Simple. Blazingly Fast.</Description>
     <AssemblyVersion>13.1.0</AssemblyVersion>
     <FileVersion>13.1.0</FileVersion>
     <Version>13.1.0</Version>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
-    <PackageProjectUrl>https://github.com/stratdev3/SimpleW</PackageProjectUrl>
-    <PackageIcon>logo.png</PackageIcon>
+    <PackageProjectUrl>https://stratdev3.github.io/SimpleW</PackageProjectUrl>
+    <PackageIcon>logo-transparent.png</PackageIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -34,7 +33,7 @@ It provides a cross-plateform framework for building web applications on top of 
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="logo.png">
+    <None Update="logo-transparent.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
