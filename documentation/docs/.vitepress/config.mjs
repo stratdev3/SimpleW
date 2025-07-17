@@ -74,6 +74,9 @@ export default defineConfig({
         search: {
             provider: 'local'
         },
+        editLink: {
+            pattern: 'https://github.com/stratdev3/SimpleW/edit/master/documentation/docs/:path'
+        },
 
     },
     sitemap: {
@@ -82,5 +85,5 @@ export default defineConfig({
     ignoreDeadLinks: [
         // ignore all localhost links
         /^https?:\/\/localhost/,
-    ]
+    ],
 })
