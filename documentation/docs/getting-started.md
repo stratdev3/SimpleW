@@ -49,9 +49,9 @@ namespace Sample {
     public class TestController : Controller {
 
         [Route("GET", "/hello")]
-        public object Hello(string name = null) {
+        public object Hello(string? name = null) {
 
-            if (!string.IsNullOrWhiteSpace(name)) {
+            if (string.IsNullOrWhiteSpace(name)) {
                 return MakeNotFoundResponse("you must set a name parameter");
             }
 

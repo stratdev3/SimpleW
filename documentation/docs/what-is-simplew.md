@@ -14,7 +14,7 @@ Just want to try it out? Skip to the [Quickstart](./getting-started).
 
 SimpleW’s design delivers a high‑performance web server with an exceptionally small footprint:
 
-- **Pure C# (100% managed code)** running on .NET 7
+- **Pure C# (100% managed code)** running on .NET 8
 - **Cross‑platform support** (Windows, Linux, Android, macOS)
 - **Single dependency**: `Newtonsoft.Json` for serialization/deserialization
 
