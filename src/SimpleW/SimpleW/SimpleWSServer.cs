@@ -81,7 +81,7 @@ namespace SimpleW {
 
         #endregion static
 
-        #region restapi
+        #region dynamic
 
         /// <summary>
         /// List of all API controllers
@@ -177,7 +177,7 @@ namespace SimpleW {
             }
         }
 
-        #endregion restapi
+        #endregion dynamic
 
         #region websocket
 

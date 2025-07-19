@@ -40,7 +40,7 @@ namespace SimpleW {
         public SimpleWSSession(SimpleWSServer server) : base(server) {
         }
 
-        #region http
+        #region https
 
         /// <summary>
         /// Request :
@@ -143,7 +143,7 @@ namespace SimpleW {
             StopWithErrorActivity(activity);
         }
 
-        #endregion http
+        #endregion https
 
         #region websocket
 
