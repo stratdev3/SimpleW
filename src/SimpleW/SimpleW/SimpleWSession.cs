@@ -185,7 +185,7 @@ namespace SimpleW {
                 if (message.url == null) {
                     IWebUser wu = Controller.JwtToWebUser(this.jwt);
                     if (wu != null) {
-                        server.RegisterWebUser(Id, wu);
+                        server.RegisterWebSocketUser(Id, wu);
                     }
                     return;
                 }
@@ -212,7 +212,7 @@ namespace SimpleW {
         /// </summary>
         public override void OnWsDisconnected() {
             Activity? activity = ActivitySource.StartActivity();
-            ((SimpleWServer)Server).UnregisterWebUser(Id);
+            ((SimpleWServer)Server).UnregisterWebSocketUser(Id);
             SetDefaultActivity(activity, $"DISCONNECT", Id);
             StopWithStatusCodeActivity(activity, 200);
         }

@@ -273,15 +273,15 @@ namespace SimpleW {
         /// <summary>
         /// WebUsers sessions
         /// </summary>
-        public ConcurrentDictionary<Guid, IWebUser> WebUsers { get; private set; } = new();
+        public ConcurrentDictionary<Guid, IWebUser> WebSocketUsers { get; private set; } = new();
 
         /// <summary>
         /// Return All wsSession based on func
         /// </summary>
         /// <param name="where">filter expression</param>
         /// <returns></returns>
-        public IEnumerable<IWebSocketSession> AllWebUsers(Func<KeyValuePair<Guid, IWebUser>, bool> where) {
-            foreach (KeyValuePair<Guid, IWebUser> wu in WebUsers.Where(where)) {
+        public IEnumerable<IWebSocketSession> AllWebSocketUsers(Func<KeyValuePair<Guid, IWebUser>, bool> where) {
+            foreach (KeyValuePair<Guid, IWebUser> wu in WebSocketUsers.Where(where)) {
                 SslSession session = FindSession(wu.Key);
                 if (session is WssSession wsSession) {
                     yield return wsSession;
@@ -294,8 +294,8 @@ namespace SimpleW {
         /// </summary>
         /// <param name="id">Session Id</param>
         /// <returns>Session with a given Id or null if the webuser it not connected</returns>
-        public IWebUser FindWebUser(Guid id) {
-            return WebUsers.TryGetValue(id, out IWebUser result) ? result : null;
+        public IWebUser FindWebSocketUser(Guid id) {
+            return WebSocketUsers.TryGetValue(id, out IWebUser result) ? result : null;
         }
 
         /// <summary>
@@ -303,16 +303,16 @@ namespace SimpleW {
         /// </summary>
         /// <param name="id"></param>
         /// <param name="webuser">webuser to register</param>
-        public void RegisterWebUser(Guid id, IWebUser webuser) {
-            WebUsers.TryAdd(id, webuser);
+        public void RegisterWebSocketUser(Guid id, IWebUser webuser) {
+            WebSocketUsers.TryAdd(id, webuser);
         }
 
         /// <summary>
         /// Unregister webuser by Id
         /// </summary>
         /// <param name="id">Session Id</param>
-        public void UnregisterWebUser(Guid id) {
-            WebUsers.TryRemove(id, out IWebUser _);
+        public void UnregisterWebSocketUser(Guid id) {
+            WebSocketUsers.TryRemove(id, out IWebUser _);
         }
 
         #endregion websocket

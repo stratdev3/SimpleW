@@ -37,12 +37,12 @@ namespace SimpleW {
         void AddWebSocketContent(string path = "/websocket", IEnumerable<Type> excepts = null);
         void AddWebSocketContent(Type controllerType, string path = "/websocket");
 
-        ConcurrentDictionary<Guid, IWebUser> WebUsers { get; }
-        IEnumerable<IWebSocketSession> AllWebUsers(Func<KeyValuePair<Guid, IWebUser>, bool> where);
+        ConcurrentDictionary<Guid, IWebUser> WebSocketUsers { get; }
+        IEnumerable<IWebSocketSession> AllWebSocketUsers(Func<KeyValuePair<Guid, IWebUser>, bool> where);
 
-        IWebUser FindWebUser(Guid id);
-        void RegisterWebUser(Guid id, IWebUser webuser);
-        void UnregisterWebUser(Guid id);
+        IWebUser FindWebSocketUser(Guid id);
+        void RegisterWebSocketUser(Guid id, IWebUser webuser);
+        void UnregisterWebSocketUser(Guid id);
 
         #endregion websocket
 
