@@ -10,12 +10,26 @@ Notes :
 
 ## Roadmap / _(2025-??-??)_
 
-- rewrite documentation with vuepress, docusaurus or another alternative
 - automatic `Swagger API JSON` generation
 - jwt verify `iss`
 - support `async Task` in controller method return
 - sync `LiteJWT` library with upstream
 - sync `HttpMultipartDataParser` library with upstream
+
+
+## v14.0.0 / _(2025-07-20)_
+Maintenance
+
+### feature
+
+- create a [documentation website](https://stratdev3.github.io/SimpleW/)
+- feature: support Server Sent Events SSE (#34)
+- chore: update nuget package informations (description, tags, logo, url)
+
+### breakingChange
+
+- refactor: rename all properties `WebUsers` to `WebSocketUsers` in ISimpleWServer (#36)
+
 
 
 ## v13.1.0 / _(2025-04-21)_
@@ -29,6 +43,7 @@ Maintenance
 
 - made possible to append extra response http headers in PerformServerUpgrade stage (#31), PR by [lifeengines](https://github.com/chronoxor/NetCoreServer/pull/297) to fix [bramley-jetcharge
 issue](https://github.com/chronoxor/NetCoreServer/issues/328)
+
 
 
 ## v13.0.0 / _(2025-02-14)_
