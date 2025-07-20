@@ -19,6 +19,11 @@ namespace SimpleW {
         #region properties
 
         /// <summary>
+        /// SimpleWSServer Instance
+        /// </summary>
+        private readonly SimpleWSServer server;
+
+        /// <summary>
         /// JWT
         /// </summary>
         public string jwt { get; set; }
@@ -38,6 +43,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="server"></param>
         public SimpleWSSession(SimpleWSServer server) : base(server) {
+            this.server = server;
         }
 
         #region https
@@ -48,12 +54,12 @@ namespace SimpleW {
         ///     - http api (always)
         ///     - http options (preflight cors)
         ///     - http upgrade to websocket (first access)
+        ///     - http sse
         /// </summary>
         /// <param name="request"></param>
         protected override void OnReceivedRequest(HttpRequest request) {
             Activity? activity = ActivitySource.StartActivity();
             try {
-                SimpleWSServer server = (SimpleWSServer)Server;
 
                 // parse : request.url to route
                 Route requestRoute = new(request);
@@ -145,6 +151,24 @@ namespace SimpleW {
 
         #endregion https
 
+        #region sse
+
+        /// <summary>
+        /// Is this session as SSE Session
+        /// </summary>
+        private bool IsSSESession = false;
+
+        /// <summary>
+        /// Flag the current Session as SSE Session
+        /// and add it to the server SSESessions
+        /// </summary>
+        public void AddSSESession() {
+            IsSSESession = true;
+            server?.AddSSESession(this);
+        }
+
+        #endregion sse
+
         #region websocket
 
         /// <summary>
@@ -232,6 +256,17 @@ namespace SimpleW {
             };
             activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
             activity.Stop();
+        }
+
+        /// <summary>
+        /// OnDisconnected
+        /// </summary>
+        protected override void OnDisconnected() {
+            // Remove the current Session from the server SSESessions
+            if (this.IsSSESession) {
+                server?.RemoveSSESession(this);
+            }
+            base.OnDisconnected();
         }
 
         #region OpenTelemetry

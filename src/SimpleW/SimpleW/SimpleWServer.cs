@@ -3,16 +3,18 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Text;
 using NetCoreServer;
 
 
 namespace SimpleW {
 
     /// <summary>
-    /// Main HTTP/WebSocker Server Object
+    /// Main HTTP/WebSocket Server Object
     /// </summary>
     public class SimpleWServer : WsServer, ISimpleWServer {
 
@@ -177,6 +179,54 @@ namespace SimpleW {
         }
 
         #endregion dynamic
+
+        #region sse
+
+        /// <summary>
+        /// Server Sent Events sessions
+        /// </summary>
+        ConcurrentBag<ISimpleWSession> SSESessions = new ConcurrentBag<ISimpleWSession>();
+
+        /// <summary>
+        /// Add session to the list of SSESession
+        /// </summary>
+        /// <param name="session"></param>
+        public void AddSSESession(ISimpleWSession session) {
+            SSESessions.Add(session);
+        }
+
+        /// <summary>
+        /// Remove session to the list of SSESession
+        /// </summary>
+        /// <param name="session"></param>
+        public void RemoveSSESession(ISimpleWSession session) {
+            SSESessions.TryTake(out ISimpleWSession sessions);
+        }
+
+        /// <summary>
+        /// Send data conformed to Server Sent Event to filtered SSE Sessions
+        /// </summary>
+        /// <param name="evt">the event name</param>
+        /// <param name="data">the data</param>
+        /// <param name="filter">filter the SSESessions (default: null)</param>
+        public void BroadcastSSESessions(string evt, string data, Expression<Func<ISimpleWSession, bool>> filter = null) {
+            string payload = $"event: {evt}\n\n" +
+                             $"data: {data}\n\n";
+            byte[] bytes = Encoding.UTF8.GetBytes(payload);
+
+            if (filter == null) {
+                foreach (ISimpleWSession session in SSESessions) {
+                    ((TcpSession)session).SendAsync(bytes);
+                }
+            }
+            else {
+                foreach (ISimpleWSession session in SSESessions.AsQueryable().Where(filter)) {
+                    ((TcpSession)session).SendAsync(bytes);
+                }
+            }
+        }
+
+        #endregion sse
 
         #region websocket
 

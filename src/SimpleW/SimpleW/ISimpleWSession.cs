@@ -18,6 +18,12 @@ namespace SimpleW {
         /// </summary>
         IWebUser webuser { get; set; }
 
+        /// <summary>
+        /// Set the current Session as SSE Session
+        /// and add it to the server SSESessions
+        /// </summary>
+        public void AddSSESession();
+
     }
 
 }

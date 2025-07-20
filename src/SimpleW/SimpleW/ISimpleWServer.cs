@@ -1,6 +1,7 @@
-﻿using System.Collections.Generic;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq.Expressions;
 using NetCoreServer;
 
 
@@ -31,6 +32,16 @@ namespace SimpleW {
         void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser getWebUserCallback = null);
 
         #endregion dynamic
+
+        #region sse
+
+        public void AddSSESession(ISimpleWSession session);
+
+        public void RemoveSSESession(ISimpleWSession session);
+
+        public void BroadcastSSESessions(string evt, string data, Expression<Func<ISimpleWSession, bool>> filter = null);
+
+        #endregion sse
 
         #region websocket
 

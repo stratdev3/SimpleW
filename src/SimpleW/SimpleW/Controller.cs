@@ -454,6 +454,20 @@ namespace SimpleW {
             return Response;
         }
 
+        /// <summary>
+        /// Response for initializing Server Sent Events
+        /// </summary>
+        /// <returns></returns>
+        public HttpResponse MakeServerSentEventsResponse() {
+            Response.Clear();
+            Response.SetBegin(200);
+            Response.SetHeader("Content-Type", "text/event-stream");
+            Response.SetHeader("Cache-Control", "no-cache");
+            Response.SetHeader("Connection", "keep-alive");
+
+            return Response;
+        }
+
         #endregion special
 
         #region helper
@@ -483,6 +497,15 @@ namespace SimpleW {
 
                 throw new ArgumentException("Invalid compression type support !", nameof(algorithm));
             }
+        }
+
+        /// <summary>
+        /// Flag the current Session as SSE Session
+        /// and add it to the server SSESessions
+        /// Alias for Session.AddSSESession();
+        /// </summary>
+        public void AddSSESession() {
+            Session.AddSSESession();
         }
 
         #endregion helper
