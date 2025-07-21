@@ -5,7 +5,7 @@ export default defineConfig({
     base: '/SimpleW/',
     title: 'SimpleW',
     titleTemplate: 'SimpleW',
-    description: "Simple Web server library in .NET Core",
+    description: "Simple Web server library in .NET Core. Designed for Simplicity. Built for Speed. Packed with Power.",
     head: [
         ['link', { rel: 'icon', href: '/SimpleW/favicon.ico' }],
         // analytics
@@ -14,7 +14,7 @@ export default defineConfig({
         // og
         ['meta', { property: 'og:site_name', content: 'SimpleW' }],
         ['meta', { property: 'og:title', content: 'SimpleW | Web Server Library .NET Core' }],
-        ['meta', { property: 'og:description', content: 'Built on top of native sockets using NetCoreServer. Minimal overhead, instant startup, ideal for microservices, embedded apps, and high-performance workloads' }],
+        ['meta', { property: 'og:description', content: 'Built on top of native sockets. Minimal overhead, instant startup, ideal for microservices, embedded apps, and high-performance workloads' }],
         ['meta', { property: 'og:type', content: 'website' }],
         ['meta', { property: 'og:url', content: 'https://stratdev3.github.io/SimpleW' }],
         ['meta', { property: 'og:image', content: 'https://stratdev3.github.io/SimpleW/simplew-og.png' }],
@@ -25,6 +25,7 @@ export default defineConfig({
 
         nav: [
             { text: 'Guide', link: '/what-is-simplew' },
+            //{ text: '📖✨ Features', link: '/features' },
             {
                 text: 'v14.0.0',
                 items: [
@@ -61,6 +62,7 @@ export default defineConfig({
                 items: [
                     { text: 'Static Files', link: '/static-files' },
                     { text: 'JWT Authentication', link: '/api-jwt-authentication' },
+                    { text: 'Server Sent Events', link: '/server-sent-events' },
                     { text: 'Websockets', link: '/websockets' },
                     { text: 'Https', link: '/https' },
                     { text: 'OpenTelemetry', link: '/opentelemetry' },

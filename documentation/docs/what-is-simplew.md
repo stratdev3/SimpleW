@@ -12,17 +12,14 @@ Just want to try it out? Skip to the [Quickstart](./getting-started).
 
 ## Architecture
 
-SimpleW’s design delivers a high‑performance web server with an exceptionally small footprint:
+SimpleW’s architecture and motivations behind its core design choices :
 
-- **Pure C# (100% managed code)** running on .NET 8
-- **Cross‑platform support** (Windows, Linux, Android, macOS)
+- **Pure C# (100% managed code)**, running on .NET 8 or later.
+- **Built on top of native sockets**, no `HttpListener` inside.
+- **Compiled delegate**, close to hard-coded method calls.
+- **Cross‑platform support**, Windows/Linux/Android/macOS.
 - **Single dependency**: `Newtonsoft.Json` for serialization/deserialization
-
-::: details
-`Reflection` is only used to list routes, __once__, before server start.
-An `expression tree` is built to call method fast __without__ using any slow `T.GetMethod().Invoke()`.
-:::
-
+- **NuGet package available**, easy to integrate
 
 
 ## Use Cases
@@ -52,15 +49,15 @@ To my opinion, modern web application architecture should be based on a REST API
 
 ### My needs
 
-Frontend :
+**Frontend** :
 
 - I prefer [SPA](https://en.wikipedia.org/wiki/Single-page_application) using [Vite](https://vitejs.dev/), [Vue](https://vuejs.org) and [Vuetify](https://vuetifyjs.com).
 
-Backend :
+**Backend** :
 
 - written in C#, the language i 😍.
 - must be easy to integrate, lightweight with a minimal footprint.
-- must support Routing, Websocket, CORS.
+- must support Routing, Websocket, SSE, CORS.
 - don't need to have template engine as i write frontend in a separated project.
 - must serve static files (static files are the result of my `npm run build` vite project)
 - observality : trace each request and monitor performances

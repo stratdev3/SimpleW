@@ -14,35 +14,35 @@ This example illustrates how SimpleW can be used to :
 
 Content of the `index.html` located in the `C:\www\client\` directory
 
-```html
+```html:line-numbers
 <html>
 <head>
     <script>
-        document.addEventListener("DOMContentLoaded", function(event) {
-            // logging
-            function logs(message, color) {
-                let logs = document.querySelector('#logs');
-                let log = document.createElement('li');
-                log.textContent = message;
-                log.style.color = color;
-                logs.append(log);
-            }
-            // websocket client
-            var ws = new WebSocket('ws://localhost:2015/websocket');
-            ws.onopen = function(e) {
-                logs('[connected] connection established to server.', 'green');
-                logs('// you can press S key from the server console.', 'blue');
-            };
-            ws.onmessage = function(event) {
-                logs(`[message] Data received from server: ${event.data}`, 'green');
-            };
-            ws.onclose = function(event) {
-                logs('[close] connection ' + (event.wasClean ? 'closed cleanly' : 'died'), 'red');
-            };
-            ws.onerror = function(error) {
-                logs(`[error] ${error}`, 'red');
-            };
-        });
+    document.addEventListener("DOMContentLoaded", function(event) {
+        // logging
+        function logs(message, color) {
+            let logs = document.querySelector('#logs');
+            let log = document.createElement('li');
+            log.textContent = message;
+            log.style.color = color;
+            logs.append(log);
+        }
+        // websocket client
+        var ws = new WebSocket('ws://localhost:2015/websocket');
+        ws.onopen = function(e) {
+            logs('[connected] connection established to server.', 'green');
+            logs('// you can press S key from the server console.', 'blue');
+        };
+        ws.onmessage = function(event) {
+            logs(`[message] Data received from server: ${event.data}`, 'green');
+        };
+        ws.onclose = function(event) {
+            logs('[close] connection ' + (event.wasClean ? 'closed cleanly' : 'died'), 'red');
+        };
+        ws.onerror = function(error) {
+            logs(`[error] ${error}`, 'red');
+        };
+    });
     </script>
 </head>
 <body>
@@ -132,7 +132,7 @@ This example illustrates how SimpleW can be used to :
 
 Content of the `index.html` located in the `C:\www\client\` directory
 
-```html
+```html:line-numbers
 <html>
 <head>
     <script>
@@ -259,7 +259,7 @@ The following example shows how to pass custom data to the server using the `Web
 
 Frontend
 
-```html
+```html:line-numbers
 <html>
 <head>
     <script>
