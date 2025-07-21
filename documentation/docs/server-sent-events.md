@@ -147,7 +147,7 @@ namespace Sample {
         [Route("GET", "/sse")]
         public object SSE() {
             // elevate the current session as a SSE Sessions
-            Session.AddSSESession();
+            AddSSESession();
             // return SSE stream response to client
             return MakeServerSentEventsResponse();
         }
@@ -226,7 +226,7 @@ namespace Sample {
             }
 
             // elevate the current session as a SSE Sessions
-            Session.AddSSESession();
+            AddSSESession();
             // return SSE stream response to client
             return MakeServerSentEventsResponse();
         }
