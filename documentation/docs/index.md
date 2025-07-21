@@ -4,7 +4,7 @@ layout: home
 
 hero:
     name: "SimpleW"
-    text: "Web server Library .NET Core"
+    text: "Web Server Library .NET Core"
     #tagline: Simple, Fast and Featured
     #tagline: Designed for Simplicity. Built for Speed. Packed with Power.
     tagline: Powerfully Simple. Blazingly Fast.
