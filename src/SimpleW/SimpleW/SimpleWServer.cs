@@ -216,12 +216,22 @@ namespace SimpleW {
 
             if (filter == null) {
                 foreach (ISimpleWSession session in SSESessions) {
-                    ((TcpSession)session).SendAsync(bytes);
+                    try {
+                        ((TcpSession)session).SendAsync(bytes);
+                    }
+                    catch {
+                        RemoveSSESession(session);
+                    }
                 }
             }
             else {
                 foreach (ISimpleWSession session in SSESessions.AsQueryable().Where(filter)) {
-                    ((TcpSession)session).SendAsync(bytes);
+                    try {
+                        ((TcpSession)session).SendAsync(bytes);
+                    }
+                    catch {
+                        RemoveSSESession(session);
+                    }
                 }
             }
         }
