@@ -8,8 +8,16 @@ export default defineConfig({
     description: "Simple Web server library in .NET Core",
     head: [
         ['link', { rel: 'icon', href: '/SimpleW/favicon.ico' }],
+        // analytics
         ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-5X34BRXK43' } ],
-        ['script', {}, `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-5X34BRXK43');`]
+        ['script', {}, `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-5X34BRXK43');`],
+        // og
+        ['meta', { property: 'og:site_name', content: 'SimpleW' }],
+        ['meta', { property: 'og:title', content: 'SimpleW | Web Server Library .NET Core' }],
+        ['meta', { property: 'og:description', content: 'Built on top of native sockets using NetCoreServer. Minimal overhead, instant startup, ideal for microservices, embedded apps, and high-performance workloads' }],
+        ['meta', { property: 'og:type', content: 'website' }],
+        ['meta', { property: 'og:url', content: 'https://stratdev3.github.io/SimpleW' }],
+        ['meta', { property: 'og:image', content: 'https://stratdev3.github.io/SimpleW/simplew-og.png' }],
     ],
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
