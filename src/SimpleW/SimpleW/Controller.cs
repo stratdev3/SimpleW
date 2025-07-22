@@ -461,6 +461,8 @@ namespace SimpleW {
         public HttpResponse MakeServerSentEventsResponse() {
             Response.Clear();
             Response.SetBegin(200);
+            SetCORSHeaders();
+
             Response.SetHeader("Content-Type", "text/event-stream");
             Response.SetHeader("Cache-Control", "no-cache");
             Response.SetHeader("Connection", "keep-alive");
