@@ -27,7 +27,7 @@ export default defineConfig({
             { text: 'Guide', link: '/what-is-simplew' },
             //{ text: '📖✨ Features', link: '/features' },
             {
-                text: 'v14.0.0',
+                text: 'v14.0.1',
                 items: [
                     { text: 'Changelog', link: 'https://github.com/stratdev3/SimpleW/blob/master/release.md' },
                 ]

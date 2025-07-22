@@ -17,6 +17,19 @@ Notes :
 - sync `HttpMultipartDataParser` library with upstream
 
 
+## v14.0.1 / _(2025-07-22)_
+Maintenance
+
+### fix
+
+- fix posible null exception in `BroadcastSSESessions()` (#37)
+
+### feature
+
+- feature: support CORS in `MakeServerSentEventsResponse()` (#40)
+
+
+
 ## v14.0.0 / _(2025-07-20)_
 Maintenance
 
@@ -28,7 +41,7 @@ Maintenance
 
 ### breakingChange
 
-- refactor: rename all properties `WebUsers` to `WebSocketUsers` in ISimpleWServer (#36)
+- refactor: rename all properties `WebUsers` to `WebSocketUsers` in `ISimpleWServer` (#36)
 
 
 
