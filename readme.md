@@ -18,9 +18,9 @@ Powerfully Simple and Blazingly Fast.
 2. API REST (Controller/Method + automatic json serialization/deserialization)
 3. Json Web Token
 4. Websocket
-5. Static Files
-6. OpenTelemetry
-
+5. Server Sent Events
+6. Static Files
+7. OpenTelemetry
 
 ## Documentation
 

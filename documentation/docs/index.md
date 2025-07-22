@@ -23,16 +23,13 @@ hero:
           link: https://github.com/stratdev3/SimpleW
 
 features:
-    - icon: 🚀
+    - icon: ⚡
       title: Simple & Blazing Fast
       details: Built on top of native sockets. Minimal overhead, instant startup, ideal for microservices, embedded apps, and high-performance workloads.
     - icon: 🧩
       title: API REST
-      details: Define routes and controllers without ceremony. Automatic JSON serialization. Focus on your business logic — no boilerplate, no mess.
-    # - icon: 🔐
-    #   title: Built-in JWT & WebSocket
-    #   details: Add token-based auth and real-time communication in minutes. Secure and scalable, without pulling in heavy frameworks.
-    - icon: 🔐
+      details: Define routes and controllers with automatic JSON serialization. Focus on your business logic, no boilerplate, no mess.
+    - icon: 🔋
       title: Built-in Features
       details: Json Web Token authentification, Cross-Orign Resource Sharing, SSL for security. Websockets and Server Sent Events for real-time communication.
     - icon: 🔬
