@@ -3,16 +3,20 @@
 
 Notes :
 - it does not strictly follow the semver convention.
-- when something break, it's written.
-- no long time support or backporting for major version, just use the last update.
-- if you find bug/optimization, feel free to send patch.
+- no technical debt : code that's need to be refactored/broken, will be.
+- when something breaks, it's documented and a migration guide is provided.
+- no long-term support or backports for major versions, just stick to the latest update.
+- found a bug or way to optimize, feel free to submit a patch.
 
 
 ## Roadmap / _(2025-??-??)_
 
+- let's encrypt certicate integration with auto-renew
 - automatic `Swagger API JSON` generation
 - jwt verify `iss`
 - support `async Task` in controller method return
+- `Socket.ReceiveAsync` since NET7
+- Mutual TLS authentication
 - sync `LiteJWT` library with upstream
 - sync `HttpMultipartDataParser` library with upstream
 
@@ -22,16 +26,16 @@ Maintenance
 
 ### fix
 
-- fix posible null exception in `BroadcastSSESessions()` (#37)
+- fix possible null exception in `BroadcastSSESessions()` (#37)
 
 ### feature
 
-- feature: support CORS in `MakeServerSentEventsResponse()` (#40)
+- feature: support CORS in Server Sent Events with `MakeServerSentEventsResponse()` (#40)
 
 
 
 ## v14.0.0 / _(2025-07-20)_
-Maintenance
+Major release
 
 ### feature
 
@@ -60,7 +64,7 @@ issue](https://github.com/chronoxor/NetCoreServer/issues/328)
 
 
 ## v13.0.0 / _(2025-02-14)_
-Maintenance
+Major release
 
 ### fix
 
@@ -83,7 +87,7 @@ Maintenance
 
 
 ## v12.0.0 / _(2024-05-02)_
-Maintenance
+Major release
 
 ### feature
 
@@ -249,7 +253,7 @@ Maintenance
 
 
 ## v11.0.0 / _(2023-11-01)_
-New Major Version
+Major release
 
 ### fix
 
@@ -258,7 +262,7 @@ New Major Version
 
 
 ## v10.0.0 / _(2023-10-22)_
-New Major Version
+Maintenance
 
 ### breakingChange
 
@@ -284,7 +288,7 @@ Maintenance
 
 
 ## v9.0.0 / _(2023-10-12)_
-New Major Version
+Maintenance
 
 ### feature
 
@@ -395,7 +399,7 @@ Maintenance
 
 
 ## v7.0.0 / _(2023-01-25)_
-New Major Version
+Major release
 
 ### breakingChange
 
@@ -408,7 +412,7 @@ New Major Version
 
 
 ## v7.0.0 / _(2022-12-01)_
-New Major Version
+Major release
 
 ### feature
 

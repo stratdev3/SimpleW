@@ -1,0 +1,33 @@
+//
+// project : https://github.com/unosquare/embedio
+//
+
+using EmbedIO;
+using EmbedIO.Routing;
+using EmbedIO.WebApi;
+
+namespace Sample {
+
+    class Program {
+        static void Main(string[] args) {
+
+            Console.WriteLine("embedio started at http://192.168.1.22:9696/api/test/hello");
+
+            var server = new WebServer(o => o
+                    .WithUrlPrefix("http://192.168.1.22:9696/")
+                    .WithMode(HttpListenerMode.EmbedIO))
+                    .WithWebApi("/api", m => m
+                    .WithController<PeopleController>());
+            server.RunAsync();
+            Console.ReadKey(true);
+        }
+    }
+
+    public class PeopleController : WebApiController {
+        [Route(HttpVerbs.Get, "/test/hello")]
+        public object GetAllPeople() {
+            return new { message = "Hello World !" };
+        }
+    }
+
+}

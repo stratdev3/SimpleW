@@ -9,7 +9,7 @@ More clearly : websocket avoid client polling request to server to get fresh dat
 
 This example illustrates how SimpleW can be used to :
 1. serve an index.html static file which contains javascript code to connect to websocket
-2. serve a websocket endpoint with `server.AddWebSocketContent()`
+2. serve a websocket endpoint with [`server.AddWebSocketContent()`](../reference/simplewserver#addwebsocketcontent)
 3. response to all clients
 
 <br />
@@ -27,7 +27,7 @@ Open your browser to `http://localhost:2015/` :
 - press `s` key from the server console to send a websocket message to all clients.
 - see logs in both side.
 
-Note : the `server.MulticastText()` will send response to all websocket clients.
+Note : the [`server.MulticastText()`](../reference/simplewserver#multicasttext) will send response to all websocket clients.
 
 
 ## Receiving data from client
@@ -48,7 +48,7 @@ For this to work, the client has to pass a specific json structure, called `WebS
 
 This example illustrates how SimpleW can be used to :
 1. serve an index.html static file which contains javascript code to connect to websocket
-2. serve a websocket endpoint with `server.AddWebSocketContent()`. The target method need to have a uniq parameter of type `WebSocketMessage` and Route Attribute must have `"WEBSOCKET"` as HTTP Verb.
+2. serve a websocket endpoint with [`server.AddWebSocketContent()`](../reference/simplewserver#addwebsocketcontent). The target method need to have a uniq parameter of type `WebSocketMessage` and Route Attribute must have `"WEBSOCKET"` as HTTP Verb.
 3. receive data from client
 4. response to client
 
@@ -84,4 +84,4 @@ The following example shows how to pass custom data to the server using the `Web
 
 
 Note:
-- `NetCoreServerExtension.JsonMap()` is a mapping helper utility similar to `BodyMap()` for RestAPI in the previous chapter.
+- [`NetCoreServerExtension.JsonMap()`](../reference/netcoreserverextension#jsonmap) is a mapping helper utility similar to [`BodyMap()`](../reference/controller-httprequest#bodymap) for RestAPI in the previous chapter.

@@ -6,11 +6,11 @@ With a little change the [basic static example](./static-files) can serve HTTPS.
 
 ::: code-group
 
-<<< @/snippets/ssl-certificate.cs#snippet{csharp:line-numbers} [program.cs]
+<<< @/snippets/ssl-certificate.cs#snippet{14,17 csharp:line-numbers} [program.cs]
 
 :::
 
 There are 2 mains changes :
-- a `context` creation pointing the certificat file which can be password protect.
-- call to the `SimpleWSServer()` class to pass the context instead of `SimpleWServer()`.
+- L14 : a `context` creation pointing the certificat file which can be password protect.
+- L17 : call to the `SimpleWSServer()` class to pass the context instead of `SimpleWServer()`.
 

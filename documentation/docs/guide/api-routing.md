@@ -2,9 +2,9 @@
 
 
 Each URL is a concatenation of :
-1. `Prefix` defined by a Component (e.g: `AddDynamicContent()`, `AddStaticContent()`).
-2. `Route` attribute on Controller class (if exists).
-3. `Route` attribute on Method.
+1. `Prefix` defined by a Component (e.g: [`AddDynamicContent()`](../reference/simplewserver#adddynamiccontent), [`AddStaticContent()`](../reference/simplewserver#addstaticcontent)).
+2. [`Route`](../reference/routeattribute#controller) attribute on Controller class (if exists).
+3. [`Route`](../reference/routeattribute#method) attribute on Method.
 
 
 ## The Route Attribut

@@ -8,7 +8,8 @@ Using the [SimpleW](https://www.nuget.org/packages/SimpleW) nuget package, alway
 $ dotnet add package SimpleW
 ```
 <div class="images-inline">
-    <img src="https://img.shields.io/nuget/dt/SimpleW" alt="NuGet Downloads" />
+    <a href="https://github.com/quozd/awesome-dotnet?tab=readme-ov-file#web-servers" target="_blank"><img src="https://camo.githubusercontent.com/8693bde04030b1670d5097703441005eba34240c32d1df1eb82a5f0d6716518e/68747470733a2f2f63646e2e7261776769742e636f6d2f73696e647265736f726875732f617765736f6d652f643733303566333864323966656437386661383536353265336136336531353464643865383832392f6d656469612f62616467652e737667" alt="dotnet awesome" /></a>
+    <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/dt/SimpleW" alt="NuGet Downloads" /></a>
     <img src="https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml/badge.svg" alt="Linux" />
     <img src="https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml/badge.svg" alt="Windows" />
     <img src="https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml/badge.svg" alt="MacOS" />
@@ -16,7 +17,7 @@ $ dotnet add package SimpleW
 
 <br/>
 
-::: tip NOTE
+::: details NOTE
 SimpleW depends on [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) package for json serialization/deserialization.
 It will be replaced in futur by the native `System.Text.Json` as long as
 some advanced features will be covered (`Populate` and `streamingContextObject`, see [work-in-progress](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/migrate-from-newtonsoft?pivots=dotnet-8-0#table-of-differences)).
@@ -73,8 +74,8 @@ Then just point your browser to http://localhost:2015/ and interact with the for
     align-items: center;
     flex-wrap: wrap;
 }
-.images-inline img {
-    max-width: 30%;
-    height: auto;
+.images-inline > img {
+    max-width: 30% !important;
+    height: auto !important;
 }
 </style>

@@ -1,0 +1,22 @@
+//
+// project : https://learn.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel
+//
+
+using System;
+using System.Net;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+
+            Console.WriteLine("aspnetcore started at http://192.168.1.22:5090/api/test/hello");
+
+            var builder = WebApplication.CreateBuilder(args);
+            var app = builder.Build();
+            app.MapGet("/api/test/hello", () => new { message = "Hello World !" });
+            app.Run();
+        }
+    }
+
+}

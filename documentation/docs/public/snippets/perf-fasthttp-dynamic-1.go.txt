@@ -1,0 +1,48 @@
+//
+// project : https://github.com/valyala/fasthttp
+//
+package main
+
+import (
+    "encoding/json"
+    "io"
+    "log"
+    "github.com/valyala/fasthttp"
+)
+
+type response struct {
+    Message string `json:"message"`
+}
+
+func helloHandler(ctx *fasthttp.RequestCtx) {
+    if string(ctx.Path()) != "/api/test/hello" {
+        ctx.Error("Not Found", fasthttp.StatusNotFound)
+        return
+    }
+
+    resp := response{ Message: "Hello World !" }
+    body, err := json.Marshal(resp)
+    if err != nil {
+        ctx.Error("Internal Server Error", fasthttp.StatusInternalServerError)
+        return
+    }
+
+    ctx.SetContentType("application/json")
+    ctx.SetStatusCode(fasthttp.StatusOK)
+    ctx.SetBody(body)
+}
+
+func main() {
+
+    log.SetOutput(io.Discard)
+
+    srv := &fasthttp.Server{
+        Handler: helloHandler,
+        Logger: log.New(io.Discard, "", 0),
+    }
+
+    if err := srv.ListenAndServe(":8080"); err != nil {
+
+    }
+
+}

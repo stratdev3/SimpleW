@@ -4,12 +4,12 @@ layout: home
 
 hero:
     name: "SimpleW"
-    text: "Web Server Library .NET Core"
+    text: "Web Server Library <br />.NET Core"
     #tagline: Simple, Fast and Featured
     #tagline: Designed for Simplicity. Built for Speed. Packed with Power.
     tagline: Powerfully Simple. Blazingly Fast.
     image:
-        src: /logo.png
+        src: /logo-min.png
         alt: SimpleW
     actions:
         - theme: brand
@@ -25,14 +25,14 @@ hero:
 features:
     - icon: ⚡
       title: Simple & Blazing Fast
-      details: Built on top of native sockets. Minimal overhead, instant startup, ideal for microservices, embedded apps, and high-performance workloads.
-    - icon: 🧩
+      details: Built on top of native sockets. Minimal overhead, instant startup and high-performance workloads.
+    - icon: 🌐
       title: API REST
-      details: Define routes and controllers with automatic JSON serialization. Focus on your business logic, no boilerplate, no mess.
+      details: Define routes and controllers with automatic json serialization. Focus on your business logic.
     - icon: 🔋
       title: Built-in Features
-      details: Json Web Token authentification, Cross-Origin Resource Sharing, SSL for security. Websockets and Server Sent Events for real-time communication.
+      details: Json Web Token, Cross-Origin Resource Sharing, SSL for security. Websockets and Server Sent Events for communication.
     - icon: 🔬
       title: Observability
-      details: Integrated OpenTelemetry with the support of distributed tracing and metrics collection. Easier to monitor, debug, and analyze requests.
+      details: Integrated OpenTelemetry with logging and tracing. Easier to monitor, debug, and analyze requests.
 ---

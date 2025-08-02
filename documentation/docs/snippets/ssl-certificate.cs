@@ -11,7 +11,7 @@ namespace Sample {
         static void Main() {
 
             // create a context with certificate, support for password protection
-            var context = new SslContext(SslProtocols.Tls12, new X509Certificate2(@"C:\Users\SimpleW\ssl\domain.pfx", "qwerty"));
+            var context = new SslContext(SslProtocols.Tls12, new X509Certificate2(@"C:\Users\SimpleW\ssl\domain.pfx", "password"));
 
             // pass context to the main SimpleW class
             var server = new SimpleWSServer(context, IPAddress.Any, 2015);

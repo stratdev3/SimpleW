@@ -21,13 +21,18 @@ export default defineConfig({
     ],
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
-        logo: '/logo.png',
+        logo: '/logo-min.png',
 
         nav: [
             {
                 text: 'Guide',
                 link: '/guide/what-is-simplew',
                 activeMatch: '/guide/'
+            },
+            {
+                text: 'Reference',
+                link: '/reference/simplewserver',
+                activeMatch: '/reference/'
             },
             //{ text: '📖✨ Features', link: '/features' },
             {
@@ -41,48 +46,69 @@ export default defineConfig({
         sidebar: {
 
             '/guide/': [
-            {
-                text: 'Introduction',
-                items: [
-                    { text: 'What is SimpleW?', link: '/guide/what-is-simplew' },
-                    { text: 'Getting Started', link: '/guide/getting-started' },
-                    // { text: 'Performances', link: '/guide/performances' },
-                ]
-            },
-            {
-                text: 'Serve API',
-                items: [
-                    { text: 'Basic', link: '/guide/api-basic' },
-                    { text: 'Routing', link: '/guide/api-routes' },
-                    { text: 'Response', link: '/guide/api-response' },
-                    { text: 'Request', link: '/guide/api-request' },
-                    { text: 'Callback', link: '/guide/api-callback' },
-                ]
-            },
-            {
-                text: 'Security',
-                items: [
-                    { text: 'Json Web Token', link: '/guide/api-json-web-token' },
-                    { text: 'Cross-Origin Resource Sharing', link: '/guide/api-cors' },
-                    { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
-                ]
-            },
-            {
-                text: 'Communication',
-                items: [
-                    { text: 'Server Sent Events', link: '/guide/server-sent-events' },
-                    { text: 'Websockets', link: '/guide/websockets' },
-                ]
-            },
-            {
-                text: 'Others',
-                items: [
-                    { text: 'Static Files', link: '/guide/static-files' },
-                    { text: 'Observability', link: '/guide/observability' },
-                ]
-            },
-        ],
+                {
+                    text: 'Introduction',
+                    items: [
+                        { text: 'What is SimpleW?', link: '/guide/what-is-simplew' },
+                        { text: 'Getting Started', link: '/guide/getting-started' },
+                        { text: 'Performances', link: '/guide/performances' },
+                        //{ text: 'Lifecycle', link: '/guide/lifecycle' },
+                    ]
+                },
+                {
+                    text: 'Serve API',
+                    items: [
+                        { text: 'Basic', link: '/guide/api-basic' },
+                        { text: 'Routing', link: '/guide/api-routing' },
+                        { text: 'Response', link: '/guide/api-response' },
+                        { text: 'Request', link: '/guide/api-request' },
+                        { text: 'Callback', link: '/guide/api-callback' },
+                    ]
+                },
+                {
+                    text: 'Security',
+                    items: [
+                        { text: 'Json Web Token', link: '/guide/api-json-web-token' },
+                        { text: 'Cross-Origin Resource Sharing', link: '/guide/api-cors' },
+                        { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
+                    ]
+                },
+                {
+                    text: 'Communication',
+                    items: [
+                        { text: 'Server Sent Events', link: '/guide/server-sent-events' },
+                        { text: 'Websockets', link: '/guide/websockets' },
+                    ]
+                },
+                {
+                    text: 'Others',
+                    items: [
+                        { text: 'Static Files', link: '/guide/static-files' },
+                        { text: 'Observability', link: '/guide/observability' },
+                    ]
+                },
+            ],
 
+            '/reference/': [
+                {
+                    text: 'Reference',
+                    items: [
+                        { text: 'Server', link: '/reference/simplewserver' },
+                        { text: 'RouteAttribute', link: '/reference/routeattribute' },
+                        {
+                          text: 'Controller',
+                          base: '/reference/controller-',
+                          items: [
+                              { text: 'Overview', link: 'overview' },
+                              { text: 'HttpRequest', link: 'httprequest' },
+                              { text: 'HttpResponse', link: 'httpresponse' },
+                              { text: 'OnBeforeMethod', link: 'onbeforemethod' },
+                          ]
+                        },
+                        { text: 'NetCoreServerExtension', link: '/reference/netcoreserverextension' },
+                    ]
+                },
+            ]
 
         },
 
@@ -93,7 +119,7 @@ export default defineConfig({
 
         footer: {
             message: 'Released under the MIT License.',
-            copyright: 'Copyright © 2024-present StratDev'
+            copyright: 'Copyright © 2021-present StratDev'
         },
 
         search: {
