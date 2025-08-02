@@ -1,40 +1,14 @@
-# Static Files
+# Serve Static Files
 
-## Basic example
+## Basic
 
 To serve statics files with very few lines of code :
 
-```csharp:line-numbers
-using System;
-using System.Net;
-using SimpleW;
+::: code-group
 
-namespace Sample {
-    class Program {
+<<< @/snippets/static-files.cs#basic{csharp:line-numbers} [program.cs]
 
-        static void Main() {
-
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // serve static content located in your folder "C:\www\spa\" to "/" endpoint
-            server.AddStaticContent(@"C:\www\spa\", "/");
-
-            // enable autoindex if no index.html exists in the directory
-            server.AutoIndex = true;
-
-            // start non blocking background server
-            server.Start();
-
-            Console.WriteLine("server started at http://localhost:2015/");
-
-            // block console for debug
-            Console.ReadKey();
-
-        }
-    }
-}
-```
+:::
 
 Then just point your browser to http://localhost:2015/.
 
@@ -42,45 +16,23 @@ Note : if `AutoIndex` is false and the directory does not contain a default docu
 
 Note : on Windows, the Firewall can block this simple console app even if exposed on localhost and port > 1024. You need to allow access otherwise you will not reach the server.
 
-## Multiples Directories
+
+## Multiple Directories
 
 SimpleW can handle multiple directories as soon as they are declared under different endpoints.
 
-```csharp:line-numbers
-using System;
-using System.Net;
-using SimpleW;
+::: code-group
 
-namespace Sample {
-    class Program {
+<<< @/snippets/static-files-multiple-directories.cs#basic{csharp:line-numbers} [program.cs]
 
-        static void Main() {
-
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // serve directories/endpoints
-            server.AddStaticContent(@"C:\www\frontend", "/");
-            server.AddStaticContent(@"C:\www\public", "/public/");
-
-            server.Start();
-
-            Console.WriteLine("server started at http://localhost:2015/");
-
-            // block console for debug
-            Console.ReadKey();
-
-        }
-    }
-}
-```
+:::
 
 
 ## Options
 
 You can change some settings before server start.
 
-To change the default document
+To change the default document `index.html` by your own page
 ```csharp:line-numbers
 server.DefaultDocument = "maintenance.html";
 ```

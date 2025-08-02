@@ -1,7 +1,7 @@
 # What is SimpleW?
 
 SimpleW is a .NET Core library designed for building fast and secure web applications.
-It is based in the the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server.
+It is based in the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server.
 
 <div class="tip custom-block" style="padding-top: 8px">
 
@@ -17,6 +17,7 @@ SimpleW’s architecture and motivations behind its core design choices :
 - **Pure C# (100% managed code)**, running on .NET 8 or later.
 - **Built on top of native sockets**, no `HttpListener` inside.
 - **Compiled delegate**, close to hard-coded method calls.
+- **Event model**, low latency and low memory.
 - **Cross‑platform support**, Windows/Linux/Android/macOS.
 - **Single dependency**: `Newtonsoft.Json` for serialization/deserialization
 - **NuGet package available**, easy to integrate
@@ -43,7 +44,7 @@ When you need to spin up a proof‑of‑concept API in record time, SimpleW exce
 
 ## Why this library ?
 
-To my opinion, modern web application architecture should be based on a REST API which acts as a contract between 2 parts :
+I believe modern web application architecture should be based on a REST API which acts as a contract between 2 parts :
 - backend (only one) : developer feels free to use/change the technology he wants (C#, Go, Rust, PHP...) but must provide and follow the REST API.
 - frontend (one or many) : developer feels free to use/change the technology he wants (SPA/Vue, SPA/React, Mobile/Android...) but must consume and follow the REST API.
 

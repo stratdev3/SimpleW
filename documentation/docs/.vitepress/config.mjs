@@ -5,7 +5,7 @@ export default defineConfig({
     base: '/SimpleW/',
     title: 'SimpleW',
     titleTemplate: 'SimpleW',
-    description: "Simple Web server library in .NET Core. Designed for Simplicity. Built for Speed. Packed with Power.",
+    description: "SimpleW is a Web server library in .NET Core. Designed for Simplicity. Built for Speed. Packed with Power.",
     head: [
         ['link', { rel: 'icon', href: '/SimpleW/favicon.ico' }],
         // analytics
@@ -40,6 +40,7 @@ export default defineConfig({
                 items: [
                     { text: 'What is SimpleW?', link: '/what-is-simplew' },
                     { text: 'Getting Started', link: '/getting-started' },
+                    // { text: 'Performances', link: '/performances' },
                 ]
             },
             // {
@@ -48,25 +49,33 @@ export default defineConfig({
             {
                 text: 'Serve API',
                 items: [
-                    { text: 'Basic Example', link: '/api-basic-example' },
-                    { text: 'Return Type', link: '/api-return-type' },
+                    { text: 'Basic', link: '/api-basic' },
                     { text: 'Routes', link: '/api-routes' },
-                    { text: 'Post Body', link: '/api-post-body' },
-                    { text: 'CORS', link: '/api-cors' },
-                    { text: 'Serialization', link: '/api-serialization' },
-                    { text: 'Hooks', link: '/api-hook' },
+                    { text: 'Response', link: '/api-response' },
+                    { text: 'Request', link: '/api-request' },
+                    { text: 'Callback', link: '/api-callback' },
                 ]
             },
             {
-                text: 'Built-in Components',
+                text: 'Security',
                 items: [
-                    { text: 'Static Files', link: '/static-files' },
-                    { text: 'JWT Authentication', link: '/api-jwt-authentication' },
+                    { text: 'Json Web Token', link: '/api-json-web-token' },
+                    { text: 'Cross-Origin Resource Sharing', link: '/api-cors' },
+                    { text: 'SSL Certificate', link: '/ssl-certificate' },
+                ]
+            },
+            {
+                text: 'Communication',
+                items: [
                     { text: 'Server Sent Events', link: '/server-sent-events' },
                     { text: 'Websockets', link: '/websockets' },
-                    { text: 'Https', link: '/https' },
-                    { text: 'OpenTelemetry', link: '/opentelemetry' },
-                    { text: 'Advanced', link: '/advanced' },
+                ]
+            },
+            {
+                text: 'Others',
+                items: [
+                    { text: 'Static Files', link: '/static-files' },
+                    { text: 'Observability', link: '/observability' },
                 ]
             },
         ],

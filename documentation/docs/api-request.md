@@ -1,18 +1,21 @@
-# POST Body
+# Request
 
-## Basic Example
+The `Request` property of `Controller` class contains all the information (Url, Headers, Method, Protocol, Body...) about the request sent by the client.
 
-You can use the `Request.Body` property to retrieve POST body data.
+
+## Body
+
+You can use the `Request.Body` property to retrieve the data from any `POST` request.
 
 Frontend send POST data
 
 ```bash
-curl -X POST "http://localhost:2015/api/user/save" -d 'user'
+curl -X POST "http://localhost:2015/api/user/save" -d 'data in the body'
 ```
 
 Backend receive
 
-```csharp:line-numbers
+```csharp:line-numbers {22}
 using System;
 using System.Net;
 using SimpleW;
@@ -42,10 +45,16 @@ namespace Sample {
 }
 ```
 
+The response will contains :
 
-## POST body (application/json) deserialization helper
+```
+You sent data in the body
+```
 
-You can use the `BodyMap()` helper method for reading POST body and deserialize to an object instance.
+
+## Body (application/json) deserialization helper
+
+You can use the `BodyMap()` helper method for reading `Request.Body` and deserialize to an object instance.
 
 Frontend send POST json data
 
@@ -119,9 +128,9 @@ Note :
 - the content-type set by client need to be `application/json` which is the default for axios.
 
 
-## POST body (application/x-www-form-urlencoded) deserialization helper
+## Body (application/x-www-form-urlencoded) deserialization helper
 
-You can use the `BodyMap()` method for reading POST body and deserialize to an object instance.
+You can use the `BodyMap()` method for reading `Request.Body` and deserialize to an object instance.
 
 Frontend send POST json data
 
@@ -191,15 +200,15 @@ specification. That's why :
 
 
 
-## POST body (multipart/form-data) deserialization helper
+## Body (multipart/form-data) deserialization helper
 
-You can use the `BodyFile()` method for reading POST body containing files.
+You can use the `BodyFile()` method for reading `Request.Body` containing files.
 
-Frontend send POST json data
+Frontend send a file POST
 
 ```bash
-echo "user preferences" > prefs.json
-curl -F "file=@prefs.json" "http://localhost:2015/api/user/upload" 
+echo "hello server !" > message.txt
+curl -F "file=@message.txt" "http://localhost:2015/api/user/upload"
 ```
 
 Backend receive
@@ -236,10 +245,10 @@ namespace Sample {
             var extension = Path.GetExtension(file.FileName).ToLower();
 
             // check file extension and size
-            if (extension != ".json") {
+            if (extension != ".txt") {
                 return "wrong extension";
             }
-            if (file.Data.Length > 1024 * 1000) {
+            if (file.Data.Length > 1_000 * 1024) {
                 return "the file size exceeds the maximum of 1Mo";
             }
 
@@ -256,7 +265,7 @@ namespace Sample {
                 }
             }
 
-            return "the file has been uploaded";
+            return "the file has been uploaded and saved to server";
         }
 
     }

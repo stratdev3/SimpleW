@@ -31,7 +31,7 @@ features:
       details: Define routes and controllers with automatic JSON serialization. Focus on your business logic, no boilerplate, no mess.
     - icon: 🔋
       title: Built-in Features
-      details: Json Web Token authentification, Cross-Orign Resource Sharing, SSL for security. Websockets and Server Sent Events for real-time communication.
+      details: Json Web Token authentification, Cross-Origin Resource Sharing, SSL for security. Websockets and Server Sent Events for real-time communication.
     - icon: 🔬
       title: Observability
       details: Integrated OpenTelemetry with the support of distributed tracing and metrics collection. Easier to monitor, debug, and analyze requests.

@@ -1,17 +1,17 @@
 # Routes
 
 
-Each route is a concatenation of :
-1. `Prefix` defined by `AddDynamicContent()`.
+Each URL is a concatenation of :
+1. `Prefix` defined by a Component (e.g: `AddDynamicContent()`, `AddStaticContent()`).
 2. `Route` attribute on Controller class (if exists).
 3. `Route` attribute on Method.
 
 
-## Examples
+## The Route Attribut
 
-`Route` attribute on methods.
+`Route` attribute must be set to target the methods which will be called depending on url.
 
-```csharp:line-numbers
+```csharp:line-numbers{20,26}
 using System;
 using System.Net;
 using SimpleW;
@@ -47,9 +47,10 @@ namespace Sample {
 }
 ```
 
-The same example can be refactored with `Route` attribute on controller class.
+When all your methods share the same prefix, you can defined a `Route` attribute on controller class.
+Thus, we can rewrite the previous example :
 
-```csharp:line-numbers
+```csharp:line-numbers{17,21,27}
 using System;
 using System.Net;
 using SimpleW;
@@ -145,7 +146,7 @@ Note :
 - methods can have multiple `Route` attributes (example above with _delete_, _remove_).
 
 
-## Regexp
+## Regexp in route
 
 `Route` path support regular expressions when `Router.RegExpEnabled` is true.
 
@@ -331,3 +332,50 @@ Note :
 - the string value of parameter will be cast to the parameter type.
   If the cast fails, an HTTP CODE 500 will be returned to the client.
 - all declared parameters in `Route` path are mandatory.
+
+
+## Catch All Routes
+
+You can setup a maintenance page to catch all api call by using the wildcard in a ```RouteAttribute```.
+
+```csharp:line-numbers
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+    class Program {
+
+        static void Main() {
+
+            // listen to all IPs port 2015
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // need by MaintenanceController wildcard route parameter
+            server.Router.RegExpEnabled = true;
+            // add the dedidacted controller
+            server.AddDynamicContent(typeof(MaintenanceController), "/api/v1");
+
+            server.Start();
+
+            Console.WriteLine("server started at http://localhost:2015/");
+
+            // block console for debug
+            Console.ReadKey();
+
+        }
+    }
+
+    // inherit from Controller to target a class
+    public class MaintenanceController : Controller {
+
+        // wildcard route parameter will call all string under root api
+        [Route("GET", "/*")]
+        public object Maintenance() {
+            return Response.MakeErrorResponse(503, "Maintenance");
+        }
+
+    }
+
+}
+```

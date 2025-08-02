@@ -1,13 +1,3 @@
-# Basic Example
-
-
-The RestAPI is based on **routes**, so just add a `RouteAttribute` to target **methods** of a `Controller` base class.<br />
-The return is serialized into json and sent as a response to the client.
-
-Use `server.AddDynamicContent()` to handle RestAPI.
-
-```csharp:line-numbers
-using System;
 using System.Net;
 using SimpleW;
 
@@ -16,7 +6,7 @@ namespace Sample {
 
         static void Main() {
 
-            // listen to all IPs port 2015
+            // listen to all IPs on port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // find all Controllers classes and serve on the "/api" endpoint
@@ -33,23 +23,26 @@ namespace Sample {
         }
     }
 
-    // inherit from Controller to target a class
+    // inherit from Controller
     public class SomeController : Controller {
 
         // use the Route attribute to target a public method
         [Route("GET", "/test")]
         public object SomePublicMethod() {
-            // the return will be serialized to json
+
+            // the Request property contains all data (Url, Headers...) from the client Request
+            var url = Request.Url;
+
+            // the return will be serialized to json and sent as response to client
             return new {
-                message = "Hello World !"
+                message = Message()
             };
+        }
+
+        private string Message() {
+            return "Hello World !";
         }
 
     }
 
 }
-```
-
-Then just open your browser to http://localhost:2015/api/test and you will see the `{ "message": "Hello World !" }` json response.
-
-Note : the controller __CAN NOT__ have constructor.

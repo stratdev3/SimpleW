@@ -1,10 +1,3 @@
-# Https
-
-The HTTPS protocol is supported and you can bring your own certificate.
-
-With a little change the [Basic Static Example](/api-basic-example) can serve HTTPS.
-
-```csharp:line-numbers{14,17}
 using System;
 using System.Net;
 using System.Security.Authentication;
@@ -39,8 +32,3 @@ namespace Sample {
         }
     }
 }
-```
-
-There are 2 mains changes :
-- a `context` creation pointing the certificat file which can be password protect.
-- call to the `SimpleWSServer()` class to pass the context instead of `SimpleWServer()`.
