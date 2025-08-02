@@ -14,10 +14,10 @@ hero:
     actions:
         - theme: brand
           text: What is SimpleW?
-          link: /what-is-simplew
+          link: /guide/what-is-simplew
         - theme: alt
           text: Quick Start
-          link: /getting-started
+          link: /guide/getting-started
         - theme: alt
           text: GitHub
           link: https://github.com/stratdev3/SimpleW

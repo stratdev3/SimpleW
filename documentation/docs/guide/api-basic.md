@@ -17,5 +17,5 @@ The following code is full of comments :
 Then just open your browser to http://localhost:2015/api/test and you will see the `{ "message": "Hello World !" }` json response.
 
 ::: tip NOTE
-The controller __CAN NOT__ have constructor. All properties `Request`,  `Response` (...) will be set after session instanciation. See [callback](/api-callback) on how to inject specific code in all controllers of methods.
+The controller __CAN NOT__ have constructor. All properties `Request`,  `Response` (...) will be set after session instanciation. See [callback](./api-callback) on how to inject specific code in all controllers of methods.
 :::

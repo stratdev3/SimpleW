@@ -24,7 +24,11 @@ export default defineConfig({
         logo: '/logo.png',
 
         nav: [
-            { text: 'Guide', link: '/what-is-simplew' },
+            {
+                text: 'Guide',
+                link: '/guide/what-is-simplew',
+                activeMatch: '/guide/'
+            },
             //{ text: '📖✨ Features', link: '/features' },
             {
                 text: 'v14.0.1',
@@ -34,51 +38,53 @@ export default defineConfig({
             },
         ],
 
-        sidebar: [
+        sidebar: {
+
+            '/guide/': [
             {
                 text: 'Introduction',
                 items: [
-                    { text: 'What is SimpleW?', link: '/what-is-simplew' },
-                    { text: 'Getting Started', link: '/getting-started' },
-                    // { text: 'Performances', link: '/performances' },
+                    { text: 'What is SimpleW?', link: '/guide/what-is-simplew' },
+                    { text: 'Getting Started', link: '/guide/getting-started' },
+                    // { text: 'Performances', link: '/guide/performances' },
                 ]
             },
-            // {
-            //     text: 'Routing', link: '/routing',
-            // },
             {
                 text: 'Serve API',
                 items: [
-                    { text: 'Basic', link: '/api-basic' },
-                    { text: 'Routing', link: '/api-routes' },
-                    { text: 'Response', link: '/api-response' },
-                    { text: 'Request', link: '/api-request' },
-                    { text: 'Callback', link: '/api-callback' },
+                    { text: 'Basic', link: '/guide/api-basic' },
+                    { text: 'Routing', link: '/guide/api-routes' },
+                    { text: 'Response', link: '/guide/api-response' },
+                    { text: 'Request', link: '/guide/api-request' },
+                    { text: 'Callback', link: '/guide/api-callback' },
                 ]
             },
             {
                 text: 'Security',
                 items: [
-                    { text: 'Json Web Token', link: '/api-json-web-token' },
-                    { text: 'Cross-Origin Resource Sharing', link: '/api-cors' },
-                    { text: 'SSL Certificate', link: '/ssl-certificate' },
+                    { text: 'Json Web Token', link: '/guide/api-json-web-token' },
+                    { text: 'Cross-Origin Resource Sharing', link: '/guide/api-cors' },
+                    { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
                 ]
             },
             {
                 text: 'Communication',
                 items: [
-                    { text: 'Server Sent Events', link: '/server-sent-events' },
-                    { text: 'Websockets', link: '/websockets' },
+                    { text: 'Server Sent Events', link: '/guide/server-sent-events' },
+                    { text: 'Websockets', link: '/guide/websockets' },
                 ]
             },
             {
                 text: 'Others',
                 items: [
-                    { text: 'Static Files', link: '/static-files' },
-                    { text: 'Observability', link: '/observability' },
+                    { text: 'Static Files', link: '/guide/static-files' },
+                    { text: 'Observability', link: '/guide/observability' },
                 ]
             },
         ],
+
+
+        },
 
         socialLinks: [
             { icon: 'github', link: 'https://github.com/stratdev3/SimpleW' },
