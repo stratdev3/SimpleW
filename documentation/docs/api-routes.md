@@ -1,4 +1,4 @@
-# Routes
+# Routing
 
 
 Each URL is a concatenation of :
@@ -87,9 +87,11 @@ namespace Sample {
 }
 ```
 
-You can override a path with `isAbsolutePath: true` parameter.
+When a controller defines a route prefix, every method in that controller automatically inherits it.
+However, by setting `isAbsolutePath: true` on a `Route` method, you can override this behavior and 
+treat the specified URL as an absolute path.
 
-```csharp:line-numbers
+```csharp:line-numbers{27}
 using System;
 using System.Net;
 using SimpleW;
@@ -127,6 +129,46 @@ namespace Sample {
             return "test create success";
         }
 
+    }
+
+}
+```
+
+Methods can also have multiple `Route` attributes like in the following with the `Delete()` method
+and its 2 differents routes.
+
+```csharp:line-numbers{35,36}
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+            server.AddDynamicContent("/api");
+            server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
+            Console.ReadKey();
+        }
+    }
+
+    [Route("test/")]
+    public class TestController : Controller {
+
+        // test with http://localhost:2015/api/test/index
+        [Route("GET", "/index")]
+        public object Index() {
+            return "test index page";
+        }
+
+        // test with POST http://localhost:2015/api/test/create
+        [Route("POST", "/create")]
+        public object Create() {
+            return "test create success";
+        }
+
         // test with POST http://localhost:2015/api/test/delete
         // or
         // test with POST http://localhost:2015/api/test/remove
@@ -141,16 +183,13 @@ namespace Sample {
 }
 ```
 
-Note :
-- the `isAbsolutePath` flag will not take the prefix defined in the `AddDynamicContent`.
-- methods can have multiple `Route` attributes (example above with _delete_, _remove_).
 
 
-## Regexp in route
+## Regexp in Route
 
-`Route` path support regular expressions when `Router.RegExpEnabled` is true.
+`Route` can support regular expressions when the server property `Router.RegExpEnabled` is true.
 
-```csharp:line-numbers
+```csharp:line-numbers{12,27}
 using System;
 using System.Net;
 using SimpleW;
@@ -187,16 +226,16 @@ namespace Sample {
 }
 ```
 
-Note : the property `RegExpEnabled` is global to all controllers and must be
-       set before any `AddDynamicContent()` call.
-
+:::tip NOTE
+The property `RegExpEnabled` is global to all controllers and must be set before any `AddDynamicContent()` call.
+:::
 
 ## Query String Parameters
 
 Query String parameters are also supported in a similar way.
 The library will map query string parameter to the method parameter.
 
-```csharp:line-numbers
+```csharp:line-numbers{25,36,45}
 using System;
 using System.Net;
 using SimpleW;
@@ -281,7 +320,7 @@ Notes :
 When a `{parameter}` is declared in the path, it's possible to set parameters in `Route` path and retrieve their value in the method.<br />
 The library will map them according to their names.
 
-```csharp:line-numbers
+```csharp:line-numbers{25,35}
 using System;
 using System.Net;
 using SimpleW;
@@ -336,9 +375,9 @@ Note :
 
 ## Catch All Routes
 
-You can setup a maintenance page to catch all api call by using the wildcard in a ```RouteAttribute```.
+You can setup a maintenance page to catch all api call by using the wildcard in a `Route` attribute.
 
-```csharp:line-numbers
+```csharp:line-numbers{32}
 using System;
 using System.Net;
 using SimpleW;
@@ -354,7 +393,7 @@ namespace Sample {
             // need by MaintenanceController wildcard route parameter
             server.Router.RegExpEnabled = true;
             // add the dedidacted controller
-            server.AddDynamicContent(typeof(MaintenanceController), "/api/v1");
+            server.AddDynamicContent(typeof(MaintenanceController), "/api");
 
             server.Start();
 
@@ -373,6 +412,121 @@ namespace Sample {
         [Route("GET", "/*")]
         public object Maintenance() {
             return Response.MakeErrorResponse(503, "Maintenance");
+        }
+
+    }
+
+}
+```
+
+
+## Versioning Routes
+
+Like everything, a REST API is subject to change. But no one want brutal breaking change instead, assure a certain compabitlity
+level or deprecating period.
+
+The **first public release of an API must be versionned**. For example :
+
+```csharp:line-numbers{12}
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+    class Program {
+
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // api v1
+            server.AddDynamicContent("/api/v1");
+
+            server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
+            Console.ReadKey();
+        }
+    }
+
+    [Route("/test")]
+    public class TestController : Controller {
+
+        [Route("GET", "/index")]
+        public object Index() {
+            return "test index page";
+        }
+
+        [Route("POST", "/create")]
+        public object Create() {
+            return "test create success";
+        }
+
+    }
+
+}
+```
+
+I’m planning to add new features to `TestController` that may introduce breaking changes, 
+but i need to keep the previous version intact so existing clients can continue using it.
+
+```csharp:line-numbers{12}
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+    class Program {
+
+        static void Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // api v1
+            server.AddDynamicContent(typeof(TestController), "/api/v1");
+
+            // api v2
+            server.AddDynamicContent(typeof(Test2Controller), "/api/v2");
+
+            server.Start();
+            Console.WriteLine("server started at http://localhost:2015/");
+            Console.ReadKey();
+        }
+    }
+
+    [Route("/test")]
+    public class TestController : Controller {
+
+        [Route("GET", "/index")]
+        public object Index() {
+            return "test index page";
+        }
+
+        [Route("POST", "/update")]
+        public object Update() {
+            return "test update success";
+        }
+
+    }
+
+    // the new Test controller
+    [Route("/test")]
+    public class Test2Controller : Controller {
+
+        // the new version handle query string parameter and result json object
+        [Route("GET", "/index")]
+        public object Index(string filter=null, int page = 0) {
+            return new {
+                content = "test index page",
+                count = 1234,
+                page = 3
+            };
+        }
+
+        // the new version handle query string parameter and result json object
+        [Route("POST", "/update")]
+        public object Update(Guid id) {
+            return new {
+                result = "success",
+                message = "test update success"
+            };
         }
 
     }

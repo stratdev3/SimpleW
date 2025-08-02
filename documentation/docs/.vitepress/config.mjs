@@ -50,7 +50,7 @@ export default defineConfig({
                 text: 'Serve API',
                 items: [
                     { text: 'Basic', link: '/api-basic' },
-                    { text: 'Routes', link: '/api-routes' },
+                    { text: 'Routing', link: '/api-routes' },
                     { text: 'Response', link: '/api-response' },
                     { text: 'Request', link: '/api-request' },
                     { text: 'Callback', link: '/api-callback' },
