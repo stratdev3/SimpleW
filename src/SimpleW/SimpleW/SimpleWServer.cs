@@ -106,6 +106,10 @@ namespace SimpleW {
         /// <param name="path">path (default is "/")</param>
         public void AddDynamicContent(Type controllerType, string path = "/") {
 
+            if (IsStarted) {
+                throw new InvalidOperationException("Dynamic content cannot be added when server is already started");
+            }
+
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new ArgumentNullException(nameof(path));
             }
@@ -256,6 +260,10 @@ namespace SimpleW {
         /// <param name="excepts">List of Controller to not auto load</param>
         public void AddWebSocketContent(string path = "/websocket", IEnumerable<Type> excepts = null) {
 
+            if (string.IsNullOrWhiteSpace(path)) {
+                throw new ArgumentNullException(nameof(path));
+            }
+
             // case when no controller is defined, we need to store the prefix
             // for socket the handshake complete (see SimpleWSession.OnReceivedRequest() return).
             if (!_websocket_prefix_routes.Contains(path)) {
@@ -274,12 +282,16 @@ namespace SimpleW {
         /// <param name="path">path (default is "/websocket")</param>
         public void AddWebSocketContent(Type controllerType, string path = "/websocket") {
 
-            if (!_websocket_prefix_routes.Contains(path)) {
-                _websocket_prefix_routes.Add(path);
+            if (IsStarted) {
+                throw new InvalidOperationException("Dynamic content cannot be added when server is already started");
             }
 
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new ArgumentNullException(nameof(path));
+            }
+
+            if (!_websocket_prefix_routes.Contains(path)) {
+                _websocket_prefix_routes.Add(path);
             }
 
             if (_controllers_websocket.Contains(controllerType)) {
