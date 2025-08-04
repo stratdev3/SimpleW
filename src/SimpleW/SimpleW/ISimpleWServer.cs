@@ -12,6 +12,9 @@ namespace SimpleW {
     /// </summary>
     public interface ISimpleWServer {
 
+        /// <summary>
+        /// Main Router instance
+        /// </summary>
         Router Router { get; }
 
         #region static
@@ -26,9 +29,27 @@ namespace SimpleW {
 
         #region dynamic
 
+        /// <summary>
+        /// Add dynamic content by registered all controllers which inherit from Controller
+        /// </summary>
+        /// <param name="path">path (default is "/")</param>
+        /// <param name="excludes">List of Controller to not auto load</param>
         void AddDynamicContent(string path = "/", IEnumerable<Type> excludes = null);
+
+        /// <summary>
+        /// Add dynamic content for a controller type which inherit from Controller
+        /// </summary>
+        /// <param name="controllerType">controllerType</param>
+        /// <param name="path">path (default is "/")</param>
         void AddDynamicContent(Type controllerType, string path = "/");
 
+        /// <summary>
+        /// Set Token settings (passphrase and issuer).
+        /// a delegate can be defined to redress webuser called by Controller.JwtToWebUser().
+        /// </summary>
+        /// <param name="tokenPassphrase">The String token secret passphrase (min 17 chars).</param>
+        /// <param name="issuer">The String issuer.</param>
+        /// <param name="getWebUserCallback">The DelegateSetTokenWebUser getWebUserCallback</param>
         void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser getWebUserCallback = null);
 
         #endregion dynamic
@@ -59,11 +80,33 @@ namespace SimpleW {
 
         #region cors
 
+        /// <summary>
+        /// CORS Header Origin
+        /// </summary>
         string cors_allow_origin { get; set; }
+
+        /// <summary>
+        /// CORS Header headers
+        /// </summary>
         string cors_allow_headers { get; set; }
+
+        /// <summary>
+        /// CORS Header methods
+        /// </summary>
         string cors_allow_methods { get; set; }
+
+        /// <summary>
+        /// CORS Header credentials
+        /// </summary>
         string cors_allow_credentials { get; set; }
 
+        /// <summary>
+        /// Setup CORS
+        /// </summary>
+        /// <param name="origin">Access-Control-Allow-Origin</param>
+        /// <param name="headers">Access-Control-Allow-Headers</param>
+        /// <param name="methods">Access-Control-Allow-Methods</param>
+        /// <param name="credentials">Access-Control-Allow-Credentials</param>
         void AddCORS(string origin = "*", string headers = "*", string methods = "GET,POST,OPTIONS", string credentials = "true");
 
         #endregion cors

@@ -19,9 +19,8 @@ namespace SimpleW {
     public class SimpleWSServer : WssServer, ISimpleWServer {
 
         /// <summary>
-        /// API/WEBSOCKET routes to handle
+        /// Main Router instance
         /// </summary>
-        
         public Router Router { get; private set; } = new Router();
 
         #region netcoreserver
@@ -430,10 +429,10 @@ namespace SimpleW {
         /// <summary>
         /// Setup CORS
         /// </summary>
-        /// <param name="origin"></param>
-        /// <param name="headers"></param>
-        /// <param name="methods"></param>
-        /// <param name="credentials"></param>
+        /// <param name="origin">Access-Control-Allow-Origin</param>
+        /// <param name="headers">Access-Control-Allow-Headers</param>
+        /// <param name="methods">Access-Control-Allow-Methods</param>
+        /// <param name="credentials">Access-Control-Allow-Credentials</param>
         public void AddCORS(string origin="*", string headers = "*", string methods = "GET,POST,OPTIONS", string credentials="true") {
             this.cors_allow_origin = origin;
             this.cors_allow_headers = headers;
