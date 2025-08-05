@@ -1,0 +1,40 @@
+//
+// project : https://fast-endpoints.com/
+//
+
+using FastEndpoints;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Logging;
+
+namespace Sample {
+
+    class Program {
+        static async Task<int> Main() {
+            Console.WriteLine("fastapiendpoint http://localhost:5000/api/test/hello");
+
+            var builder = WebApplication.CreateBuilder(args);
+            builder.Logging.ClearProviders();
+            builder.Services.AddFastEndpoints();
+            var app = builder.Build();
+            app.UseFastEndpoints();
+            app.Run();
+        }
+    }
+
+    public class HelloResponse {
+        public string Message { get; set; }
+    }
+
+    public class HelloEndpoint : EndpointWithoutRequest<HelloResponse> {
+        public override void Configure() {
+            Get("/api/test/hello");
+            AllowAnonymous();
+        }
+        public override async Task HandleAsync(CancellationToken ct) {
+            await Send.OkAsync(new HelloResponse() {
+                Message = "Hello World !"
+            });
+        }
+    }
+
+}
