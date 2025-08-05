@@ -63,7 +63,7 @@ In this case, try to forge a specific JWT with role based access limited to the 
 
 ### Override GetJwt()
 
-You can provide your own implementation of the `GetJwt()` by overriding in a [subclass](#subclass).
+You can provide your own implementation of the `GetJwt()` by overriding in a [subclass](./api-callback.md#subclass).
 
 Example of overriding
 
@@ -100,7 +100,7 @@ Then, you can use `userToken` to check according to your business rules.
 
 ### Refactor the JWT verification logic
 
-This example shows how to integrate a global custom jwt verification in all controllers using [callback](./api-callback).
+This example shows how to integrate a global custom jwt verification in all controllers using [subclass](./api-callback.md#subclass).
 
 
 Examples of a classic `Bearer Authorisation` Header sent by client.

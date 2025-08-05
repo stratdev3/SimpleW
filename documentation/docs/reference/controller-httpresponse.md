@@ -50,7 +50,7 @@ The `MakeResponse()` will create a text Response to the client.
 /// <param name="content">The MemoryStream Content.</param>
 /// <param name="output_filename">name of the download file.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+/// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
 HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true)
 ```
 
@@ -61,7 +61,7 @@ HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename =
 /// <param name="content">The string Content.</param>
 /// <param name="output_filename">name of the download file.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+/// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
 HttpResponse MakeDownloadResponse(string content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true)
 ```
 
@@ -72,7 +72,7 @@ HttpResponse MakeDownloadResponse(string content, string output_filename = null,
 /// <param name="content">The byte[] Content.</param>
 /// <param name="output_filename">name of the download file.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+/// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
 HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true)
 ```
 

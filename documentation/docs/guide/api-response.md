@@ -3,7 +3,7 @@
 ## Default
 
 
-The return of the `method` will be serialized to json using the excellent `JsonConvert.SerializeObject()` from [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json/)
+The return of the method will be serialized to json using the excellent `JsonConvert.SerializeObject()` from [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json/)
 
 ```csharp:line-numbers
 using System;
@@ -140,7 +140,7 @@ Most of the time, `object` is enough and will be passed to a `JsonConvert.Serial
 
 ## Helpers
 
-In fact, the `Controller` class is dealing with an [`HttpResponse`](../reference/controller-httpresponse) object which is sent async to the client.<br />
+In fact, the `Controller` class is dealing with an [`HttpResponse`](../reference/controller-httpresponse) object which is sent async to the client. 
 You can manipulate this object with the property `Response`.
 
 There are also some useful [helpers](../reference/controller-httpresponse) to create common response :

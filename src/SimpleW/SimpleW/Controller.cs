@@ -207,7 +207,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="content">The String content</param>
         /// <param name="contentType">The String Content type (default is "application/json; charset=UTF-8")</param>
-        /// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
         protected virtual void SendResponseAsync(string content, string contentType = "application/json; charset=UTF-8", bool compress = true) {
             SendResponseAsync(Encoding.UTF8.GetBytes(content), contentType, compress);
         }
@@ -217,7 +217,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="content">byte[] content</param>
         /// <param name="contentType">The String Content type (default is "application/json; charset=UTF-8")</param>
-        /// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
         protected virtual void SendResponseAsync(byte[] content, string contentType = "application/json; charset=UTF-8", bool compress = true) {
             Response.Clear();
             Response.SetBegin(200);
@@ -340,7 +340,7 @@ namespace SimpleW {
         /// <param name="content">The MemoryStream Content.</param>
         /// <param name="output_filename">name of the download file.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        /// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
         public HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true) {
             return MakeDownloadResponse(content.ToArray() , output_filename, contentType, compress);
         }
@@ -351,7 +351,7 @@ namespace SimpleW {
         /// <param name="content">The string Content.</param>
         /// <param name="output_filename">name of the download file.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        /// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
         public HttpResponse MakeDownloadResponse(string content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true) {
             return MakeDownloadResponse(Encoding.UTF8.GetBytes(content), output_filename, contentType, compress);
         }
@@ -362,7 +362,7 @@ namespace SimpleW {
         /// <param name="content">The byte[] Content.</param>
         /// <param name="output_filename">name of the download file.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        /// <param name="compress">The String Compression type (default true, it uses gzip or deflate depending request support content-encoding)</param>
+        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
         public HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true) {
             Response.Clear();
             Response.SetBegin(200);
