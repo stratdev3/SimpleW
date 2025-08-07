@@ -58,7 +58,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="request"></param>
         protected override void OnReceivedRequest(HttpRequest request) {
-            Activity? activity = ActivitySource.StartActivity();
+            Activity? activity = CreateActivity();
             try {
 
                 // parse : request.url to route
@@ -132,7 +132,7 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <param name="content"></param>
         protected override void OnReceivedCachedRequest(HttpRequest request, byte[] content) {
-            Activity? activity = ActivitySource.StartActivity();
+            Activity? activity = CreateActivity();
             SetDefaultActivity(activity, $"CACHE {request.Url}", request, Id, Socket);
             SendAsync(content);
             StopWithStatusCodeActivity(activity, 200, content.Length);
@@ -144,7 +144,7 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <param name="error"></param>
         protected override void OnReceivedRequestError(HttpRequest request, string error) {
-            Activity? activity = ActivitySource.StartActivity();
+            Activity? activity = CreateActivity();
             SetDefaultActivity(activity, $"ERROR {request.Url}", request, Id, Socket);
             StopWithErrorActivity(activity);
         }
@@ -176,7 +176,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="request"></param>
         public override void OnWsConnected(HttpRequest request) {
-            Activity? activity = ActivitySource.StartActivity();
+            Activity? activity = CreateActivity();
             try {
                 // parse : request.url to route
                 Route requestRoute = new(request);
@@ -194,7 +194,7 @@ namespace SimpleW {
         /// <param name="offset"></param>
         /// <param name="size"></param>
         public override void OnWsReceived(byte[] buffer, long offset, long size) {
-            Activity? activity = ActivitySource.StartActivity();
+            Activity? activity = CreateActivity();
             try {
                 SimpleWServer server = (SimpleWServer)Server;
 
@@ -235,7 +235,7 @@ namespace SimpleW {
         /// Websocket disconnect
         /// </summary>
         public override void OnWsDisconnected() {
-            Activity? activity = ActivitySource.StartActivity();
+            Activity? activity = CreateActivity();
             ((SimpleWServer)Server).UnregisterWebSocketUser(Id);
             SetDefaultActivity(activity, $"DISCONNECT", Id);
             StopWithStatusCodeActivity(activity, 200);
@@ -248,7 +248,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="error"></param>
         protected override void OnError(SocketError error) {
-            Activity? activity = ActivitySource.StartActivity();
+            Activity? activity = CreateActivity();
             SetDefaultActivity(activity, "Session OnError()", Id);
             activity.SetStatus(ActivityStatusCode.Error);
             ActivityTagsCollection tagsCollection = new() {
@@ -277,6 +277,14 @@ namespace SimpleW {
         protected readonly static ActivitySource ActivitySource = new("SimpleW", Assembly.GetExecutingAssembly().GetName().Version.ToString());
 
         /// <summary>
+        /// Create an Activity for Telemetry
+        /// </summary>
+        /// <returns></returns>
+        protected Activity? CreateActivity() {
+            return ActivitySource.StartActivity();
+        }
+
+        /// <summary>
         /// Set Default Properties of Activity for Trace
         /// </summary>
         /// <param name="activity"></param>
@@ -285,93 +293,98 @@ namespace SimpleW {
         /// <param name="id"></param>
         /// <param name="socket"></param>
         protected static void SetDefaultActivity(Activity activity, HttpRequest request, Route requestRoute, Guid id, Socket socket) {
-            if (activity != null) {
-                activity.DisplayName = $"{requestRoute.Method} {requestRoute.Url.AbsolutePath}";
-
-                activity.SetTag("network.transport", "TCP");
-                activity.SetTag("network.type", "ipv4");
-
-                activity.SetTag("server.address", request.Header("X-Forwarded-Host") ?? request.Header("Host") ?? requestRoute.Url.Host); // frontend proxy
-                activity.SetTag("server.port", requestRoute.Url.Port); // frontend proxy
-
-                //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
-                //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
-
-                activity.SetTag("url.path", requestRoute.Url.AbsolutePath);
-                activity.SetTag("url.query", requestRoute.Url.Query);
-                activity.SetTag("url.scheme", requestRoute.Url.Scheme);
-                activity.SetTag("url.full", requestRoute.RawUrl);
-
-                activity.SetTag("http.route", requestRoute.Url.AbsolutePath);
-                activity.SetTag("http.request.method", requestRoute.Method);
-                activity.SetTag("http.request.route", requestRoute.Url.AbsolutePath);
-                activity.SetTag("http.request.body.size", request.BodyLength.ToString());
-
-                activity.SetTag("session", id);
-
-                activity.SetTag("client.address", request.Header("X-Real-IP") ?? socket?.RemoteEndPoint.ToString());
-                //activity.SetTag("client.port", address.Address);
-
-                activity.SetTag("user_agent.original", request.Header("User-Agent"));
-
-                //Activity.Current.Context.TraceId.Dump();
+            if (activity == null) {
+                return;
             }
+
+            activity.DisplayName = $"{requestRoute.Method} {requestRoute.Url.AbsolutePath}";
+
+            activity.SetTag("network.transport", "TCP");
+            activity.SetTag("network.type", "ipv4");
+
+            activity.SetTag("server.address", request.Header("X-Forwarded-Host") ?? request.Header("Host") ?? requestRoute.Url.Host); // frontend proxy
+            activity.SetTag("server.port", requestRoute.Url.Port); // frontend proxy
+
+            //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
+            //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
+
+            activity.SetTag("url.path", requestRoute.Url.AbsolutePath);
+            activity.SetTag("url.query", requestRoute.Url.Query);
+            activity.SetTag("url.scheme", requestRoute.Url.Scheme);
+            activity.SetTag("url.full", requestRoute.RawUrl);
+
+            activity.SetTag("http.route", requestRoute.Url.AbsolutePath);
+            activity.SetTag("http.request.method", requestRoute.Method);
+            activity.SetTag("http.request.route", requestRoute.Url.AbsolutePath);
+            activity.SetTag("http.request.body.size", request.BodyLength.ToString());
+
+            activity.SetTag("session", id);
+
+            activity.SetTag("client.address", request.Header("X-Real-IP") ?? socket?.RemoteEndPoint.ToString());
+            //activity.SetTag("client.port", address.Address);
+
+            activity.SetTag("user_agent.original", request.Header("User-Agent"));
+
+            //Activity.Current.Context.TraceId.Dump();
         }
 
         protected static void SetDefaultActivity(Activity activity, WebSocketMessage message, Guid id, Socket socket) {
-            if (activity != null) {
-                activity.DisplayName = $"WEBSOCKET {message.url}";
-
-                activity.SetTag("network.transport", "TCP");
-                activity.SetTag("network.type", "ipv4");
-
-                activity.SetTag("client.address", socket?.RemoteEndPoint.ToString());
-
-                activity.SetTag("session", id);
-
+            if (activity == null) {
+                return;
             }
+
+            activity.DisplayName = $"WEBSOCKET {message.url}";
+
+            activity.SetTag("network.transport", "TCP");
+            activity.SetTag("network.type", "ipv4");
+
+            activity.SetTag("client.address", socket?.RemoteEndPoint.ToString());
+
+            activity.SetTag("session", id);
         }
 
         protected static void SetDefaultActivity(Activity activity, string DisplayName, HttpRequest request, Guid id, Socket socket) {
-            if (activity != null) {
-                activity.DisplayName = DisplayName;
-
-                activity.SetTag("network.transport", "TCP");
-                activity.SetTag("network.type", "ipv4");
-
-                //activity.SetTag("server.address", request.Header("X-Forwarded-Host") ?? request.Header("Host") ?? requestRoute.Url.Host); // frontend proxy
-                //activity.SetTag("server.port", requestRoute.Url.Port); // frontend proxy
-
-                //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
-                //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
-                string url = Route.FQURL(request);
-
-                activity.SetTag("url.path", url);
-                //activity.SetTag("url.query", requestRoute.Url.Query);
-                //activity.SetTag("url.scheme", requestRoute.Url.Scheme);
-                activity.SetTag("url.full", url);
-
-                activity.SetTag("http.route", url);
-                activity.SetTag("http.request.method", request.Method);
-                activity.SetTag("http.request.route", url);
-                activity.SetTag("http.request.body.size", request.BodyLength.ToString());
-
-                activity.SetTag("session", id);
-
-                activity.SetTag("client.address", request.Header("X-Real-IP") ?? socket?.RemoteEndPoint.ToString());
-                //activity.SetTag("client.port", address.Address);
-
-                activity.SetTag("user_agent.original", request.Header("User-Agent"));
+            if (activity == null) {
+                return;
             }
+
+            activity.DisplayName = DisplayName;
+
+            activity.SetTag("network.transport", "TCP");
+            activity.SetTag("network.type", "ipv4");
+
+            //activity.SetTag("server.address", request.Header("X-Forwarded-Host") ?? request.Header("Host") ?? requestRoute.Url.Host); // frontend proxy
+            //activity.SetTag("server.port", requestRoute.Url.Port); // frontend proxy
+
+            //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
+            //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
+            string url = Route.FQURL(request);
+
+            activity.SetTag("url.path", url);
+            //activity.SetTag("url.query", requestRoute.Url.Query);
+            //activity.SetTag("url.scheme", requestRoute.Url.Scheme);
+            activity.SetTag("url.full", url);
+
+            activity.SetTag("http.route", url);
+            activity.SetTag("http.request.method", request.Method);
+            activity.SetTag("http.request.route", url);
+            activity.SetTag("http.request.body.size", request.BodyLength.ToString());
+
+            activity.SetTag("session", id);
+
+            activity.SetTag("client.address", request.Header("X-Real-IP") ?? socket?.RemoteEndPoint.ToString());
+            //activity.SetTag("client.port", address.Address);
+
+            activity.SetTag("user_agent.original", request.Header("User-Agent"));
         }
 
         protected static void SetDefaultActivity(Activity activity, string DisplayName, Guid id) {
-            if (activity != null) {
-                activity.DisplayName = DisplayName;
-
-                activity.SetTag("session", id);
-
+            if (activity == null) {
+                return;
             }
+
+            activity.DisplayName = DisplayName;
+            activity.SetTag("session", id);
         }
 
         /// <summary>
@@ -382,47 +395,51 @@ namespace SimpleW {
         /// <param name="webuser"></param>
         /// <param name="exception"></param>
         protected static void StopWithStatusCodeActivity(Activity activity, HttpResponse response, IWebUser? webuser = null, Exception exception = null) {
-            if (activity != null) {
-                activity.SetTag("webuser", webuser?.Login);
-                activity.SetTag("http.response.status_code", response.Status.ToString());
-                activity.SetTag("http.response.body.size", response.BodyLength.ToString());
-
-                // opentelemetry convention indicate when status code not in (1xx, 2xx, 3xx)
-                // the span status need to be set to "Error"
-                // source : https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/http/
-                if (response.Status >= 400) {
-                    activity.SetStatus(ActivityStatusCode.Error, (exception?.Message ?? $"http error {response.Status}"));
-                }
-
-                AddExceptionToActivity(activity, exception, default);
-
-                // stop the trace
-                activity.Stop();
+            if (activity == null) {
+                return;
             }
+
+            activity.SetTag("webuser", webuser?.Login);
+            activity.SetTag("http.response.status_code", response.Status.ToString());
+            activity.SetTag("http.response.body.size", response.BodyLength.ToString());
+
+            // opentelemetry convention indicate when status code not in (1xx, 2xx, 3xx)
+            // the span status need to be set to "Error"
+            // source : https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/http/
+            if (response.Status >= 400) {
+                activity.SetStatus(ActivityStatusCode.Error, (exception?.Message ?? $"http error {response.Status}"));
+            }
+
+            AddExceptionToActivity(activity, exception, default);
+
+            // stop the trace
+            activity.Stop();
         }
 
         protected static void StopWithStatusCodeActivity(Activity activity, int status_code, int? response_size = null, IWebUser? webuser = null, Exception? exception = null) {
-            if (activity != null) {
-                activity.SetTag("http.response.status_code", status_code.ToString());
-
-                if (response_size != null) {
-                    activity.SetTag("http.response.body.size", response_size.ToString());
-                }
-
-                // opentelemetry convention indicate when status code not in (1xx, 2xx, 3xx)
-                // the span status need to be set to "Error"
-                // source : https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/http/
-                if (status_code >= 400) {
-                    activity.SetStatus(ActivityStatusCode.Error, (exception?.Message ?? $"http error {status_code}"));
-                }
-
-                activity.SetTag("webuser", webuser?.Login);
-
-                AddExceptionToActivity(activity, exception, default);
-
-                // stop the trace
-                activity.Stop();
+            if (activity == null) {
+                return;
             }
+
+            activity.SetTag("http.response.status_code", status_code.ToString());
+
+            if (response_size != null) {
+                activity.SetTag("http.response.body.size", response_size.ToString());
+            }
+
+            // opentelemetry convention indicate when status code not in (1xx, 2xx, 3xx)
+            // the span status need to be set to "Error"
+            // source : https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/http/
+            if (status_code >= 400) {
+                activity.SetStatus(ActivityStatusCode.Error, (exception?.Message ?? $"http error {status_code}"));
+            }
+
+            activity.SetTag("webuser", webuser?.Login);
+
+            AddExceptionToActivity(activity, exception, default);
+
+            // stop the trace
+            activity.Stop();
         }
 
         /// <summary>
@@ -431,15 +448,15 @@ namespace SimpleW {
         /// <param name="activity"></param>
         /// <param name="exception"></param>
         protected static void StopWithErrorActivity(Activity activity, Exception? exception = null) {
-            if (activity != null) {
-
-                activity.SetStatus(ActivityStatusCode.Error, exception?.Message);
-
-                AddExceptionToActivity(activity, exception, default);
-
-                // stop the trace
-                activity.Stop();
+            if (activity == null) {
+                return;
             }
+
+            activity.SetStatus(ActivityStatusCode.Error, exception?.Message);
+            AddExceptionToActivity(activity, exception, default);
+
+            // stop the trace
+            activity.Stop();
         }
 
         /// <summary>
