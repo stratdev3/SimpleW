@@ -10,23 +10,26 @@ Thanks to its [architecture](./what-is-simplew#architecture), SimpleW can handle
 Monitoring requests-per-second is not relevant as it depend on the hardware. <br />
 What matters is how each server performs relative to the others in the same conditions.
 
+All tests are performed on Linux on a capable machine.
 
-### Dynamic
 
-#### Evaluate request with a server containing a single route and returning json object
+#### Evaluate request with a server containing a single route that returns a json serialized object
 
-Results average : 3 runs of [`bombardier -c 200 -d 30s $url`](https://github.com/codesenberg/bombardier)
+Command : [`bombardier -c 200 -d 30s http://127.0.0.1:8080/api/test/hello`](https://github.com/codesenberg/bombardier)
 
-| Server                                                           | Perf (%)   | Total (req)     | Max (req/s)     | Average (req/s)     | Min (req/s)     | Memory Footprint |
-|------------------------------------------------------------------|-----------:|----------------:|----------------:|--------------------:|----------------:|-----------------:|
-| [SimpleW](/snippets/perf-simplew-dynamic-1.cs.txt)               |  **100**   |  **4.426.408**  |    **191.138**  |       **147.546**   |    **132.374**  |     81 Mo        |
-| [FastEndpoints](/snippets/perf-fastendpoints-dynamic-1.cs.txt)   |     90     |    4.015.874    |      189.494    |         133.862     |      121.431    |   **47 Mo**      |
-| [AspNetCore](/snippets/perf-aspnetcore-dynamic-1.cs.txt)         |     86     |    3.843.972    |      178.713    |         128.132     |      120.090    |     54 Mo        |
-| [GenHttp](/snippets/perf-genhttp-dynamic-1.cs.txt)               |     53     |    2.354.276    |      111.569    |          78.475     |       73.196    |    165 Mo        |
-| [FastHttp](/snippets/perf-fasthttp-dynamic-1.go.txt)             |     49     |    2.205.770    |      140.447    |          73.525     |       73.324    |      ? Mo        |
-| [EmbedIO](/snippets/perf-embedio-dynamic-1.cs.txt)               |      5     |      222.492    |       10.915    |           7.416     |       10.915    |    757 Mo        |
+| Server                                                           | Perf (%)   | Total (req)     | Max (req/s)     | Average (req/s)     |
+|------------------------------------------------------------------|-----------:|----------------:|----------------:|--------------------:|
+| [ActixWeb](/snippets/perf-actixweb-dynamic-1.rs.txt)             |  **100**   |  **10.214.741**  |      438.269    |       **340.593**   |
+| [Node](/snippets/perf-node-dynamic-1.js.txt)                     |     97     |     9.923.524    |    **456.048**  |         330.620     |
+| [SimpleW](/snippets/perf-simplew-dynamic-1.cs.txt)               |     84     |     8.542.876    |      361.732    |         284.923     |
+| [AspNetCore](/snippets/perf-aspnetcore-dynamic-1.cs.txt)         |     81     |     8.301.520    |      351.804    |         276.955     |
+| [FastEndpoints](/snippets/perf-fastendpoints-dynamic-1.cs.txt)   |     78     |     7.935.007    |      335.625    |         264.463     |
+| [FastHttp](/snippets/perf-fasthttp-dynamic-1.go.txt)             |     68     |     6.991.738    |      302.738    |         233.088     |
+| [GenHttp](/snippets/perf-genhttp-dynamic-1.cs.txt)               |     66     |     6.765.910    |      304.603    |         225.697     |
+| [Fastify](/snippets/perf-fastify-dynamic-1.js.txt)               |      8     |       821.255    |       27.397    |          33.817     |
+| [EmbedIO](/snippets/perf-embedio-dynamic-1.cs.txt)               |      1     |       143.474    |       10.538    |           4.785     |
 
-SimpleW delivers top performances, Fast-Endpoints is closed but for half of the memory footprint. ASP.NET Core is the 3th.
+Node is untouchable. SimpleW, AspnetCore and FastEndpoints offer excellent performance.
 
 
 <!--

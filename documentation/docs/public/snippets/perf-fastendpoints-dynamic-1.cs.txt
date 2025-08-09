@@ -13,6 +13,7 @@ namespace Sample {
             Console.WriteLine("fastapiendpoint http://localhost:5000/api/test/hello");
 
             var builder = WebApplication.CreateBuilder(args);
+            builder.WebHost.UseUrls("http://127.0.0.1:8080");
             builder.Logging.ClearProviders();
             builder.Services.AddFastEndpoints();
             var app = builder.Build();

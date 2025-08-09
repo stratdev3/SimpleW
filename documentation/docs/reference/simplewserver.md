@@ -2,15 +2,150 @@
 
 The `SimplewServer` is the main class to instanciate and manipulate the web server
 
-
-## SimpleWServer()
+## Constructors
 
 ```csharp
 SimpleWServer(IPAddress address, int port)
 ```
 
 The constructor takes an `IPAddress` and a `port` number.
-You can use `IPAddress.Any` to match all IP addresses of the machine
+You can use `IPAddress.Any` to match all IP addresses of the machine.
+
+
+```csharp
+SimpleWSServer(SslContext context, IPAddress address, int port)
+```
+
+The class `SimpleWSServer` is exactly the same as `SimplewServer` except it takes a `SslContext` as primary argument.
+This context is to use SSL Certificate.
+
+```csharp
+new SslContext(SslProtocols.Tls12, new X509Certificate2(@"certifcate.pfx", "password"));
+```
+
+## Socket Options
+
+```csharp
+/// <summary>
+/// Option: acceptor backlog size
+/// </summary>
+/// <remarks>
+/// This option will set the listening socket's backlog size
+/// </remarks>
+public int OptionAcceptorBacklog { get; set; } = 1024;
+```
+
+```csharp
+/// <summary>
+/// Option: dual mode socket
+/// </summary>
+/// <remarks>
+/// Specifies whether the Socket is a dual-mode socket used for both IPv4 and IPv6.
+/// Will work only if socket is bound on IPv6 address.
+/// </remarks>
+public bool OptionDualMode { get; set; }
+```
+
+```csharp
+/// <summary>
+/// Option: keep alive
+/// </summary>
+/// <remarks>
+/// This option will setup SO_KEEPALIVE if the OS support this feature
+/// </remarks>
+public bool OptionKeepAlive { get; set; }
+```
+
+```csharp
+/// <summary>
+/// Option: TCP keep alive time
+/// </summary>
+/// <remarks>
+/// The number of seconds a TCP connection will remain alive/idle before keepalive probes are sent to the remote
+/// </remarks>
+public int OptionTcpKeepAliveTime { get; set; } = -1;
+```
+
+```csharp
+/// <summary>
+/// Option: TCP keep alive interval
+/// </summary>
+/// <remarks>
+/// The number of seconds a TCP connection will wait for a keepalive response before sending another keepalive probe
+/// </remarks>
+public int OptionTcpKeepAliveInterval { get; set; } = -1;
+```
+
+```csharp
+/// <summary>
+/// Option: TCP keep alive retry count
+/// </summary>
+/// <remarks>
+/// The number of TCP keep alive probes that will be sent before the connection is terminated
+/// </remarks>
+public int OptionTcpKeepAliveRetryCount { get; set; } = -1;
+```
+
+```csharp
+/// <summary>
+/// Option: no delay
+/// </summary>
+/// <remarks>
+/// This option will enable/disable Nagle's algorithm for TCP protocol
+/// </remarks>
+public bool OptionNoDelay { get; set; }
+```
+
+```csharp
+/// <summary>
+/// Option: reuse address
+/// </summary>
+/// <remarks>
+/// This option will enable/disable SO_REUSEADDR if the OS support this feature
+/// </remarks>
+public bool OptionReuseAddress { get; set; }
+```
+
+```csharp
+/// <summary>
+/// Option: enables a socket to be bound for exclusive access
+/// </summary>
+/// <remarks>
+/// This option will enable/disable SO_EXCLUSIVEADDRUSE if the OS support this feature
+/// </remarks>
+public bool OptionExclusiveAddressUse { get; set; }
+```
+
+```csharp
+/// <summary>
+/// Option: receive buffer size
+/// </summary>
+public int OptionReceiveBufferSize { get; set; } = 8192;
+```
+
+```csharp
+/// <summary>
+/// Option: send buffer size
+/// </summary>
+public int OptionSendBufferSize { get; set; } = 8192;
+```
+
+```csharp
+/// <summary>
+/// Is the server started?
+/// </summary>
+public bool IsStarted { get; private set; }
+```
+
+```csharp
+/// <summary>
+/// Is the server accepting new clients?
+/// </summary>
+public bool IsAccepting { get; private set; }
+```
+
+
+## Control
 
 ```csharp
 void Start()
@@ -25,27 +160,13 @@ void Stop()
 Stops the web server.
 
 
-## SimpleWSServer()
-
-```csharp
-SimpleWSServer(SslContext context, IPAddress address, int port)
-```
-
-The class `SimpleWSServer` is exactly the same as `SimplewServer` except it takes a `SslContext` as primary argument.
-This context is to use SSL Certificate.
-
-```csharp
-new SslContext(SslProtocols.Tls12, new X509Certificate2(@"certifcate.pfx", "password"));
-```
-
-
 ## Router
 
-The `Router` property contains all routes handled by the web server.
+The [`Router`](./router) property contains all routes handled by the web server.
 You can list them with `Router.Routes`.
 
 
-## AddDynamicContent()
+## Dynamic Content
 
 ### Manual
 
@@ -119,7 +240,7 @@ However, `Router` use **compiled delegate**, close to hard-coded method calls, t
 :::
 
 
-## SetToken()
+### SetToken()
 
 ```csharp
 /// <summary>
@@ -133,7 +254,7 @@ void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser get
 ```
 
 
-## BroadcastSSESessions()
+## SSE
 
 ```csharp
 /// <summary>
@@ -149,7 +270,7 @@ To sent reponse to all active Servent Sent Events session. A `filter` is availab
 The `evt` and `data` parameters correspond to the format of SSE message.
 
 
-## AddWebSocketContent()
+## WebSockets
 
 ### Manual
 
@@ -179,7 +300,7 @@ void AddWebSocketContent(string path = "/websocket", IEnumerable<Type> excepts =
 At runtime, this method will find all classes based on `Controller` class and integrate them in the `Router` as a websocket under the `path` endpoint.
 
 
-## MulticastText()
+### MulticastText()
 
 ```csharp
 /// <summary>
@@ -202,7 +323,7 @@ bool MulticastText(byte[] buffer)
 The `MulticastText` send messge to all active websocket clients.
 
 
-## AddCORS()
+## CORS
 
 ```csharp
 /// <summary>
@@ -218,7 +339,7 @@ void AddCORS(string origin="*", string headers = "*", string methods = "GET,POST
 Setup the Cross-Origin Resource Sharing policy and so, add 4 headers to every response.
 
 
-## AddStaticContent()
+## Static Content
 
 ```csharp
 /// <summary>
@@ -235,8 +356,6 @@ This method expose all files in `path` in the `Router` and served by the web ser
 There is a `filter` and a `timeout` to control the cache lifetime (default: 1 hour).
 
 
-## DefaultDocument
-
 ```csharp
 /// <summary>
 /// File to get by default (default: "index.html")
@@ -245,9 +364,6 @@ string DefaultDocument { get; set; } = "index.html";
 ```
 
 This property change the default file in of a static content of no file has been selected.
-
-
-## AutoIndex
 
 ```csharp
 /// <summary>
@@ -259,3 +375,33 @@ bool AutoIndex { get; set; } = false;
 
 This property enable or disable the index feature which list files of a static 
 content directory when no file has been selected and `DefaultDocument` does not exists.
+
+## Statistics
+
+```csharp
+/// <summary>
+/// Number of sessions connected to the server
+/// </summary>
+public long ConnectedSessions { get { return Sessions.Count; } }
+```
+
+```csharp
+/// <summary>
+/// Number of bytes pending sent by the server
+/// </summary>
+public long BytesPending { get { return _bytesPending; } }
+```
+
+```csharp
+/// <summary>
+/// Number of bytes sent by the server
+/// </summary>
+public long BytesSent { get { return _bytesSent; } }
+```
+
+```csharp
+/// <summary>
+/// Number of bytes received by the server
+/// </summary>
+public long BytesReceived { get { return _bytesReceived; } }
+```

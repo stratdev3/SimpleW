@@ -1,0 +1,18 @@
+//
+// project : https://fastify.dev/
+//
+
+const fastify = require('fastify')({ logger: false })
+
+fastify.get('/api/test/hello', function handler (request, reply) {
+    reply.send({ message: 'Hello World !' })
+})
+
+console.log(`fastify listen on http://127.0.0.1:8080`);
+
+fastify.listen({ port: 8080 }, (err) => {
+    if (err) {
+        fastify.log.error(err)
+        process.exit(1)
+    }
+})

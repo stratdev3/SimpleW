@@ -10,9 +10,9 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            Console.WriteLine("SimpleW started at http://192.168.1.22:2015/api/test/hello");
+            Console.WriteLine("SimpleW started at http://127.0.0.1:8080/api/test/hello");
 
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new SimpleWServer(IPAddress.Any, 8080);
             server.AddDynamicContent("/api");
             server.Start();
             Console.ReadKey();

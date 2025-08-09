@@ -1,0 +1,24 @@
+//
+// project : https://actix.rs/
+//
+
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use std::net::SocketAddr;
+
+#[derive(serde::Serialize)]
+struct Hello {
+    message: &'static str,
+}
+
+#[get("/api/test/hello")]
+async fn hello() -> impl Responder {
+    web::Json(Hello { message: "Hello World !" })
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index).service(hello))
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await
+}

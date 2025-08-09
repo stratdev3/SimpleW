@@ -8,11 +8,12 @@ using System.Net;
 namespace Sample {
 
     class Program {
-        static void Main() {
+        static void Main(string[] args) {
 
-            Console.WriteLine("aspnetcore started at http://192.168.1.22:5090/api/test/hello");
+            Console.WriteLine("aspnetcore started at http://127.0.0.1:8080/api/test/hello");
 
             var builder = WebApplication.CreateBuilder(args);
+            builder.WebHost.UseUrls("http://127.0.0.1:8080");
             var app = builder.Build();
             app.MapGet("/api/test/hello", () => new { message = "Hello World !" });
             app.Run();

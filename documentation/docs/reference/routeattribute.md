@@ -1,6 +1,6 @@
 # Route Attribute
 
-The primary goal of the `Route` attribut is to target method and add them to the `Router`.
+The primary goal of the `Route` attribut is to target method and add them to the [`Router`](./router).
 
 
 ## RouteAttribute()

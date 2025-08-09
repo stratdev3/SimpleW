@@ -5,16 +5,18 @@
 using EmbedIO;
 using EmbedIO.Routing;
 using EmbedIO.WebApi;
+using Swan.Logging;
 
 namespace Sample {
 
     class Program {
         static void Main(string[] args) {
 
-            Console.WriteLine("embedio started at http://192.168.1.22:9696/api/test/hello");
+            Console.WriteLine("embedio started at http://127.0.0.1:8080/api/test/hello/api/test/hello");
+            Logger.NoLogging();
 
             var server = new WebServer(o => o
-                    .WithUrlPrefix("http://192.168.1.22:9696/")
+                    .WithUrlPrefix("http://127.0.0.1:8080/api/test/hello/")
                     .WithMode(HttpListenerMode.EmbedIO))
                     .WithWebApi("/api", m => m
                     .WithController<PeopleController>());
