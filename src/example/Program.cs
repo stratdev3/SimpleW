@@ -2,7 +2,7 @@
 using SimpleW;
 
 
-namespace test {
+namespace example {
 
     /// <summary>
     /// Test Program
