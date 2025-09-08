@@ -36,7 +36,7 @@ namespace SimpleW {
         /// <summary>
         /// Return true if RawURL ending with "/"
         /// </summary>
-        public bool hasEndingSlash => RawUrl.EndsWith("/");
+        public bool hasEndingSlash => !string.IsNullOrEmpty(RawUrl) && RawUrl[^1] == '/';
 
         /// <summary>
         /// The ControllerMethodExecutor
