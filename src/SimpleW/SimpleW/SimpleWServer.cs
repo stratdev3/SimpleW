@@ -43,15 +43,17 @@ namespace SimpleW {
         /// </summary>
         /// <param name="error"></param>
         protected override void OnError(SocketError error) {
-            Activity? activity = source.StartActivity();
-            if (activity != null) {
-                activity.DisplayName = "Server OnError()";
-                activity.SetStatus(ActivityStatusCode.Error);
-                ActivityTagsCollection tagsCollection = new() {
-                    { "exception.type", nameof(SocketError) },
-                };
-                activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
-                activity.Stop();
+            if (EnableTelemetry) {
+                Activity? activity = source.StartActivity();
+                if (activity != null) {
+                    activity.DisplayName = "Server OnError()";
+                    activity.SetStatus(ActivityStatusCode.Error);
+                    ActivityTagsCollection tagsCollection = new() {
+                        { "exception.type", nameof(SocketError) },
+                    };
+                    activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
+                    activity.Stop();
+                }
             }
         }
 
@@ -454,6 +456,11 @@ namespace SimpleW {
         #endregion cors
 
         #region OpenTelemetry
+
+        /// <summary>
+        /// True to enable telemetry
+        /// </summary>
+        public bool EnableTelemetry { get; set; } = false;
 
         /// <summary>
         /// ActivitySource

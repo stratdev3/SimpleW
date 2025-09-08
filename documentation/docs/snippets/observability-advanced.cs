@@ -16,6 +16,10 @@ namespace Sample {
             openTelemetryObserver("SimpleW");
 
             var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // enable telemetry
+            server.EnableTelemetry = true;
+
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");

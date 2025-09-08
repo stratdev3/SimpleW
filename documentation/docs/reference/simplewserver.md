@@ -376,6 +376,15 @@ bool AutoIndex { get; set; } = false;
 This property enable or disable the index feature which list files of a static 
 content directory when no file has been selected and `DefaultDocument` does not exists.
 
+## Telemetry
+
+```csharp
+/// <summary>
+/// True to enable telemetry
+/// </summary>
+public bool EnableTelemetry { get; set; } = false;
+```
+
 ## Statistics
 
 ```csharp

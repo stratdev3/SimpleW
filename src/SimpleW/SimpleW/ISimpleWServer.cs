@@ -111,6 +111,15 @@ namespace SimpleW {
 
         #endregion cors
 
+        #region telemetry
+
+        /// <summary>
+        /// True to enable telemetry
+        /// </summary>
+        bool EnableTelemetry { get; set; }
+
+        #endregion telemetry
+
     }
 
 }

@@ -248,14 +248,16 @@ namespace SimpleW {
         /// </summary>
         /// <param name="error"></param>
         protected override void OnError(SocketError error) {
-            Activity? activity = CreateActivity();
-            SetDefaultActivity(activity, "Session OnError()", Id);
-            activity.SetStatus(ActivityStatusCode.Error);
-            ActivityTagsCollection tagsCollection = new() {
+            if (server.EnableTelemetry) {
+                Activity? activity = CreateActivity();
+                SetDefaultActivity(activity, "Session OnError()", Id);
+                activity.SetStatus(ActivityStatusCode.Error);
+                ActivityTagsCollection tagsCollection = new() {
                     { "exception.type", nameof(SocketError) },
-            };
-            activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
-            activity.Stop();
+                };
+                activity.AddEvent(new ActivityEvent("exception", default, tagsCollection));
+                activity.Stop();
+            }
         }
 
         /// <summary>
@@ -281,7 +283,7 @@ namespace SimpleW {
         /// </summary>
         /// <returns></returns>
         protected Activity? CreateActivity() {
-            return ActivitySource.StartActivity();
+            return server.EnableTelemetry ? ActivitySource.StartActivity() : null;
         }
 
         /// <summary>

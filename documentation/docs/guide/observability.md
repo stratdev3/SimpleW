@@ -7,6 +7,7 @@ Observability is integrated through support for **OpenTelemetry**, the [open sta
 
 Logs are very useful for developer when coding.
 The following example shows how to :
+- [`EnableTelemetry `](../reference/simplewserver#telemetry)
 - subscribe to all SimpleW `Event` with `openTelemetryObserver()`
 - log each request to console with `LogProcessor` (do not use for production).
 
