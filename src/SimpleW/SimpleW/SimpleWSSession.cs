@@ -83,7 +83,7 @@ namespace SimpleW {
                                     <h1>Index of {requestRoute.Url.AbsolutePath}</h1>
                                     <hr /><pre>"
                                         +(hasParent ? @$"<a href=""../"">../</a>{Environment.NewLine}" : "")
-                                        +$"{string.Join(Environment.NewLine, files.OrderBy(f => f).Select(f => $"<a href=\"{f}\">{f}</a>"))}"
+                                        +$"{string.Join(Environment.NewLine, files.Select(f => $"<a href=\"{f}\">{f}</a>"))}"
                                     +@"</pre><hr />
                                 </body>
                             </html>";
