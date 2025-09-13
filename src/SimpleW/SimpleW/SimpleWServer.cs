@@ -52,6 +52,12 @@ namespace SimpleW {
         public SimpleWServer(IPEndPoint endpoint) : base(endpoint) { }
 
         /// <summary>
+        /// Initialize server with a given Unix domain socket endpoint
+        /// </summary>
+        /// <param name="endpoint">Unix domain socket endpoint</param>
+        public SimpleWServer(UnixDomainSocketEndPoint endpoint) : base(endpoint) { }
+
+        /// <summary>
         /// Herited mandatory factory http/ws session builder
         /// </summary>
         /// <returns></returns>

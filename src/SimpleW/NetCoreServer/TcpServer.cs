@@ -49,6 +49,11 @@ namespace NetCoreServer
             Port = port;
             Endpoint = endpoint;
         }
+        /// <summary>
+        /// Initialize TCP server with a given Unix domain socket endpoint
+        /// </summary>
+        /// <param name="endpoint">Unix domain socket endpoint</param>
+        public TcpServer(UnixDomainSocketEndPoint endpoint) : this(endpoint, endpoint.ToString(), 0) {}
 
         /// <summary>
         /// Server Id
@@ -187,7 +192,8 @@ namespace NetCoreServer
         /// <returns>Socket object</returns>
         protected virtual Socket CreateSocket()
         {
-            return new Socket(Endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            ProtocolType protocolType = Endpoint is UnixDomainSocketEndPoint ? ProtocolType.IP : ProtocolType.Tcp;
+            return new Socket(Endpoint.AddressFamily, SocketType.Stream, protocolType);
         }
 
         /// <summary>

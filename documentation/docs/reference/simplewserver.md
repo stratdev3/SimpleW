@@ -31,6 +31,14 @@ public SimpleWServer(DnsEndPoint endpoint)
 public SimpleWServer(IPEndPoint endpoint)
 ```
 
+```csharp
+/// <summary>
+/// Initialize HTTP server with a given Unix domain socket endpoint
+/// </summary>
+/// <param name="endpoint">Unix domain socket endpoint</param>
+public WsServer(UnixDomainSocketEndPoint endpoint)
+```
+
 ### HTTPS
 
 ```csharp

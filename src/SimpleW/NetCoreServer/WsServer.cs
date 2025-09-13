@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace NetCoreServer
@@ -34,7 +35,11 @@ namespace NetCoreServer
         /// </summary>
         /// <param name="endpoint">IP endpoint</param>
         public WsServer(IPEndPoint endpoint) : base(endpoint) { WebSocket = new WebSocket(this); }
-
+        /// <summary>
+        /// Initialize HTTP server with a given Unix domain socket endpoint
+        /// </summary>
+        /// <param name="endpoint">Unix domain socket endpoint</param>
+        public WsServer(UnixDomainSocketEndPoint endpoint) : base(endpoint) { WebSocket = new WebSocket(this); }
         #region Session management
 
         public virtual bool CloseAll() => CloseAll(0, Span<byte>.Empty);

@@ -72,6 +72,7 @@ export default defineConfig({
                         { text: 'Json Web Token', link: '/guide/api-json-web-token' },
                         { text: 'Cross-Origin Resource Sharing', link: '/guide/api-cors' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
+                        { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                     ]
                 },
                 {

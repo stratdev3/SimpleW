@@ -1,6 +1,7 @@
 ﻿using System;
-using System.Net;
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
 
 namespace NetCoreServer
 {
@@ -32,6 +33,11 @@ namespace NetCoreServer
         /// </summary>
         /// <param name="endpoint">IP endpoint</param>
         public HttpServer(IPEndPoint endpoint) : base(endpoint) { Cache = new FileCache(); }
+        /// <summary>
+        /// Initialize HTTP server with a given Unix domain socket endpoint
+        /// </summary>
+        /// <param name="endpoint">Unix domain socket endpoint</param>
+        public HttpServer(UnixDomainSocketEndPoint endpoint) : base(endpoint) { Cache = new FileCache(); }
 
         /// <summary>
         /// Get the static content cache
