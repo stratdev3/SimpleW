@@ -26,11 +26,30 @@ namespace SimpleW {
         #region netcoreserver
 
         /// <summary>
-        /// Herited Mandatory Constructor
+        /// Initialize server with a given IP address and port number
         /// </summary>
         /// <param name="address"></param>
         /// <param name="port"></param>
         public SimpleWServer(IPAddress address, int port) : base(address, port) { }
+
+        /// <summary>
+        /// Initialize server with a given IP address and port number
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="port"></param>
+        public SimpleWServer(string address, int port) : base(address, port) { }
+
+        /// <summary>
+        /// Initialize server with a given DNS endpoint
+        /// </summary>
+        /// <param name="endpoint">DNS endpoint</param>
+        public SimpleWServer(DnsEndPoint endpoint) : base(endpoint) { }
+
+        /// <summary>
+        /// Initialize server with a given IP endpoint
+        /// </summary>
+        /// <param name="endpoint">IP endpoint</param>
+        public SimpleWServer(IPEndPoint endpoint) : base(endpoint) { }
 
         /// <summary>
         /// Herited mandatory factory http/ws session builder

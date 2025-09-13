@@ -4,16 +4,61 @@ The `SimplewServer` is the main class to instanciate and manipulate the web serv
 
 ## Constructors
 
+### HTTP
+
 ```csharp
-SimpleWServer(IPAddress address, int port)
+/// <summary>
+/// Initialize server with a given IP address and port number
+/// </summary>
+/// <param name="address"></param>
+/// <param name="port"></param>
+public SimpleWServer(IPAddress address, int port)
 ```
 
-The constructor takes an `IPAddress` and a `port` number.
-You can use `IPAddress.Any` to match all IP addresses of the machine.
-
+```csharp
+/// <summary>
+/// Initialize WebSocket server with a given DNS endpoint
+/// </summary>
+/// <param name="endpoint">DNS endpoint</param>
+public SimpleWServer(DnsEndPoint endpoint)
+```
 
 ```csharp
-SimpleWSServer(SslContext context, IPAddress address, int port)
+/// <summary>
+/// Initialize WebSocket server with a given IP endpoint
+/// </summary>
+/// <param name="endpoint">IP endpoint</param>
+public SimpleWServer(IPEndPoint endpoint)
+```
+
+### HTTPS
+
+```csharp
+/// <summary>
+/// Initialize WebSocket server with a given IP address and port number
+/// </summary>
+/// <param name="context">SSL context</param>
+/// <param name="address">IP address</param>
+/// <param name="port">Port number</param>
+public SimpleWSServer(SslContext context, IPAddress address, int port)
+```
+
+```csharp
+/// <summary>
+/// Initialize WebSocket server with a given DNS endpoint
+/// </summary>
+/// <param name="context">SSL context</param>
+/// <param name="endpoint">DNS endpoint</param>
+public SimpleWSServer(SslContext context, DnsEndPoint endpoint)
+```
+
+```csharp
+/// <summary>
+/// Initialize WebSocket server with a given IP endpoint
+/// </summary>
+/// <param name="context">SSL context</param>
+/// <param name="endpoint">IP endpoint</param>
+public SimpleWSServer(SslContext context, IPEndPoint endpoint)
 ```
 
 The class `SimpleWSServer` is exactly the same as `SimplewServer` except it takes a `SslContext` as primary argument.

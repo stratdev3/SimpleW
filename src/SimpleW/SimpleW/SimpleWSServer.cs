@@ -26,12 +26,34 @@ namespace SimpleW {
         #region netcoreserver
 
         /// <summary>
-        /// Herited Mandatory Constructor
+        /// Initialize server with a given IP address and port number
         /// </summary>
-        /// <param name="context"></param>
-        /// <param name="address"></param>
-        /// <param name="port"></param>
+        /// <param name="context">SSL context</param>
+        /// <param name="address">IP address</param>
+        /// <param name="port">Port number</param>
         public SimpleWSServer(SslContext context, IPAddress address, int port) : base(context, address, port) { }
+
+        /// <summary>
+        /// Initialize server with a given IP address and port number
+        /// </summary>
+        /// <param name="context">SSL context</param>
+        /// <param name="address">IP address</param>
+        /// <param name="port">Port number</param>
+        public SimpleWSServer(SslContext context, string address, int port) : base(context, address, port) { }
+
+        /// <summary>
+        /// Initialize server with a given DNS endpoint
+        /// </summary>
+        /// <param name="context">SSL context</param>
+        /// <param name="endpoint">DNS endpoint</param>
+        public SimpleWSServer(SslContext context, DnsEndPoint endpoint) : base(context, endpoint) { }
+
+        /// <summary>
+        /// Initialize server with a given IP endpoint
+        /// </summary>
+        /// <param name="context">SSL context</param>
+        /// <param name="endpoint">IP endpoint</param>
+        public SimpleWSServer(SslContext context, IPEndPoint endpoint) : base(context, endpoint) { }
 
         /// <summary>
         /// Herited mandatory factory https/wss session builder
