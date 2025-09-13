@@ -15,10 +15,30 @@ Notes :
 - automatic `Swagger API JSON` generation
 - jwt verify `iss`
 - support `async Task` in controller method return
-- `Socket.ReceiveAsync` since NET7
 - Mutual TLS authentication
 - sync `LiteJWT` library with upstream
 - sync `HttpMultipartDataParser` library with upstream
+
+
+
+## v15.0.0 / _(2025-09-13)_
+Major release
+
+### breakingChange
+
+- telemetry is now disabled by default. To enable it, set `EnableTelemetry` property to `true` (#42)
+
+### fix
+
+- fix: AutoIndex must sort directory first then file (#11)
+- chore: add missing constructor from NetCoreServer (#43)
+- chore: throw exception when using component while the server is already started (#41)
+
+### feature
+
+- feature: handle unix socket (#38), PR by [philippseith](https://github.com/chronoxor/NetCoreServer/pull/250)
+- feature: add new server `EnableTelemetry` property to enable telemetry (#42)
+
 
 
 ## v14.0.1 / _(2025-07-22)_

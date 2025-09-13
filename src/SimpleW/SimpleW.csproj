@@ -10,9 +10,9 @@
     <PackageTags>http api websocket sse server webserver restapi mvc https ssl tls rest</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>SimpleW is Web server Library for .NET Core. Powerfully Simple. Blazingly Fast.</Description>
-    <AssemblyVersion>14.0.1</AssemblyVersion>
-    <FileVersion>14.0.1</FileVersion>
-    <Version>14.0.1</Version>
+    <AssemblyVersion>15.0.0</AssemblyVersion>
+    <FileVersion>15.0.0</FileVersion>
+    <Version>15.0.0</Version>
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
