@@ -108,6 +108,52 @@ namespace SimpleW {
 
         #endregion static
 
+        #region func
+
+        /// <summary>
+        /// Add Func content for GET request
+        /// Available arguments :
+        ///     - ISimpleWSession session
+        ///     - HttpRequest request
+        ///     - any query string name
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="handler"></param>
+        public void MapGet(string url, Delegate handler) {
+            AddFunc("GET", url, handler);
+        }
+
+        /// <summary>
+        /// Add Func content for POST request
+        /// Available arguments :
+        ///     - ISimpleWSession session
+        ///     - HttpRequest request
+        ///     - any query string name
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="handler"></param>
+        public void MapPost(string url, Delegate handler) {
+            AddFunc("POST", url, handler);
+        }
+
+        /// <summary>
+        /// Add Func content
+        /// Available arguments :
+        ///     - ISimpleWSession session
+        ///     - HttpRequest request
+        ///     - any query string name
+        /// </summary>
+        /// <param name="verb">GET, POST...</param>
+        /// <param name="url"></param>
+        /// <param name="handler"></param>
+        private void AddFunc(string verb, string url, Delegate handler) {
+            RouteAttribute attribute = new RouteAttribute(verb, url, isAbsolutePath: true);
+            Route route = new(attribute, ControllerMethodExecutor.Create(handler));
+            Router.AddRoute(route);
+        }
+
+        #endregion func
+
         #region dynamic
 
         /// <summary>

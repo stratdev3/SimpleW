@@ -41,6 +41,8 @@ namespace SimpleW {
 
         #endregion target_delegate
 
+        #region ExecuteMethod
+
         /// <summary>
         /// The Expression Tree to Execute Method with Parameters
         /// </summary>
@@ -179,6 +181,113 @@ namespace SimpleW {
 
             return new ControllerMethodExecutor(lambda.Compile(), values);
         }
+
+        #endregion ExecuteMethod
+
+        #region ExecuteFunc
+
+        /// <summary>
+        /// The Function to Execute
+        /// </summary>
+        public readonly Func<ISimpleWSession, HttpRequest, object[], object?> ExecuteFunc;
+
+        /// <summary>
+        /// Initialize a new instance
+        /// </summary>
+        /// <param name="executeFunc"></param>
+        /// <param name="parameters"></param>
+        private ControllerMethodExecutor(Func<ISimpleWSession, HttpRequest, object[], object?> executeFunc, Dictionary<ParameterInfo, object> parameters) {
+            ExecuteFunc = executeFunc;
+            Parameters = parameters;
+        }
+
+        /// <summary>
+        /// Create a ControllerMethodExecutor
+        /// </summary>
+        /// <param name="executeFunc"></param>
+        /// <returns></returns>
+        public static ControllerMethodExecutor Create(Delegate executeFunc) {
+            MethodInfo method = executeFunc.Method;
+            List<Expression> body = new();
+
+            // lambda parameters
+            ParameterExpression sessionInLambda = Expression.Parameter(typeof(ISimpleWSession));
+            ParameterExpression requestInLambda = Expression.Parameter(typeof(HttpRequest));
+            ParameterExpression argsInLambda = Expression.Parameter(typeof(object[]));
+
+            //
+            // get method parameter
+            //
+            ParameterInfo[] parameters = method.GetParameters();
+            int parameterCount = parameters.Length;
+            List<Expression> callParameters = new();
+            Dictionary<ParameterInfo, object> values = new();
+
+            for (int i = 0; i < parameterCount; i++) {
+                ParameterInfo parameter = parameters[i];
+
+                if (parameter.ParameterType == typeof(ISimpleWSession)) {
+                    callParameters.Add(sessionInLambda);
+                    values.Add(parameter, parameter.ParameterType);
+                    continue;
+                }
+                else if (parameter.ParameterType == typeof(HttpRequest)) {
+                    callParameters.Add(requestInLambda);
+                    values.Add(parameter, parameter.ParameterType);
+                    continue;
+                }
+
+                callParameters.Add(
+                    Expression.Convert(Expression.ArrayIndex(argsInLambda, Expression.Constant(i)), parameter.ParameterType)
+                );
+
+                bool hasDefaultValue;
+                bool tryToGetDefaultValue = true;
+                object defaultValue = null;
+
+                try {
+                    hasDefaultValue = parameter.HasDefaultValue;
+                }
+                catch (FormatException) when (parameter.ParameterType == typeof(DateTime)) {
+                    // Workaround for https://github.com/dotnet/corefx/issues/12338
+                    // If HasDefaultValue throws FormatException for DateTime
+                    // we expect it to have default value
+                    hasDefaultValue = true;
+                    tryToGetDefaultValue = false;
+                }
+
+                if (hasDefaultValue) {
+                    if (tryToGetDefaultValue) {
+                        defaultValue = parameter.DefaultValue;
+                    }
+
+                    // Workaround for https://github.com/dotnet/corefx/issues/11797
+                    if (defaultValue == null && parameter.ParameterType.IsValueType) {
+                        defaultValue = Activator.CreateInstance(parameter.ParameterType);
+                    }
+
+                    //callParameters.Add(Expression.Constant(defaultValue));
+                    values.Add(parameter, defaultValue);
+                }
+                else {
+                    //callParameters.Add(Expression.Default(parameter.ParameterType));
+                    values.Add(parameter, parameter.ParameterType);
+                }
+            }
+
+            //
+            // call method
+            //
+            Expression call = Expression.Invoke(Expression.Constant(executeFunc), callParameters);
+            body.Add(call);
+
+            // final lambda
+            Expression<Func<ISimpleWSession, HttpRequest, object[], object?>> lambda = Expression.Lambda<Func<ISimpleWSession, HttpRequest, object[], object?>>(Expression.Block(body), sessionInLambda, requestInLambda, argsInLambda);
+
+            return new ControllerMethodExecutor(lambda.Compile(), values);
+        }
+
+        #endregion ExecuteFunc
 
         #region helper
 

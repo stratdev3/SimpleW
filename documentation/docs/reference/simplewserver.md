@@ -218,6 +218,36 @@ Stops the web server.
 The [`Router`](./router) property contains all routes handled by the web server.
 You can list them with `Router.Routes`.
 
+## Inline Func
+
+For a rapid prototyping, `Func` can be set inline.
+
+```csharp
+/// <summary>
+/// Add Func content for GET request
+/// Available arguments :
+///     - ISimpleWSession session
+///     - HttpRequest request
+///     - any query string name
+/// </summary>
+/// <param name="url"></param>
+/// <param name="handler"></param>
+public void MapGet(string url, Delegate handler)
+```
+
+```csharp
+/// <summary>
+/// Add Func content for POST request
+/// Available arguments :
+///     - ISimpleWSession session
+///     - HttpRequest request
+///     - any query string name
+/// </summary>
+/// <param name="url"></param>
+/// <param name="handler"></param>
+public void MapPost(string url, Delegate handler)
+```
+
 
 ## Dynamic Content
 

@@ -21,6 +21,17 @@ some advanced features will be covered (`Populate` and `streamingContextObject`,
 :::
 
 
+## Minimal Example
+
+The following minimal example can be used for rapid prototyping.
+
+::: code-group
+
+<<< @/snippets/getting-started-minimal.cs#snippet{csharp:line-numbers} [program.cs]
+
+:::
+
+
 ## REST API Example (backend)
 
 The following example build a REST API with a clear routing and controller/method structured class.

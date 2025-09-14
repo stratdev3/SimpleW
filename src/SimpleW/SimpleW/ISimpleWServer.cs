@@ -27,6 +27,24 @@ namespace SimpleW {
 
         #endregion static
 
+        #region func
+
+        /// <summary>
+        /// Add Func content for GET request
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="handler"></param>
+        void MapGet(string url, Delegate handler);
+
+        /// <summary>
+        /// Add Func content for POST request
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="handler"></param>
+        void MapPost(string url, Delegate handler);
+
+        #endregion func
+
         #region dynamic
 
         /// <summary>

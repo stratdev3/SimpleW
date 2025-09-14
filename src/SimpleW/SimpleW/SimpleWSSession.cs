@@ -111,10 +111,25 @@ namespace SimpleW {
                 Route routeMatch = server.Router.Match(requestRoute);
                 if (routeMatch != null) {
                     if (routeMatch.Handler != null) {
-                        routeMatch.Handler?.ExecuteMethod(this, request, requestRoute.ParameterValues(routeMatch));
+                        if (routeMatch.Handler.ExecuteFunc != null) {
+                            object result = routeMatch.Handler.ExecuteFunc(this, request, requestRoute.ParameterValues(routeMatch));
+                            if (result is HttpResponse response) {
+                                this.SendResponseAsync(response);
+                            }
+                            else {
+                                Response.Clear();
+                                Response.SetBegin(200);
+                                Response.SetContentType("application/json; charset=UTF-8");
+                                Response.SetBody(JsonSerializer.Serialize(result));
+                                this.SendResponseAsync(Response);
+                            }
+                        }
+                        else {
+                            routeMatch.Handler.ExecuteMethod(this, request, requestRoute.ParameterValues(routeMatch));
+                        }
                         StopWithStatusCodeActivity(activity, Response, webuser);
+                        return;
                     }
-                    return;
                 }
 
                 SendResponseAsync(Response.MakeErrorResponse(404, "not found"));
