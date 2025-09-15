@@ -184,7 +184,7 @@ namespace SimpleW {
         #endregion cors
 
         /// <summary>
-        /// Override this Handler to change how RouteMethod which return object should to.
+        /// Override this Handler to change how RouteMethod which return object should do
         /// </summary>
         protected virtual void SendResponseAsync() {
             Session.SendResponseAsync();
