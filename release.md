@@ -21,6 +21,16 @@ Notes :
 
 
 
+## v15.1.0 / _(2025-09-19)_
+Maintenance
+
+### feature
+
+- chore: expose the Server as a property from the Session (#47)
+- feature: support minimal API with new MapGet() and MapPost() methods in server class (#45)
+
+
+
 ## v15.0.0 / _(2025-09-13)_
 Major release
 
