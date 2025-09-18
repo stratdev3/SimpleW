@@ -19,6 +19,11 @@ namespace SimpleW {
         #region properties
 
         /// <summary>
+        /// override the inherited Server Instance
+        /// </summary>
+        public new ISimpleWServer Server => server;
+
+        /// <summary>
         /// SimpleWSServer Instance
         /// </summary>
         private readonly SimpleWSServer server;

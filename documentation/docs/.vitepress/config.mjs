@@ -103,6 +103,7 @@ export default defineConfig({
                           items: [
                               { text: 'Overview', link: 'overview' },
                               { text: 'HttpRequest', link: 'httprequest' },
+                              { text: 'Session', link: 'session' },
                               { text: 'HttpResponse', link: 'httpresponse' },
                               { text: 'OnBeforeMethod', link: 'onbeforemethod' },
                           ]

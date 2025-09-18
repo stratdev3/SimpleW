@@ -7,6 +7,11 @@ namespace SimpleW {
     /// Interface for SimpleWSession
     /// </summary>
     public interface ISimpleWSession : IWebSocketSession, IHttpSession {
+
+        /// <summary>
+        /// The underlying SimpleWServer instance
+        /// </summary>
+        ISimpleWServer Server { get; }
     
         /// <summary>
         /// The jwt string
