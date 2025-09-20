@@ -12,7 +12,7 @@ namespace SimpleW {
         /// The underlying SimpleWServer instance
         /// </summary>
         ISimpleWServer Server { get; }
-    
+
         /// <summary>
         /// The jwt string
         /// </summary>
