@@ -11,7 +11,7 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - !CommandStep
-    name: build
+    name: build SimpleW
     runInContainer: true
     image: docksdev/band:8.0
     interpreter: !DefaultInterpreter
@@ -21,10 +21,27 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - !CommandStep
+    name: build SimpleW.Newtonsoft
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter: !DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Newtonsoft/
+        dotnet build -c @param:build_configuration@ SimpleW.Newtonsoft.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - !PublishArtifactStep
-    name: publish artifact
+    name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - !PublishArtifactStep
+    name: publish artifact SimpleW.Newtonsoft
+    sourcePath: src/SimpleW.Newtonsoft/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Newtonsoft.dll'
     condition: SUCCESSFUL
     optional: false
   paramSpecs:
@@ -43,7 +60,7 @@ jobs:
       value: Release
   triggers:
   - !BranchUpdateTrigger
-    paths: src/SimpleW/
+    paths: src/SimpleW/ src/SimpleW.Newtonsoft/
     paramMatrix:
     - name: build_configuration
       secret: false
@@ -65,7 +82,7 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - !CommandStep
-    name: build
+    name: build SimpleW
     runInContainer: true
     image: docksdev/band:8.0
     interpreter: !DefaultInterpreter
@@ -75,21 +92,48 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - !CommandStep
+    name: build SimpleW.Newtonsoft
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter: !DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Newtonsoft
+        dotnet pack -c Release SimpleW.Newtonsoft.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - !PublishArtifactStep
-    name: publish artifact
+    name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/Release/
-    artifacts: '*.?nupkg'
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - !PublishArtifactStep
+    name: publish artifact SimpleW.Newtonsoft
+    sourcePath: src/SimpleW.Newtonsoft/bin/Release/
+    artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - !CommandStep
-    name: deploy to nuget.org
+    name: deploy SimpleW to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
     interpreter: !DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
-        dotnet nuget push *.snupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - !CommandStep
+    name: deploy SimpleW.Newtonsoft to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter: !DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Newtonsoft/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
     optional: false
