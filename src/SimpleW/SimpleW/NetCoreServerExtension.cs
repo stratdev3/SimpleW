@@ -1,17 +1,12 @@
 ﻿using System;
-using System.Globalization;
-using System.Reflection;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Net;
+using System.Text;
 using HttpMultipartParser;
 using LitJWT;
 using LitJWT.Algorithms;
 using NetCoreServer;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 
 
 namespace SimpleW {
@@ -41,6 +36,10 @@ namespace SimpleW {
 
         #endregion properties
 
+        /// <summary>
+        /// Json Serializer/Deserializer
+        /// </summary>
+        public static IJsonEngine JsonEngine { get; set; } = new SystemTextJsonEngine(SystemTextJsonEngine.OptionsSimpleWBuilder());
 
         #region parse
 
@@ -51,15 +50,18 @@ namespace SimpleW {
         /// <param name="model">The Model instance to populate.</param>
         /// <param name="includeProperties">string array of properties to update the model. if null update all.</param>
         /// <param name="excludeProperties">string array of properties to not update.</param>
-        /// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
+        /// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-        public static bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, JsonSerializerSettings settings = null) {
+        public static bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, IJsonEngine jsonEngine = null) {
             string contentType = request.Header("Content-Type");
             string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
                 return false;
             }
+
+            // use default if null
+            jsonEngine ??= JsonEngine;
 
             // if uploading data from html from multipart/form-data
             if (contentType.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase)) {
@@ -69,12 +71,12 @@ namespace SimpleW {
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
                 Dictionary<string, object> kv = BodyForm(body);
-                body = System.Text.Json.JsonSerializer.Serialize(kv);
+                body = jsonEngine.Serialize(kv);
                 contentType = "application/json";
             }
 
             if (contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) {
-                return JsonMap(body, model, includeProperties, excludeProperties, settings);
+                return JsonMap(body, model, includeProperties, excludeProperties, jsonEngine);
             }
 
             return true;
@@ -85,15 +87,19 @@ namespace SimpleW {
         /// </summary>
         /// <param name="request">The HttpRequest request.</param>
         /// <param name="model">The Anonymous Model instance to populate.</param>
-        /// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
+        /// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-        public static bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel model, JsonSerializerSettings settings = null) {
+        public static bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel model, IJsonEngine jsonEngine = null) {
             string contentType = request.Header("Content-Type");
             string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
                 return false;
             }
+
+
+            // use default if null
+            jsonEngine ??= JsonEngine;
 
             // if uploading data from html from multipart/form-data
             if (contentType.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase)) {
@@ -103,22 +109,38 @@ namespace SimpleW {
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
                 Dictionary<string, object> kv = BodyForm(body);
-                body = System.Text.Json.JsonSerializer.Serialize(kv);
+                body = jsonEngine.Serialize(kv);
                 contentType = "application/json";
             }
 
             if (contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) {
-
-                // create settings is null
-                settings ??= new JsonSerializerSettings();
-                // add custom jsonConverter to convert empty string to null
-                settings.Converters.Add(new EmptyStringToNullConverter());
-                // add custom jsonConverter to convert hh:mm to timeonly
-                settings.Converters.Add(new TimeOnlyHHmmConverter());
-
                 // deserialize AnonymousType
-                model = JsonConvert.DeserializeAnonymousType(body, model);
+                model = jsonEngine.DeserializeAnonymous(body, model);
             }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Update the model with data from POST
+        /// </summary>
+        /// <param name="json">The json string.</param>
+        /// <param name="model">The Model instance to populate.</param>
+        /// <param name="includeProperties">string array of properties to update the model. if null update all.</param>
+        /// <param name="excludeProperties">string array of properties to not update.</param>
+        /// <param name="jsonEngine">the json library to handle serialization/deserialization (default: JsonEngine)</param>
+        /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
+        public static bool JsonMap<TModel>(string json, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, IJsonEngine jsonEngine = null) {
+
+            if (string.IsNullOrWhiteSpace(json)) {
+                return false;
+            }
+
+            // use default if null
+            jsonEngine ??= JsonEngine;
+
+            // deserialize and populate
+            jsonEngine.Populate(json, model, includeProperties, excludeProperties);
 
             return true;
         }
@@ -133,7 +155,6 @@ namespace SimpleW {
             MemoryStream stream = new(request.BodyBytes);
             return MultipartFormDataParser.Parse(stream);
         }
-
 
         /// <summary>
         /// Parses application/x-www-form-urlencoded contentType given the request body string.
@@ -201,187 +222,7 @@ namespace SimpleW {
             return resultDictionary;
         }
 
-
-        #region serializer_Newtonsoft
-
-        /// <summary>
-        /// Update the model with data from POST
-        /// </summary>
-        /// <param name="json">The json string.</param>
-        /// <param name="model">The Model instance to populate.</param>
-        /// <param name="includeProperties">string array of properties to update the model. if null update all.</param>
-        /// <param name="excludeProperties">string array of properties to not update.</param>
-        /// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
-        /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-        public static bool JsonMap<TModel>(string json, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, JsonSerializerSettings settings = null) {
-
-            if (string.IsNullOrWhiteSpace(json)) {
-                return false;
-            }
-
-            // create settings is null
-            settings ??= new JsonSerializerSettings();
-
-            // add custom contractResolver to include or exclude properties
-            if (settings.ContractResolver == null
-                && (includeProperties != null || excludeProperties != null)
-            ) {
-                settings.ContractResolver = new ShouldSerializeContractResolver(includeProperties, excludeProperties);
-                //settings.ContractResolver = new UpcastingContractResolver<Element, IElementWriter>();
-            }
-
-            // add custom jsonConverter to convert empty string to null
-            settings.Converters.Add(new EmptyStringToNullConverter());
-            // add custom jsonConverter to convert hh:mm to timeonly
-            settings.Converters.Add(new TimeOnlyHHmmConverter());
-
-            // deserialize
-            JsonConvert.PopulateObject(json, model, settings);
-
-            return true;
-        }
-
-        /// <summary>
-        /// Json Custom DefaultContractResolver
-        /// use to include or exclude properties
-        /// from being deserialized
-        /// </summary>
-        public partial class ShouldSerializeContractResolver : DefaultContractResolver {
-
-            private readonly IEnumerable<string> _includeProperties;
-            private readonly IEnumerable<string> _excludeProperties;
-
-            /// <summary>
-            /// Set include properties
-            /// </summary>
-            /// <param name="includeProperties"></param>
-            public ShouldSerializeContractResolver(IEnumerable<string> includeProperties) {
-                _includeProperties = includeProperties;
-            }
-            /// <summary>
-            /// Set include and exclude properties
-            /// </summary>
-            /// <param name="includeProperties"></param>
-            /// <param name="excludeProperties"></param>
-            public ShouldSerializeContractResolver(IEnumerable<string> includeProperties, IEnumerable<string> excludeProperties) {
-                _includeProperties = includeProperties;
-                _excludeProperties = excludeProperties;
-            }
-
-            /// <summary>
-            /// Flag each public property to allow/deny deserialization
-            /// </summary>
-            /// <param name="member"></param>
-            /// <param name="memberSerialization"></param>
-            /// <returns></returns>
-            protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization) {
-                JsonProperty property = base.CreateProperty(member, memberSerialization);
-
-                if (member is PropertyInfo propertyInfo) {
-                    if (_includeProperties != null) {
-                        property.ShouldDeserialize = (instance) => { return _includeProperties.Contains(property.PropertyName); };
-                    }
-                    if (_excludeProperties != null) {
-                        property.ShouldDeserialize = (instance) => { return !_excludeProperties.Contains(property.PropertyName); };
-                    }
-                }
-
-                return property;
-            }
-
-        }
-
-        /// <summary>
-        /// Json Custom JsonConverter
-        /// use to convert empty string to null
-        /// and so avoid unecessary pendingchangestrings
-        /// when deserialized
-        /// </summary>
-        public partial class EmptyStringToNullConverter : JsonConverter {
-
-            /// <summary>
-            /// Override ReadJson for the current StringIsEmptyToNull converter
-            /// </summary>
-            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-                if (reader.Value == null) {
-                    return null;
-                }
-                string text = reader.Value.ToString();
-                if (string.IsNullOrWhiteSpace(text)) {
-                    return null;
-                }
-                return text;
-            }
-
-            /// <summary>
-            /// Override WriteJson
-            /// </summary>
-            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-                throw new NotImplementedException("Not needed because this converter cannot write json");
-            }
-
-            /// <summary>
-            /// Override CanWrite
-            /// </summary>
-            public override bool CanWrite {
-                get { return false; }
-            }
-
-            /// <summary>
-            /// Override CanConvert
-            /// </summary>
-            public override bool CanConvert(Type objectType) {
-                return objectType == typeof(string);
-            }
-
-        }
-
-        /// <summary>
-        /// Json Custom JsonConverter
-        /// use to convert TimeOnly from "HH:mm"
-        /// and fix the https://github.com/JamesNK/Newtonsoft.Json/issues/2810
-        /// waiting the release
-        /// </summary>
-        public partial class TimeOnlyHHmmConverter : JsonConverter {
-
-            /// <summary>
-            /// Override ReadJson for the current TimeOnly converter
-            /// </summary>
-            public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-                if (reader.Value == null) {
-                    return null;
-                }
-                TimeOnly time = TimeOnly.Parse(reader.Value.ToString(), CultureInfo.InvariantCulture);
-                return time;
-            }
-
-            /// <summary>
-            /// Override WriteJson
-            /// </summary>
-            public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-                throw new NotImplementedException("Not needed because this converter cannot write json");
-            }
-
-            /// <summary>
-            /// Override CanWrite
-            /// </summary>
-            public override bool CanWrite {
-                get { return false; }
-            }
-
-            /// <summary>
-            /// Override CanConvert
-            /// </summary>
-            public override bool CanConvert(Type objectType) {
-                return objectType == typeof(TimeOnly) || objectType == typeof(TimeOnly?);
-            }
-
-        }
-
-        #endregion serializer_Newtonsoft
-
         #endregion parse
-
 
         #region jwtsecuritytoken
 
@@ -403,7 +244,7 @@ namespace SimpleW {
             JwtDecoder decoder = new(new HS256Algorithm(Encoding.UTF8.GetBytes(key)));
             try {
                 // TODO : check issuer
-                DecodeResult result = decoder.TryDecode(token, x => JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(x)), out var t);
+                DecodeResult result = decoder.TryDecode(token, x => JsonEngine.Deserialize<T>(Encoding.UTF8.GetString(x)), out var t);
                 if (result == DecodeResult.Success) {
                     return t;
                 }

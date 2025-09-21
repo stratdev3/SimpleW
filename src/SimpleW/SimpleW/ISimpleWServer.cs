@@ -17,6 +17,11 @@ namespace SimpleW {
         /// </summary>
         Router Router { get; }
 
+        /// <summary>
+        /// Json Serializer/Deserializer
+        /// </summary>
+        IJsonEngine JsonEngine { get; set; }
+
         #region static
 
         string DefaultDocument { get; set; }

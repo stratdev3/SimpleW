@@ -2,10 +2,8 @@ using System;
 using System.Collections.Specialized;
 using System.IO;
 using System.IO.Compression;
-using System.Runtime.Serialization;
 using System.Text;
 using NetCoreServer;
-using Newtonsoft.Json;
 
 
 namespace SimpleW {
@@ -199,7 +197,7 @@ namespace SimpleW {
                 Session.SendResponseAsync(response);
                 return;
             }
-            SendResponseAsync(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(o)));
+            SendResponseAsync(Encoding.UTF8.GetBytes(Session.Server.JsonEngine.Serialize(o)));
         }
 
         /// <summary>
@@ -285,53 +283,6 @@ namespace SimpleW {
 
             Response.SetBody(content);
             return Response;
-        }
-
-        /// <summary>
-        /// Make Response from object with JsonSerializerSettings.Context.streamingContextObject StreamingContextStates.Other
-        /// </summary>
-        /// <param name="content">The object Content.</param>
-        /// <param name="settings">The JsonSerializerSettings settings (default is null)</param>
-        /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeResponse(object content, JsonSerializerSettings settings = null, string contentType = "application/json; charset=UTF-8") {
-            Response.Clear();
-            Response.SetBegin(200);
-            SetCORSHeaders();
-
-            if (!string.IsNullOrWhiteSpace(contentType)) {
-                Response.SetHeader("Content-Type", contentType);
-            }
-
-            Response.SetBody(JsonConvert.SerializeObject(content, settings));
-            return Response;
-        }
-
-        /// <summary>
-        /// Make Response from object with JsonSerializerSettings.Context.streamingContextObject StreamingContextStates.Other
-        /// <example>
-        /// Example :
-        ///     - in the controller, call with MakeContextResponse(data, "secure");
-        ///     - in the data class, add a OnSerializedMethod() with [OnSerializing] attribute
-        /// <code>
-        /// [OnSerializing]
-        /// internal void OnSerializedMethod(StreamingContext context) {
-        ///    if (context.Context is string ctx &amp;&amp; == "secure") {
-        ///         name = Guid.Empty;
-        ///    }
-        /// }
-        /// </code>
-        /// And so the property "name" of the serialized data instance will be empty (anonymized)
-        /// </example>
-        /// </summary>
-        /// <param name="content">The object Content.</param>
-        /// <param name="streamingContextObject">The JsonSerializerSettings.StreamingContext.AdditionnalObject</param>
-        /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeContextResponse(object content, object streamingContextObject, string contentType = "application/json; charset=UTF-8") {
-            return MakeResponse(content,
-                                new JsonSerializerSettings {
-                                    Context = new StreamingContext(StreamingContextStates.Other, streamingContextObject)
-                                },
-                                contentType);
         }
 
         /// <summary>

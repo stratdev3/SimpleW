@@ -23,6 +23,18 @@ namespace SimpleW {
         /// </summary>
         public Router Router { get; private set; } = new Router();
 
+        /// <summary>
+        /// Json Serializer/Deserializer
+        /// </summary>
+        private IJsonEngine _jsonEngine = new SystemTextJsonEngine(SystemTextJsonEngine.OptionsSimpleWBuilder());
+        public IJsonEngine JsonEngine {
+            get => _jsonEngine;
+            set {
+                _jsonEngine = value;
+                NetCoreServerExtension.JsonEngine = value;
+            }
+        }
+
         #region netcoreserver
 
         /// <summary>
