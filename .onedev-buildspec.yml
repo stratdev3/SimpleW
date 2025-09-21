@@ -78,7 +78,7 @@ jobs:
   - !PublishArtifactStep
     name: publish artifact
     sourcePath: src/SimpleW/bin/Release/
-    artifacts: '*.nupkg'
+    artifacts: '*.?nupkg'
     condition: SUCCESSFUL
     optional: false
   - !CommandStep
@@ -89,6 +89,7 @@ jobs:
       commands: |
         cd src/SimpleW/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+        dotnet nuget push *.snupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
     optional: false
