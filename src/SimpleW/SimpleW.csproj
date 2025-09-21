@@ -18,6 +18,7 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
     <PackageProjectUrl>https://stratdev3.github.io/SimpleW</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -34,6 +35,10 @@
 
   <ItemGroup>
     <None Update="logo-transparent.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\..\readme.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
