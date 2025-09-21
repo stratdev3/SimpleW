@@ -1,0 +1,59 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+    <!-- nuget metadata -->
+    <Authors>Christophe CHATEAU</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Newtonsoft.Json integration for SimpleW.</Description>
+    <PackageProjectUrl>https://stratdev3.github.io/SimpleW</PackageProjectUrl>
+    <PackageIcon>logo-transparent.png</PackageIcon>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Stratdev3/SimpleW</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    
+    <!-- versioning -->
+    <AssemblyVersion>15.1.0</AssemblyVersion>
+    <FileVersion>15.1.0</FileVersion>
+    <Version>15.1.0</Version>
+
+    <!-- build options -->
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- ci/cd -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+
+    <!-- debug options-->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>portable</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="[13.0.1,14.0.0)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="logo-transparent.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="readme.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
