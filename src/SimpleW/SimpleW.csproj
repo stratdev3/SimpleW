@@ -1,24 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Library</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <ApplicationIcon>logo.ico</ApplicationIcon>
-    <StartupObject />
+    <OutputType>Library</OutputType>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+    <!-- nuget metadata -->
     <Authors>Christophe CHATEAU</Authors>
     <PackageTags>http api websocket sse server webserver restapi mvc https ssl tls rest</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>SimpleW is Web server Library for .NET Core. Powerfully Simple. Blazingly Fast.</Description>
-    <AssemblyVersion>15.1.0</AssemblyVersion>
-    <FileVersion>15.1.0</FileVersion>
-    <Version>15.1.0</Version>
-    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
     <PackageProjectUrl>https://stratdev3.github.io/SimpleW</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
+
+    <!-- versioning -->
+    <AssemblyVersion>15.1.0</AssemblyVersion>
+    <FileVersion>15.1.0</FileVersion>
+    <Version>15.1.0</Version>
+
+    <!-- build options -->
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
