@@ -21,9 +21,16 @@ jobs:
         with:
           dotnet-version: 8.x.x
 
-      - name: "Build"
+      - name: "Build SimpleW"
         run: |
           cd src/SimpleW
+          dotnet restore
+          dotnet build --configuration Release
+          # dotnet test
+
+      - name: "Build SimpleW.Newtonsoft"
+        run: |
+          cd src/SimpleW.Newtonsoft
           dotnet restore
           dotnet build --configuration Release
           # dotnet test
