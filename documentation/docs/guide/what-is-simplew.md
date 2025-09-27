@@ -18,7 +18,6 @@ SimpleW’s architecture and motivations behind its core design choices :
 - **Compiled delegate**, close to hard-coded method calls.
 - **Event model**, low latency and low memory.
 - **Cross‑platform support**, Windows/Linux/Android/macOS.
-- **Single dependency**: Newtonsoft.Json for serialization/deserialization
 - **NuGet package available**, easy to integrate
 
 It is based in the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server.

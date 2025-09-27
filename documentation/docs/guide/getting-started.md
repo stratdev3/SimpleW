@@ -12,14 +12,6 @@ $ dotnet add package SimpleW
     <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/dt/SimpleW" alt="NuGet Downloads" /></a>
 </div>
 
-<br/>
-
-::: details NOTE
-SimpleW depends on [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) package for json serialization/deserialization.
-It will be replaced in futur by the native `System.Text.Json` as long as
-some advanced features will be covered (`Populate` and `streamingContextObject`, see [work-in-progress](https://learn.microsoft.com/en-us/dotnet/standard/serialization/system-text-json/migrate-from-newtonsoft?pivots=dotnet-8-0#table-of-differences)).
-:::
-
 
 ## Minimal Example
 

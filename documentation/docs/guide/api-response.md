@@ -1,9 +1,9 @@
 # Response Types
 
+
 ## Default
 
-
-The return of the method will be serialized to json using the excellent `JsonConvert.SerializeObject()` from [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json/)
+The return of the method will be serialized to json using the [JsonEngine](./api-response#json-engine).
 
 ```csharp:line-numbers
 using System;
@@ -49,6 +49,28 @@ Requesting to `http://localhost:2015/api/test` will result to
     "d": {"Foo":"Bar"}
 }
 ```
+
+
+## Json Engine
+
+This [`JsonEngine`](../reference/simplewserver#jsonengine) property defines the Json engine used in server and controllers to serialize, deserialize and populate objects.
+The default engine is `System.Text.Json` initialized with recommanded options.
+
+There is an additionnal [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package which provide an alternative Json engine, the awesome [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json).
+
+To change the Json Engine
+
+```sh
+$ dotnet add package SimpleW.Newtonsoft
+```
+
+And then
+
+::: code-group
+
+<<< @/snippets/json-engine.cs#snippet{14 csharp:line-numbers} [program.cs]
+
+:::
 
 
 ## Types
