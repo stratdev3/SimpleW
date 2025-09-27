@@ -125,7 +125,7 @@ namespace SimpleW {
                                 Response.Clear();
                                 Response.SetBegin(200);
                                 Response.SetContentType("application/json; charset=UTF-8");
-                                Response.SetBody(JsonSerializer.Serialize(result));
+                                Response.SetBody(this.server.JsonEngine.Serialize(result));
                                 this.SendResponseAsync(Response);
                             }
                         }
