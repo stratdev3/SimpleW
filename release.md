@@ -18,6 +18,37 @@ Notes :
 - Mutual TLS authentication
 - sync `LiteJWT` library with upstream
 - sync `HttpMultipartDataParser` library with upstream
+- HTTP/3 quic
+
+
+
+## v16.0.0 / _(2025-10-21)_
+Major release, including extensive rewrites and significant performance improvements (+9% req/s)
+
+### breakingChange
+
+- removed the *Newtonsoft.Json* dependency from the [*SimpleW*](https://www.nuget.org/packages/SimpleW) nuget package. The default json engine is now *System.Text.Json*. To switch back, set *Newtonsoft* as the [`JsonEngine`](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine) and install the a new [*SimpleW.Newtonsoft*](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package to (see [example](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine))
+- "X-*" headers are not trusted by default. To allow them, set the [`TrustXHeaders`](https://stratdev3.github.io/SimpleW/reference/simplewserver.html#security) server property to true (see [example](https://stratdev3.github.io/SimpleW/guide/observability.html#security)).
+- in `Controller`, all `Make*Response()` methods have been replaced by [`Response.Make*Response()`](https://stratdev3.github.io/SimpleW/reference/httpresponse.html) (see [example](https://stratdev3.github.io/SimpleW/guide/api-response.html#helpers))
+- removed `Controller.SendResponseAsync()`
+- the cache in [`AddStaticContent()`](https://stratdev3.github.io/SimpleW/reference/simplewserver.html#static-content) is now disabled by default. Set the `timeout` parameter to enable caching (see [example](https://stratdev3.github.io/SimpleW/guide/static-files.html#cache))
+
+### feature
+
+- feature: add new [`JsonEngine`](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine) property in Server and Netcoreserverextension (#49)
+- feature: add new package [*SimpleW.Newtonsoft*](https://www.nuget.org/packages/SimpleW.Newtonsoft) to support *Newtonsoft.Json* as [`JsonEngine`](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine) (#50)
+- chore: remove the *Newtonsoft.Json dependency* from the SimpleW package
+- feature: use [`JsonEngine`](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine) for Inline Func return serialization (#58)
+- feature: support Accept-Encoding br (Brotli) on `HttpResponse` (#51)
+- chore: move all Make*Response from `Controller` to [`HttpResponse`](https://stratdev3.github.io/SimpleW/reference/httpresponse.html) partial class (#44)
+- feature: support CORS in `AddStaticContent()` response (#60)
+- feature: [`AddStaticContent()`](https://stratdev3.github.io/SimpleW/guide/static-files.html#cache) with no cache (#46)
+- feature: improve overall performances in `Router`, `StaticContent` and `DynamicContent`
+- feature(test): add unit and integration tests.
+
+### fix
+
+- fix: add new property [`TrustXHeaders`](https://stratdev3.github.io/SimpleW/reference/simplewserver.html#security) (#48)
 
 
 
@@ -26,8 +57,8 @@ Maintenance
 
 ### feature
 
-- chore: expose the Server as a property from the Session (#47)
-- feature: support minimal API with new MapGet() and MapPost() methods in server class (#45)
+- chore: expose the `Server` as a property from the `Session` (#47)
+- feature: support minimal API with new `MapGet()` and `MapPost()` methods in server class (#45)
 
 
 
