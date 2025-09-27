@@ -429,10 +429,18 @@ namespace SimpleW {
         /// Compress byte array using gzip or deflate algorithm.
         /// </summary>
         /// <param name="data">The Byte Array data.</param>
-        /// <param name="algorithm">The String algorithm ("gzip" as default or "deflate").</param>
-        public static byte[] Compress(byte[] data, string algorithm = "gzip") {
+        /// <param name="algorithm">The String algorithm (supported by priority : br, gzip, deflate).</param>
+        public static byte[] Compress(byte[] data, string algorithm) {
             using (MemoryStream compressedStream = new()) {
-                if (algorithm == "gzip") {
+
+                if (algorithm == "br") {
+                    using (BrotliStream brotliStream = new(compressedStream, CompressionMode.Compress, leaveOpen: true)) {
+                        brotliStream.Write(data, 0, data.Length);
+                    }
+                    return compressedStream.ToArray();
+                }
+
+                else if (algorithm == "gzip") {
                     using (GZipStream zipStream = new(compressedStream, CompressionMode.Compress)) {
                         zipStream.Write(data, 0, data.Length);
                         zipStream.Close();
