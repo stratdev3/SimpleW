@@ -137,7 +137,7 @@ namespace SimpleW {
         #region telemetry
 
         /// <summary>
-        /// True to enable telemetry
+        /// True to generate Telemetry Traces, Logs and Metrics
         /// </summary>
         bool EnableTelemetry { get; set; }
 
