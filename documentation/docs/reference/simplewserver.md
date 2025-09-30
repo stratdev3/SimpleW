@@ -519,10 +519,21 @@ content directory when no file has been selected and `DefaultDocument` does not 
 
 ```csharp
 /// <summary>
-/// True to enable telemetry
+/// True to generate Telemetry Traces, Logs and Metrics
 /// </summary>
 public bool EnableTelemetry { get; set; } = false;
 ```
+
+```csharp
+/// <summary>
+/// True to allow some headers as source of truth for Telemetry
+/// Example : X-Forwarded-Host, X-Real-IP (...) are often used to pass data
+///           from reverse proxy (nginx...) to upstream server.
+/// Note : you should allow only if you have a reverse proxy with well defined settings policy
+/// </summary>
+public bool TrustXHeaders { get; set; } = false;
+```
+
 
 ## Statistics
 

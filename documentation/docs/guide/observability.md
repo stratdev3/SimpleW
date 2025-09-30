@@ -47,3 +47,21 @@ And see the following example, especially the `openTelemetryObserver()`
 SimpleW export many informations (Request, Response, Exception...) and you can view hit, monitor response time or error and searching specific data.
 
 ![uptrace tracing](/snippets/observability-with-uptrace.png)
+
+
+## Security
+
+When generating Traces and Logs, SimpleW will look in all available locations to find metadata.
+It searchs for some conventional headers like `X-Real-IP`, `X-Forwarded-Host` or `Host` which often come from an under control fronted reverse proxy (e.g: nginx, caddy...).
+
+To allow these headers in telemetry, set the [`TrustXHeaders`](../reference/simplewserver#telemetry) property as the following
+
+::: code-group
+
+<<< @/snippets/observability-trustxheaders.cs#snippet{24 csharp:line-numbers} [program.cs]
+
+:::
+
+::: tip NOTE
+As header can be forged on client side, you should only accept X-Headers if the underlying reverse proxy is under control and configured with a proper header policy.
+:::

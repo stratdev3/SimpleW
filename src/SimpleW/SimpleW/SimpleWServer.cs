@@ -24,6 +24,14 @@ namespace SimpleW {
         public Router Router { get; private set; } = new Router();
 
         /// <summary>
+        /// True to allow some headers as source of truth for Telemetry
+        /// Example : X-Forwarded-Host, X-Real-IP (...) are often used to pass data
+        ///           from reverse proxy (nginx...) to upstream server.
+        /// Note : you should allow only if you have a reverse proxy with well defined settings policy
+        /// </summary>
+        public bool TrustXHeaders { get; set; } = false;
+
+        /// <summary>
         /// Json Serializer/Deserializer
         /// </summary>
         private IJsonEngine _jsonEngine = new SystemTextJsonEngine(SystemTextJsonEngine.OptionsSimpleWBuilder());

@@ -67,8 +67,8 @@ namespace SimpleW {
             try {
 
                 // parse : request.url to route
-                Route requestRoute = new(request);
-                SetDefaultActivity(activity, Request, requestRoute, Id, Socket);
+                Route requestRoute = new(request, Server.TrustXHeaders);
+                SetDefaultActivity(activity, Request, requestRoute, Id, Socket, server.TrustXHeaders);
 
                 // default document
                 if (requestRoute.Method == "GET" && requestRoute.hasEndingSlash) {
@@ -153,7 +153,7 @@ namespace SimpleW {
         /// <param name="content"></param>
         protected override void OnReceivedCachedRequest(HttpRequest request, byte[] content) {
             Activity? activity = CreateActivity();
-            SetDefaultActivity(activity, $"CACHE {request.Url}", request, Id, Socket);
+            SetDefaultActivity(activity, $"CACHE {request.Url}", request, Id, Socket, server.TrustXHeaders);
             SendAsync(content);
             StopWithStatusCodeActivity(activity, 200, content.Length);
         }
@@ -165,7 +165,7 @@ namespace SimpleW {
         /// <param name="error"></param>
         protected override void OnReceivedRequestError(HttpRequest request, string error) {
             Activity? activity = CreateActivity();
-            SetDefaultActivity(activity, $"ERROR {request.Url}", request, Id, Socket);
+            SetDefaultActivity(activity, $"ERROR {request.Url}", request, Id, Socket, server.TrustXHeaders);
             StopWithErrorActivity(activity);
         }
 
@@ -199,8 +199,8 @@ namespace SimpleW {
             Activity? activity = CreateActivity();
             try {
                 // parse : request.url to route
-                Route requestRoute = new(request);
-                SetDefaultActivity(activity, Request, requestRoute, Id, Socket);
+                Route requestRoute = new(request, Server.TrustXHeaders);
+                SetDefaultActivity(activity, Request, requestRoute, Id, Socket, server.TrustXHeaders);
             }
             catch (Exception ex) {
                 StopWithErrorActivity(activity, ex);
@@ -314,7 +314,8 @@ namespace SimpleW {
         /// <param name="requestRoute"></param>
         /// <param name="id"></param>
         /// <param name="socket"></param>
-        protected static void SetDefaultActivity(Activity activity, HttpRequest request, Route requestRoute, Guid id, Socket socket) {
+        /// <param name="trustXHeaders"></param>
+        protected static void SetDefaultActivity(Activity activity, HttpRequest request, Route requestRoute, Guid id, Socket socket, bool trustXHeaders) {
             if (activity == null) {
                 return;
             }
@@ -324,7 +325,7 @@ namespace SimpleW {
             activity.SetTag("network.transport", "TCP");
             activity.SetTag("network.type", "ipv4");
 
-            activity.SetTag("server.address", request.Header("X-Forwarded-Host") ?? request.Header("Host") ?? requestRoute.Url.Host); // frontend proxy
+            activity.SetTag("server.address", (trustXHeaders ? request.Header("X-Forwarded-Host") ?? request.Header("Host") : null) ?? requestRoute.Url.Host); // frontend proxy
             activity.SetTag("server.port", requestRoute.Url.Port); // frontend proxy
 
             //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
@@ -342,7 +343,7 @@ namespace SimpleW {
 
             activity.SetTag("session", id);
 
-            activity.SetTag("client.address", request.Header("X-Real-IP") ?? socket?.RemoteEndPoint.ToString());
+            activity.SetTag("client.address", (trustXHeaders ? request.Header("X-Real-IP") : null) ?? socket?.RemoteEndPoint.ToString());
             //activity.SetTag("client.port", address.Address);
 
             activity.SetTag("user_agent.original", request.Header("User-Agent"));
@@ -365,7 +366,7 @@ namespace SimpleW {
             activity.SetTag("session", id);
         }
 
-        protected static void SetDefaultActivity(Activity activity, string DisplayName, HttpRequest request, Guid id, Socket socket) {
+        protected static void SetDefaultActivity(Activity activity, string DisplayName, HttpRequest request, Guid id, Socket socket, bool trustXHeaders) {
             if (activity == null) {
                 return;
             }
@@ -380,7 +381,7 @@ namespace SimpleW {
 
             //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
             //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
-            string url = Route.FQURL(request);
+            string url = Route.FQURL(request, trustXHeaders);
 
             activity.SetTag("url.path", url);
             //activity.SetTag("url.query", requestRoute.Url.Query);
@@ -394,7 +395,7 @@ namespace SimpleW {
 
             activity.SetTag("session", id);
 
-            activity.SetTag("client.address", request.Header("X-Real-IP") ?? socket?.RemoteEndPoint.ToString());
+            activity.SetTag("client.address", (trustXHeaders ? request.Header("X-Real-IP") : null) ?? socket?.RemoteEndPoint.ToString());
             //activity.SetTag("client.port", address.Address);
 
             activity.SetTag("user_agent.original", request.Header("User-Agent"));

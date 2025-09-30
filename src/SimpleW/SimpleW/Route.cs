@@ -56,9 +56,10 @@ namespace SimpleW {
         /// Create Route from HttpRequest
         /// </summary>
         /// <param name="request">The HttpRequest request.</param>
-        public Route(HttpRequest request) {
+        /// <param name="trustXHeaders"></param>
+        public Route(HttpRequest request, bool trustXHeaders = false) {
             Method = request.Method;
-            RawUrl = FQURL(request);
+            RawUrl = FQURL(request, trustXHeaders);
             ParseHttpRequest();
         }
 
@@ -158,9 +159,15 @@ namespace SimpleW {
         /// Return the Full Qualified URL from request
         /// </summary>
         /// <param name="request"></param>
+        /// <param name="trustXHeaders"></param>
         /// <returns></returns>
-        public static string FQURL(HttpRequest request) {
-            return Uri.UnescapeDataString((request.Header("X-Forwarded-Proto") ?? "http") + "://" + (request.Header("X-Forwarded-Host") ?? request.Header("Host")) + request.Url);
+        public static string FQURL(HttpRequest request, bool trustXHeaders = false) {
+            return Uri.UnescapeDataString(
+                ((trustXHeaders ? request.Header("X-Forwarded-Proto") : null) ?? "http")
+                + "://"
+                + ((trustXHeaders ? request.Header("X-Forwarded-Host") : null) ?? request.Header("Host"))
+                + request.Url
+            );
         }
 
         /// <summary>
