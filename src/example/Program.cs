@@ -44,7 +44,7 @@ namespace example {
         public object Hello(string? name = null) {
 
             if (string.IsNullOrWhiteSpace(name)) {
-                return MakeNotFoundResponse("you must set a name parameter");
+                return Response.MakeNotFoundResponse("you must set a name parameter");
             }
 
             // the return will be serialized to json

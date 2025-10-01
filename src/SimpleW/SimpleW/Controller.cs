@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Specialized;
 using System.IO;
-using System.IO.Compression;
 using System.Text;
 using NetCoreServer;
 
@@ -145,41 +144,7 @@ namespace SimpleW {
         /// </summary>
         public virtual void OnBeforeMethod() { }
 
-        #region response
-
-        #region cors
-
-        /// <summary>
-        /// CORS Header Origin
-        /// </summary>
-        public static string cors_allow_origin { get; set; }
-        /// <summary>
-        /// CORS Header headers
-        /// </summary>
-        public static string cors_allow_headers { get; set; }
-        /// <summary>
-        /// CORS Header methods
-        /// </summary>
-        public static string cors_allow_methods { get; set; }
-        /// <summary>
-        /// CORS Header credentials
-        /// </summary>
-        public static string cors_allow_credentials { get; set; }
-
-        /// <summary>
-        /// Set Header when CORS is enabled
-        /// </summary>
-        protected void SetCORSHeaders() {
-            if (!string.IsNullOrWhiteSpace(cors_allow_origin)) {
-                Response.SetHeader("Access-Control-Allow-Origin", cors_allow_origin);
-                Response.SetHeader("Access-Control-Allow-Headers", cors_allow_headers);
-                Response.SetHeader("Access-Control-Allow-Methods", cors_allow_methods);
-                Response.SetHeader("Access-Control-Allow-Credentials", cors_allow_credentials);
-                Response.SetHeader("Access-Control-Max-Age", "86400");
-            }
-        }
-
-        #endregion cors
+        #region sendResponse
 
         /// <summary>
         /// Override this Handler to change how RouteMethod which return object should do
@@ -205,9 +170,8 @@ namespace SimpleW {
         /// </summary>
         /// <param name="content">The String content</param>
         /// <param name="contentType">The String Content type (default is "application/json; charset=UTF-8")</param>
-        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-        protected virtual void SendResponseAsync(string content, string contentType = "application/json; charset=UTF-8", bool compress = true) {
-            SendResponseAsync(Encoding.UTF8.GetBytes(content), contentType, compress);
+        protected virtual void SendResponseAsync(string content, string contentType = "application/json; charset=UTF-8") {
+            SendResponseAsync(Encoding.UTF8.GetBytes(content), contentType);
         }
 
         /// <summary>
@@ -215,75 +179,15 @@ namespace SimpleW {
         /// </summary>
         /// <param name="content">byte[] content</param>
         /// <param name="contentType">The String Content type (default is "application/json; charset=UTF-8")</param>
-        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-        protected virtual void SendResponseAsync(byte[] content, string contentType = "application/json; charset=UTF-8", bool compress = true) {
-            Response.Clear();
-            Response.SetBegin(200);
-            SetCORSHeaders();
-
-            if (!string.IsNullOrWhiteSpace(contentType)) {
-                Response.SetHeader("Content-Type", contentType);
-            }
-
-            if (compress) {
-                string[] compressTypes = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                if (compressTypes != null) {
-                    foreach (string compressType in compressTypes) {
-                        try {
-                            byte[] compressData = Compress(content, compressType);
-                            Response.SetHeader("Content-Encoding", compressType);
-                            Response.SetBody(compressData);
-                            Session.SendResponseAsync(Response);
-                            return;
-                        }
-                        catch { }
-                    }
-                }
-            }
-
-            Response.SetBody(content);
+        protected virtual void SendResponseAsync(byte[] content, string contentType = "application/json; charset=UTF-8") {
+            string[] compress = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Response.MakeResponse(content, contentType, compress);
             Session.SendResponseAsync(Response);
         }
 
-        #endregion response
+        #endregion sendResponse
 
-        #region special
-
-        /// <summary>
-        /// Make Response from string
-        /// </summary>
-        /// <param name="content">The string Content.</param>
-        /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8") {
-            Response.Clear();
-            Response.SetBegin(200);
-            SetCORSHeaders();
-
-            if (!string.IsNullOrWhiteSpace(contentType)) {
-                Response.SetHeader("Content-Type", contentType);
-            }
-
-            Response.SetBody(content);
-            return Response;
-        }
-
-        /// <summary>
-        /// Make Response from byte[]
-        /// </summary>
-        /// <param name="content">byte[] Content.</param>
-        /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8") {
-            Response.Clear();
-            Response.SetBegin(200);
-            SetCORSHeaders();
-
-            if (!string.IsNullOrWhiteSpace(contentType)) {
-                Response.SetHeader("Content-Type", contentType);
-            }
-
-            Response.SetBody(content);
-            return Response;
-        }
+        #region makeResponse
 
         /// <summary>
         /// Make Download response
@@ -291,9 +195,8 @@ namespace SimpleW {
         /// <param name="content">The MemoryStream Content.</param>
         /// <param name="output_filename">name of the download file.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-        public HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true) {
-            return MakeDownloadResponse(content.ToArray() , output_filename, contentType, compress);
+        public HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename = null, string contentType = "text/plain; charset=UTF-8") {
+            return MakeDownloadResponse(content.ToArray(), output_filename, contentType);
         }
 
         /// <summary>
@@ -302,9 +205,8 @@ namespace SimpleW {
         /// <param name="content">The string Content.</param>
         /// <param name="output_filename">name of the download file.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-        public HttpResponse MakeDownloadResponse(string content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true) {
-            return MakeDownloadResponse(Encoding.UTF8.GetBytes(content), output_filename, contentType, compress);
+        public HttpResponse MakeDownloadResponse(string content, string output_filename = null, string contentType = "text/plain; charset=UTF-8") {
+            return MakeDownloadResponse(Encoding.UTF8.GetBytes(content), output_filename, contentType);
         }
 
         /// <summary>
@@ -313,35 +215,9 @@ namespace SimpleW {
         /// <param name="content">The byte[] Content.</param>
         /// <param name="output_filename">name of the download file.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-        /// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-        public HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true) {
-            Response.Clear();
-            Response.SetBegin(200);
-            SetCORSHeaders();
-
-            if (!string.IsNullOrWhiteSpace(output_filename)) {
-                Response.SetHeader("Content-Disposition", "attachment;filename=" + output_filename);
-            }
-
-            if (!string.IsNullOrWhiteSpace(contentType)) {
-                Response.SetHeader("Content-Type", contentType);
-            }
-
-            if (compress) {
-                string[] compressTypes = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                foreach (string compressType in compressTypes) {
-                    try {
-                        byte[] compressData = Compress(content, compressType);
-                        Response.SetHeader("Content-Encoding", compressType);
-                        Response.SetBody(compressData);
-                        return Response;
-                    }
-                    catch { }
-                }
-            }
-
-            Response.SetBody(content);
-            return Response;
+        public HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8") {
+            string[] compress = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return Response.MakeDownloadResponse(content, output_filename, contentType, compress);
         }
 
         /// <summary>
@@ -354,111 +230,9 @@ namespace SimpleW {
             return Response.MakeErrorResponse(403);
         }
 
-        /// <summary>
-        /// Make UnAuthorized response
-        /// </summary>
-        /// <param name="content">Error content (default is "Server UnAuthorized Access")</param>
-        /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeUnAuthorizedResponse(string content = "Server UnAuthorized Access", string contentType = "text/plain; charset=UTF-8") {
-            return Response.MakeErrorResponse(401, content, contentType);
-        }
+        #endregion makeResponse
 
-        /// <summary>
-        /// Make Forbidden response
-        /// </summary>
-        /// <param name="content">Error content (default is "Server Forbidden Access")</param>
-        /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeForbiddenResponse(string content = "Server Forbidden Access", string contentType = "text/plain; charset=UTF-8") {
-            return Response.MakeErrorResponse(403, content, contentType);
-        }
-
-        /// <summary>
-        /// Make ServerInternalError response
-        /// </summary>
-        /// <param name="content">Error content (default is "Server Internal Error")</param>
-        /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeInternalServerErrorResponse(string content = "Server Internal Error", string contentType = "text/plain; charset=UTF-8") {
-            return Response.MakeErrorResponse(500, content, contentType);
-        }
-
-        /// <summary>
-        /// Make NotFound response
-        /// </summary>
-        /// <param name="content">Error content (default is "Not Found")</param>
-        /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-        public HttpResponse MakeNotFoundResponse(string content = "Not Found", string contentType = "text/plain; charset=UTF-8") {
-            return Response.MakeErrorResponse(404, content, contentType);
-        }
-
-        /// <summary>
-        /// Make Redirect Tempory Response (status code 302)
-        /// </summary>
-        /// <param name="location">The string location.</param>
-        public HttpResponse MakeRedirectResponse(string location) {
-            Response.Clear();
-            Response.SetBegin(302);
-            SetCORSHeaders();
-
-            Response.SetHeader("Location", location);
-            Response.SetBody();
-
-            return Response;
-        }
-
-        /// <summary>
-        /// Response for initializing Server Sent Events
-        /// </summary>
-        /// <returns></returns>
-        public HttpResponse MakeServerSentEventsResponse() {
-            Response.Clear();
-            Response.SetBegin(200);
-            SetCORSHeaders();
-
-            Response.SetHeader("Content-Type", "text/event-stream");
-            Response.SetHeader("Cache-Control", "no-cache");
-            Response.SetHeader("Connection", "keep-alive");
-
-            return Response;
-        }
-
-        #endregion special
-
-        #region helper
-
-        /// <summary>
-        /// Compress byte array using gzip or deflate algorithm.
-        /// </summary>
-        /// <param name="data">The Byte Array data.</param>
-        /// <param name="algorithm">The String algorithm (supported by priority : br, gzip, deflate).</param>
-        public static byte[] Compress(byte[] data, string algorithm) {
-            using (MemoryStream compressedStream = new()) {
-
-                if (algorithm == "br") {
-                    using (BrotliStream brotliStream = new(compressedStream, CompressionMode.Compress, leaveOpen: true)) {
-                        brotliStream.Write(data, 0, data.Length);
-                    }
-                    return compressedStream.ToArray();
-                }
-
-                else if (algorithm == "gzip") {
-                    using (GZipStream zipStream = new(compressedStream, CompressionMode.Compress)) {
-                        zipStream.Write(data, 0, data.Length);
-                        zipStream.Close();
-                        return compressedStream.ToArray();
-                    }
-                }
-
-                else if (algorithm == "deflate") {
-                    using (DeflateStream deflateStream = new(compressedStream, CompressionMode.Compress)) {
-                        deflateStream.Write(data, 0, data.Length);
-                        deflateStream.Close();
-                        return compressedStream.ToArray();
-                    }
-                }
-
-                throw new ArgumentException("Invalid compression type support !", nameof(algorithm));
-            }
-        }
+        #region sse
 
         /// <summary>
         /// Flag the current Session as SSE Session
@@ -469,7 +243,7 @@ namespace SimpleW {
             Session.AddSSESession();
         }
 
-        #endregion helper
+        #endregion sse
 
     }
 

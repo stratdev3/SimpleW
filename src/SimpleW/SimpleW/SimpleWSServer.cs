@@ -488,10 +488,10 @@ namespace SimpleW {
         /// </summary>
         public string cors_allow_origin {
             get {
-                return Controller.cors_allow_origin;
+                return HttpResponse.cors_allow_origin;
             }
             set {
-                Controller.cors_allow_origin = value;
+                HttpResponse.cors_allow_origin = value;
             }
         }
 
@@ -500,10 +500,10 @@ namespace SimpleW {
         /// </summary>
         public string cors_allow_headers {
             get {
-                return Controller.cors_allow_headers;
+                return HttpResponse.cors_allow_headers;
             }
             set {
-                Controller.cors_allow_headers = value;
+                HttpResponse.cors_allow_headers = value;
             }
         }
 
@@ -512,10 +512,10 @@ namespace SimpleW {
         /// </summary>
         public string cors_allow_methods {
             get {
-                return Controller.cors_allow_methods;
+                return HttpResponse.cors_allow_methods;
             }
             set {
-                Controller.cors_allow_methods = value;
+                HttpResponse.cors_allow_methods = value;
             }
         }
 
@@ -524,10 +524,10 @@ namespace SimpleW {
         /// </summary>
         public string cors_allow_credentials {
             get {
-                return Controller.cors_allow_credentials;
+                return HttpResponse.cors_allow_credentials;
             }
             set {
-                Controller.cors_allow_credentials = value;
+                HttpResponse.cors_allow_credentials = value;
             }
         }
 
