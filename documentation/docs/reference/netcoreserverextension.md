@@ -86,7 +86,7 @@ The `ValidateJwt<T>()` string extension method allows verify a token from a stri
 /// <param name="model">The Model instance to populate.</param>
 /// <param name="includeProperties">string array of properties to update the model. if null update all.</param>
 /// <param name="excludeProperties">string array of properties to not update.</param>
-/// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
+/// <param name="jsonEngine">the json library to handle serialization/deserialization (default: JsonEngine)</param>
 /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-bool JsonMap<TModel>(string json, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, JsonSerializerSettings settings = null)
+public static bool JsonMap<TModel>(string json, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, IJsonEngine jsonEngine = null)
 ```

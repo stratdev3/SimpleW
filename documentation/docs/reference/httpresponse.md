@@ -1,11 +1,27 @@
 # HttpReponse
 
-As already said in the [guide](../guide/api-response#helpers), the `Controller` 
-is dealing with `HttpResponse` object to send async response to the client.
+This class can be used to build a response which will be sent to the client.
 
-The `Response` property of type `HttpResponse` is a prefill property you can use to sent data to client.
+As already said in the [guide](../guide/api-response#helpers), a `Response` can be returned by a `Controller` method
+and it will be sent async to the client.
 
-You can use builders to sent the most common response to a client.
+
+## SetCORSHeaders()
+
+```csharp
+/// <summary>
+/// Set Header when CORS is enabled
+/// </summary>
+public void SetCORSHeaders()
+```
+
+```csharp
+/// <summary>
+/// Set Header to response parameter when CORS is enabled
+/// </summary>
+/// <param name="response"></param>
+public static void SetCORSHeaders(HttpResponse response)
+```
 
 
 ## MakeResponse()
@@ -16,7 +32,8 @@ You can use builders to sent the most common response to a client.
 /// </summary>
 /// <param name="content">The string Content.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8")
+/// <param name="compress">The string array of supported compress types (default null)</param>
+public HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8", string[] compress = null)
 ```
 
 ```csharp
@@ -25,17 +42,8 @@ HttpResponse MakeResponse(string content, string contentType = "application/json
 /// </summary>
 /// <param name="content">byte[] Content.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8")
-```
-
-```csharp
-/// <summary>
-/// Make Response from object with JsonSerializerSettings.Context.streamingContextObject StreamingContextStates.Other
-/// </summary>
-/// <param name="content">The object Content.</param>
-/// <param name="settings">The JsonSerializerSettings settings (default is null)</param>
-/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-HttpResponse MakeResponse(object content, JsonSerializerSettings settings = null, string contentType = "application/json; charset=UTF-8")
+/// <param name="compress">The string array of supported compress types (default null)</param>
+public HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8", string[] compress = null)
 ```
 
 The `MakeResponse()` will create a text Response to the client.
@@ -50,8 +58,8 @@ The `MakeResponse()` will create a text Response to the client.
 /// <param name="content">The MemoryStream Content.</param>
 /// <param name="output_filename">name of the download file.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true)
+/// <param name="compress">The string array of supported compress types (default null)</param>
+public HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", string[] compress = null)
 ```
 
 ```csharp
@@ -61,8 +69,8 @@ HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename =
 /// <param name="content">The string Content.</param>
 /// <param name="output_filename">name of the download file.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-HttpResponse MakeDownloadResponse(string content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true)
+/// <param name="compress">The string array of supported compress types (default null)</param>
+public HttpResponse MakeDownloadResponse(string content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", string[] compress = null)
 ```
 
 ```csharp
@@ -72,23 +80,11 @@ HttpResponse MakeDownloadResponse(string content, string output_filename = null,
 /// <param name="content">The byte[] Content.</param>
 /// <param name="output_filename">name of the download file.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">To enable compression (default true, it uses gzip or deflate depending request support content-encoding)</param>
-HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", bool compress = true)
+/// <param name="compress">The string array of supported compress types (default null)</param>
+public HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", string[] compress = null)
 ```
 
 The `MakeDownloadResponse()` will create a binary Response forcing client to download file.
-
-
-## MakeAccessResponse()
-
-```csharp
-/// <summary>
-/// Make Error Access response
-/// </summary>
-HttpResponse MakeAccessResponse()
-```
-
-The `MakeAccessResponse()` will create 401 or 403 response error code depending the status or [`webuser`](./controller-overview#webuser) property.
 
 
 ## MakeUnAuthorizedResponse()
@@ -99,7 +95,7 @@ The `MakeAccessResponse()` will create 401 or 403 response error code depending 
 /// </summary>
 /// <param name="content">Error content (default is "Server UnAuthorized Access")</param>
 /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-HttpResponse MakeUnAuthorizedResponse(string content = "Server UnAuthorized Access", string contentType = "text/plain; charset=UTF-8")
+public HttpResponse MakeUnAuthorizedResponse(string content = "Server UnAuthorized Access", string contentType = "text/plain; charset=UTF-8")
 ```
 
 The `MakeUnAuthorizedResponse()` will create 401 response error code.
@@ -113,7 +109,7 @@ The `MakeUnAuthorizedResponse()` will create 401 response error code.
 /// </summary>
 /// <param name="content">Error content (default is "Server Forbidden Access")</param>
 /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-HttpResponse MakeForbiddenResponse(string content = "Server Forbidden Access", string contentType = "text/plain; charset=UTF-8")
+public HttpResponse MakeForbiddenResponse(string content = "Server Forbidden Access", string contentType = "text/plain; charset=UTF-8")
 ```
 
 The `MakeForbiddenResponse()` will create 403 response error code.
@@ -127,7 +123,7 @@ The `MakeForbiddenResponse()` will create 403 response error code.
 /// </summary>
 /// <param name="content">Error content (default is "Server Internal Error")</param>
 /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-HttpResponse MakeInternalServerErrorResponse(string content = "Server Internal Error", string contentType = "text/plain; charset=UTF-8")
+public HttpResponse MakeInternalServerErrorResponse(string content = "Server Internal Error", string contentType = "text/plain; charset=UTF-8")
 ```
 
 The `MakeInternalServerErrorResponse()` will create 500 response error code.
@@ -141,7 +137,7 @@ The `MakeInternalServerErrorResponse()` will create 500 response error code.
 /// </summary>
 /// <param name="content">Error content (default is "Not Found")</param>
 /// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-HttpResponse MakeNotFoundResponse(string content = "Not Found", string contentType = "text/plain; charset=UTF-8")
+public HttpResponse MakeNotFoundResponse(string content = "Not Found", string contentType = "text/plain; charset=UTF-8")
 ```
 
 The `MakeNotFoundResponse()` will create 404 response error code.
@@ -154,7 +150,7 @@ The `MakeNotFoundResponse()` will create 404 response error code.
 /// Make Redirect Tempory Response (status code 302)
 /// </summary>
 /// <param name="location">The string location.</param>
-HttpResponse MakeRedirectResponse(string location)
+public HttpResponse MakeRedirectResponse(string location)
 ```
 
 The `MakeRedirectResponse()` will create 302 response code to redirect client to `location`.
@@ -167,23 +163,8 @@ The `MakeRedirectResponse()` will create 302 response code to redirect client to
 /// Response for initializing Server Sent Events
 /// </summary>
 /// <returns></returns>
-HttpResponse MakeServerSentEventsResponse()
+public HttpResponse MakeServerSentEventsResponse()
 ```
 
 The `MakeServerSentEventsResponse()` will create a Server Sent Event response and so, let the connection open for the client.
-
-
-## AddSSESession()
-
-```csharp
-/// <summary>
-/// Flag the current Session as SSE Session
-/// and add it to the server SSESessions
-/// Alias for Session.AddSSESession();
-/// </summary>
-void AddSSESession()
-```
-
-This method flag the current `HttpSession` as a Server Sent Events session and add it the list of `SSESessions`.
-By doing so, the server will be able to BroadCastSSEMessage()
 

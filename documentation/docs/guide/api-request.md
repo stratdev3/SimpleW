@@ -1,11 +1,11 @@
 # Request
 
-The [`Request`](../reference/controller-httprequest) property of [`Controller`](../reference/controller-overview) class contains all the information (Url, Headers, Method, Protocol, Body...) about the request sent by the client.
+The [`Request`](../reference/controller#httprequest) property of [`Controller`](../reference/controller) class contains all the information (Url, Headers, Method, Protocol, Body...) about the request sent by the client.
 
 
 ## Body
 
-You can use the [`Request.Body`](../reference/controller-httprequest#body) property to retrieve the data from any `POST` request.
+You can use the [`Request.Body`](../reference/httprequest#body) property to retrieve the data from any `POST` request.
 
 Frontend send POST data
 
@@ -54,7 +54,7 @@ You sent data in the body
 
 ## Body (application/json) deserialization helper
 
-You can use the [`BodyMap()`](../reference/controller-httprequest#bodymap) helper method for reading [`Request.Body`](../reference/controller-httprequest#body) and deserialize to an object instance.
+You can use the [`BodyMap()`](../reference/httprequest#bodymap) helper method for reading [`Request.Body`](../reference/httprequest#body) and deserialize to an object instance.
 
 Frontend send POST json data
 
@@ -107,7 +107,7 @@ namespace Sample {
             }
             // exception is thrown when type convertion failed
             catch (Exception ex) {
-                return MakeInternalServerErrorResponse(ex.Message);
+                return Response.MakeInternalServerErrorResponse(ex.Message);
             }
         }
 
@@ -130,7 +130,7 @@ Note :
 
 ## Body (application/x-www-form-urlencoded) deserialization helper
 
-You can use the [`BodyMap()`](../reference/controller-httprequest#bodymap) method for reading [`Request.Body`](../reference/controller-httprequest#body) and deserialize to an object instance.
+You can use the [`BodyMap()`](../reference/httprequest#bodymap) method for reading [`Request.Body`](../reference/httprequest#body) and deserialize to an object instance.
 
 Frontend send POST json data
 
@@ -177,7 +177,7 @@ namespace Sample {
                 };
             }
             catch (Exception ex) {
-                return MakeInternalServerErrorResponse(ex.Message);
+                return Response.MakeInternalServerErrorResponse(ex.Message);
             }
         }
 
@@ -202,7 +202,7 @@ specification. That's why :
 
 ## Body (multipart/form-data) deserialization helper
 
-You can use the [`BodyFile()`](../reference/controller-httprequest#bodyfile) method for reading [`Request.Body`](../reference/controller-httprequest#body) containing files.
+You can use the [`BodyFile()`](../reference/httprequest#bodyfile) method for reading [`Request.Body`](../reference/httprequest#body) containing files.
 
 Frontend send a file POST
 
@@ -261,7 +261,7 @@ namespace Sample {
                     File.WriteAllBytes(file.FileName, ms.ToArray());
                 }
                 catch (Exception ex) {
-                    return this.MakeInternalServerErrorResponse(ex.Message);
+                    return Response.MakeInternalServerErrorResponse(ex.Message);
                 }
             }
 

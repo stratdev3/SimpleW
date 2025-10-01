@@ -3,7 +3,7 @@
 
 ## Default
 
-The return of the method will be serialized to json using the [JsonEngine](./api-response#json-engine).
+The return of the method will be serialized to json.
 
 ```csharp:line-numbers
 using System;
@@ -58,7 +58,7 @@ The default engine is `System.Text.Json` initialized with recommanded options.
 
 There is an additionnal [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package which provide an alternative Json engine, the awesome [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json).
 
-To change the Json Engine
+To change the Json Engine for Newtonsoft
 
 ```sh
 $ dotnet add package SimpleW.Newtonsoft
@@ -68,7 +68,13 @@ And then
 
 ::: code-group
 
-<<< @/snippets/json-engine.cs#snippet{14 csharp:line-numbers} [program.cs]
+<<< @/snippets/json-engine.cs#snippet{13-30 csharp:line-numbers} [program.cs]
+
+:::
+
+::: tip NOTE
+
+You can create your own JsonEngine by implementing the [`IJsonEngine`](../reference/ijsonengine.md) interface.
 
 :::
 
@@ -162,10 +168,10 @@ Most of the time, `object` is enough and will be passed to a `JsonConvert.Serial
 
 ## Helpers
 
-In fact, the `Controller` class is dealing with an [`HttpResponse`](../reference/controller-httpresponse) object which is sent async to the client. 
-You can manipulate this object with the property `Response`.
+In fact, the `Controller` class is dealing with an [`HttpResponse`](../reference/httpresponse) object which is sent async to the client. 
+You can manipulate this object with the property [`Response`](../reference/controller.md#response).
 
-There are also some useful [helpers](../reference/controller-httpresponse) to create common response :
+There are also some useful [helpers](../reference/httpresponse) to create common response :
 
 ```csharp:line-numbers
 using System;
@@ -204,7 +210,7 @@ namespace Sample {
                 // set message exception as body of the HttpReponse
                 // and a mimetype text
                 // with a status code 500
-                return MakeInternalServerErrorResponse(ex.Message);
+                return Response.MakeInternalServerErrorResponse(ex.Message);
             }
         }
 
@@ -217,7 +223,7 @@ namespace Sample {
                 // set message exception as body of the HttpReponse
                 // and a mimetype text
                 // with a status code 404
-                return MakeNotFoundResponse(ex.Message);
+                return Response.MakeNotFoundResponse(ex.Message);
             }
         }
 
@@ -230,7 +236,7 @@ namespace Sample {
                 // set message exception as body of the HttpReponse
                 // and a mimetype text
                 // with a status code 401
-                return MakeUnAuthorizedResponse(ex.Message);
+                return Response.MakeUnAuthorizedResponse(ex.Message);
             }
         }
 

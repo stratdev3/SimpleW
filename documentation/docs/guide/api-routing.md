@@ -298,7 +298,7 @@ namespace Sample {
                 };
             }
             catch (Exception ex) {
-                return MakeInternalServerErrorResponse(ex.Message);
+                return Response.MakeInternalServerErrorResponse(ex.Message);
             }
         }
 

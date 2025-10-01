@@ -1,6 +1,7 @@
 # HttpRequest
 
-This `Request` property contains all informations of the client request in the `HttpRequest` class format.
+This class all informations of the client request.
+
 
 ## Method
 
@@ -99,7 +100,7 @@ Used to get the cookies count and iterate through [`Cookie()`](#cookie)
 /// </summary>
 /// <param name="name">The Header Name.</param>
 /// <returns><c>string value</c> of the header if exists in the Request; otherwise, <c>null</c>.</returns>
-string Header(string name)
+public string Header(string name)
 ```
 
 This method return the string content of the header by its name.
@@ -111,12 +112,13 @@ This method return the string content of the header by its name.
 /// <summary>
 /// Update the model with data from POST
 /// </summary>
+/// <param name="request">The HttpRequest request.</param>
 /// <param name="model">The Model instance to populate.</param>
 /// <param name="includeProperties">string array of properties to update the model. if null update all.</param>
 /// <param name="excludeProperties">string array of properties to not update.</param>
-/// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
+/// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
 /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-bool BodyMap<TModel>(TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, JsonSerializerSettings settings = null)
+public bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, IJsonEngine jsonEngine = null)
 ```
 
 
@@ -126,10 +128,11 @@ bool BodyMap<TModel>(TModel model, IEnumerable<string> includeProperties = null,
 /// <summary>
 /// Update the anonymous model with data from POST
 /// </summary>
+/// <param name="request">The HttpRequest request.</param>
 /// <param name="model">The Anonymous Model instance to populate.</param>
-/// <param name="settings">JsonSerializerSettings for the JsonConvert.PopulateObject() method.</param>
+/// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
 /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-bool BodyMapAnonymous<TModel>(ref TModel model, JsonSerializerSettings settings = null)
+public bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel model, IJsonEngine jsonEngine = null)
 ```
 
 
@@ -141,7 +144,7 @@ bool BodyMapAnonymous<TModel>(ref TModel model, JsonSerializerSettings settings 
 /// Please note the underlying input stream is not rewindable.
 /// </summary>
 /// <returns>MultipartFormDataParser</returns>
-MultipartFormDataParser BodyFile()
+public MultipartFormDataParser BodyFile()
 ```
 
 
@@ -153,5 +156,5 @@ MultipartFormDataParser BodyFile()
 /// </summary>
 /// <param name="requestBody">The string request body.</param>
 /// <returns>key/value data</returns>
-Dictionary<string, object> BodyForm(string requestBody)
+public Dictionary<string, object> BodyForm(string requestBody)
 ```

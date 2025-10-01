@@ -93,21 +93,24 @@ export default defineConfig({
 
             '/reference/': [
                 {
-                    text: 'Reference',
+                    text: 'Core',
                     items: [
                         { text: 'Server', link: '/reference/simplewserver' },
+                    ]
+                },
+                {
+                    text: 'Dynamic Content',
+                    items: [
+                        { text: 'Controller', link: '/reference/controller' },
+                        { text: 'HttpRequest', link: '/reference/httprequest' },
+                        { text: 'HttpResponse', link: '/reference/httpresponse' },
+                        { text: 'ISimpleWSession', link: '/reference/isimplewsession' },
                         { text: 'RouteAttribute', link: '/reference/routeattribute' },
-                        {
-                          text: 'Controller',
-                          base: '/reference/controller-',
-                          items: [
-                              { text: 'Overview', link: 'overview' },
-                              { text: 'HttpRequest', link: 'httprequest' },
-                              { text: 'Session', link: 'session' },
-                              { text: 'HttpResponse', link: 'httpresponse' },
-                              { text: 'OnBeforeMethod', link: 'onbeforemethod' },
-                          ]
-                        },
+                    ]
+                },
+                {
+                    text: 'Helpers',
+                    items: [
                         { text: 'NetCoreServerExtension', link: '/reference/netcoreserverextension' },
                     ]
                 },

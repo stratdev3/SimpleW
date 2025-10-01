@@ -4,7 +4,7 @@ The behavior of SimpleW can be overridden using a sort of callback.
 
 ## OnBeforeMethod
 
-The `Controller` class contains an abstract method [`OnBeforeMethod()`](../reference/controller-onbeforemethod) which is called before any method execution.
+The `Controller` class contains an abstract method [`OnBeforeMethod()`](../reference/controller#onbeforemethod) which is called before any method execution.
 
 ::: code-group
 

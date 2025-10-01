@@ -84,4 +84,4 @@ The following example shows how to pass custom data to the server using the `Web
 
 
 Note:
-- [`NetCoreServerExtension.JsonMap()`](../reference/netcoreserverextension#jsonmap) is a mapping helper utility similar to [`BodyMap()`](../reference/controller-httprequest#bodymap) for RestAPI in the previous chapter.
+- [`NetCoreServerExtension.JsonMap()`](../reference/netcoreserverextension#jsonmap) is a mapping helper utility similar to [`BodyMap()`](../reference/httprequest#bodymap) for RestAPI in the previous chapter.

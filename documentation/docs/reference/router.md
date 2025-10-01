@@ -1,6 +1,6 @@
 # Router
 
-The primary goal of the `Router` is to call component depending on [`Method`](./controller-httprequest#method) and [`Url`](./controller-httprequest#url).
+The primary goal of the `Router` is to call component depending on [`Method`](./httprequest#method) and [`Url`](./httprequest#url).
 
 
 ## RegExpEnabled

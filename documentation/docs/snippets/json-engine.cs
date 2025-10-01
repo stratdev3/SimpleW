@@ -10,8 +10,24 @@ namespace Sample {
             // listen to all IPs on port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // set Newtonsoft as the json engine with recommended settings
-            server.JsonEngine = new NewtonsoftJsonEngine(NewtonsoftJsonEngine.SettingsSimpleWBuilder());
+            // 1. set Newtonsoft as the json engine
+            server.JsonEngine = new NewtonsoftJsonEngine();
+
+            // or
+
+            // 2. set Newtonsoft as the json engine with custom settings
+            server.JsonEngine = new NewtonsoftJsonEngine(
+                (action) => {
+                    Newtonsoft.Json.JsonSerializerSettings settings = new();
+
+                    // you can customize settings dependings the IJsonEngine method called
+                    if (action == nameof(IJsonEngine.Serialize)) {
+                        settings.Formatting = Newtonsoft.Json.Formatting.Indented;
+                    }
+
+                    return settings;
+                }
+            );
 
             // find all Controllers classes and serve on the "/api" endpoint
             server.AddDynamicContent("/api");

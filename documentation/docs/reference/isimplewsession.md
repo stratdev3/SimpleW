@@ -1,6 +1,6 @@
-# Session
+# ISimpleWSession
 
-The `Session` property of type `SimpleWSession` or `SimpleWSSession`, both implementing the `ISimpleWSession` interface.
+The interface is both implemented by  `SimpleWSession` or `SimpleWSSession`.
 
 
 ## Server
@@ -12,7 +12,7 @@ The `Session` property of type `SimpleWSession` or `SimpleWSSession`, both imple
 public new ISimpleWServer Server;
 ```
 
-This property can be used to control Server from any `Controller` class.
+This property can be used to control [`Server`](./simplewserver) from any `Controller` class.
 
 
 ## jwt
