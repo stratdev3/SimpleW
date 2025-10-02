@@ -162,7 +162,7 @@ namespace SimpleW {
             }
             // all others : T method()
             else {
-                // call SendResponseAsync()
+                // call SendResponseAsync(object o)
                 call = Expression.Call(controller, SendObjectResponseAsync,
                                        new List<Expression>() {
                                            Expression.Convert(call, typeof(object))
