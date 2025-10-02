@@ -57,6 +57,7 @@ namespace NetCoreServer
             {
                 var response = new HttpResponse();
                 response.SetBegin(200);
+                response.SetCORSHeaders(timespan.Seconds);
                 response.SetContentType(Path.GetExtension(key));
                 response.SetHeader("Cache-Control", $"max-age={timespan.Seconds}");
                 response.SetBody(value);
