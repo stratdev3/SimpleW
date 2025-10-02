@@ -180,8 +180,7 @@ namespace SimpleW {
         /// <param name="content">byte[] content</param>
         /// <param name="contentType">The String Content type (default is "application/json; charset=UTF-8")</param>
         protected virtual void SendResponseAsync(byte[] content, string contentType = "application/json; charset=UTF-8") {
-            string[] compress = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            Response.MakeResponse(content, contentType, compress);
+            Response.MakeResponse(content, contentType, Request.AcceptEncodings());
             Session.SendResponseAsync(Response);
         }
 

@@ -34,6 +34,15 @@ namespace SimpleW {
             return null;
         }
 
+        /// <summary>
+        /// Return the string[] of accept encodings for a Request
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public static string[] AcceptEncodings(this HttpRequest request) {
+            return request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
         #endregion properties
 
         /// <summary>
