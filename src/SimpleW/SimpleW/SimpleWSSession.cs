@@ -92,8 +92,7 @@ namespace SimpleW {
                                     +@"</pre><hr />
                                 </body>
                             </html>";
-                        //Response.SetCORSHeaders(); not working !!
-                        SendResponseAsync(Response.MakeGetResponse(html, "text/html; charset=UTF-8"));
+                        SendResponseAsync(Response.MakeResponse(html, "text/html; charset=UTF-8", compress: Request.AcceptEncodings()));
                         StopWithStatusCodeActivity(activity, 200);
                         return;
                     }
@@ -120,11 +119,11 @@ namespace SimpleW {
                         if (routeMatch.Handler.ExecuteFunc != null) {
                             object result = routeMatch.Handler.ExecuteFunc(this, request, requestRoute.ParameterValues(routeMatch));
                             if (result is HttpResponse response) {
-                                this.SendResponseAsync(response);
+                                SendResponseAsync(response);
                             }
                             else {
                                 Response.MakeResponse(this.server.JsonEngine.Serialize(result), compress: Request.AcceptEncodings());
-                                this.SendResponseAsync(Response);
+                                SendResponseAsync(Response);
                             }
                         }
                         else {
