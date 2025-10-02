@@ -147,13 +147,6 @@ namespace SimpleW {
         #region sendResponse
 
         /// <summary>
-        /// Override this Handler to change how RouteMethod which return object should do
-        /// </summary>
-        protected virtual void SendResponseAsync() {
-            Session.SendResponseAsync();
-        }
-
-        /// <summary>
         /// Send Response Async
         /// </summary>
         /// <param name="o">The Object o</param>
