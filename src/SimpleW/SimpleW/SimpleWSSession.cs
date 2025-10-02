@@ -72,10 +72,10 @@ namespace SimpleW {
 
                 // default document
                 if (requestRoute.Method == "GET" && requestRoute.hasEndingSlash) {
-                    (bool, byte[]) response = Cache.Find(requestRoute.Url.AbsolutePath + server.DefaultDocument);
-                    if (response.Item1) {
-                        SendAsync(response.Item2);
-                        StopWithStatusCodeActivity(activity, 200, response.Item2.Length);
+                    (bool find, byte[] content) = Cache.Find(requestRoute.Url.AbsolutePath + server.DefaultDocument);
+                    if (find) {
+                        SendAsync(content);
+                        StopWithStatusCodeActivity(activity, 200, content.Length);
                         return;
                     }
                     // autoindex
