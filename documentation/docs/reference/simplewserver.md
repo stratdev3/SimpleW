@@ -476,7 +476,7 @@ void AddCORS(string origin="*", string headers = "*", string methods = "GET,POST
 ```
 
 Setup the Cross-Origin Resource Sharing policy and so, add 4 headers to every response.
-
+`server.AddCORS()` method should be called before any `server.AddStaticContent()`.
 
 ## Static Content
 

@@ -7,7 +7,6 @@ namespace Sample {
 
         static void Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
 
             // set CORS policy
             server.AddCORS(
@@ -16,6 +15,8 @@ namespace Sample {
                 "GET,POST,OPTIONS", // Access-Control-Allow-Methods
                 "true"              // Access-Control-Allow-Credentials
             );
+
+            server.AddDynamicContent("/api");
 
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");

@@ -10,3 +10,8 @@ To set CORS policy, use the [`server.AddCORS()`](../reference/simplewserver#cors
 <<< @/snippets/api-cors.cs#snippet{csharp:line-numbers} [program.cs]
 
 :::
+
+
+::: tip NOTE
+`server.AddCORS()` method should be called before any `server.AddStaticContent()`.
+:::
