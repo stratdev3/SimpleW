@@ -112,6 +112,8 @@ export default defineConfig({
                     text: 'Helpers',
                     items: [
                         { text: 'NetCoreServerExtension', link: '/reference/netcoreserverextension' },
+                        { text: 'IJsonEngine', link: '/reference/ijsonengine' },
+                        { text: 'IWebUser', link: '/reference/iwebuser' },
                     ]
                 },
             ]
