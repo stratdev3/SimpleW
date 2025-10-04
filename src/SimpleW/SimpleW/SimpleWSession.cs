@@ -56,8 +56,8 @@ namespace SimpleW {
         /// <summary>
         /// Request :
         ///     - http static (first access so not in cache)
-        ///     - http api (always)
         ///     - http options (preflight cors)
+        ///     - http dynamic (inline func, controller)
         ///     - http upgrade to websocket (first access)
         ///     - http sse
         /// </summary>
