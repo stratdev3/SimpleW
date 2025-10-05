@@ -54,6 +54,14 @@ namespace SimpleW {
         #region http
 
         /// <summary>
+        /// Bypass the underlying NetCoreServer to only call OnReceiveRequest
+        /// </summary>
+        /// <param name="request"></param>
+        protected override void OnReceivedRequestInternal(HttpRequest request) {
+            OnReceivedRequest(request);
+        }
+
+        /// <summary>
         /// Request :
         ///     - http static (first access so not in cache)
         ///     - http options (preflight cors)
@@ -70,16 +78,24 @@ namespace SimpleW {
                 Route requestRoute = new(request, Server.TrustXHeaders);
                 SetDefaultActivity(activity, Request, requestRoute, Id, Socket, server.TrustXHeaders);
 
-                // default document
-                if (requestRoute.Method == "GET" && requestRoute.hasEndingSlash) {
-                    (bool find, byte[] content) = Cache.Find(requestRoute.Url.AbsolutePath + server.DefaultDocument);
+                // static content cached
+                if (requestRoute.Method == "GET") {
+                    // extract the fileUrl
+                    int index = request.Url.IndexOf('?');
+                    string fileUrl = (index < 0) ? request.Url : request.Url.Substring(0, index);
+                    // compare with the default document
+                    if (requestRoute.hasEndingSlash) {
+                        fileUrl = requestRoute.Url.AbsolutePath + server.DefaultDocument;
+                    }
+                    // try get the document
+                    (bool find, byte[] content) = Cache.Find(fileUrl);
                     if (find) {
                         SendAsync(content);
                         StopWithStatusCodeActivity(activity, 200, content.Length);
                         return;
                     }
                     // autoindex
-                    else if (server.AutoIndex) {
+                    else if (requestRoute.hasEndingSlash && server.AutoIndex) {
                         OnReceivedAutoIndexRequest(requestRoute);
                         StopWithStatusCodeActivity(activity, 200);
                         return;
@@ -149,18 +165,6 @@ namespace SimpleW {
                                 </body>
                             </html>";
             SendResponseAsync(Response.MakeResponse(html, "text/html; charset=UTF-8", compress: Request.AcceptEncodings()));
-        }
-
-        /// <summary>
-        /// Request in cache
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="content"></param>
-        protected override void OnReceivedCachedRequest(HttpRequest request, byte[] content) {
-            Activity? activity = CreateActivity();
-            SetDefaultActivity(activity, $"CACHE {request.Url}", request, Id, Socket, server.TrustXHeaders);
-            SendAsync(content);
-            StopWithStatusCodeActivity(activity, 200, content.Length);
         }
 
         /// <summary>
