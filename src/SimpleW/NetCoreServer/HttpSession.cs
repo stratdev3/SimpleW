@@ -214,7 +214,7 @@ namespace NetCoreServer
 
         #endregion
 
-        private void OnReceivedRequestInternal(HttpRequest request)
+        protected virtual void OnReceivedRequestInternal(HttpRequest request)
         {
             // Try to get the cached response
             if (request.Method == "GET")
