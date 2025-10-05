@@ -9,7 +9,7 @@ namespace NetCoreServer
     /// HTTP response is used to create or process parameters of HTTP protocol response(status, headers, etc).
     /// </summary>
     /// <remarks>Not thread-safe.</remarks>
-    public class HttpResponse
+    public partial class HttpResponse
     {
         static HttpResponse()
         {
