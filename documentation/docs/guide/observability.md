@@ -54,7 +54,7 @@ SimpleW export many informations (Request, Response, Exception...) and you can v
 When generating Traces and Logs, SimpleW will look in all available locations to find metadata.
 It searchs for some conventional headers like `X-Real-IP`, `X-Forwarded-Host` or `Host` which often come from an under control fronted reverse proxy (e.g: nginx, caddy...).
 
-To allow these headers in telemetry, set the [`TrustXHeaders`](../reference/simplewserver#telemetry) property as the following
+To allow these headers in telemetry, set the [`TrustXHeaders`](../reference/simplewserver#security) property as the following
 
 ::: code-group
 

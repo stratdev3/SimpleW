@@ -517,14 +517,8 @@ bool AutoIndex { get; set; } = false;
 This property enable or disable the index feature which list files of a static 
 content directory when no file has been selected and `DefaultDocument` does not exists.
 
-## Telemetry
 
-```csharp
-/// <summary>
-/// True to generate Telemetry Traces, Logs and Metrics
-/// </summary>
-public bool EnableTelemetry { get; set; } = false;
-```
+## Security
 
 ```csharp
 /// <summary>
@@ -534,6 +528,16 @@ public bool EnableTelemetry { get; set; } = false;
 /// Note : you should allow only if you have a reverse proxy with well defined settings policy
 /// </summary>
 public bool TrustXHeaders { get; set; } = false;
+```
+
+
+## Telemetry
+
+```csharp
+/// <summary>
+/// True to generate Telemetry Traces, Logs and Metrics
+/// </summary>
+public bool EnableTelemetry { get; set; } = false;
 ```
 
 
