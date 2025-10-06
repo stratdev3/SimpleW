@@ -10,8 +10,8 @@ namespace Sample {
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // serve static content located in your folder "C:\www\" to "/" endpoint
-            server.AddStaticContent(@"C:\www", "/");
+            // serve static content located in your folder "C:\www\" to "/" endpoint, cached for 24h
+            server.AddStaticContent(@"C:\www", "/", TimeSpan.FromDays(1));
 
             // enable autoindex if no index.html exists in the directory
             server.AutoIndex = true;

@@ -11,7 +11,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // serve directory which contains the index.html
-            server.AddStaticContent(@"C:\www\client", "/");
+            server.AddStaticContent(@"C:\www\client", "/", TimeSpan.FromDays(1));
 
             // find all Controllers class and serve on the "/websocket/" endpoint
             server.AddWebSocketContent("/websocket");

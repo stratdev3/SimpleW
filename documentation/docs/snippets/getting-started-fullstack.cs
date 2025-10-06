@@ -13,8 +13,8 @@ namespace Sample {
             // find all Controllers classes and serve on the "/api" endpoint
             server.AddDynamicContent("/api");
 
-            // serve static content located in your folder "C:\www\" to "/" endpoint
-            server.AddStaticContent(@"C:\www", "/");
+            // serve static content located in your folder "C:\www\" to "/" endpoint, cached for 24h
+            server.AddStaticContent(@"C:\www", "/", TimeSpan.FromDays(1));
 
             // start non blocking background server
             server.Start();

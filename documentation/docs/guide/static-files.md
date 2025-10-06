@@ -46,11 +46,10 @@ server.AddMimeTypes(".vue", "text/html");
 
 ## Cache
 
-The `AddStaticContent()` caches all directories/files in RAM (default: 1 hour) on server start.<br />
-Also, an internal filesystem watcher is keeping this cache up-to-date.
-It supports realtime file editing even when specific lock/write occurs.
+By default, the `AddStaticContent()` serves directories/files from disk to each request.
+To enable cache, set the `timeout` property to anything but null.<br />
 
-To modify cache duration or to filter files
+The following example enable cache for 1 day :
 
 ```csharp:line-numbers
 // serve statics files
@@ -61,3 +60,8 @@ server.AddStaticContent(
     TimeSpan.FromDays(1)    // set cache to 1 day
 );
 ```
+
+::: tip NOTE
+When cache is enabled, an internal filesystem watcher is keeping this cache up-to-date.
+It supports realtime file editing even when specific lock/write occurs.
+:::

@@ -482,12 +482,14 @@ Setup the Cross-Origin Resource Sharing policy and so, add 4 headers to every re
 
 ```csharp
 /// <summary>
-/// Add static content cache
+/// Add static content
+/// The timeout parameter control how long the content is cached (null or 0 mean no cache at all)
+/// When cache, there is an underlying file watcher to refresh cache on file change
 /// </summary>
 /// <param name="path">Static content path</param>
 /// <param name="prefix">Cache prefix (default is "/")</param>
 /// <param name="filter">Cache filter (default is "*.*")</param>
-/// <param name="timeout">Refresh cache timeout (default is 1 hour)</param>
+/// <param name="timeout">Refresh cache timeout (0 or null mean no cache, default: null)</param>
 void AddStaticContent(string path, string prefix = "/", string filter = "*.*", TimeSpan? timeout = null)
 ```
 

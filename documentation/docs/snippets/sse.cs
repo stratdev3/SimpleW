@@ -12,7 +12,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // serve directory which contains the index.html
-            server.AddStaticContent(@"C:\www\client", "/");
+            server.AddStaticContent(@"C:\www\client", "/", TimeSpan.FromDays(1));
 
             // find all Controllers classes and serve on the "/api" endpoint
             server.AddDynamicContent("/api");
