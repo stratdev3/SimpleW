@@ -96,7 +96,9 @@ namespace SimpleW {
                     }
                     // autoindex
                     else if (requestRoute.hasEndingSlash && server.AutoIndex) {
-                        OnReceivedAutoIndexRequest(requestRoute);
+                        (IEnumerable<string> files, bool hasParent) = Cache.List(requestRoute.Url.AbsolutePath);
+                        string html = NetCoreServerExtension.AutoIndexPage(requestRoute.Url.AbsolutePath, "", files, hasParent);
+                        SendResponseAsync(Response.MakeResponse(html, "text/html; charset=UTF-8", compress: Request.AcceptEncodings()));
                         StopWithStatusCodeActivity(activity, 200);
                         return;
                     }
@@ -145,26 +147,6 @@ namespace SimpleW {
                 SendResponseAsync(Response.MakeErrorResponse(500, "server error"));
                 StopWithStatusCodeActivity(activity, Response, webuser, ex);
             }
-        }
-
-        /// <summary>
-        /// Request for AutoIndex
-        /// </summary>
-        /// <param name="requestRoute"></param>
-        protected void OnReceivedAutoIndexRequest(Route requestRoute) {
-            (IEnumerable<string> files, bool hasParent) = Cache.List(requestRoute.Url.AbsolutePath);
-            string html = @$"
-                            <html>
-                                <head><title>Index of {requestRoute.Url.AbsolutePath}</title></head>
-                                <body>
-                                    <h1>Index of {requestRoute.Url.AbsolutePath}</h1>
-                                    <hr /><pre>"
-                            + (hasParent ? @$"<a href=""../"">../</a>{Environment.NewLine}" : "")
-                            + $"{string.Join(Environment.NewLine, files.Select(f => $"<a href=\"{f}\">{f}</a>"))}"
-                        + @"</pre><hr />
-                                </body>
-                            </html>";
-            SendResponseAsync(Response.MakeResponse(html, "text/html; charset=UTF-8", compress: Request.AcceptEncodings()));
         }
 
         /// <summary>

@@ -409,29 +409,8 @@ namespace SimpleW {
                         urlPath += "/";
                     }
 
-                    StringBuilder sb = new();
-                    sb.AppendLine($"""
-                        <!DOCTYPE html>
-                        <html>
-                            <head><title>Index of {request.Url}</title></head>
-                            <body>
-                                <h1>Index of {request.Url}</h1>
-                                <hr /><pre>
-                    """);
-                    if (!string.Equals(fullPath, documentRoot, StringComparison.OrdinalIgnoreCase)) {
-                        sb.AppendLine($@"<a href=""{urlPath}../"">../</a>");
-                    }
-                    foreach (string entry in Directory.GetFileSystemEntries(fullPath, filter)) {
-                        string f = Path.GetFileName(entry);
-                        sb.AppendLine($@"<a href=""{urlPath}{f}"">{f}</a>");
-                    }
-                    sb.AppendLine($"""
-                                </pre><hr />
-                            </body>
-                        </html>
-                    """);
-
-                    return session.Response.MakeGetResponse(sb.ToString(), "text/html; charset=UTF-8");
+                    string html = AutoIndexPage(request.Url, urlPath, Directory.GetFileSystemEntries(fullPath, filter), !string.Equals(fullPath, documentRoot, StringComparison.OrdinalIgnoreCase), (entry) => Path.GetFileName(entry));
+                    return session.Response.MakeGetResponse(html, "text/html; charset=UTF-8");
                 }
                 else if (File.Exists(fullPath) && filterRegex.IsMatch(Path.GetFileName(fullPath))) {
                     return session.Response.MakeResponse(File.ReadAllBytes(fullPath), Path.GetFileName(fullPath));
@@ -443,6 +422,42 @@ namespace SimpleW {
             catch (Exception ex) {
                 return session.Response.MakeInternalServerErrorResponse(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Return a Index Page from entries
+        /// </summary>
+        /// <param name="absoluteUrl"></param>
+        /// <param name="relativeUrl"></param>
+        /// <param name="entries"></param>
+        /// <param name="hasParent"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public static string AutoIndexPage(string absoluteUrl, string relativeUrl, IEnumerable<string> entries, bool hasParent = false, Func<string, string> handler = null) {
+
+            StringBuilder sb = new();
+            sb.AppendLine($"""
+                <!DOCTYPE html>
+                <html>
+                    <head><title>Index of {absoluteUrl}</title></head>
+                    <body>
+                        <h1>Index of {absoluteUrl}</h1>
+                        <hr /><pre>
+            """);
+            if (hasParent) {
+                sb.AppendLine($@"<a href=""{relativeUrl}../"">../</a>");
+            }
+            foreach (string entry in entries) {
+                string e = handler != null ? handler(entry) : entry;
+                sb.AppendLine($@"<a href=""{relativeUrl}{e}"">{e}</a>");
+            }
+            sb.AppendLine($"""
+                        </pre><hr />
+                    </body>
+                </html>
+            """);
+
+            return sb.ToString();
         }
 
         #endregion InlineFunc
