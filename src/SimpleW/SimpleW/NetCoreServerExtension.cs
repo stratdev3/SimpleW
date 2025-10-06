@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using HttpMultipartParser;
 using LitJWT;
 using LitJWT.Algorithms;
@@ -357,6 +358,94 @@ namespace SimpleW {
         }
 
         #endregion jwtsecuritytoken
+
+        #region InlineFunc
+
+        /// <summary>
+        /// Act like AddStaticContent but direct file access and without cache or filewatcher
+        /// </summary>
+        /// <param name="documentRoot"></param>
+        /// <param name="prefix"></param>
+        /// <param name="filter"></param>
+        /// <param name="session"></param>
+        /// <param name="request"></param>
+        public static object AddStaticContentNoCache(string documentRoot, string prefix, string filter, ISimpleWSession session, HttpRequest request) {
+            try {
+                // define docRoot
+                documentRoot = Path.GetFullPath(documentRoot);
+
+                // sanitize url
+                string rawUrl = request.Url ?? "/";
+                string urlPath = rawUrl.Split('?', '#')[0].Replace('\\', '/');
+
+                // prefix protection
+                if (!urlPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                    return session.Response.MakeUnAuthorizedResponse("invalid prefix");
+                }
+
+                // path
+                string relativePath = urlPath[prefix.Length..].Trim('/');
+                string fullPath = Path.GetFullPath(Path.Join(documentRoot, relativePath));
+
+                // directory traversal protection
+                if (!fullPath.StartsWith(documentRoot, StringComparison.OrdinalIgnoreCase)) {
+                    return session.Response.MakeUnAuthorizedResponse("access denied");
+                }
+
+                // compile le filtre en regex
+                string regexPattern = "^" + Regex.Escape(filter).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+                Regex filterRegex = new(regexPattern, RegexOptions.IgnoreCase);
+
+                if (Directory.Exists(fullPath)) {
+                    string defaultDocumentFullPath = Path.Join(fullPath, session.Server.DefaultDocument);
+                    if (File.Exists(defaultDocumentFullPath) && filterRegex.IsMatch(Path.GetFileName(defaultDocumentFullPath))) {
+                        return session.Response.MakeResponse(File.ReadAllBytes(defaultDocumentFullPath), Path.GetFileName(defaultDocumentFullPath));
+                    }
+                    if (!session.Server.AutoIndex) {
+                        return session.Response.MakeNotFoundResponse();
+                    }
+
+                    if (urlPath[^1] != '/') {
+                        urlPath += "/";
+                    }
+
+                    StringBuilder sb = new();
+                    sb.AppendLine($"""
+                        <!DOCTYPE html>
+                        <html>
+                            <head><title>Index of {request.Url}</title></head>
+                            <body>
+                                <h1>Index of {request.Url}</h1>
+                                <hr /><pre>
+                    """);
+                    if (!string.Equals(fullPath, documentRoot, StringComparison.OrdinalIgnoreCase)) {
+                        sb.AppendLine($@"<a href=""{urlPath}../"">../</a>");
+                    }
+                    foreach (string entry in Directory.GetFileSystemEntries(fullPath, filter)) {
+                        string f = Path.GetFileName(entry);
+                        sb.AppendLine($@"<a href=""{urlPath}{f}"">{f}</a>");
+                    }
+                    sb.AppendLine($"""
+                                </pre><hr />
+                            </body>
+                        </html>
+                    """);
+
+                    return session.Response.MakeGetResponse(sb.ToString(), "text/html; charset=UTF-8");
+                }
+                else if (File.Exists(fullPath) && filterRegex.IsMatch(Path.GetFileName(fullPath))) {
+                    return session.Response.MakeResponse(File.ReadAllBytes(fullPath), Path.GetFileName(fullPath));
+                }
+                else {
+                    return session.Response.MakeNotFoundResponse("directory or file not found");
+                }
+            }
+            catch (Exception ex) {
+                return session.Response.MakeInternalServerErrorResponse(ex.Message);
+            }
+        }
+
+        #endregion InlineFunc
 
     }
 

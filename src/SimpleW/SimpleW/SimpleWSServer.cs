@@ -105,6 +105,12 @@ namespace SimpleW {
         #region static
 
         /// <summary>
+        /// List of all top level static content prefix
+        /// use for faster check in session
+        /// </summary>
+        private readonly HashSet<string> _prefix_static = new();
+
+        /// <summary>
         /// File to get by default (default: "index.html")
         /// </summary>
         public string DefaultDocument { get; set; } = "index.html";
@@ -122,6 +128,62 @@ namespace SimpleW {
         /// <param name="contentType">The String contentType</param>
         public void AddMimeTypes(string extension, string contentType) {
             HttpResponse.AddMimeTypes(extension, contentType);
+        }
+
+        /// <summary>
+        /// Add static content
+        /// The timeout parameter control how long the content is cached (null or 0 mean no cache at all)
+        /// When cache, there is an underlying file watcher to refresh cache on file change
+        /// </summary>
+        /// <param name="path">Static content path</param>
+        /// <param name="prefix">Cache prefix (default is "/")</param>
+        /// <param name="filter">Cache filter (default is "*.*")</param>
+        /// <param name="timeout">Refresh cache timeout (0 or null mean no cache, default: null)</param>
+        public new void AddStaticContent(string path, string prefix = "/", string filter = "*.*", TimeSpan? timeout = null) {
+            if (string.IsNullOrWhiteSpace(prefix)) {
+                throw new ArgumentNullException(nameof(prefix));
+            }
+
+            // no cache, read from disk
+            if (timeout == null) {
+                // need to enable RegExp route
+                this.Router.RegExpEnabled = true;
+                // define a MapGet() inline Func as an Handler
+                this.MapGet(prefix + "*", (ISimpleWSession session, HttpRequest request) => {
+                    return NetCoreServerExtension.AddStaticContentNoCache(path, prefix, filter, session, request);
+                });
+            }
+            // cache and file watcher
+            else {
+                _prefix_static.Add(prefix);
+                base.AddStaticContent(path, prefix, filter, timeout);
+            }
+        }
+
+        /// <summary>
+        /// Remove static content cache
+        /// </summary>
+        /// <param name="path">Static content path</param>
+        public new void RemoveStaticContent(string path) {
+            _prefix_static.Remove(path);
+            base.RemoveStaticContent(path);
+        }
+
+        /// <summary>
+        /// Clear static content cache
+        /// </summary>
+        public new void ClearStaticContent() {
+            _prefix_static.Clear();
+            base.ClearStaticContent();
+        }
+
+        /// <summary>
+        /// True url can contains static content
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        public bool HasStaticContent(string url) {
+            return _prefix_static.Where(p => url.StartsWith(p)).Any();
         }
 
         #endregion static

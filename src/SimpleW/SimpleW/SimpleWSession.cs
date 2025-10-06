@@ -79,7 +79,7 @@ namespace SimpleW {
                 SetDefaultActivity(activity, Request, requestRoute, Id, Socket, server.TrustXHeaders);
 
                 // static content cached
-                if (requestRoute.Method == "GET") {
+                if (requestRoute.Method == "GET" && server.HasStaticContent(request.Url)) {
                     // extract the fileUrl
                     int index = request.Url.IndexOf('?');
                     string fileUrl = (index < 0) ? request.Url : request.Url.Substring(0, index);
