@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -461,6 +462,50 @@ namespace SimpleW {
         }
 
         #endregion InlineFunc
+
+        #region helpers
+
+        /// <summary>
+        /// Parses the query string into the internal dictionary
+        /// and optionally also returns this dictionary
+        /// </summary>
+        /// <param name="url">The string Url</param>
+        /// <returns></returns>
+        public static NameValueCollection ParseQueryString(string url) {
+            NameValueCollection qs = new();
+
+            if (string.IsNullOrWhiteSpace(url)) {
+                return qs;
+            }
+
+            int index = url.IndexOf('?');
+            if (index > -1) {
+                if (url.Length >= index + 1) {
+                    url = url[(index + 1)..];
+                }
+            }
+
+            string[] pairs = url.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (string pair in pairs) {
+                int index2 = pair.IndexOf('=');
+                if (index2 > 0) {
+                    qs.Add(pair[..index2], pair[(index2 + 1)..]);
+                }
+            }
+
+            return qs;
+        }
+
+        /// <summary>
+        /// Decode string
+        /// </summary>
+        /// <param name="str">The string str</param>
+        /// <returns></returns>
+        public static string UrlDecode(string str) {
+            return WebUtility.UrlDecode(str);
+        }
+
+        #endregion helpers
 
     }
 

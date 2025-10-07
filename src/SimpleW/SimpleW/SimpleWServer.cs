@@ -232,9 +232,7 @@ namespace SimpleW {
             if (IsStarted) {
                 throw new InvalidOperationException("AddFunc content cannot be added when server is already started");
             }
-            RouteAttribute attribute = new RouteAttribute(verb, url, isAbsolutePath: true);
-            Route route = new(attribute, ControllerMethodExecutor.Create(handler));
-            Router.AddRoute(route);
+            Router.AddRoute(new RouteAttribute(verb, url, isAbsolutePath: true), ControllerMethodExecutor.Create(handler));
         }
 
         #endregion func
@@ -310,8 +308,7 @@ namespace SimpleW {
                         continue;
                     }
                     attribute.SetPrefix(path);
-                    Route route = new(attribute, ControllerMethodExecutor.Create(method));
-                    Router.AddRoute(route);
+                    Router.AddRoute(attribute, ControllerMethodExecutor.Create(method));
                 }
             }
 
@@ -490,8 +487,7 @@ namespace SimpleW {
                         continue;
                     }
                     attribute.SetPrefix(path);
-                    Route route = new(attribute, ControllerMethodExecutor.Create(method));
-                    Router.AddRoute(route);
+                    Router.AddRoute(attribute, ControllerMethodExecutor.Create(method));
                 }
             }
 

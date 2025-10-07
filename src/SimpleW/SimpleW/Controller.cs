@@ -124,8 +124,7 @@ namespace SimpleW {
             }
 
             // 2. Request url querystring "jwt" (api only)
-            Route route = new(Request, Session.Server.TrustXHeaders);
-            NameValueCollection qs = Route.ParseQueryString(route?.Url?.Query);
+            NameValueCollection qs = NetCoreServerExtension.ParseQueryString(Request.Url);
             string qs_jwt = qs["jwt"]?.ToString();
             if (!string.IsNullOrWhiteSpace(qs_jwt)) {
                 return qs_jwt;

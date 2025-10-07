@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using NetCoreServer;
@@ -15,28 +14,10 @@ namespace SimpleW {
     /// </summary>
     public partial class Route {
 
-        #region properties
-
         /// <summary>
-        /// The Raw URL from Request
+        /// The RouteAttribute
         /// </summary>
-        public string RawUrl { get; internal set; }
-
-        /// <summary>
-        /// The Http Method "GET", "POST"...
-        /// Extract from RawUrl
-        /// </summary>
-        public string Method { get; internal set; }
-
-        /// <summary>
-        /// The Uri sanitized and extract from RawUrl
-        /// </summary>
-        public Uri Url { get; internal set; }
-
-        /// <summary>
-        /// Return true if RawURL ending with "/"
-        /// </summary>
-        public bool hasEndingSlash => !string.IsNullOrEmpty(RawUrl) && RawUrl[^1] == '/';
+        public readonly RouteAttribute Attribute;
 
         /// <summary>
         /// The ControllerMethodExecutor
@@ -44,59 +25,25 @@ namespace SimpleW {
         public ControllerMethodExecutor Handler { get; internal set; }
 
         /// <summary>
-        /// The RouteAttribute
-        /// </summary>
-        public readonly RouteAttribute Attribute;
-
-        #endregion properties
-
-        #region constructor
-
-        /// <summary>
-        /// Create Route from HttpRequest
-        /// </summary>
-        /// <param name="request">The HttpRequest request.</param>
-        /// <param name="trustXHeaders"></param>
-        public Route(HttpRequest request, bool trustXHeaders = false) {
-            Method = request.Method;
-            RawUrl = FQURL(request, trustXHeaders);
-            ParseHttpRequest();
-        }
-
-        /// <summary>
         /// Create Route from RouteAttribute
         /// </summary>
         /// <param name="attribute">The RouteAttribute attribute.</param>
         /// <param name="handler">The ControllerMethodExecutor handler.</param>
-        public Route(RouteAttribute attribute, ControllerMethodExecutor handler) {
-            Method = attribute.Method;
-            RawUrl = Uri.UnescapeDataString(attribute.Path);
+        /// <param name="regExpEnabled"></param>
+        public Route(RouteAttribute attribute, ControllerMethodExecutor handler, bool regExpEnabled = false) {
             Attribute = attribute;
             Handler = handler;
-            ParseRoute();
+            if (regExpEnabled) {
+                ParsePathParameters();
+            }
         }
 
-        /// <summary>
-        /// Create Route manually
-        /// </summary>
-        /// <param name="method">The http method.</param>
-        /// <param name="url">The route url</param>
-        /// <param name="handler">The route handler</param>
-        public Route(string method, string url, ControllerMethodExecutor handler) {
-            Method = method;
-            RawUrl = Uri.UnescapeDataString(url);
-            Handler = handler;
-            ParseRoute();
-        }
-
-        #endregion constructor
-
-        #region parse
+        #region parameters
 
         private readonly List<string> parameters_name = new();
 
         /// <summary>
-        /// The Regex use to parse parameter depending the current RouteAttribute
+        /// The Regex use to parse parameter depending on current RouteAttribute
         /// </summary>
         public Regex regex { get; private set; }
 
@@ -108,13 +55,14 @@ namespace SimpleW {
         private static partial Regex ParameterRegex();
 
         /// <summary>
-        /// Parse Route
+        /// Parse Path Parameters
         /// </summary>
-        private void ParseRoute() {
+        private void ParsePathParameters() {
 
-            // url
-            int pos = RawUrl.IndexOf("?");
-            string relativePath = pos > 0 ? RawUrl[..pos] : RawUrl;
+            // path
+            string path = Uri.UnescapeDataString(Attribute.Path);
+            int pos = path.IndexOf("?");
+            string relativePath = pos > 0 ? path[..pos] : path;
 
             // parse RouteAttribute looking for "{parameter}"
             foreach (string parameter in ParameterRegex().Matches(relativePath)
@@ -144,63 +92,37 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Parse HttpRequest
+        /// Parse parameter/value from an HttpRequest
         /// </summary>
-        private void ParseHttpRequest() {
-            if (RawUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)) {
-                try {
-                    Url = new Uri(RawUrl);
-                }
-                catch { }
-            }
-        }
-
-        /// <summary>
-        /// Return the Full Qualified URL from request
-        /// </summary>
-        /// <param name="request"></param>
-        /// <param name="trustXHeaders"></param>
+        /// <param name="request">The HttpRequest to retrieve parameter</param>
         /// <returns></returns>
-        public static string FQURL(HttpRequest request, bool trustXHeaders = false) {
-            return Uri.UnescapeDataString(
-                ((trustXHeaders ? request.Header("X-Forwarded-Proto") : null) ?? "http")
-                + "://"
-                + ((trustXHeaders ? request.Header("X-Forwarded-Host") : null) ?? request.Header("Host"))
-                + request.Url
-            );
-        }
+        public object[] ParameterValues(HttpRequest request) {
 
-        /// <summary>
-        /// Parse parameter/value in a routerHandleMatch
-        /// </summary>
-        /// <param name="routeHandleMatch"></param>
-        /// <returns></returns>
-        public object[] ParameterValues(Route routeHandleMatch) {
-            GroupCollection matches = routeHandleMatch.regex.Match(Url.AbsolutePath).Groups;
+            GroupCollection matches = (regex != null) ? regex.Match(request.Uri.AbsolutePath).Groups : null;
 
             int i = 0;
-            NameValueCollection qs = ParseQueryString(Url.Query);
+            NameValueCollection qs = NetCoreServerExtension.ParseQueryString(request.Uri.Query);
             List<object> parameters = new();
-            foreach (ParameterInfo handlerParameterInfo in routeHandleMatch.Handler.Parameters.Keys) {
+            foreach (ParameterInfo handlerParameterInfo in Handler.Parameters.Keys) {
 
-                // if a parameterInfo name is found in request.url
-                if (routeHandleMatch.parameters_name.Contains(handlerParameterInfo.Name)) {
+                // if regExpEnabled and a parameterInfo name is found in request.url
+                if (regex != null && parameters_name.Contains(handlerParameterInfo.Name)) {
                     // matches 0 is full regexp group so start from 1 for first matching brace
-                    string value_string = UrlDecode(matches[routeHandleMatch.parameters_name.IndexOf(handlerParameterInfo.Name) + 1].Value);
+                    string value_string = NetCoreServerExtension.UrlDecode(matches[parameters_name.IndexOf(handlerParameterInfo.Name) + 1].Value);
                     object? value_type = ChangeType(value_string, handlerParameterInfo.ParameterType);
                     parameters.Add(value_type);
                 }
                 // if a parameterInfo name is found in query in request.url
-                else if (routeHandleMatch.Attribute.QueryStringMappingEnabled
+                else if (Attribute.QueryStringMappingEnabled
                          && qs[handlerParameterInfo.Name] != null
                 ) {
-                    string value_string = UrlDecode(qs[handlerParameterInfo.Name]);
+                    string value_string = NetCoreServerExtension.UrlDecode(qs[handlerParameterInfo.Name]);
                     object? value_type = ChangeType(value_string, handlerParameterInfo.ParameterType);
                     parameters.Add(value_type);
                 }
                 else {
                     // default value defined in parameterInfo Handler
-                    object value = routeHandleMatch.Handler.Parameters[handlerParameterInfo];
+                    object value = Handler.Parameters[handlerParameterInfo];
                     parameters.Add(value);
                 }
 
@@ -232,47 +154,7 @@ namespace SimpleW {
             return value_type;
         }
 
-        /// <summary>
-        /// Parses the query string into the internal dictionary
-        /// and optionally also returns this dictionary
-        /// </summary>
-        /// <param name="url">The string Url</param>
-        /// <returns></returns>
-        public static NameValueCollection ParseQueryString(string url) {
-            NameValueCollection qs = new();
-
-            if (string.IsNullOrWhiteSpace(url)) {
-                return qs;
-            }
-            
-            int index = url.IndexOf('?');
-            if (index > -1) {
-                if (url.Length >= index + 1) {
-                    url = url[(index + 1)..];
-                }
-            }
-
-            string[] pairs = url.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (string pair in pairs) {
-                int index2 = pair.IndexOf('=');
-                if (index2 > 0) {
-                    qs.Add(pair[..index2], pair[(index2 + 1)..]);
-                }
-            }
-
-            return qs;
-        }
-
-        /// <summary>
-        /// Decode string
-        /// </summary>
-        /// <param name="str">The string str</param>
-        /// <returns></returns>
-        private static string UrlDecode(string str) {
-            return WebUtility.UrlDecode(str);
-        }
-
-        #endregion parse
+        #endregion parameters
 
     }
 

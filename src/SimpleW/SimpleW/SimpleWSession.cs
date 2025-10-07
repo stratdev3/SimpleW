@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
@@ -75,17 +74,17 @@ namespace SimpleW {
             try {
 
                 // parse : request.url to route
-                Route requestRoute = new(request, Server.TrustXHeaders);
-                SetDefaultActivity(activity, Request, requestRoute, Id, Socket, server.TrustXHeaders);
+                request.TrustXHeaders = Server.TrustXHeaders;
+                SetDefaultActivity(activity, Request, Id, Socket);
 
                 // static content cached
-                if (requestRoute.Method == "GET" && server.HasStaticContent(request.Url)) {
+                if (request.Method == "GET" && server.HasStaticContent(request.Url)) {
                     // extract the fileUrl
                     int index = request.Url.IndexOf('?');
-                    string fileUrl = (index < 0) ? request.Url : request.Url.Substring(0, index);
+                    string fileUrl = (index < 0) ? request.Url : request.Url[..index];
                     // compare with the default document
-                    if (requestRoute.hasEndingSlash) {
-                        fileUrl = requestRoute.Url.AbsolutePath + server.DefaultDocument;
+                    if (request.hasEndingSlash) {
+                        fileUrl = request.Uri.AbsolutePath + server.DefaultDocument;
                     }
                     // try get the document
                     (bool find, byte[] content) = Cache.Find(fileUrl);
@@ -95,9 +94,9 @@ namespace SimpleW {
                         return;
                     }
                     // autoindex
-                    else if (requestRoute.hasEndingSlash && server.AutoIndex) {
-                        (IEnumerable<string> files, bool hasParent) = Cache.List(requestRoute.Url.AbsolutePath);
-                        string html = NetCoreServerExtension.AutoIndexPage(requestRoute.Url.AbsolutePath, "", files, hasParent);
+                    else if (request.hasEndingSlash && server.AutoIndex) {
+                        (IEnumerable<string> files, bool hasParent) = Cache.List(request.Uri.AbsolutePath);
+                        string html = NetCoreServerExtension.AutoIndexPage(request.Uri.AbsolutePath, "", files, hasParent);
                         SendResponseAsync(Response.MakeResponse(html, "text/html; charset=UTF-8", compress: Request.AcceptEncodings()));
                         StopWithStatusCodeActivity(activity, 200);
                         return;
@@ -105,12 +104,12 @@ namespace SimpleW {
                 }
 
                 // websocket force here to return cause no matching will return 404 and browser will close websocket connection
-                if (server._websocket_prefix_routes.Contains(requestRoute.Url.AbsolutePath)) {
+                if (server._websocket_prefix_routes.Contains(request.Uri.AbsolutePath)) {
                     return;
                 }
 
                 // preflight request when client is requesting server CORS configuration
-                if (requestRoute.Method == "OPTIONS"
+                if (request.Method == "OPTIONS"
                     && !string.IsNullOrWhiteSpace(server.cors_allow_origin)
                 ) {
                     SendResponseAsync(Response.MakeCORSResponse(server.cors_allow_origin, server.cors_allow_headers, server.cors_allow_methods, server.cors_allow_credentials));
@@ -119,25 +118,23 @@ namespace SimpleW {
                 }
 
                 // get first matching route
-                Route routeMatch = server.Router.Match(requestRoute);
-                if (routeMatch != null) {
-                    if (routeMatch.Handler != null) {
-                        if (routeMatch.Handler.ExecuteFunc != null) {
-                            object result = routeMatch.Handler.ExecuteFunc(this, request, requestRoute.ParameterValues(routeMatch));
-                            if (result is HttpResponse response) {
-                                SendResponseAsync(response);
-                            }
-                            else {
-                                Response.MakeResponse(this.server.JsonEngine.Serialize(result), compress: Request.AcceptEncodings());
-                                SendResponseAsync(Response);
-                            }
+                Route route = server.Router.Find(request);
+                if (route != null && route.Handler != null) {
+                    if (route.Handler.ExecuteFunc != null) {
+                        object result = route.Handler.ExecuteFunc(this, request, route.ParameterValues(request));
+                        if (result is HttpResponse response) {
+                            SendResponseAsync(response);
                         }
                         else {
-                            routeMatch.Handler.ExecuteMethod(this, request, requestRoute.ParameterValues(routeMatch));
+                            Response.MakeResponse(this.server.JsonEngine.Serialize(result), compress: Request.AcceptEncodings());
+                            SendResponseAsync(Response);
                         }
-                        StopWithStatusCodeActivity(activity, Response, webuser);
-                        return;
                     }
+                    else {
+                        route.Handler.ExecuteMethod(this, request, route.ParameterValues(request));
+                    }
+                    StopWithStatusCodeActivity(activity, Response, webuser);
+                    return;
                 }
 
                 SendResponseAsync(Response.MakeErrorResponse(404, "not found"));
@@ -189,9 +186,7 @@ namespace SimpleW {
         public override void OnWsConnected(HttpRequest request) {
             Activity? activity = CreateActivity();
             try {
-                // parse : request.url to route
-                Route requestRoute = new(request, Server.TrustXHeaders);
-                SetDefaultActivity(activity, Request, requestRoute, Id, Socket, server.TrustXHeaders);
+                SetDefaultActivity(activity, Request, Id, Socket);
             }
             catch (Exception ex) {
                 StopWithErrorActivity(activity, ex);
@@ -207,8 +202,6 @@ namespace SimpleW {
         public override void OnWsReceived(byte[] buffer, long offset, long size) {
             Activity? activity = CreateActivity();
             try {
-                SimpleWServer server = (SimpleWServer)Server;
-
                 // parse buffer as WebSocketMessage
                 string text = Encoding.UTF8.GetString(buffer, (int)offset, (int)size);
                 WebSocketMessage message = JsonSerializer.Deserialize<WebSocketMessage>(text);
@@ -226,7 +219,7 @@ namespace SimpleW {
                 }
 
                 // get first matching route
-                Route routeMatch = server.Router.Match(message);
+                Route routeMatch = server.Router.Find(message);
                 if (routeMatch != null) {
                     if (routeMatch.Handler != null) {
                         routeMatch.Handler?.ExecuteMethod(this, Request, new object[] { message });
@@ -302,42 +295,40 @@ namespace SimpleW {
         /// </summary>
         /// <param name="activity"></param>
         /// <param name="request"></param>
-        /// <param name="requestRoute"></param>
         /// <param name="id"></param>
         /// <param name="socket"></param>
-        /// <param name="trustXHeaders"></param>
-        protected static void SetDefaultActivity(Activity activity, HttpRequest request, Route requestRoute, Guid id, Socket socket, bool trustXHeaders) {
+        protected static void SetDefaultActivity(Activity activity, HttpRequest request, Guid id, Socket socket) {
             if (activity == null) {
                 return;
             }
 
-            activity.DisplayName = $"{requestRoute.Method} {requestRoute.Url.AbsolutePath}";
+            activity.DisplayName = $"{request.Method} {request.Uri.AbsolutePath}";
 
             activity.SetTag("network.transport", "TCP");
             activity.SetTag("network.type", "ipv4");
 
-            activity.SetTag("server.address", (trustXHeaders ? request.Header("X-Forwarded-Host") ?? request.Header("Host") : null) ?? requestRoute.Url.Host); // frontend proxy
-            activity.SetTag("server.port", requestRoute.Url.Port); // frontend proxy
+            activity.SetTag("server.address", request.Uri.Host); // frontend proxy
+            activity.SetTag("server.port", request.Uri.Port); // frontend proxy
 
             //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
             //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
 
-            activity.SetTag("url.path", requestRoute.Url.AbsolutePath);
-            activity.SetTag("url.query", requestRoute.Url.Query);
-            activity.SetTag("url.scheme", requestRoute.Url.Scheme);
-            activity.SetTag("url.full", requestRoute.RawUrl);
+            activity.SetTag("url.path", request.Uri.AbsolutePath);
+            activity.SetTag("url.query", request.Uri.Query);
+            activity.SetTag("url.scheme", request.Uri.Scheme);
+            activity.SetTag("url.full", request.FullQualifiedUrl);
 
-            activity.SetTag("http.route", requestRoute.Url.AbsolutePath);
-            activity.SetTag("http.request.method", requestRoute.Method);
-            activity.SetTag("http.request.route", requestRoute.Url.AbsolutePath);
+            activity.SetTag("http.route", request.Uri.AbsolutePath);
+            activity.SetTag("http.request.method", request.Method);
+            activity.SetTag("http.request.route", request.Uri.AbsolutePath);
             activity.SetTag("http.request.body.size", request.BodyLength.ToString());
 
             activity.SetTag("session", id);
 
-            activity.SetTag("client.address", (trustXHeaders ? request.Header("X-Real-IP") : null) ?? socket?.RemoteEndPoint.ToString());
+            activity.SetTag("client.address", request.HeaderXRealIp ?? socket?.RemoteEndPoint.ToString());
             //activity.SetTag("client.port", address.Address);
 
-            activity.SetTag("user_agent.original", request.Header("User-Agent"));
+            activity.SetTag("user_agent.original", request.HeaderUserAgent);
 
             //Activity.Current.Context.TraceId.Dump();
         }
@@ -372,24 +363,23 @@ namespace SimpleW {
 
             //activity.SetTag("server.socket.address", "192.168.1.22");   // derriere le proxy
             //activity.SetTag("server.socker.port", "2015");              // derriere le proxy
-            string url = Route.FQURL(request, trustXHeaders);
 
-            activity.SetTag("url.path", url);
+            activity.SetTag("url.path", request.Uri.AbsolutePath);
             //activity.SetTag("url.query", requestRoute.Url.Query);
             //activity.SetTag("url.scheme", requestRoute.Url.Scheme);
-            activity.SetTag("url.full", url);
+            activity.SetTag("url.full", request.FullQualifiedUrl);
 
-            activity.SetTag("http.route", url);
+            activity.SetTag("http.route", request.Uri.AbsolutePath);
             activity.SetTag("http.request.method", request.Method);
-            activity.SetTag("http.request.route", url);
+            activity.SetTag("http.request.route", request.Uri.AbsolutePath);
             activity.SetTag("http.request.body.size", request.BodyLength.ToString());
 
             activity.SetTag("session", id);
 
-            activity.SetTag("client.address", (trustXHeaders ? request.Header("X-Real-IP") : null) ?? socket?.RemoteEndPoint.ToString());
+            activity.SetTag("client.address", request.HeaderXRealIp ?? socket?.RemoteEndPoint.ToString());
             //activity.SetTag("client.port", address.Address);
 
-            activity.SetTag("user_agent.original", request.Header("User-Agent"));
+            activity.SetTag("user_agent.original", request.HeaderUserAgent);
         }
 
         protected static void SetDefaultActivity(Activity activity, string DisplayName, Guid id) {

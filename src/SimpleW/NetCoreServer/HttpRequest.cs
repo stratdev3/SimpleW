@@ -140,6 +140,9 @@ namespace NetCoreServer
 
             _cache.Clear();
             _cacheSize = 0;
+
+            ClearExtend();
+
             return this;
         }
 
