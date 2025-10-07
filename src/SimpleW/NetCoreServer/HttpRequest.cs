@@ -9,7 +9,7 @@ namespace NetCoreServer
     /// HTTP request is used to create or process parameters of HTTP protocol request(method, URL, headers, etc).
     /// </summary>
     /// <remarks>Not thread-safe.</remarks>
-    public class HttpRequest
+    public partial class HttpRequest
     {
         /// <summary>
         /// Initialize an empty HTTP request
