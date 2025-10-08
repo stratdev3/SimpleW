@@ -129,11 +129,10 @@ namespace SimpleW {
             }
 
             // 3. Request http header "Authorization: bearer " (api only)
-            string header_jwt = Request.Header("Authorization");
-            if (string.IsNullOrWhiteSpace(header_jwt) || !header_jwt.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
+            if (string.IsNullOrWhiteSpace(Request.HeaderAuthorization) || !Request.HeaderAuthorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
                 return null;
             }
-            return header_jwt["Bearer ".Length..];
+            return Request.HeaderAuthorization["Bearer ".Length..];
         }
 
         /// <summary>
@@ -205,7 +204,7 @@ namespace SimpleW {
         /// <param name="output_filename">name of the download file.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
         public HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8") {
-            string[] compress = Request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            string[] compress = Request.HeaderAcceptEncodings?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             return Response.MakeDownloadResponse(content, output_filename, contentType, compress);
         }
 

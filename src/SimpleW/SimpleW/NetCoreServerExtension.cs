@@ -42,7 +42,7 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <returns></returns>
         public static string[] AcceptEncodings(this HttpRequest request) {
-            return request.Header("Accept-Encoding")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return request.HeaderAcceptEncodings?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         }
 
         #endregion properties
@@ -64,7 +64,7 @@ namespace SimpleW {
         /// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
         public static bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, IJsonEngine jsonEngine = null) {
-            string contentType = request.Header("Content-Type");
+            string contentType = request.HeaderContentType;
             string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
@@ -101,7 +101,7 @@ namespace SimpleW {
         /// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
         /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
         public static bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel model, IJsonEngine jsonEngine = null) {
-            string contentType = request.Header("Content-Type");
+            string contentType = request.HeaderContentType;
             string body = request.Body;
 
             if (string.IsNullOrWhiteSpace(body)) {
