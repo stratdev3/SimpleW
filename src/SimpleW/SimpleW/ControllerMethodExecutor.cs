@@ -70,116 +70,55 @@ namespace SimpleW {
         /// <returns></returns>
         public static ControllerMethodExecutor Create(MethodInfo method) {
             Type? controllerType = method.ReflectedType;
-            List<Expression> body = new();
-            List<ParameterExpression> locals = new();
-
-            // creation variable C# : `ControllerType controller;`
-            ParameterExpression controller = Expression.Variable(controllerType);
-            // add to expression tree locals
-            locals.Add(controller);
-
-            // assign variable C# : `ControllerType controller = new ControllerType();`
-            // add to expression tree body
-            body.Add(Expression.Assign(controller, Expression.New(controllerType)));
 
             // lambda parameters
-            ParameterExpression sessionInLambda = Expression.Parameter(typeof(ISimpleWSession));
-            ParameterExpression requestInLambda = Expression.Parameter(typeof(HttpRequest));
-            ParameterExpression argsInLambda = Expression.Parameter(typeof(object[]));
+            ParameterExpression sessionParam = Expression.Parameter(typeof(ISimpleWSession), "session");
+            ParameterExpression requestParam = Expression.Parameter(typeof(HttpRequest), "request");
+            ParameterExpression argsArray = Expression.Parameter(typeof(object[]), "args");
 
-            // call method C# : `controller.Initialize(session, request);`
-            // controller is the instance controller type
-            // InitializeSetter is a methodinfo pointing to controller.Initialize()
-            // sessionInLambda is the lambda parameter pointing to session
-            // requestInLambda is the lambda parameter pointing to request
-            // add to expression tree body
-            body.Add(Expression.Call(controller, InitializeSetter, new List<ParameterExpression>() { sessionInLambda, requestInLambda }));
+            // local var for controller
+            ParameterExpression controllerVar = Expression.Variable(controllerType, "controller");
 
-            // call method C# : `Controller.OnBeforeMethod();`
-            body.Add(Expression.Call(controller, OnBeforeMethod));
+            List<Expression> body = new() {
+                // var controller = new ControllerType();
+                Expression.Assign(controllerVar, Expression.New(controllerType)),
 
-            //
-            // get method parameter
-            //
-            ParameterInfo[] parameters = method.GetParameters();
-            int parameterCount = parameters.Length;
-            List<Expression> callParameters = new();
-            Dictionary<ParameterInfo, object> values = new();
+                // controller.Initialize(session, request);
+                Expression.Call(controllerVar, InitializeSetter, sessionParam, requestParam),
 
-            for (int i = 0; i < parameterCount; i++) {
-                ParameterInfo parameter = parameters[i];
+                // controller.OnBeforeMethod();
+                Expression.Call(controllerVar, OnBeforeMethod)
+            };
 
-                callParameters.Add(
-                    Expression.Convert(Expression.ArrayIndex(argsInLambda, Expression.Constant(i)), parameter.ParameterType)
-                );
+            // parameters
+            (IEnumerable<Expression> callParameters, Dictionary<ParameterInfo, object> parameterDefaults) = BuildParameterExpressions(method, argsArray);
 
-                bool hasDefaultValue;
-                bool tryToGetDefaultValue = true;
-                object defaultValue = null;
+            // call controller method
+            Expression call = Expression.Call(controllerVar, method, callParameters);
 
-                try {
-                    hasDefaultValue = parameter.HasDefaultValue;
-                }
-                catch (FormatException) when (parameter.ParameterType == typeof(DateTime)) {
-                    // Workaround for https://github.com/dotnet/corefx/issues/12338
-                    // If HasDefaultValue throws FormatException for DateTime
-                    // we expect it to have default value
-                    hasDefaultValue = true;
-                    tryToGetDefaultValue = false;
-                }
-
-                if (hasDefaultValue) {
-                    if (tryToGetDefaultValue) {
-                        defaultValue = parameter.DefaultValue;
-                    }
-
-                    // Workaround for https://github.com/dotnet/corefx/issues/11797
-                    if (defaultValue == null && parameter.ParameterType.IsValueType) {
-                        defaultValue = Activator.CreateInstance(parameter.ParameterType);
-                    }
-
-                    //callParameters.Add(Expression.Constant(defaultValue));
-                    values.Add(parameter, defaultValue);
-                }
-                else {
-                    //callParameters.Add(Expression.Default(parameter.ParameterType));
-                    values.Add(parameter, parameter.ParameterType);
-                }
-            }
-
-            //
-            // call method
-            //
-            Expression call = Expression.Call(controller, method, callParameters);
-
-            // specific reponse if : Task method()
+            // handle response types
             if (method.ReturnType == typeof(Task)) {
+                // nothing special, just await implicitly
             }
-            // specific reponse if : void method()
             else if (method.ReturnType == typeof(void)) {
-                // convert void to Task by evaluating Task.CompletedTask
-                //call = Expression.Block(typeof(Task), call, Expression.Constant(Task.CompletedTask));
+                // do nothing, user method handled response internally
             }
-            // all others : T method()
             else {
-                // call SendResponseAsync(object o)
-                call = Expression.Call(controller, SendObjectResponseAsync,
-                                       new List<Expression>() {
-                                           Expression.Convert(call, typeof(object))
-                                       }
-                );
+                // SendResponseAsync(result)
+                call = Expression.Call(controllerVar, SendObjectResponseAsync, Expression.Convert(call, typeof(object)));
             }
+
             body.Add(call);
 
-            // call method C# : `(controller as IDisposable).Dispose();`
-            if (typeof(IDisposable).IsAssignableFrom(controllerType)) {
-                body.Add(Expression.Call(Expression.TypeAs(controller, typeof(IDisposable)), DisposeMethod));
+            // dispose
+            if (DisposableControllers.Contains(controllerType)) {
+                body.Add(Expression.Call(Expression.TypeAs(controllerVar, typeof(IDisposable)), DisposeMethod));
             }
 
-            // final lambda
-            Expression<Action<ISimpleWSession, HttpRequest, object[]>> lambda = Expression.Lambda<Action<ISimpleWSession, HttpRequest, object[]>>(Expression.Block(locals, body), sessionInLambda, requestInLambda, argsInLambda);
+            BlockExpression block = Expression.Block(new[] { controllerVar }, body);
+            Expression<Action<ISimpleWSession, HttpRequest, object[]>> lambda = Expression.Lambda<Action<ISimpleWSession, HttpRequest, object[]>>(block, sessionParam, requestParam, argsArray);
 
-            return new ControllerMethodExecutor(lambda.Compile(), values);
+            return new ControllerMethodExecutor(lambda.Compile(), parameterDefaults);
         }
 
         #endregion ExecuteMethod
@@ -208,83 +147,21 @@ namespace SimpleW {
         /// <returns></returns>
         public static ControllerMethodExecutor Create(Delegate executeFunc) {
             MethodInfo method = executeFunc.Method;
-            List<Expression> body = new();
 
             // lambda parameters
-            ParameterExpression sessionInLambda = Expression.Parameter(typeof(ISimpleWSession));
-            ParameterExpression requestInLambda = Expression.Parameter(typeof(HttpRequest));
-            ParameterExpression argsInLambda = Expression.Parameter(typeof(object[]));
+            ParameterExpression sessionParam = Expression.Parameter(typeof(ISimpleWSession), "session");
+            ParameterExpression requestParam = Expression.Parameter(typeof(HttpRequest), "request");
+            ParameterExpression argsArray = Expression.Parameter(typeof(object[]), "args");
 
-            //
-            // get method parameter
-            //
-            ParameterInfo[] parameters = method.GetParameters();
-            int parameterCount = parameters.Length;
-            List<Expression> callParameters = new();
-            Dictionary<ParameterInfo, object> values = new();
+            // parameters
+            (IEnumerable<Expression> callParameters, Dictionary<ParameterInfo, object> parameterDefaults) = BuildParameterExpressions(method, argsArray, sessionParam, requestParam);
 
-            for (int i = 0; i < parameterCount; i++) {
-                ParameterInfo parameter = parameters[i];
-
-                if (parameter.ParameterType == typeof(ISimpleWSession)) {
-                    callParameters.Add(sessionInLambda);
-                    values.Add(parameter, parameter.ParameterType);
-                    continue;
-                }
-                else if (parameter.ParameterType == typeof(HttpRequest)) {
-                    callParameters.Add(requestInLambda);
-                    values.Add(parameter, parameter.ParameterType);
-                    continue;
-                }
-
-                callParameters.Add(
-                    Expression.Convert(Expression.ArrayIndex(argsInLambda, Expression.Constant(i)), parameter.ParameterType)
-                );
-
-                bool hasDefaultValue;
-                bool tryToGetDefaultValue = true;
-                object defaultValue = null;
-
-                try {
-                    hasDefaultValue = parameter.HasDefaultValue;
-                }
-                catch (FormatException) when (parameter.ParameterType == typeof(DateTime)) {
-                    // Workaround for https://github.com/dotnet/corefx/issues/12338
-                    // If HasDefaultValue throws FormatException for DateTime
-                    // we expect it to have default value
-                    hasDefaultValue = true;
-                    tryToGetDefaultValue = false;
-                }
-
-                if (hasDefaultValue) {
-                    if (tryToGetDefaultValue) {
-                        defaultValue = parameter.DefaultValue;
-                    }
-
-                    // Workaround for https://github.com/dotnet/corefx/issues/11797
-                    if (defaultValue == null && parameter.ParameterType.IsValueType) {
-                        defaultValue = Activator.CreateInstance(parameter.ParameterType);
-                    }
-
-                    //callParameters.Add(Expression.Constant(defaultValue));
-                    values.Add(parameter, defaultValue);
-                }
-                else {
-                    //callParameters.Add(Expression.Default(parameter.ParameterType));
-                    values.Add(parameter, parameter.ParameterType);
-                }
-            }
-
-            //
-            // call method
-            //
+            // call func
             Expression call = Expression.Invoke(Expression.Constant(executeFunc), callParameters);
-            body.Add(call);
 
-            // final lambda
-            Expression<Func<ISimpleWSession, HttpRequest, object[], object?>> lambda = Expression.Lambda<Func<ISimpleWSession, HttpRequest, object[], object?>>(Expression.Block(body), sessionInLambda, requestInLambda, argsInLambda);
+            Expression<Func<ISimpleWSession, HttpRequest, object[], object?>> lambda = Expression.Lambda<Func<ISimpleWSession, HttpRequest, object[], object?>>(Expression.Block(typeof(object), call), sessionParam, requestParam, argsArray);
 
-            return new ControllerMethodExecutor(lambda.Compile(), values);
+            return new ControllerMethodExecutor(lambda.Compile(), parameterDefaults);
         }
 
         #endregion ExecuteFunc
@@ -292,16 +169,87 @@ namespace SimpleW {
         #region helper
 
         /// <summary>
+        /// Build Parameters Expression
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="argsArray"></param>
+        /// <param name="sessionParam"></param>
+        /// <param name="requestParam"></param>
+        /// <returns></returns>
+        private static (IEnumerable<Expression> callParams, Dictionary<ParameterInfo, object> defaultParamsValue) BuildParameterExpressions(MethodInfo method, ParameterExpression argsArray, ParameterExpression? sessionParam = null, ParameterExpression? requestParam = null) {
+            ParameterInfo[] parameters = method.GetParameters();
+            Expression[] callParameters = new Expression[parameters.Length];
+            Dictionary<ParameterInfo, object> defaultParamsValue = new(parameters.Length);
+
+            for (int i = 0; i < parameters.Length; i++) {
+                ParameterInfo p = parameters[i];
+                Expression expr;
+
+                if (sessionParam != null && p.ParameterType == typeof(ISimpleWSession)) {
+                    expr = sessionParam;
+                    defaultParamsValue[p] = p.ParameterType;
+                }
+                else if (requestParam != null && p.ParameterType == typeof(HttpRequest)) {
+                    expr = requestParam;
+                    defaultParamsValue[p] = p.ParameterType;
+                }
+                else {
+                    expr = Expression.Convert(Expression.ArrayIndex(argsArray, Expression.Constant(i)), p.ParameterType);
+                    defaultParamsValue[p] = TryGetDefaultValue(p);
+                }
+
+                callParameters[i] = expr;
+            }
+
+            return (callParameters, defaultParamsValue);
+        }
+
+        /// <summary>
+        /// Return the default value of ParameterInfo
+        /// </summary>
+        /// <param name="param"></param>
+        /// <returns></returns>
+        private static object TryGetDefaultValue(ParameterInfo param) {
+            try {
+                if (param.HasDefaultValue) {
+                    return param.DefaultValue ?? (param.ParameterType.IsValueType ? Activator.CreateInstance(param.ParameterType) : null);
+                }
+            }
+            catch (FormatException) when (param.ParameterType == typeof(DateTime)) {
+                return default(DateTime);
+            }
+
+            return param.ParameterType;
+        }
+
+        /// <summary>
+        /// Cached set of all loaded controller types
+        /// </summary>
+        private static readonly HashSet<Type> CachedControllers = new(
+            AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => {
+                    try { return a.GetTypes(); }
+                    catch (ReflectionTypeLoadException e) { return e.Types.Where(t => t != null)!; }
+                })
+                .Where(t => BaseController.IsAssignableFrom(t) && t != BaseController)
+                .OfType<Type>()
+        );
+
+        /// <summary>
         /// Return all Class that inherited from BaseController Class
         /// </summary>
         /// <param name="excepts">List of Controller to not auto load</param>
         /// <returns></returns>
         public static IEnumerable<Type> Controllers(IEnumerable<Type> excepts = null) {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(s => s.GetTypes())
-                                                .Where(p => BaseController.IsAssignableFrom(p))
-                                                .Where(t => BaseController != t)
-                                                .Where(t => excepts == null || !excepts.Contains(t));
+            return excepts == null ? CachedControllers : CachedControllers.Where(t => !excepts.Contains(t));
         }
+
+        /// <summary>
+        /// List of Disposable Controllers
+        /// </summary>
+        private static readonly HashSet<Type> DisposableControllers = new(
+            CachedControllers.Where(t => typeof(IDisposable).IsAssignableFrom(t))
+        );
 
         #endregion helper
 
