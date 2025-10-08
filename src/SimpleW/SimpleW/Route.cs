@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -101,7 +100,7 @@ namespace SimpleW {
             GroupCollection matches = (regex != null) ? regex.Match(request.Uri.AbsolutePath).Groups : null;
 
             int i = 0;
-            NameValueCollection qs = NetCoreServerExtension.ParseQueryString(request.Uri.Query);
+            Dictionary<string, string> qs = NetCoreServerExtension.ParseQueryString(request.Uri.Query);
             List<object> parameters = new();
             foreach (ParameterInfo handlerParameterInfo in Handler.Parameters.Keys) {
 
@@ -113,9 +112,7 @@ namespace SimpleW {
                     parameters.Add(value_type);
                 }
                 // if a parameterInfo name is found in query in request.url
-                else if (Attribute.QueryStringMappingEnabled
-                         && qs[handlerParameterInfo.Name] != null
-                ) {
+                else if (Attribute.QueryStringMappingEnabled && qs.ContainsKey(handlerParameterInfo.Name)) {
                     string value_string = NetCoreServerExtension.UrlDecode(qs[handlerParameterInfo.Name]);
                     object? value_type = ChangeType(value_string, handlerParameterInfo.ParameterType);
                     parameters.Add(value_type);

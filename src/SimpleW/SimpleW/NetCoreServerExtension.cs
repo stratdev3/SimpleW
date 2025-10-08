@@ -466,34 +466,102 @@ namespace SimpleW {
         #region helpers
 
         /// <summary>
-        /// Parses the query string into the internal dictionary
-        /// and optionally also returns this dictionary
+        /// Parses the query string into dictionary of key/value
         /// </summary>
-        /// <param name="url">The string Url</param>
+        /// <param name="url"></param>
         /// <returns></returns>
-        public static NameValueCollection ParseQueryString(string url) {
-            NameValueCollection qs = new();
+        public static Dictionary<string, string> ParseQueryString(string url) {
+            Dictionary<string, string> qs = new(StringComparer.OrdinalIgnoreCase);
 
             if (string.IsNullOrWhiteSpace(url)) {
                 return qs;
             }
 
-            int index = url.IndexOf('?');
-            if (index > -1) {
-                if (url.Length >= index + 1) {
-                    url = url[(index + 1)..];
-                }
-            }
+            int qIndex = url.IndexOf('?');
+            ReadOnlySpan<char> span = (qIndex >= 0 && qIndex < url.Length - 1)
+                                            ? url.AsSpan(qIndex + 1)
+                                            : url.AsSpan();
 
-            string[] pairs = url.Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            foreach (string pair in pairs) {
-                int index2 = pair.IndexOf('=');
-                if (index2 > 0) {
-                    qs.Add(pair[..index2], pair[(index2 + 1)..]);
+            int start = 0;
+            while (start < span.Length) {
+                int ampIndex = span.Slice(start).IndexOf('&');
+                ReadOnlySpan<char> pair = ampIndex >= 0 ? span.Slice(start, ampIndex) : span.Slice(start);
+
+                int eqIndex = pair.IndexOf('=');
+                if (eqIndex > 0) {
+                    string key = pair.Slice(0, eqIndex).ToString();
+                    string value = pair.Slice(eqIndex + 1).ToString();
+                    // the url must already be unescape
+                    //key = Uri.UnescapeDataString(key.Replace("+", " "));
+                    //value = Uri.UnescapeDataString(value.Replace("+", " "));
+                    qs[key] = value;
                 }
+                else if (pair.Length > 0) {
+                    // key without value
+                    string key = pair.ToString();
+                    qs[key] = string.Empty;
+                }
+
+                if (ampIndex < 0) {
+                    break;
+                }
+                start += ampIndex + 1;
             }
 
             return qs;
+        }
+
+        /// <summary>
+        /// Parses the query string to find the key and return value
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static bool ParseQueryString(string url, string key, out string value) {
+            value = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(key)) {
+                return false;
+            }
+
+            int qIndex = url.IndexOf('?');
+            ReadOnlySpan<char> span = (qIndex >= 0 && qIndex < url.Length - 1)
+                                        ? url.AsSpan(qIndex + 1)
+                                        : url.AsSpan();
+
+            ReadOnlySpan<char> keySpan = key.AsSpan();
+
+            int start = 0;
+            while (start < span.Length) {
+                int ampIndex = span.Slice(start).IndexOf('&');
+                ReadOnlySpan<char> pair = ampIndex >= 0 ? span.Slice(start, ampIndex) : span.Slice(start);
+
+                int eqIndex = pair.IndexOf('=');
+                if (eqIndex > 0) {
+                    ReadOnlySpan<char> kSpan = pair.Slice(0, eqIndex);
+                    ReadOnlySpan<char> vSpan = pair.Slice(eqIndex + 1);
+
+                    if (kSpan.Equals(keySpan, StringComparison.OrdinalIgnoreCase)) {
+                        value = vSpan.ToString();
+                        return true;
+                    }
+                }
+                else if (pair.Length > 0) {
+                    // key without value
+                    if (pair.Equals(keySpan, StringComparison.OrdinalIgnoreCase)) {
+                        value = string.Empty;
+                        return true;
+                    }
+                }
+
+                if (ampIndex < 0) {
+                    break;
+                }
+                start += ampIndex + 1;
+            }
+
+            return false;
         }
 
         /// <summary>
