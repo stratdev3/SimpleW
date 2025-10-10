@@ -5,7 +5,7 @@ using SimpleW;
 namespace example {
 
     /// <summary>
-    /// Test Program
+    /// Example Program
     /// </summary>
     internal class Program {
 
@@ -17,6 +17,10 @@ namespace example {
 
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // server statics files from the current binary location
+            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), timeout: TimeSpan.FromDays(1));
+            server.AutoIndex = true;
 
             // find all Controllers classes and serve on the "/api" endpoint
             server.AddDynamicContent("/api");
