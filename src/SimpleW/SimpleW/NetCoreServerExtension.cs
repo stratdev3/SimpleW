@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -360,37 +360,81 @@ namespace SimpleW {
 
         #endregion jwtsecuritytoken
 
-        #region InlineFunc
+        #region staticContent
 
         /// <summary>
-        /// Act like AddStaticContent but direct file access and without cache or filewatcher
+        /// Return the content of the requestUrl if exists in disk
         /// </summary>
-        /// <param name="documentRoot"></param>
-        /// <param name="prefix"></param>
-        /// <param name="filter"></param>
-        /// <param name="session"></param>
-        /// <param name="request"></param>
-        public static object AddStaticContentNoCache(string documentRoot, string prefix, string filter, ISimpleWSession session, HttpRequest request) {
+        /// <param name="documentRoot">Static content path</param>
+        /// <param name="prefix">Cache prefix (default is "/")</param>
+        /// <param name="filter">Cache filter (default is "*.*")</param>
+        /// <param name="requestUrl"></param>
+        /// <returns></returns>
+        public static (bool, byte[]) StaticContentFind(string documentRoot, string prefix, string filter, string requestUrl) {
             try {
                 // define docRoot
                 documentRoot = Path.GetFullPath(documentRoot);
 
-                // sanitize url
-                string rawUrl = request.Url ?? "/";
-                string urlPath = rawUrl.Split('?', '#')[0].Replace('\\', '/');
-
                 // prefix protection
-                if (!urlPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
-                    return session.Response.MakeUnAuthorizedResponse("invalid prefix");
+                if (!requestUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                    return (false, []);
                 }
 
                 // path
-                string relativePath = urlPath[prefix.Length..].Trim('/');
+                string relativePath = requestUrl[prefix.Length..].Trim('/');
                 string fullPath = Path.GetFullPath(Path.Join(documentRoot, relativePath));
 
                 // directory traversal protection
                 if (!fullPath.StartsWith(documentRoot, StringComparison.OrdinalIgnoreCase)) {
-                    return session.Response.MakeUnAuthorizedResponse("access denied");
+                    return (false, []);
+                }
+
+                // compile le filtre en regex
+                string regexPattern = "^" + Regex.Escape(filter).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+                Regex filterRegex = new(regexPattern, RegexOptions.IgnoreCase);
+
+                if (File.Exists(fullPath) && filterRegex.IsMatch(Path.GetFileName(fullPath))) {
+                    HttpResponse response = new();
+                    response.SetBegin(200);
+                    response.SetCORSHeaders();
+                    response.SetContentType(Path.GetExtension(fullPath));
+                    response.SetBody(File.ReadAllBytes(fullPath));
+                    return (true, response.Cache.Data);
+                }
+                else {
+                    return (false, []);
+                }
+            }
+            catch {
+                return (false, []);
+            }
+        }
+
+        /// <summary>
+        /// Return the list of files from requestUrl
+        /// </summary>
+        /// <param name="documentRoot">Static content path</param>
+        /// <param name="prefix">Cache prefix (default is "/")</param>
+        /// <param name="filter">Cache filter (default is "*.*")</param>
+        /// <param name="requestUrl"></param>
+        /// <returns></returns>
+        public static (IEnumerable<string>, bool) StaticContentList(string documentRoot, string prefix, string filter, string requestUrl) {
+            try {
+                // define docRoot
+                documentRoot = Path.GetFullPath(documentRoot);
+
+                // prefix protection
+                if (!requestUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                    return ([], false);
+                }
+
+                // path
+                string relativePath = requestUrl[prefix.Length..].Trim('/');
+                string fullPath = Path.GetFullPath(Path.Join(documentRoot, relativePath));
+
+                // directory traversal protection
+                if (!fullPath.StartsWith(documentRoot, StringComparison.OrdinalIgnoreCase)) {
+                    return ([], false);
                 }
 
                 // compile le filtre en regex
@@ -398,43 +442,29 @@ namespace SimpleW {
                 Regex filterRegex = new(regexPattern, RegexOptions.IgnoreCase);
 
                 if (Directory.Exists(fullPath)) {
-                    string defaultDocumentFullPath = Path.Join(fullPath, session.Server.DefaultDocument);
-                    if (File.Exists(defaultDocumentFullPath) && filterRegex.IsMatch(Path.GetFileName(defaultDocumentFullPath))) {
-                        return session.Response.MakeResponse(File.ReadAllBytes(defaultDocumentFullPath), Path.GetFileName(defaultDocumentFullPath));
-                    }
-                    if (!session.Server.AutoIndex) {
-                        return session.Response.MakeNotFoundResponse();
-                    }
-
-                    if (urlPath[^1] != '/') {
-                        urlPath += "/";
-                    }
-
-                    string html = AutoIndexPage(request.Url, urlPath, Directory.GetFileSystemEntries(fullPath, filter), !string.Equals(fullPath, documentRoot, StringComparison.OrdinalIgnoreCase), (entry) => Path.GetFileName(entry));
-                    return session.Response.MakeGetResponse(html, "text/html; charset=UTF-8");
-                }
-                else if (File.Exists(fullPath) && filterRegex.IsMatch(Path.GetFileName(fullPath))) {
-                    return session.Response.MakeResponse(File.ReadAllBytes(fullPath), Path.GetFileName(fullPath));
-                }
-                else {
-                    return session.Response.MakeNotFoundResponse("directory or file not found");
+                    return (
+                        Directory.GetFileSystemEntries(fullPath, filter)
+                                 .Select(e => { return Directory.Exists(e) ? Path.GetFileName(e)+"/" : Path.GetFileName(e); })
+                                 .OrderByDescending(e => e[^1] == '/')
+                                 .ThenBy(e => e),
+                        !string.Equals(fullPath, documentRoot, StringComparison.OrdinalIgnoreCase)
+                    );
                 }
             }
-            catch (Exception ex) {
-                return session.Response.MakeInternalServerErrorResponse(ex.Message);
+            catch {
             }
+            return ([], false);
         }
 
         /// <summary>
         /// Return a Index Page from entries
         /// </summary>
         /// <param name="absoluteUrl"></param>
-        /// <param name="relativeUrl"></param>
         /// <param name="entries"></param>
         /// <param name="hasParent"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public static string AutoIndexPage(string absoluteUrl, string relativeUrl, IEnumerable<string> entries, bool hasParent = false, Func<string, string> handler = null) {
+        public static string AutoIndexPage(string absoluteUrl, IEnumerable<string> entries, bool hasParent = false, Func<string, string> handler = null) {
 
             StringBuilder sb = new();
             sb.AppendLine($"""
@@ -446,11 +476,11 @@ namespace SimpleW {
                         <hr /><pre>
             """);
             if (hasParent) {
-                sb.AppendLine($@"<a href=""{relativeUrl}../"">../</a>");
+                sb.AppendLine($@"<a href=""../"">../</a>");
             }
             foreach (string entry in entries) {
                 string e = handler != null ? handler(entry) : entry;
-                sb.AppendLine($@"<a href=""{relativeUrl}{e}"">{e}</a>");
+                sb.AppendLine($@"<a href=""{e}"">{e}</a>");
             }
             sb.AppendLine($"""
                         </pre><hr />
@@ -461,7 +491,7 @@ namespace SimpleW {
             return sb.ToString();
         }
 
-        #endregion InlineFunc
+        #endregion staticContent
 
         #region helpers
 

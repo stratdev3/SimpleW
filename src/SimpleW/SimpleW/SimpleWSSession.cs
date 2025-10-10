@@ -78,7 +78,7 @@ namespace SimpleW {
                 SetDefaultActivity(activity, Request, Id, Socket);
 
                 // static content cached
-                if (request.Method == "GET" && server.HasStaticContent(request.Url)) {
+                if (request.Method == "GET" && server.HasStaticContent(request.Url, out string path, out string prefix, out string filter, out bool cached)) {
                     // extract the fileUrl
                     int index = request.Url.IndexOf('?');
                     string fileUrl = (index < 0) ? request.Url : request.Url[..index];
@@ -87,7 +87,7 @@ namespace SimpleW {
                         fileUrl = request.Uri.AbsolutePath + server.DefaultDocument;
                     }
                     // try get the document
-                    (bool find, byte[] content) = Cache.Find(fileUrl);
+                    (bool find, byte[] content) = cached ? Cache.Find(fileUrl) : NetCoreServerExtension.StaticContentFind(path, prefix, filter, fileUrl);
                     if (find) {
                         SendAsync(content);
                         StopWithStatusCodeActivity(activity, 200, content.Length);
@@ -95,8 +95,8 @@ namespace SimpleW {
                     }
                     // autoindex
                     else if (request.hasEndingSlash && server.AutoIndex) {
-                        (IEnumerable<string> files, bool hasParent) = Cache.List(request.Uri.AbsolutePath);
-                        string html = NetCoreServerExtension.AutoIndexPage(request.Uri.AbsolutePath, "", files, hasParent);
+                        (IEnumerable<string> files, bool hasParent) = cached ? Cache.List(request.Uri.AbsolutePath) : NetCoreServerExtension.StaticContentList(path, prefix, filter, request.Uri.AbsolutePath);
+                        string html = NetCoreServerExtension.AutoIndexPage(request.Uri.AbsolutePath, files, hasParent);
                         SendResponseAsync(Response.MakeResponse(html, "text/html; charset=UTF-8", compress: Request.AcceptEncodings()));
                         StopWithStatusCodeActivity(activity, 200);
                         return;

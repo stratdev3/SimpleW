@@ -110,7 +110,7 @@ namespace SimpleW {
         /// List of all top level static content prefix
         /// use for faster check in session
         /// </summary>
-        private readonly HashSet<string> _prefix_static = new();
+        private readonly Dictionary<string, (string, string, string, bool)> _prefix_static = new();
 
         /// <summary>
         /// File to get by default (default: "index.html")
@@ -148,16 +148,11 @@ namespace SimpleW {
 
             // no cache, read from disk
             if (timeout == null) {
-                // need to enable RegExp route
-                this.Router.RegExpEnabled = true;
-                // define a MapGet() inline Func as an Handler
-                this.MapGet(prefix + "*", (ISimpleWSession session, HttpRequest request) => {
-                    return NetCoreServerExtension.AddStaticContentNoCache(path, prefix, filter, session, request);
-                });
+                _prefix_static.Add(prefix, (path, prefix, filter, false));
             }
             // cache and file watcher
             else {
-                _prefix_static.Add(prefix);
+                _prefix_static.Add(prefix, (path, prefix, filter, true));
                 base.AddStaticContent(path, prefix, filter, timeout);
             }
         }
@@ -183,9 +178,23 @@ namespace SimpleW {
         /// True url can contains static content
         /// </summary>
         /// <param name="url"></param>
+        /// <param name="prefix"></param>
+        /// <param name="path"></param>
+        /// <param name="filter"></param>
+        /// <param name="cached"></param>
         /// <returns></returns>
-        public bool HasStaticContent(string url) {
-            return _prefix_static.Where(p => url.StartsWith(p)).Any();
+        public bool HasStaticContent(string url,out string path, out string prefix, out string filter, out bool cached) {
+            path = null;
+            prefix = null;
+            filter = null;
+            cached = false;
+            foreach (KeyValuePair<string, (string, string, string, bool) > staticContent in _prefix_static) {
+                if (url.StartsWith(staticContent.Key)) {
+                    (path, prefix, filter, cached) = staticContent.Value;
+                    return true;
+                }
+            }
+            return false;
         }
 
         #endregion static
