@@ -23,13 +23,7 @@ namespace SimpleW {
         /// </summary>
         public Router Router { get; private set; } = new Router();
 
-        /// <summary>
-        /// True to allow some headers as source of truth for Telemetry
-        /// Example : X-Forwarded-Host, X-Real-IP (...) are often used to pass data
-        ///           from reverse proxy (nginx...) to upstream server.
-        /// Note : you should allow only if you have a reverse proxy with well defined settings policy
-        /// </summary>
-        public bool TrustXHeaders { get; set; } = false;
+        #region options
 
         /// <summary>
         /// Json Serializer/Deserializer
@@ -42,6 +36,20 @@ namespace SimpleW {
                 NetCoreServerExtension.JsonEngine = value;
             }
         }
+
+        #endregion options
+
+        #region security
+
+        /// <summary>
+        /// True to allow some headers as source of truth for Telemetry
+        /// Example : X-Forwarded-Host, X-Real-IP (...) are often used to pass data
+        ///           from reverse proxy (nginx...) to upstream server.
+        /// Note : you should allow only if you have a reverse proxy with well defined settings policy
+        /// </summary>
+        public bool TrustXHeaders { get; set; } = false;
+
+        #endregion security
 
         #region netcoreserver
 
@@ -102,13 +110,7 @@ namespace SimpleW {
 
         #endregion netcoreserver
 
-        #region static
-
-        /// <summary>
-        /// List of all top level static content prefix
-        /// use for faster check in session
-        /// </summary>
-        private readonly Dictionary<string, (string, string, string, bool)> _prefix_static = new();
+        #region staticContent
 
         /// <summary>
         /// File to get by default (default: "index.html")
@@ -120,6 +122,11 @@ namespace SimpleW {
         /// scope : global to all AddStaticContent()
         /// </summary>
         public bool AutoIndex { get; set; } = false;
+
+        /// <summary>
+        /// List of all static content
+        /// </summary>
+        private readonly Dictionary<string, (string, string, string, bool)> _staticContents = new();
 
         /// <summary>
         /// Add custom MimeTypes
@@ -146,11 +153,11 @@ namespace SimpleW {
 
             // no cache, read from disk
             if (timeout == null) {
-                _prefix_static.Add(prefix, (path, prefix, filter, false));
+                _staticContents.Add(prefix, (path, prefix, filter, false));
             }
             // cache and file watcher
             else {
-                _prefix_static.Add(prefix, (path, prefix, filter, true));
+                _staticContents.Add(prefix, (path, prefix, filter, true));
                 base.AddStaticContent(path, prefix, filter, timeout);
             }
         }
@@ -160,7 +167,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="path">Static content path</param>
         public new void RemoveStaticContent(string path) {
-            _prefix_static.Remove(path);
+            _staticContents.Remove(path);
             base.RemoveStaticContent(path);
         }
 
@@ -168,7 +175,7 @@ namespace SimpleW {
         /// Clear static content cache
         /// </summary>
         public new void ClearStaticContent() {
-            _prefix_static.Clear();
+            _staticContents.Clear();
             base.ClearStaticContent();
         }
 
@@ -186,7 +193,7 @@ namespace SimpleW {
             prefix = null;
             filter = null;
             cached = false;
-            foreach (KeyValuePair<string, (string, string, string, bool)> staticContent in _prefix_static) {
+            foreach (KeyValuePair<string, (string, string, string, bool)> staticContent in _staticContents) {
                 if (url.StartsWith(staticContent.Key)) {
                     (path, prefix, filter, cached) = staticContent.Value;
                     return true;
@@ -195,7 +202,7 @@ namespace SimpleW {
             return false;
         }
 
-        #endregion static
+        #endregion staticContent
 
         #region func
 
@@ -244,12 +251,12 @@ namespace SimpleW {
 
         #endregion func
 
-        #region dynamic
+        #region dynamicContent
 
         /// <summary>
-        /// List of all API controllers
+        /// List of all dynamic content
         /// </summary>
-        private readonly HashSet<Type> _controllers_api = new();
+        private readonly HashSet<Type> _dynamicContents = new();
 
         /// <summary>
         /// Add dynamic content by registered all controllers which inherit from Controller
@@ -277,7 +284,7 @@ namespace SimpleW {
                 throw new ArgumentNullException(nameof(path));
             }
 
-            if (_controllers_api.Contains(controllerType)) {
+            if (_dynamicContents.Contains(controllerType)) {
                 throw new ArgumentException("Controller type is already registered in this module.", nameof(controllerType));
             }
 
@@ -319,7 +326,7 @@ namespace SimpleW {
                 }
             }
 
-            _controllers_api.Add(controllerType);
+            _dynamicContents.Add(controllerType);
         }
 
         /// <summary>
@@ -343,7 +350,7 @@ namespace SimpleW {
             }
         }
 
-        #endregion dynamic
+        #endregion dynamicContent
 
         #region sse
 
@@ -403,7 +410,7 @@ namespace SimpleW {
 
         #endregion sse
 
-        #region websocket
+        #region websocketContent
 
         /// <summary>
         /// List of all Websocket controllers
@@ -546,7 +553,7 @@ namespace SimpleW {
             WebSocketUsers.TryRemove(id, out IWebUser _);
         }
 
-        #endregion websocket
+        #endregion websocketContent
 
         #region cors
 

@@ -17,6 +17,17 @@ namespace SimpleW {
         /// </summary>
         Router Router { get; }
 
+        #region security
+
+        /// <summary>
+        /// Json Serializer/Deserializer
+        /// </summary>
+        IJsonEngine JsonEngine { get; set; }
+
+        #endregion security
+
+        #region options
+
         /// <summary>
         /// True to allow some headers as source of truth for Telemetry
         /// Example : X-Forwarded-Host, X-Real-IP (...) are often used to pass data
@@ -25,12 +36,9 @@ namespace SimpleW {
         /// </summary>
         bool TrustXHeaders { get; set; }
 
-        /// <summary>
-        /// Json Serializer/Deserializer
-        /// </summary>
-        IJsonEngine JsonEngine { get; set; }
+        #endregion options
 
-        #region static
+        #region staticContent
 
         string DefaultDocument { get; set; }
 
@@ -38,7 +46,7 @@ namespace SimpleW {
 
         void AddMimeTypes(string extension, string contentType);
 
-        #endregion static
+        #endregion staticContent
 
         #region func
 
@@ -58,7 +66,7 @@ namespace SimpleW {
 
         #endregion func
 
-        #region dynamic
+        #region dynamicContent
 
         /// <summary>
         /// Add dynamic content by registered all controllers which inherit from Controller
@@ -83,7 +91,7 @@ namespace SimpleW {
         /// <param name="getWebUserCallback">The DelegateSetTokenWebUser getWebUserCallback</param>
         void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser getWebUserCallback = null);
 
-        #endregion dynamic
+        #endregion dynamicContent
 
         #region sse
 
@@ -95,7 +103,7 @@ namespace SimpleW {
 
         #endregion sse
 
-        #region websocket
+        #region websocketContent
 
         void AddWebSocketContent(string path = "/websocket", IEnumerable<Type> excepts = null);
         void AddWebSocketContent(Type controllerType, string path = "/websocket");
@@ -107,7 +115,7 @@ namespace SimpleW {
         void RegisterWebSocketUser(Guid id, IWebUser webuser);
         void UnregisterWebSocketUser(Guid id);
 
-        #endregion websocket
+        #endregion websocketContent
 
         #region cors
 
