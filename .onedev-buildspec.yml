@@ -32,6 +32,17 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - !CommandStep
+    name: test
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter: !DefaultInterpreter
+      commands: |
+        cd src/test/
+        dotnet test
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - !PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/@param:build_configuration@/
@@ -60,7 +71,7 @@ jobs:
       value: Release
   triggers:
   - !BranchUpdateTrigger
-    paths: src/SimpleW/ src/SimpleW.Newtonsoft/
+    paths: src/SimpleW/ src/SimpleW.Newtonsoft/ src/test/
     paramMatrix:
     - name: build_configuration
       secret: false

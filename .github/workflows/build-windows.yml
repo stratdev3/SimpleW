@@ -26,11 +26,14 @@ jobs:
           cd src/SimpleW
           dotnet restore
           dotnet build --configuration Release
-          # dotnet test
 
       - name: "Build SimpleW.Newtonsoft"
         run: |
           cd src/SimpleW.Newtonsoft
           dotnet restore
           dotnet build --configuration Release
-          # dotnet test
+
+      #- name: "test"
+      #  run: |
+      #    cd src/test
+      #    dotnet test
