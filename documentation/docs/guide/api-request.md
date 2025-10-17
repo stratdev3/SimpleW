@@ -233,8 +233,8 @@ namespace Sample {
     [Route("/user")]
     public class UserController : Controller {
 
-        [Route("POST", "/save")]
-        public object Save() {
+        [Route("POST", "/upload")]
+        public object Upload() {
 
             var parser = Request.BodyFile();
             if (!parser.Files.Any(f => f.Data.Length >= 0)) {
