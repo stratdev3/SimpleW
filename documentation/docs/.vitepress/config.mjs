@@ -136,7 +136,7 @@ export default defineConfig({
         editLink: {
             pattern: 'https://github.com/stratdev3/SimpleW/edit/master/documentation/docs/:path'
         },
-
+        externalLinkIcon: true
     },
     sitemap: {
         hostname: 'https://stratdev3.github.io'
