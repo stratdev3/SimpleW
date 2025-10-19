@@ -11,8 +11,8 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // serve directories/endpoints
-            server.AddStaticContent(@"C:\www\frontend", "/", TimeSpan.FromDays(1));
-            server.AddStaticContent(@"C:\www\public", "/public/", TimeSpan.FromDays(1));
+            server.AddStaticContent(@"C:\www\frontend", "/", timeout: TimeSpan.FromDays(1));
+            server.AddStaticContent(@"C:\www\public", "/public/", timeout: TimeSpan.FromDays(1));
 
             server.Start();
 

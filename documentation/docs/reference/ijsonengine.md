@@ -1,7 +1,7 @@
 # IJsonEngine
 
 The interface is both implemented by  `SystemTextJsonEngine` and `NewtonsoftJsonEngine`.
-It is used to change the Json Engine in `ISimpleWServer`.
+It is used to change [`ISimpleWServer.JsonEngine`](./simplewserver.md#jsonengine) property.
 
 
 ## Serialize

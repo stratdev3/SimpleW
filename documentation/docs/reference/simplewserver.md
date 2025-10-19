@@ -248,6 +248,28 @@ public void MapGet(string url, Delegate handler)
 public void MapPost(string url, Delegate handler)
 ```
 
+The following example shows how to set a delegate handler.
+
+```csharp
+// no parameter
+server.MapGet("/api/test", () => {
+    return new { message = "Hello World !" };
+});
+// retrieve the underlying Session and Request object
+server.MapGet("/api/test2", (ISimpleWSession Session, HttpRequest Request) => {
+    return new { message = "Hello World 2 !" };
+});
+// retrieve the query string parameter "name" and also the Session instance
+server.MapGet("/api/test3", (ISimpleWSession Session, string? name = null) => {
+    return new { message = $"Hello World {name} !" };
+});
+```
+::: tip NOTE
+The handler can take multiple types of parameters, no order required :
+  - query string parameters
+  - special properties like [`ISimpleWSession`](./isimplewsession.md) and [`HttpRequest`](./httprequest.md) are automatically mapped inside the Func.
+:::
+
 
 ## Dynamic Content
 
@@ -350,47 +372,12 @@ public IJsonEngine JsonEngine { get; set; } = new SystemTextJsonEngine(SystemTex
 This property defines the Json engine used in server and controllers to serialize, deserialize and populate objects.
 The default engine is `System.Text.Json` initialized with recommended options.
 
-To change the engine just provide an object which implement the `IJsonEngine` interface
+To change the engine just provide an object which implement the [`IJsonEngine`](./ijsonengine.md) interface.
 
-```csharp
-public interface IJsonEngine {
 
-    /// <summary>
-    /// Serialize an object instance into json string
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="value"></param>
-    /// <returns></returns>
-    string Serialize<T>(T value);
-
-    /// <summary>
-    /// Deserialize a json string into an T object instance
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="json"></param>
-    /// <returns></returns>
-    T Deserialize<T>(string json);
-
-    /// <summary>
-    /// Deserialize a string into an anonymous object instance
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="json"></param>
-    /// <param name="model"></param>
-    T DeserializeAnonymous<T>(string json, T model);
-
-    /// <summary>
-    /// Populate T object instance from json string
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="json"></param>
-    /// <param name="target"></param>
-    /// <param name="includeProperties"></param>
-    /// <param name="excludeProperties"></param>
-    void Populate<T>(string json, T target, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null);
-
-}
-```
+::: tip NOTE
+You can learn how to change the [`JsonEngine`](../guide/api-response.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package.
+:::
 
 
 ## SSE

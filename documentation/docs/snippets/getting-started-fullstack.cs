@@ -14,7 +14,7 @@ namespace Sample {
             server.AddDynamicContent("/api");
 
             // serve static content located in your folder "C:\www\" to "/" endpoint, cached for 24h
-            server.AddStaticContent(@"C:\www", "/", TimeSpan.FromDays(1));
+            server.AddStaticContent(@"C:\www", "/", timeout: TimeSpan.FromDays(1));
 
             // start non blocking background server
             server.Start();

@@ -17,7 +17,7 @@ namespace Sample {
             var server = new SimpleWSServer(context, IPAddress.Any, 2015);
 
             // serve static content located in your folder "C:\www\spa\" to "/" endpoint
-            server.AddStaticContent(@"C:\www\spa\", "/", TimeSpan.FromDays(1));
+            server.AddStaticContent(@"C:\www\spa\", "/", timeout: TimeSpan.FromDays(1));
 
             // enable autoindex if no index.html exists in the directory
             server.AutoIndex = true;

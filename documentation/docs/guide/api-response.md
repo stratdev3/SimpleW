@@ -163,7 +163,7 @@ To see the results, open your browser to :
 - http://localhost:2015/api/users
 
 Note : there is no need to specify the exact type the method will return.
-Most of the time, `object` is enough and will be passed to a `JsonConvert.SerializeObject(object)`.
+Most of the time, `object` is enough and will be passed to a `IJsonEngine.Serialize(object)`.
 
 
 ## Helpers
