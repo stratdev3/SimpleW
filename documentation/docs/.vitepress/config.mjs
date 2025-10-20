@@ -37,7 +37,7 @@ export default defineConfig({
             },
             //{ text: '📖✨ Features', link: '/features' },
             {
-                text: 'v15.1.0',
+                text: 'v16.0.0',
                 items: [
                     { text: 'Changelog', link: 'https://github.com/stratdev3/SimpleW/blob/master/release.md' },
                 ]
