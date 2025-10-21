@@ -12,22 +12,22 @@ namespace Sample {
     class Program {
         static void Main(string[] args) {
 
-            Console.WriteLine("embedio started at http://127.0.0.1:8080/api/test/hello/api/test/hello");
+            Console.WriteLine("embedio started at http://127.0.0.1:8080/api/test/hello");
             Logger.NoLogging();
 
             var server = new WebServer(o => o
                     .WithUrlPrefix("http://127.0.0.1:8080/api/test/hello/")
                     .WithMode(HttpListenerMode.EmbedIO))
                     .WithWebApi("/api", m => m
-                    .WithController<PeopleController>());
+                    .WithController<TestController>());
             server.RunAsync();
             Console.ReadKey(true);
         }
     }
 
-    public class PeopleController : WebApiController {
+    public class TestController : WebApiController {
         [Route(HttpVerbs.Get, "/test/hello")]
-        public object GetAllPeople() {
+        public object HelloWorld() {
             return new { message = "Hello World !" };
         }
     }
