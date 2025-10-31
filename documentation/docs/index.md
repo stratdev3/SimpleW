@@ -9,7 +9,7 @@ hero:
     #tagline: Designed for Simplicity. Built for Speed. Packed with Power.
     tagline: Powerfully Simple. Blazingly Fast.
     image:
-        src: /logo-min.png
+        src: /logo-min.webp
         alt: SimpleW
     actions:
         - theme: brand
