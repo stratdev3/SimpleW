@@ -513,6 +513,8 @@ namespace NetCoreServer
             return this;
         }
 
+        #region makeResponse
+
         /// <summary>
         /// Make OK response
         /// </summary>
@@ -682,6 +684,8 @@ namespace NetCoreServer
         /// <param name="request">HTTP request</param>
         public HttpResponse MakeTraceResponse(HttpRequest request) => MakeTraceResponse(request.Cache.AsSpan());
 
+        #endregion makeResponse
+
         // HTTP response status phrase
         private string _statusPhrase;
         // HTTP response protocol
@@ -710,6 +714,8 @@ namespace NetCoreServer
         {
             return (!IsErrorSet && (_bodyIndex > 0) && (_bodySize > 0));
         }
+
+        #region forHttpClient
 
         // Receive parts of HTTP response
         internal bool ReceiveHeader(byte[] buffer, int offset, int size)
@@ -922,5 +928,8 @@ namespace NetCoreServer
             // Body was received partially...
             return false;
         }
+
+        #endregion forHttpClient
+
     }
 }
