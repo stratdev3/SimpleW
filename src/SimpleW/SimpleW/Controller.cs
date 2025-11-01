@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Specialized;
 using System.IO;
 using System.Text;
 using NetCoreServer;
@@ -145,13 +144,14 @@ namespace SimpleW {
         /// <summary>
         /// Send Response Async
         /// </summary>
-        /// <param name="o">The Object o</param>
-        public virtual void SendResponseAsync(object o) {
-            if (o is HttpResponse response) {
+        /// <param name="value">The object value</param>
+        public virtual void SendResponseAsync(object value) {
+            if (value is HttpResponse response) {
                 Session.SendResponseAsync(response);
                 return;
             }
-            SendResponseAsync(Encoding.UTF8.GetBytes(Session.Server.JsonEngine.Serialize(o)));
+            Response.MakeResponse(Session.Server.JsonEngine.Serialize(value ?? string.Empty), compress: Request.AcceptEncodings());
+            Session.SendResponseAsync(Response);
         }
 
         /// <summary>
@@ -160,7 +160,8 @@ namespace SimpleW {
         /// <param name="content">The String content</param>
         /// <param name="contentType">The String Content type (default is "application/json; charset=UTF-8")</param>
         protected virtual void SendResponseAsync(string content, string contentType = "application/json; charset=UTF-8") {
-            SendResponseAsync(Encoding.UTF8.GetBytes(content), contentType);
+            Response.MakeResponse(content, contentType, Request.AcceptEncodings());
+            Session.SendResponseAsync(Response);
         }
 
         /// <summary>
