@@ -1,44 +1,24 @@
-# Response Types
+# Response
+
+There are multiple ways to return data to the client :
+1. By **[default](#default)**, the return of method is serialized and automatically sent to the client.
+2. However, you can also manipulate the [response](#response-property) property for fine-grained control.
+3. You want to [send raw bytes](#send-raw-bytes), that's possible too.
 
 
 ## Default
 
-The return of the method will be serialized to json.
+By default, the return of the method will be serialized to json using the [`JsonEngine`](#json-engine).
 
-```csharp:line-numbers
-using System;
-using System.Net;
-using SimpleW;
+The following example illustrates the `object` return type :
 
-namespace Sample {
+::: code-group
 
-    class Program {
-        static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            server.Start();
-            Console.WriteLine("server started at http://localhost:2015/");
-            Console.ReadKey();
-        }
-    }
+<<< @/snippets/response-default-object.cs#snippet{csharp:line-numbers} [program.cs]
 
-    public class TestController : Controller {
-        [Route("GET", "/test")]
-        public object Test() {
-            return new {
-                message = "Hello World !",
-                current = DateTime.Now,
-                i = 0,
-                enable = true,
-                d = new Dictionary<string, string>() { { "Foo", "Bar" } }
-            };
-        }
-    }
+:::
 
-}
-```
-
-Requesting to `http://localhost:2015/api/test` will result to
+A request to `http://localhost:2015/api/test` will result in :
 
 ```json
 {
@@ -50,6 +30,65 @@ Requesting to `http://localhost:2015/api/test` will result to
 }
 ```
 
+Any return type (`object`, `List`, `Dictionary`, `String`...) will be serialized and sent as json to the client.
+
+The following example illustrates different return types :
+
+::: code-group
+
+<<< @/snippets/response-default-any.cs#snippet{csharp:line-numbers} [program.cs]
+
+:::
+
+::: tip NOTE
+There is no need to specify the exact type the method will return.
+Most of the time, `object` is enough and will be passed to a `IJsonEngine.Serialize(object)`.
+:::
+
+
+## Response Property
+
+The `Response` property allows a fine-grained control over the data sent to the client.
+
+The following example illustrates how a custom response can be forged easily :
+
+::: code-group
+
+<<< @/snippets/response-response.cs#snippet{csharp:line-numbers} [program.cs]
+
+:::
+
+::: tip NOTE
+See the [HttpResponse](../reference/httpresponse.md) for details of its methods.
+:::
+
+
+### Helpers
+
+Even though it’s easy to build a custom response, it’s also possible to reduce the amount of code for common responses.
+
+The following example illustrates some built-in [helpers](../reference/httpresponse#helpers).
+
+::: code-group
+
+<<< @/snippets/response-response-helpers.cs#snippet{csharp:line-numbers} [program.cs]
+
+:::
+
+
+## Send Raw Bytes
+
+The [`Session.SendResponseBody()`](../reference/isimplewsession.md#sendresponsebody) method is the lower level, and it basically consists of sending bytes to the client.
+
+::: code-group
+
+<<< @/snippets/response-sendresponseasync.cs#snippet{csharp:line-numbers} [program.cs]
+
+:::
+
+::: tip NOTE
+These methods should be used carefully for your possible edge case.
+:::
 
 ## Json Engine
 
@@ -77,180 +116,3 @@ And then
 You can create your own JsonEngine by implementing the [`IJsonEngine`](../reference/ijsonengine.md) interface.
 
 :::
-
-
-## Types
-
-Any return type (`object`, `List`, `Dictionary`, `String`...) will be serialized and sent as json to the client.
-
-The following example illustrates different return types :
-
-```csharp:line-numbers
-using System;
-using System.Net;
-using SimpleW;
-
-namespace Sample {
-    class Program {
-
-        static void Main() {
-
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // find all Controllers classes and serve on the "/api/" endpoint
-            server.AddDynamicContent("/api");
-
-            server.Start();
-
-            Console.WriteLine("server started at http://localhost:2015/");
-
-            // block console for debug
-            Console.ReadKey();
-
-        }
-    }
-
-    public class TestController : Controller {
-
-        [Route("GET", "/test1")]
-        public object Test1() {
-            // return: { "hello": "world", "date": "2023-10-23T00:00:00+02:00", "result": true }
-            return new {
-                hello = "world",
-                date = new DateTime(2023, 10, 23),
-                result = true
-            };
-        }
-
-        [Route("GET", "/test2")]
-        public object Test2() {
-            // return: ["hello", "world"]
-            return new string[] { "hello", "world" };
-        }
-
-    }
-
-    public class UserController : Controller {
-
-        [Route("GET", "/users")]
-        public object Users() {
-            // return: [{"Email":"user1@localhost","FullName":"user1"},{"Email":"user2@localhost","FullName":"user2"}]
-            var users = new List<User>() {
-                new User() { Email = "user1@localhost", FullName = "user1" },
-                new User() { Email = "user2@localhost", FullName = "user2" },
-            };
-            return users;
-        }
-
-    }
-
-    // example class
-    public class User {
-        // these public properties will be serialized
-        public string Email { get; set; }
-        public string FullName { get ;set; }
-        // private will not be serialized
-        private bool Enabled = false;
-    }
-
-}
-```
-
-To see the results, open your browser to :
-- http://localhost:2015/api/test1
-- http://localhost:2015/api/test2
-- http://localhost:2015/api/users
-
-Note : there is no need to specify the exact type the method will return.
-Most of the time, `object` is enough and will be passed to a `IJsonEngine.Serialize(object)`.
-
-
-## Helpers
-
-In fact, the `Controller` class is dealing with an [`HttpResponse`](../reference/httpresponse) object which is sent async to the client. 
-You can manipulate this object with the property [`Response`](../reference/controller.md#response).
-
-There are also some useful [helpers](../reference/httpresponse) to create common response :
-
-```csharp:line-numbers
-using System;
-using System.Net;
-using SimpleW;
-
-namespace Sample {
-    class Program {
-
-        static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            server.Start();
-            Console.WriteLine("server started at http://localhost:2015/");
-            Console.ReadKey();
-        }
-    }
-
-    public class TestController : Controller {
-
-        [Route("GET", "/test1")]
-        public object Test1() {
-            // the object return will be serialized
-            // and set as body of the HttpReponse
-            // and a mimetype json
-            // with a status code 200
-            return new { hello = "world" };
-        }
-
-        [Route("GET", "/test2")]
-        public object Test2() {
-            try {
-                throw new Exception("test2");
-            }
-            catch (Exception ex) {
-                // set message exception as body of the HttpReponse
-                // and a mimetype text
-                // with a status code 500
-                return Response.MakeInternalServerErrorResponse(ex.Message);
-            }
-        }
-
-        [Route("GET", "/test3")]
-        public object Test3() {
-            try {
-                throw new KeyNotFoundException("test3");
-            }
-            catch (Exception ex) {
-                // set message exception as body of the HttpReponse
-                // and a mimetype text
-                // with a status code 404
-                return Response.MakeNotFoundResponse(ex.Message);
-            }
-        }
-
-        [Route("GET", "/test4")]
-        public object Test4() {
-            try {
-                throw new UnauthorizedAccessException("test4");
-            }
-            catch (Exception ex) {
-                // set message exception as body of the HttpReponse
-                // and a mimetype text
-                // with a status code 401
-                return Response.MakeUnAuthorizedResponse(ex.Message);
-            }
-        }
-
-        [Route("GET", "/test5")]
-        public object Test5() {
-            var content = "download text content";
-            // will force download a file "file.txt" with content
-            return MakeDownloadResponse(content, "file.txt");
-        }
-
-    }
-
-}
-```
-
-Note : all these helpers support different types of parameters and options to deal with
-most of the use cases. Just browse to discover all the possibilities.

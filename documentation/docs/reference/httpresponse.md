@@ -2,7 +2,7 @@
 
 This class can be used to build a response which will be sent to the client.
 
-As already said in the [guide](../guide/api-response#helpers), a `Response` can be returned by a `Controller` method
+As already said in the [guide](../guide/api-response#response-property), a `Response` can be returned by a `Controller` method
 and it will be sent async to the client.
 
 
@@ -168,8 +168,11 @@ public HttpResponse SetBody(byte[] body)
 public HttpResponse SetBody(ReadOnlySpan<byte> body)
 ```
 
+## Helpers
 
-## MakeResponse()
+The following methods provide many options to customize [common response](../guide/api-response.md#helpers).
+
+### MakeResponse()
 
 ```csharp
 /// <summary>
@@ -194,7 +197,7 @@ public HttpResponse MakeResponse(byte[] content, string contentType = "applicati
 The `MakeResponse()` will create a text Response to the client.
 
 
-## MakeDownloadResponse()
+### MakeDownloadResponse()
 
 ```csharp
 /// <summary>
@@ -232,7 +235,7 @@ public HttpResponse MakeDownloadResponse(byte[] content, string output_filename 
 The `MakeDownloadResponse()` will create a binary Response forcing client to download file.
 
 
-## MakeUnAuthorizedResponse()
+### MakeUnAuthorizedResponse()
 
 ```csharp
 /// <summary>
@@ -246,7 +249,7 @@ public HttpResponse MakeUnAuthorizedResponse(string content = "Server UnAuthoriz
 The `MakeUnAuthorizedResponse()` will create 401 response error code.
 
 
-## MakeForbiddenResponse()
+### MakeForbiddenResponse()
 
 ```csharp
 /// <summary>
@@ -260,7 +263,7 @@ public HttpResponse MakeForbiddenResponse(string content = "Server Forbidden Acc
 The `MakeForbiddenResponse()` will create 403 response error code.
 
 
-## MakeInternalServerErrorResponse()
+### MakeInternalServerErrorResponse()
 
 ```csharp
 /// <summary>
@@ -274,7 +277,7 @@ public HttpResponse MakeInternalServerErrorResponse(string content = "Server Int
 The `MakeInternalServerErrorResponse()` will create 500 response error code.
 
 
-## MakeNotFoundResponse()
+### MakeNotFoundResponse()
 
 ```csharp
 /// <summary>
@@ -288,7 +291,7 @@ public HttpResponse MakeNotFoundResponse(string content = "Not Found", string co
 The `MakeNotFoundResponse()` will create 404 response error code.
 
 
-## MakeRedirectResponse()
+### MakeRedirectResponse()
 
 ```csharp
 /// <summary>
@@ -301,7 +304,7 @@ public HttpResponse MakeRedirectResponse(string location)
 The `MakeRedirectResponse()` will create 302 response code to redirect client to `location`.
 
 
-## MakeServerSentEventsResponse()
+### MakeServerSentEventsResponse()
 
 ```csharp
 /// <summary>
