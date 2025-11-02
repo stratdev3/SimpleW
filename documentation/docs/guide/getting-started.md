@@ -1,5 +1,7 @@
 # Getting Started 
 
+Stop talking and show me the code !
+
 ## Installation
 
 Using the [SimpleW](https://www.nuget.org/packages/SimpleW) nuget package, always prefer the last [version](https://github.com/stratdev3/SimpleW/blob/master/release.md).
@@ -15,7 +17,7 @@ $ dotnet add package SimpleW
 
 ## Minimal Example
 
-The following minimal example can be used for rapid prototyping.
+The following minimal example can be used for rapid prototyping :
 
 ::: code-group
 
@@ -23,50 +25,11 @@ The following minimal example can be used for rapid prototyping.
 
 :::
 
-It uses the [`MapGet`](../reference/simplewserver.md#inline-func) and [`MapPost`](../reference/simplewserver.md#inline-func) methods, which are quite the same as asp.net core.
-
-## REST API Example (backend)
-
-The following example build a REST API with a clear routing and controller/method structured class.
-
-::: code-group
-
-<<< @/snippets/getting-started-backend.cs#snippet{csharp:line-numbers} [program.cs]
-
+::: tip NOTE
+While this example is perfect for rapid prototyping, it lacks proper organization.
+Take a look at the [basic](./api-basic.md) of organizing your code following the Controller pattern.
 :::
 
-Then just open your browser to http://localhost:2015/api/test/hello?name=Chris and you will see the `{ "message": "Chris, Hello World !" }` json response.
-
-
-## Static Files Example (frontend)
-
-The following example serve statics files in your `c:\www` directory.
-
-::: code-group
-
-<<< @/snippets/getting-started-frontend.cs#snippet{csharp:line-numbers} [program.cs]
-
-<<< @/snippets/getting-started-frontend.html#snippet{html:line-numbers} [C:\www\index.html]
-
-:::
-
-Then just point your browser to http://localhost:2015/.
-
-
-## FullStack Example (backend+frontend)
-
-The following example will serve both static files in your `c:\www` directory and a REST API.
-
-::: code-group
-
-<<< @/snippets/getting-started-fullstack.cs#snippet{csharp:line-numbers} [program.cs]
-
-<<< @/snippets/getting-started-fullstack.html#snippet{html:line-numbers} [C:\www\index.html]
-
-:::
-
-
-Then just point your browser to http://localhost:2015/ and interact with the form.
 
 <style>
 .images-inline {
