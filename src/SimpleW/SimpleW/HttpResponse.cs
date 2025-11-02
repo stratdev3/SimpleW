@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
@@ -70,10 +71,17 @@ namespace NetCoreServer {
         /// <param name="content">The string Content.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
         /// <param name="compress">The string array of supported compress types (default null)</param>
-        public HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8", string[] compress = null) {
+        /// <param name="addHeaders">The dictionnary of headers to add</param>
+        public HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null) {
             Clear();
             SetBegin(200);
+
             SetCORSHeaders();
+            if (addHeaders != null) {
+                foreach (KeyValuePair<string, string> header in addHeaders) {
+                    SetHeader(header.Key, header.Value);
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(contentType)) {
                 SetHeader("Content-Type", contentType);
@@ -101,10 +109,17 @@ namespace NetCoreServer {
         /// <param name="content">byte[] Content.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
         /// <param name="compress">The string array of supported compress types (default null)</param>
-        public HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8", string[] compress = null) {
+        /// <param name="addHeaders">The dictionnary of headers to add</param>
+        public HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null) {
             Clear();
             SetBegin(200);
+
             SetCORSHeaders();
+            if (addHeaders != null) {
+                foreach (KeyValuePair<string, string> header in addHeaders) {
+                    SetHeader(header.Key, header.Value);
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(contentType)) {
                 SetHeader("Content-Type", contentType);
@@ -261,13 +276,21 @@ namespace NetCoreServer {
         /// <param name="content">object Content.</param>
         /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
         /// <param name="compress">The string array of supported compress types (default null)</param>
-        public HttpResponse MakeResponse(object content, string contentType = "application/json; charset=UTF-8", string[] compress = null) {
+        /// <param name="addHeaders">The dictionnary of headers to add</param>
+        public HttpResponse MakeResponse(object content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null) {
             if (Session == null) {
                 throw new InvalidOperationException("Response.MakeResponse(object content) must be called inside a Controller or Func");
             }
+
             Clear();
             SetBegin(200);
+
             SetCORSHeaders();
+            if (addHeaders != null) {
+                foreach (KeyValuePair<string, string> header in addHeaders) {
+                    SetHeader(header.Key, header.Value);
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(contentType)) {
                 SetHeader("Content-Type", contentType);
@@ -296,6 +319,7 @@ namespace NetCoreServer {
             if (Session == null) {
                 throw new InvalidOperationException("Response.MakeAccessResponse() must be called inside a Controller or Func");
             }
+
             if (!Session.webuser?.Identity ?? true) {
                 return MakeUnAuthorizedResponse();
             }
