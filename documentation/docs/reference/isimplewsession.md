@@ -40,7 +40,7 @@ public IWebUser webuser { get; set; }
 
 ## SendResponseBody
 
-This is the lower level, and it consists of sending bytes data to the client.
+This is the lowest level, and it consists of sending bytes data to the client.
 
 ```csharp
 /// <summary>

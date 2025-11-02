@@ -20,17 +20,28 @@ namespace Sample {
         public object Test1a() {
             // status code 200
             // the contentType is default to "application/json"
-            // body as json string
-            return Response.MakeResponse("""{ "message": "Hello World !" }""");
+            // body : the object will be serialized to json string
+            // the compression is disabled by default
+            return Response.MakeResponse(new { message = "Hello World !" });
         }
 
         [Route("GET", "/test1b")]
         public object Test1b() {
             // status code 200
-            // change the contentType
-            // body text
-            // disable compression
-            return Response.MakeResponse("Hello World !", contentType: "text/plain", compress: null);
+            // change the contentType to "text/plain"
+            // body : set the string
+            // set the decompression to "gzip"
+            return Response.MakeResponse("Hello World !", contentType: "text/plain", compress: new string[] { "gzip" });
+        }
+
+        [Route("GET", "/test1c")]
+        public object Test1c() {
+            // status code 200
+            // the contentType is default to "application/json"
+            // body : the object will be serialized to json string
+            // the compression is disabled by default
+            // add a new header "Date" which contains the current datetime
+            return Response.MakeResponse(new { message = "Hello, World !" }, addHeaders: new Dictionary<string, string>() { { "Date", DateTime.UtcNow.ToString("o") } });
         }
 
         [Route("GET", "/test2")]

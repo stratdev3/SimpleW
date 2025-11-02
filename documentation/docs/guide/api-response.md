@@ -9,6 +9,7 @@ There are multiple ways to return data to the client :
 ## Default
 
 By default, the return of the method will be serialized to json using the [`JsonEngine`](#json-engine).
+It will also use compression _(gzip, br...)_ dependings on the encoding types supported by the client.
 
 The following example illustrates the `object` return type :
 

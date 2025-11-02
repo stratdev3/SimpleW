@@ -81,18 +81,6 @@ protected IWebUser webuser { get; }
 When using the integrated JWT authentification, this property is the current user implementing the `IWebUser` interface.
 
 
-## MakeAccessResponse()
-
-```csharp
-/// <summary>
-/// Make Error Access response
-/// </summary>
-public HttpResponse MakeAccessResponse()
-```
-
-The `MakeAccessResponse()` will create 401 or 403 response error code depending the status or [`webuser`](./controller#webuser) property.
-
-
 ## AddSSESession()
 
 ```csharp

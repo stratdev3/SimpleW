@@ -181,7 +181,8 @@ The following methods provide many options to customize [common response](../gui
 /// <param name="content">The string Content.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
 /// <param name="compress">The string array of supported compress types (default null)</param>
-public HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8", string[] compress = null)
+/// <param name="addHeaders">The dictionnary of headers to add</param>
+public HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null)
 ```
 
 ```csharp
@@ -191,10 +192,22 @@ public HttpResponse MakeResponse(string content, string contentType = "applicati
 /// <param name="content">byte[] Content.</param>
 /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
 /// <param name="compress">The string array of supported compress types (default null)</param>
-public HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8", string[] compress = null)
+/// <param name="addHeaders">The dictionnary of headers to add</param>
+public HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null)
 ```
 
-The `MakeResponse()` will create a text Response to the client.
+```csharp
+/// <summary>
+/// Make Response from object
+/// </summary>
+/// <param name="content">object Content.</param>
+/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
+/// <param name="compress">The string array of supported compress types (default null)</param>
+/// <param name="addHeaders">The dictionnary of headers to add</param>
+public HttpResponse MakeResponse(object content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null)
+```
+
+The `MakeResponse()` will create a string Response to the client.
 
 
 ### MakeDownloadResponse()
@@ -316,3 +329,14 @@ public HttpResponse MakeServerSentEventsResponse()
 
 The `MakeServerSentEventsResponse()` will create a Server Sent Event response and so, let the connection open for the client.
 
+
+### MakeAccessResponse()
+
+```csharp
+/// <summary>
+/// Make Error Access response
+/// </summary>
+public HttpResponse MakeAccessResponse()
+```
+
+The `MakeAccessResponse()` will create 401 or 403 response error code depending the status or [`webuser`](./controller#webuser) property.
