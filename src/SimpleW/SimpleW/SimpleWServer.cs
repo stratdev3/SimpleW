@@ -414,6 +414,11 @@ namespace SimpleW {
         #region websocketContent
 
         /// <summary>
+        /// Is WebSocket Enabled
+        /// </summary>
+        public bool IsWebSocketEnabled { get; private set; } = false;
+
+        /// <summary>
         /// List of all Websocket controllers
         /// </summary>
         private readonly HashSet<Type> _controllers_websocket = new();
@@ -507,6 +512,7 @@ namespace SimpleW {
             }
 
             _controllers_websocket.Add(controllerType);
+            IsWebSocketEnabled = true;
         }
 
         /// <summary>

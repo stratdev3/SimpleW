@@ -104,7 +104,7 @@ namespace SimpleW {
                 }
 
                 // websocket force here to return cause no matching will return 404 and browser will close websocket connection
-                if (server._websocket_prefix_routes.Contains(request.Uri.AbsolutePath)) {
+                if (server.IsWebSocketEnabled && server._websocket_prefix_routes.Contains(request.Uri.AbsolutePath)) {
                     return;
                 }
 
@@ -154,6 +154,22 @@ namespace SimpleW {
                 SendResponseAsync(Response.MakeErrorResponse(500, "server error"));
                 StopWithStatusCodeActivity(activity, Response, webuser, ex);
             }
+        }
+
+        /// <summary>
+        /// Override to do PerformServerUpgrade only when Websocket is Enabled
+        /// </summary>
+        /// <param name="request"></param>
+        protected override void OnReceivedRequestHeader(HttpRequest request) {
+            if (!server.IsWebSocketEnabled) {
+                // ideally, we would have to trigger the HttpsSession.OnReceivedRequestHeader()
+                // but that's not possible to target and N-2
+                // As the HttpsSession.OnReceivedRequestHeader() is empty, we can safely
+                // return here
+                return;
+            }
+            // will call the WssSession.OnReceivedRequestHeader()
+            base.OnReceivedRequestHeader(request);
         }
 
         /// <summary>
