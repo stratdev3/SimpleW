@@ -209,16 +209,6 @@ namespace SimpleW {
             return Response.MakeDownloadResponse(content, output_filename, contentType, compress);
         }
 
-        /// <summary>
-        /// Make Error Access response
-        /// </summary>
-        public HttpResponse MakeAccessResponse() {
-            if (!webuser.Identity) {
-                return Response.MakeErrorResponse(401);
-            }
-            return Response.MakeErrorResponse(403);
-        }
-
         #endregion makeResponse
 
         #region sse

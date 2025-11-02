@@ -155,6 +155,52 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
+        [Fact]
+        public async Task Response_401_Access() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (ISimpleWSession Session) => {
+                return Session.Response.MakeAccessResponse();
+            });
+            server.Start();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+
+            // dispose
+            server.Stop();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_403_Access() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (ISimpleWSession Session) => {
+                Session.webuser = new WebUser() { Identity = true };
+                return Session.Response.MakeAccessResponse();
+            });
+            server.Start();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+
+            // dispose
+            server.Stop();
+            PortManager.ReleasePort(server.Port);
+        }
 
     }
 

@@ -289,6 +289,19 @@ namespace NetCoreServer {
             return this;
         }
 
+        /// <summary>
+        /// Make Error Access response
+        /// </summary>
+        public HttpResponse MakeAccessResponse() {
+            if (Session == null) {
+                throw new InvalidOperationException("Response.MakeAccessResponse() must be called inside a Controller or Func");
+            }
+            if (!Session.webuser?.Identity ?? true) {
+                return MakeUnAuthorizedResponse();
+            }
+            return MakeForbiddenResponse();
+        }
+
         #endregion makeResponseDependingOnRequest
 
         #region helper
