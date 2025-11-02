@@ -120,6 +120,16 @@ namespace SimpleW {
                 // get first matching route
                 Route route = server.Router.Find(request);
                 if (route != null && route.Handler != null) {
+                    // inject Session into Response
+                    if (this.Response.Session == null) {
+                        this.Response.Session = this;
+                    }
+                    // because Session has already been initialized
+                    // a Response has already been sent too,
+                    // and it needs to be clear to avoid confusion
+                    else {
+                        this.Response.Clear();
+                    }
                     if (route.Handler.ExecuteFunc != null) {
                         object result = route.Handler.ExecuteFunc(this, request, route.ParameterValues(request));
                         if (result is HttpResponse response) {

@@ -2,6 +2,7 @@
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using SimpleW;
 
 
 namespace NetCoreServer {
@@ -55,6 +56,11 @@ namespace NetCoreServer {
         }
 
         #endregion cors
+
+        /// <summary>
+        /// Cache for Session inject by ControllerMethodExecutor.Create()
+        /// </summary>
+        public ISimpleWSession Session { get; set; }
 
         #region makeResponse
 
