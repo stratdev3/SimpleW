@@ -158,6 +158,9 @@ namespace NetCoreServer
 
                 if (string.Compare(key, "Connection", StringComparison.OrdinalIgnoreCase) == 0)
                 {
+                    if ((string.Compare(value, "keep-alive", StringComparison.OrdinalIgnoreCase) == 0)) {
+                        break;
+                    }
                     if ((string.Compare(value, "Upgrade", StringComparison.OrdinalIgnoreCase) != 0) && (string.Compare(value.Replace(" ", ""), "keep-alive,Upgrade", StringComparison.OrdinalIgnoreCase) != 0))
                     {
                         error = true;
