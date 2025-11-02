@@ -70,7 +70,7 @@ It supports realtime file editing even when specific lock/write occurs.
 :::
 
 
-## How to serve a Vue.js app
+## How to serve a Vue app
 
 This section shows how to server a vue.js application.
 

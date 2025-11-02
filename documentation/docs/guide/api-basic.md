@@ -68,5 +68,5 @@ Then just point your browser to http://localhost:2015/ and interact with the for
 You frontend can be anything, you can serve a vue/react/whatever javascript application you want.
 In fact, for [my needs](./what-is-simplew.md#my-needs), I have to serve a frontend [vuetify](https://vuetifyjs.com) application.
 
-See the [How to serve a vue.js app](./static-files.md#how-to-serve-a-vuejs-app) with SimpleW.
+See the [How to serve a vue.js app](./static-files.md#how-to-serve-a-vue-app) with SimpleW.
 :::
