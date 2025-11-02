@@ -150,7 +150,7 @@ namespace SimpleW {
                 Session.SendResponseAsync(response);
                 return;
             }
-            Response.MakeResponse(Session.Server.JsonEngine.Serialize(value ?? string.Empty), compress: Request.AcceptEncodings());
+            Response.MakeResponse(value, compress: Request.AcceptEncodings());
             Session.SendResponseAsync(Response);
         }
 

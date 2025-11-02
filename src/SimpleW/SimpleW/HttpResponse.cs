@@ -253,6 +253,44 @@ namespace NetCoreServer {
 
         #endregion makeResponse
 
+        #region makeResponseDependingOnRequest
+
+        /// <summary>
+        /// Make Response from object
+        /// </summary>
+        /// <param name="content">object Content.</param>
+        /// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
+        /// <param name="compress">The string array of supported compress types (default null)</param>
+        public HttpResponse MakeResponse(object content, string contentType = "application/json; charset=UTF-8", string[] compress = null) {
+            if (Session == null) {
+                throw new InvalidOperationException("Response.MakeResponse(object content) must be called inside a Controller or Func");
+            }
+            Clear();
+            SetBegin(200);
+            SetCORSHeaders();
+
+            if (!string.IsNullOrWhiteSpace(contentType)) {
+                SetHeader("Content-Type", contentType);
+            }
+
+            if (compress != null) {
+                foreach (string c in compress) {
+                    try {
+                        byte[] compressData = HttpResponse.Compress(Encoding.UTF8.GetBytes(Session.Server.JsonEngine.Serialize(content ?? string.Empty)), c);
+                        SetHeader("Content-Encoding", c);
+                        SetBody(compressData);
+                        return this;
+                    }
+                    catch { }
+                }
+            }
+
+            SetBody(Session.Server.JsonEngine.Serialize(content ?? string.Empty));
+            return this;
+        }
+
+        #endregion makeResponseDependingOnRequest
+
         #region helper
 
         /// <summary>
