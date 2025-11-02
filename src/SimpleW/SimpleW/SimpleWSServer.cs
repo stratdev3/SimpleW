@@ -438,12 +438,6 @@ namespace SimpleW {
                 throw new ArgumentNullException(nameof(path));
             }
 
-            // case when no controller is defined, we need to store the prefix
-            // for socket the handshake complete (see SimpleWSession.OnReceivedRequest() return).
-            if (!_websocket_prefix_routes.Contains(path)) {
-                _websocket_prefix_routes.Add(path);
-            }
-
             foreach (Type controller in ControllerMethodExecutor.Controllers(excepts)) {
                 AddWebSocketContent(controller, path);
             }
