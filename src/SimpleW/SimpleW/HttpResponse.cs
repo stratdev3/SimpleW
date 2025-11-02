@@ -88,9 +88,10 @@ namespace NetCoreServer {
             }
 
             if (compress != null) {
+                byte[] encodedContent = Encoding.UTF8.GetBytes(content);
                 foreach (string c in compress) {
                     try {
-                        byte[] compressData = HttpResponse.Compress(Encoding.UTF8.GetBytes(content), c);
+                        byte[] compressData = HttpResponse.Compress(encodedContent, c);
                         SetHeader("Content-Encoding", c);
                         SetBody(compressData);
                         return this;
@@ -297,9 +298,10 @@ namespace NetCoreServer {
             }
 
             if (compress != null) {
+                byte[] encodedSerializedContent = Encoding.UTF8.GetBytes(Session.Server.JsonEngine.Serialize(content ?? string.Empty));
                 foreach (string c in compress) {
                     try {
-                        byte[] compressData = HttpResponse.Compress(Encoding.UTF8.GetBytes(Session.Server.JsonEngine.Serialize(content ?? string.Empty)), c);
+                        byte[] compressData = HttpResponse.Compress(encodedSerializedContent, c);
                         SetHeader("Content-Encoding", c);
                         SetBody(compressData);
                         return this;
