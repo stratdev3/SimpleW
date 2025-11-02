@@ -22,6 +22,28 @@ Notes :
 
 
 
+## v16.1.0 / _(2025-11-02)_
+Maintenance, rewritten some parts of the code and documentation for easier use.
+
+### breakingChange
+
+- moved the `Controller.MakeAccessResponse()` to `HttpResponse.MakeAccessResponse()` (see [example](https://stratdev3.github.io/SimpleW/guide/api-response.html#helpers))
+
+### feature
+
+- feature: add headers parameter to `HttpResponse.MakeResponse()` (#71)
+- feature: add new `HttpResponse.MakeResponse(object content)` methods (#75)
+- chore: inject `Session` in `Response` (#73)
+- feature(test): add unit test for custom headers and compress types (#80)
+- feature: avoid `PerformServerUpgrade` there is no websocket route defined (#79)
+- refactor: move `MakeAccessResponse()` into `HttpResponse` class (#76)
+
+### fix
+
+- fix(NetCoreServer): `WebSocket.PerformServerUpgrade()` set `MakeErrorResponse()` when `Connection: "keep-alive"` (#77)
+
+
+
 ## v16.0.0 / _(2025-10-21)_
 Major release, including extensive rewrites and significant performance improvements (+9% req/s)
 
