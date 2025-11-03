@@ -10,8 +10,7 @@ export default defineConfig({
     head: [
         ['link', { rel: 'icon', href: '/SimpleW/favicon.ico' }],
         // analytics
-        ['script', { async: '', src: 'https://www.googletagmanager.com/gtag/js?id=G-5X34BRXK43' } ],
-        ['script', {}, `window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-5X34BRXK43');`],
+        ['script', { async: '', src: 'https://cloud.umami.is/script.js', 'data-website-id': '6cb0147f-6faa-4c64-ba68-6bd607980ea5' } ],
         // og
         ['meta', { property: 'og:site_name', content: 'SimpleW' }],
         ['meta', { property: 'og:title', content: 'SimpleW | Web Server Library .NET Core' }],
