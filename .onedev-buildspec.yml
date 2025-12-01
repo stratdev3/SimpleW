@@ -198,3 +198,76 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+- name: CI REWRITE
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/REWRITE/
+        dotnet build -c @param:build_configuration@ REWRITE.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: rename dll
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/REWRITE/bin/@param:build_configuration@/
+        cd *
+        mv REWRITE.dll SimpleW.dll
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact REWRITE
+    sourcePath: src/REWRITE/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.dll'
+    condition: SUCCESSFUL
+    optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: build_configuration
+    description: Build Configuration
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: Release
+        color: '#0d87e9'
+      - value: Debug
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: Release
+  triggers:
+  - type: BranchUpdateTrigger
+    paths: src/REWRITE/
+    userMatch: anyone
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
