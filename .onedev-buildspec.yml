@@ -1,147 +1,160 @@
-version: 40
+version: 43
 jobs:
 - name: CI
   steps:
-  - !CheckoutStep
+  - type: CheckoutStep
     name: checkout code
-    cloneCredential: !DefaultCredential {}
+    cloneCredential:
+      type: DefaultCredential
     withLfs: false
     withSubmodules: false
     cloneDepth: 1
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: build SimpleW
     runInContainer: true
     image: docksdev/band:8.0
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd src/SimpleW/
         dotnet build -c @param:build_configuration@ SimpleW.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: build SimpleW.Newtonsoft
     runInContainer: true
     image: docksdev/band:8.0
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Newtonsoft/
         dotnet build -c @param:build_configuration@ SimpleW.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: test
     runInContainer: true
     image: docksdev/band:8.0
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd src/test/
         dotnet test
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - !PublishArtifactStep
+  - type: PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.dll'
     condition: SUCCESSFUL
     optional: false
-  - !PublishArtifactStep
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Newtonsoft
     sourcePath: src/SimpleW.Newtonsoft/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Newtonsoft.dll'
     condition: SUCCESSFUL
     optional: false
   paramSpecs:
-  - !ChoiceParam
+  - type: ChoiceParam
     name: build_configuration
     description: Build Configuration
     allowMultiple: false
     allowEmpty: false
-    choiceProvider: !SpecifiedChoices
+    choiceProvider:
+      type: SpecifiedChoices
       choices:
       - value: Release
         color: '#0d87e9'
       - value: Debug
         color: '#0d87e9'
-    defaultValueProvider: !SpecifiedDefaultValue
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
       value: Release
   triggers:
-  - !BranchUpdateTrigger
+  - type: BranchUpdateTrigger
     paths: src/SimpleW/ src/SimpleW.Newtonsoft/ src/test/
+    userMatch: anyone
     paramMatrix:
-    - name: build_configuration
-      secret: false
-      valuesProvider: !SpecifiedValues
+    - valuesProvider:
+        type: SpecifiedValues
         values:
         - - Release
+      secret: false
+      name: build_configuration
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
 - name: CD nuget
   steps:
-  - !CheckoutStep
+  - type: CheckoutStep
     name: checkout code
-    cloneCredential: !DefaultCredential {}
+    cloneCredential:
+      type: DefaultCredential
     withLfs: false
     withSubmodules: false
     cloneDepth: 1
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: build SimpleW
     runInContainer: true
     image: docksdev/band:8.0
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd src/SimpleW
         dotnet pack -c Release SimpleW.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: build SimpleW.Newtonsoft
     runInContainer: true
     image: docksdev/band:8.0
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Newtonsoft
         dotnet pack -c Release SimpleW.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - !PublishArtifactStep
+  - type: PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
-  - !PublishArtifactStep
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Newtonsoft
     sourcePath: src/SimpleW.Newtonsoft/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: deploy SimpleW to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - !CommandStep
+  - type: CommandStep
     name: deploy SimpleW.Newtonsoft to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
-    interpreter: !DefaultInterpreter
+    interpreter:
+      type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
@@ -152,18 +165,19 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - name: build_configuration
-      secret: false
-      valuesProvider: !SpecifiedValues
+    - valuesProvider:
+        type: SpecifiedValues
         values:
         - - Release
+      secret: false
+      name: build_configuration
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
 - name: CM github
   steps:
-  - !PushRepository
+  - type: PushRepository
     name: push
     remoteUrl: https://github.com/stratdev3/SimpleW
     passwordSecret: github_token
@@ -174,11 +188,12 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - name: build_configuration
-      secret: false
-      valuesProvider: !SpecifiedValues
+    - valuesProvider:
+        type: SpecifiedValues
         values:
         - - Release
+      secret: false
+      name: build_configuration
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
