@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.IO.Pipelines;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -14,18 +15,40 @@ namespace SimpleW {
     /// </summary>
     public sealed class HttpSession : IDisposable {
 
+        /// <summary>
+        /// Buffer Size
+        /// </summary>
         private const int BufferSize = 16 * 1024;
 
+        /// <summary>
+        /// Guid of the current HttpSession
+        /// </summary>
         public Guid Id { get; }
 
+        /// <summary>
+        /// Underlying SimpleW Server
+        /// </summary>
         private readonly SimpleW Server;
+
+        /// <summary>
+        /// Socket from SocketAsyncEventArgs
+        /// </summary>
         private readonly Socket _socket;
+
+        /// <summary>
+        /// ArrayPool Buffer
+        /// </summary>
         private readonly ArrayPool<byte> _bufferPool;
+
+        /// <summary>
+        /// Router
+        /// </summary>
         private readonly HttpRouter _router;
 
-        private ReceivedStrategy _receivedStrategy;
+        /// <summary>
+        /// Pipe from ReceiveLoop and NetworkStream Strategy
+        /// </summary>
         private readonly Pipe _pipe;
-
 
         /// <summary>
         /// Constructor
@@ -53,6 +76,39 @@ namespace SimpleW {
             }
         }
 
+        #region Connect
+
+        /// <summary>
+        /// Flag to avoid multiple Connect() call
+        /// </summary>
+        private bool _receiving;
+
+        /// <summary>
+        /// Receive Strategy
+        /// </summary>
+        private ReceivedStrategy _receivedStrategy;
+
+        /// <summary>
+        /// Connect with a received strategy
+        /// </summary>
+        public void Connect(ReceivedStrategy rs) {
+            if (_receiving) {
+                return;
+            }
+            _receiving = true;
+            _receivedStrategy = rs;
+
+            if (_receivedStrategy == ReceivedStrategy.SocketEventArgs) {
+                ReceiveEventArgs();
+            }
+            else if (_receivedStrategy == ReceivedStrategy.ReceiveLoop) {
+                _ = ReceiveLoopAsync();
+            }
+            else if (_receivedStrategy == ReceivedStrategy.NetworkStream) {
+                ReceiveNetworkStream();
+            }
+        }
+
         /// <summary>
         /// Configure Socket Options
         /// </summary>
@@ -77,46 +133,76 @@ namespace SimpleW {
 
         }
 
-        /// <summary>
-        /// Flag to avoid multiple Connect() call
-        /// </summary>
-        private bool _receiving;
+        #endregion Connect
+
+        #region ssl
 
         /// <summary>
-        /// Flag to avoid multiple Dispose() called
+        /// Flag true if current Session is Http
         /// </summary>
-        private bool _disposed;
+        private bool IsSsl => _sslStream != null;
 
         /// <summary>
-        /// Connect with a received strategy
+        /// NetworkStream or SslStream
         /// </summary>
-        public void Connect(ReceivedStrategy rs) {
-            if (_receiving) {
+        private Stream? _transportStream;
+
+        /// <summary>
+        /// SslStream
+        /// </summary>
+        private SslStream? _sslStream;
+
+        /// <summary>
+        /// Add SslContext
+        /// </summary>
+        /// <param name="sslContext"></param>
+        /// <returns></returns>
+        public async Task UseHttps(SslContext sslContext) {
+            if (IsSsl) {
                 return;
             }
-            _receiving = true;
-            _receivedStrategy = rs;
 
-            if (_receivedStrategy == ReceivedStrategy.SocketEventArgs) {
-                ReceiveEventArgs();
-            }
-            else if (_receivedStrategy == ReceivedStrategy.ReceiveLoop) {
-                _ = ReceiveLoopAsync();
-            }
-            else if (_receivedStrategy == ReceivedStrategy.NetworkStream) {
-                ReceiveNetworkStream();
-            }
+            // raw stream on the socket (do not close the socket when we dispose the stream)
+            NetworkStream networkStream = new(_socket, ownsSocket: false);
+
+            // SslStream above NetworkStream
+            SslStream sslStream = new(
+                innerStream: networkStream,
+                leaveInnerStreamOpen: false,
+                userCertificateValidationCallback: sslContext.ClientCertificateValidation
+            );
+
+            // server side TLS Handshake
+            await sslStream.AuthenticateAsServerAsync(
+                serverCertificate: sslContext.Certificate,
+                clientCertificateRequired: sslContext.ClientCertificateRequired,
+                enabledSslProtocols: sslContext.Protocols,
+                checkCertificateRevocation: sslContext.CheckCertificateRevocation
+            ).ConfigureAwait(false);
+
+            _sslStream = sslStream;
+            _transportStream = sslStream;
         }
+
+        #endregion ssl
 
         #region receive Strategy NetworkStream
 
+        /// <summary>
+        /// Reader for NetworkStream
+        /// </summary>
         private PipeReader? _reader;
 
+        /// <summary>
+        /// Receive from NetworkStream
+        /// </summary>
         private void ReceiveNetworkStream() {
-            NetworkStream networkStream = new(_socket, ownsSocket: false);
+            if (_transportStream is null) {
+                _transportStream = new NetworkStream(_socket, ownsSocket: false);
+            }
 
             _reader = PipeReader.Create(
-                networkStream,
+                _transportStream,
                 new StreamPipeReaderOptions(
                     pool: MemoryPool<byte>.Shared,
                     bufferSize: BufferSize,
@@ -145,14 +231,21 @@ namespace SimpleW {
 
                     int bytesRead;
                     try {
-                        bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None)
-                                                 .ConfigureAwait(false);
+                        if (_sslStream != null) {
+                            bytesRead = await _sslStream.ReadAsync(memory).ConfigureAwait(false);
+                        }
+                        else {
+                            bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None).ConfigureAwait(false);
+                        }
                     }
                     catch (ObjectDisposedException) {
                         break;
                     }
                     catch (SocketException) {
                         break;
+                    }
+                    catch (IOException ex) when (ex.InnerException is SocketException) {
+                        break; // ssl exception
                     }
 
                     if (bytesRead == 0) {
@@ -340,7 +433,7 @@ namespace SimpleW {
                             _closeAfterResponse = ShouldCloseConnection(request);
 
                             // router and dispatch
-                            await _router.DispatchAsync(request, this).ConfigureAwait(false);
+                            await _router.DispatchAsync(this, request).ConfigureAwait(false);
                             //await SendJsonAsync(new { message = "Hello World !" });
 
                             // if so, then close connection
@@ -416,7 +509,7 @@ namespace SimpleW {
 
             // HTTP/1.0 : close by default, except when "Connection: keep-alive"
             if (request.Protocol.Equals("HTTP/1.0", StringComparison.OrdinalIgnoreCase) && request.Headers.Connection != null) {
-                return request.Headers.Connection.IndexOf("keep-alive", StringComparison.OrdinalIgnoreCase) >= 0;
+                return !(request.Headers.Connection.IndexOf("keep-alive", StringComparison.OrdinalIgnoreCase) >= 0);
             }
 
             // true to close
@@ -706,7 +799,19 @@ namespace SimpleW {
         private async ValueTask SendSegmentsAsync(ArraySegment<byte>[] segments) {
             await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
-                await _socket.SendAsync(segments, SocketFlags.None).ConfigureAwait(false);
+                if (_sslStream is not null) {
+                    // HTTPS : write each segment to sslStream
+                    foreach (ArraySegment<byte> seg in segments) {
+                        if (seg.Array is null || seg.Count == 0) {
+                            continue;
+                        }
+                        await _sslStream.WriteAsync(seg.Array, seg.Offset, seg.Count).ConfigureAwait(false);
+                    }
+                    await _sslStream.FlushAsync().ConfigureAwait(false);
+                }
+                else {
+                    await _socket.SendAsync(segments, SocketFlags.None).ConfigureAwait(false);
+                }
             }
             catch (ObjectDisposedException) {
             }
@@ -731,9 +836,21 @@ namespace SimpleW {
         private async ValueTask SendSegmentsAsync(ArraySegment<byte> segment1, ArraySegment<byte> segment2) {
             await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
-                _sendSegments2[0] = segment1;
-                _sendSegments2[1] = segment2;
-                await _socket.SendAsync(_sendSegments2, SocketFlags.None).ConfigureAwait(false);
+                if (_sslStream is not null) {
+                    // HTTPS : write each segment to sslStream
+                    if (segment1.Array is not null && segment1.Count > 0) {
+                        await _sslStream.WriteAsync(segment1.Array, segment1.Offset, segment1.Count).ConfigureAwait(false);
+                    }
+                    if (segment2.Array is not null && segment2.Count > 0) {
+                        await _sslStream.WriteAsync(segment2.Array, segment2.Offset, segment2.Count).ConfigureAwait(false);
+                    }
+                    await _sslStream.FlushAsync().ConfigureAwait(false);
+                }
+                else {
+                    _sendSegments2[0] = segment1;
+                    _sendSegments2[1] = segment2;
+                    await _socket.SendAsync(_sendSegments2, SocketFlags.None).ConfigureAwait(false);
+                }
             }
             catch (ObjectDisposedException) {
             }
@@ -749,6 +866,11 @@ namespace SimpleW {
         #endregion SendAsync
 
         #region IDisposable
+
+        /// <summary>
+        /// Flag to avoid multiple Dispose() called
+        /// </summary>
+        private bool _disposed;
 
         /// <summary>
         /// Dispose
@@ -767,6 +889,14 @@ namespace SimpleW {
                 _pipe.Writer.Complete();
             }
             catch { }
+
+            if (_reader is not null) {
+                try {
+                    _reader.Complete();
+                }
+                catch { }
+                _reader = null;
+            }
 
             try {
                 if (_socket.Connected) {
@@ -787,6 +917,14 @@ namespace SimpleW {
                     _receiveBuffer = null;
                 }
             }
+
+            try { _sslStream?.Dispose(); }
+            catch { }
+            _sslStream = null;
+
+            try { _transportStream?.Dispose(); }
+            catch { }
+            _transportStream = null;
         }
 
         #endregion IDisposable

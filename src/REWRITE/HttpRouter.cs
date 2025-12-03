@@ -3,10 +3,10 @@
     /// <summary>
     /// Delegate for MapGet() and MapPost()
     /// </summary>
+    /// <param name="session"></param>
     /// <param name="request"></param>
-    /// <param name="context"></param>
     /// <returns></returns>
-    public delegate ValueTask HttpHandler(HttpRequest request, HttpSession context);
+    public delegate ValueTask HttpHandler(HttpSession session, HttpRequest request);
 
     /// <summary>
     /// HttpRouter
@@ -63,21 +63,21 @@
         /// <summary>
         /// Find Handler from Method/Path
         /// </summary>
+        /// <param name="session"></param>
         /// <param name="request"></param>
-        /// <param name="context"></param>
         /// <returns></returns>
-        public ValueTask DispatchAsync(HttpRequest request, HttpSession context) {
+        public ValueTask DispatchAsync(HttpSession session, HttpRequest request) {
             (string, string) key = (request.Method.ToUpperInvariant(), request.Path);
 
             if (_routes.TryGetValue(key, out var handler)) {
-                return handler(request, context);
+                return handler(session, request);
             }
 
             if (_fallback != null) {
-                return _fallback(request, context);
+                return _fallback(session, request);
             }
 
-            return context.SendTextAsync("Not Found", 404, "Not Found");
+            return session.SendTextAsync("Not Found", 404, "Not Found");
         }
 
         #region helpers

@@ -38,17 +38,20 @@ namespace SimpleW {
 
         #region sslcontext
 
-        //public SslContext? SslContext { get; private set; }
+        /// <summary>
+        /// SslContext
+        /// </summary>
+        public SslContext? SslContext { get; private set; }
 
-        ///// <summary>
-        ///// Add SslContext
-        ///// </summary>
-        ///// <param name="sslContext"></param>
-        ///// <returns></returns>
-        //public SimpleW UseHttps(SslContext sslContext) {
-        //    SslContext = sslContext;
-        //    return this;
-        //}
+        /// <summary>
+        /// Add SslContext
+        /// </summary>
+        /// <param name="sslContext"></param>
+        /// <returns></returns>
+        public SimpleW UseHttps(SslContext sslContext) {
+            SslContext = sslContext;
+            return this;
+        }
 
         #endregion sslcontext
 
@@ -73,11 +76,6 @@ namespace SimpleW {
         /// Task qui représente la boucle de vie du serveur
         /// </summary>
         private Task? _runTask;
-
-        /// <summary>
-        /// Lock pour Start/Stop
-        /// </summary>
-        private readonly object _lifecycleLock = new();
 
         /// <summary>
         /// Start the server
@@ -379,6 +377,9 @@ namespace SimpleW {
                     throw new ArgumentException($"{nameof(OptionReusePort)} is only useful on linux when {nameof(OptionExclusiveAddressUse)} is enable.");
                 }
             }
+            if (SslContext != null && OptionReceiveStrategy == ReceivedStrategy.SocketEventArgs) {
+                throw new ArgumentException($"{nameof(ReceivedStrategy.SocketEventArgs)} strategy is not compatible with Https.");
+            }
 
             // create socket
             _listenSocket = CreateSocket();
@@ -507,8 +508,11 @@ namespace SimpleW {
             //RegisterSession(connection);
 
             try {
-                connection.Connect(OptionReceiveStrategy); // receive data
-                await connection.ProcessAsync();           // handle data
+                if (SslContext is not null) {
+                    await connection.UseHttps(SslContext).ConfigureAwait(false);
+                }
+                connection.Connect(OptionReceiveStrategy);                  // receive data
+                await connection.ProcessAsync().ConfigureAwait(false);      // handle data
             }
             catch (Exception ex) {
                 Console.WriteLine($"[HTTP] Connection error: {ex.Message}");
