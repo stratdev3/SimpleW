@@ -42,7 +42,33 @@ namespace SimpleW {
         /// <summary>
         /// QueryString
         /// </summary>
-        public Dictionary<string, string> Query { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+        public string QueryString { get; init;  } = string.Empty;
+
+        /// <summary>
+        /// Flag to Query parsing
+        /// </summary>
+        private bool _queryInitialized = false;
+
+        /// <summary>
+        /// QueryString Dictionnary parsing
+        /// </summary>
+        private Dictionary<string, string>? _query;
+
+        /// <summary>
+        /// QueryString Dictionnary
+        /// </summary>
+        public Dictionary<string, string> Query {
+            get {
+                if (!_queryInitialized) {
+                    _queryInitialized = true;
+                    _query = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    if (!string.IsNullOrEmpty(QueryString)) {
+                        HttpRequestParserState.ParseQueryString(QueryString.AsSpan(), _query);
+                    }
+                }
+                return _query!;
+            }
+        }
 
         /// <summary>
         /// Body as String (only valid during the time of the underlying Handler)
@@ -482,7 +508,7 @@ namespace SimpleW {
                 return false;
             }
 
-            if (!TryParseRequestLine(requestLineSeq, out string method, out string rawTarget, out string path, out string protocol, out Dictionary<string, string> query)) {
+            if (!TryParseRequestLine(requestLineSeq, out string method, out string rawTarget, out string path, out string protocol, out string queryString)) {
                 return false;
             }
 
@@ -491,7 +517,7 @@ namespace SimpleW {
                 RawTarget = rawTarget,
                 Path = path,
                 Protocol = protocol,
-                Query = query
+                QueryString = queryString
             };
 
             // headers
@@ -541,9 +567,9 @@ namespace SimpleW {
         /// <param name="protocol"></param>
         /// <param name="query"></param>
         /// <returns></returns>
-        private static bool TryParseRequestLine(in ReadOnlySequence<byte> lineSeq, out string method, out string rawTarget, out string path, out string protocol, out Dictionary<string, string> query) {
+        private static bool TryParseRequestLine(in ReadOnlySequence<byte> lineSeq, out string method, out string rawTarget, out string path, out string protocol, out string queryString) {
             method = rawTarget = path = protocol = string.Empty;
-            query = new Dictionary<string, string>(StringComparer.Ordinal);
+            queryString = string.Empty;
 
             int len = (int)lineSeq.Length;
             if (len == 0) {
@@ -591,7 +617,7 @@ namespace SimpleW {
                 int qIndex = rawTarget.IndexOf('?', StringComparison.Ordinal);
                 if (qIndex >= 0) {
                     path = rawTarget.Substring(0, qIndex);
-                    ParseQueryString(rawTarget.AsSpan(qIndex + 1), query);
+                    queryString = rawTarget.Substring(qIndex + 1);
                 }
                 else {
                     path = rawTarget;
@@ -810,7 +836,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="span"></param>
         /// <param name="dict"></param>
-        private static void ParseQueryString(ReadOnlySpan<char> span, Dictionary<string, string> dict) {
+        public static void ParseQueryString(ReadOnlySpan<char> span, Dictionary<string, string> dict) {
             while (!span.IsEmpty) {
                 int amp = span.IndexOf('&');
                 ReadOnlySpan<char> pair = amp >= 0 ? span[..amp] : span;
