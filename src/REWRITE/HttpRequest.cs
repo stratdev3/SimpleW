@@ -487,7 +487,7 @@ namespace SimpleW {
             }
 
             HttpRequest req = new HttpRequest {
-                Method = method,
+                Method = method.ToUpperInvariant(),
                 RawTarget = rawTarget,
                 Path = path,
                 Protocol = protocol,

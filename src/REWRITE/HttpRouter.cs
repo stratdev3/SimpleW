@@ -16,7 +16,7 @@
         /// <summary>
         /// Dictionary of all Routes
         /// </summary>
-        private readonly Dictionary<(string method, string path), HttpHandler> _routes = new(StringTupleComparer.Ordinal);
+        private readonly Dictionary<(string method, string path), HttpRoute> _routes = new(StringTupleComparer.Ordinal);
 
         #region func
 
@@ -28,7 +28,8 @@
         /// <param name="handler"></param>
         /// <returns></returns>
         public void Map(string method, string path, HttpHandler handler) {
-            _routes[(method.ToUpperInvariant(), path)] = handler;
+            HttpRoute route = new(new HttpRouteAttribute(method, path), handler);
+            _routes[(route.Attribute.Method, route.Attribute.Path)] = route;
         }
 
         /// <summary>
@@ -67,10 +68,10 @@
         /// <param name="request"></param>
         /// <returns></returns>
         public ValueTask DispatchAsync(HttpSession session, HttpRequest request) {
-            (string, string) key = (request.Method.ToUpperInvariant(), request.Path);
+            (string, string) key = (request.Method, request.Path);
 
-            if (_routes.TryGetValue(key, out var handler)) {
-                return handler(session, request);
+            if (_routes.TryGetValue(key, out HttpRoute route)) {
+                return route.Handler(session, request);
             }
 
             if (_fallback != null) {
