@@ -60,7 +60,7 @@ namespace SimpleW {
                     return encoding.GetString(Body.FirstSpan);
                 }
 
-                // multi segments -> on copie dans un buffer temporaire (ArrayPool pour limiter la pression GC)
+                // multi segments -> copy to temp buffer via ArrayPool
                 int length = checked((int)Body.Length);
                 byte[] rented = ArrayPool<byte>.Shared.Rent(length);
 
@@ -73,6 +73,25 @@ namespace SimpleW {
                 }
             }
         }
+
+        #region buffer
+
+        /// <summary>
+        /// public Property to received a buffer from an ArrayPool
+        /// </summary>
+        internal byte[]? PooledBodyBuffer { get; set; }
+
+        /// <summary>
+        /// Return the buffer to ArrayPool
+        /// </summary>
+        internal void ReturnPooledBodyBuffer() {
+            if (PooledBodyBuffer is not null) {
+                ArrayPool<byte>.Shared.Return(PooledBodyBuffer);
+                PooledBodyBuffer = null;
+            }
+        }
+
+        #endregion buffer
 
         // plus tard :
         // public Dictionary<string, string?> Query { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -411,11 +430,12 @@ namespace SimpleW {
 
             // 3. read the body if it exists
             if (isChunked) {
-                if (!TryReadChunkedBody(fullSequence, bodyStart, out ReadOnlySequence<byte> body, out SequencePosition consumedTo)) {
+                if (!TryReadChunkedBody(fullSequence, bodyStart, out ReadOnlySequence<byte> body, out byte[]? pooledBuffer, out SequencePosition consumedTo)) {
                     return false; // need more data
                 }
 
                 req.Body = body;
+                req.PooledBodyBuffer = pooledBuffer; // associate ArrayPool buffer to current req
                 buffer = fullSequence.Slice(consumedTo);
             }
             else if (contentLength.HasValue && contentLength.Value > 0) {
@@ -705,11 +725,13 @@ namespace SimpleW {
         /// <param name="fullSequence"></param>
         /// <param name="bodyStart"></param>
         /// <param name="body"></param>
+        /// <param name="pooledBuffer"></param>
         /// <param name="consumedTo"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        private bool TryReadChunkedBody(in ReadOnlySequence<byte> fullSequence, SequencePosition bodyStart, out ReadOnlySequence<byte> body, out SequencePosition consumedTo) {
+        private bool TryReadChunkedBody(in ReadOnlySequence<byte> fullSequence, SequencePosition bodyStart, out ReadOnlySequence<byte> body, out byte[]? pooledBuffer, out SequencePosition consumedTo) {
             body = ReadOnlySequence<byte>.Empty;
+            pooledBuffer = null;
             consumedTo = bodyStart;
 
             var reader = new SequenceReader<byte>(fullSequence.Slice(bodyStart));
@@ -770,7 +792,16 @@ namespace SimpleW {
                 consumedTo = reader.Position;
             }
 
-            body = new ReadOnlySequence<byte>(chunks.ToArray());
+            // buffer alloc via ArrayPool
+            int len = (int)chunks.Length;
+            byte[] rented = ArrayPool<byte>.Shared.Rent(len);
+
+            chunks.Position = 0;
+            int read = chunks.Read(rented, 0, len);
+
+            body = new ReadOnlySequence<byte>(rented, 0, read);
+            pooledBuffer = rented; // ouput the buffer
+
             return true;
         }
 

@@ -423,23 +423,27 @@ namespace SimpleW {
 
                     HttpRequest request = null!;
                     try {
-                        // parse HttpRequest
+                        // parse HttpRequest (http pipelining support)
                         while (
                             parser.TryReadHttpRequest(ref buffer, out request)
                             //FakeHttpRequest(ref buffer, out HttpRequest request)
                         ) {
+                            try {
+                                // should close connection
+                                _closeAfterResponse = ShouldCloseConnection(request);
 
-                            // should close connection
-                            _closeAfterResponse = ShouldCloseConnection(request);
+                                // router and dispatch
+                                await _router.DispatchAsync(this, request).ConfigureAwait(false);
+                                //await SendJsonAsync(new { message = "Hello World !" });
 
-                            // router and dispatch
-                            await _router.DispatchAsync(this, request).ConfigureAwait(false);
-                            //await SendJsonAsync(new { message = "Hello World !" });
-
-                            // if so, then close connection
-                            if (_closeAfterResponse) {
-                                reader.AdvanceTo(buffer.Start, buffer.End);
-                                return;
+                                // if so, then close connection
+                                if (_closeAfterResponse) {
+                                    reader.AdvanceTo(buffer.Start, buffer.End);
+                                    return;
+                                }
+                            }
+                            finally {
+                                request.ReturnPooledBodyBuffer();
                             }
                         }
                     }
