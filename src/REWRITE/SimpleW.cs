@@ -374,7 +374,7 @@ namespace SimpleW {
                     throw new PlatformNotSupportedException($"{nameof(OptionReusePort)} is only supported on Linux.");
                 }
                 if (!OptionRunAcceptSocketPerCore) {
-                    throw new ArgumentException($"{nameof(OptionReusePort)} is only useful on linux when {nameof(OptionExclusiveAddressUse)} is enable.");
+                    throw new ArgumentException($"{nameof(OptionReusePort)} is only useful on linux when {nameof(OptionRunAcceptSocketPerCore)} is enable.");
                 }
             }
             if (SslContext != null && OptionReceiveStrategy == ReceivedStrategy.SocketEventArgs) {
