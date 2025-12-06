@@ -40,6 +40,33 @@ namespace SimpleW {
         public ReadOnlySequence<byte> Body { get; internal set; } = ReadOnlySequence<byte>.Empty;
 
         /// <summary>
+        /// Body as String (only valid during the time of the underlying Handler)
+        /// </summary>
+        public string BodyString {
+            get {
+                if (Body.IsEmpty) {
+                    return string.Empty;
+                }
+
+                if (Body.IsSingleSegment) {
+                    return Utf8.GetString(Body.FirstSpan);
+                }
+
+                // multi segments -> copy to temp buffer via ArrayPool
+                int length = checked((int)Body.Length);
+                byte[] rented = ArrayPool<byte>.Shared.Rent(length);
+
+                try {
+                    Body.CopyTo(rented);
+                    return Utf8.GetString(rented, 0, length);
+                }
+                finally {
+                    ArrayPool<byte>.Shared.Return(rented);
+                }
+            }
+        }
+
+        /// <summary>
         /// QueryString
         /// </summary>
         public string QueryString { get; init;  } = string.Empty;
@@ -70,36 +97,6 @@ namespace SimpleW {
             }
         }
 
-        /// <summary>
-        /// Body as String (only valid during the time of the underlying Handler)
-        /// </summary>
-        public string BodyString {
-            get {
-                if (Body.IsEmpty) {
-                    return string.Empty;
-                }
-
-                // UTF-8 only
-                Encoding encoding = Encoding.UTF8;
-
-                if (Body.IsSingleSegment) {
-                    return encoding.GetString(Body.FirstSpan);
-                }
-
-                // multi segments -> copy to temp buffer via ArrayPool
-                int length = checked((int)Body.Length);
-                byte[] rented = ArrayPool<byte>.Shared.Rent(length);
-
-                try {
-                    Body.CopyTo(rented);
-                    return encoding.GetString(rented, 0, length);
-                }
-                finally {
-                    ArrayPool<byte>.Shared.Return(rented);
-                }
-            }
-        }
-
         #region buffer
 
         /// <summary>
@@ -118,6 +115,12 @@ namespace SimpleW {
         }
 
         #endregion buffer
+
+        #region helpers
+
+        private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        #endregion helpers
 
         // plus tard :
         // public Dictionary<string, string?> Query { get; } = new(StringComparer.OrdinalIgnoreCase);
