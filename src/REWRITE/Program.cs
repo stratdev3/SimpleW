@@ -53,6 +53,7 @@ namespace Core {
             server.OptionReuseAddress = true;
             server.OptionNoDelay = true;
             server.OptionKeepAlive = true;
+            //server.OptionSessionTimeout = TimeSpan.MinValue;
             //server.OptionRunAcceptSocketPerCore = true;
             //server.OptionReceiveStrategy = SimpleW.ReceivedStrategy.ReceiveLoopBuffer;
 

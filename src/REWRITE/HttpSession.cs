@@ -94,11 +94,7 @@ namespace SimpleW {
 
             SocketOptions();
 
-            // properties for idle/read timeout
-            if (server.IdleTimeout != TimeSpan.MinValue) {
-                _idleTimeout = server.IdleTimeout;
-                _idleTimer = new Timer(OnIdleTimeout, null, _idleTimeout, Timeout.InfiniteTimeSpan);
-            }
+            Server.MarkSession(this);
         }
 
         #region Connect
@@ -289,9 +285,7 @@ namespace SimpleW {
                     writer.Advance(bytesRead);
 
                     // 3. reset idle timer
-                    if (_idleTimeout != TimeSpan.MinValue) {
-                        _idleTimer?.Change(_idleTimeout, Timeout.InfiniteTimeSpan);
-                    }
+                    Server.MarkSession(this);
 
                     // 4. flush to the reader
                     FlushResult result = await writer.FlushAsync().ConfigureAwait(false);
@@ -358,9 +352,7 @@ namespace SimpleW {
             }
 
             // reset idle timer
-            if (_idleTimeout != TimeSpan.MinValue) {
-                _idleTimer?.Change(_idleTimeout, Timeout.InfiniteTimeSpan);
-            }
+            Server.MarkSession(this);
 
             // copy to pipe
             ReadOnlySpan<byte> span = new(_receiveBuffer, e.Offset, e.BytesTransferred);
@@ -449,9 +441,7 @@ namespace SimpleW {
                 }
 
                 // reset idle timer
-                if (_idleTimeout != TimeSpan.MinValue) {
-                    _idleTimer?.Change(_idleTimeout, Timeout.InfiniteTimeSpan);
-                }
+                Server.MarkSession(this);
 
                 // byte operations
                 EnsureParseBufferCapacity(bytesRead);
@@ -583,9 +573,7 @@ namespace SimpleW {
 
                     if (_receivedStrategy == ReceivedStrategy.NetworkStream) {
                         // reset idle timer
-                        if (_idleTimeout != TimeSpan.MinValue) {
-                            _idleTimer?.Change(_idleTimeout, Timeout.InfiniteTimeSpan);
-                        }
+                        Server.MarkSession(this);
                     }
 
                     try {
@@ -687,33 +675,10 @@ namespace SimpleW {
 
         #region handle idle/read timeouts
 
-        /// <summary>
-        /// Idle Timeout
-        /// </summary>
-        private readonly TimeSpan _idleTimeout;
+        public long LastActivityTick { get; private set; }
 
-        /// <summary>
-        /// Timer for Idle
-        /// </summary>
-        private Timer? _idleTimer;
-
-        /// <summary>
-        /// Handle the Idle Timeout
-        /// </summary>
-        /// <param name="state"></param>
-        private void OnIdleTimeout(object? state) {
-            if (_disposed) {
-                return;
-            }
-
-            try {
-                // if connection idle, then close socket
-                _socket.Shutdown(SocketShutdown.Both);
-            }
-            catch { }
-            finally {
-                Dispose();
-            }
+        internal void MarkActivity() {
+            LastActivityTick = Environment.TickCount64;
         }
 
         #endregion handle idle/read timeouts
@@ -1060,9 +1025,6 @@ namespace SimpleW {
             }
 
             _disposed = true;
-
-            try { _idleTimer?.Dispose(); } catch { }
-            _idleTimer = null;
 
             if (_receivedStrategy == ReceivedStrategy.ReceiveLoop || _receivedStrategy == ReceivedStrategy.NetworkStream) {
                 try {

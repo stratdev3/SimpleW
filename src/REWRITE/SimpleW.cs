@@ -93,6 +93,7 @@ namespace SimpleW {
             IsStopping = false;
 
             ListenSocket();
+            StartSessionTimeoutTimer();
 
             // keep thread until cancelled
             _runTask = WaitForCancellationAsync(_lifetimeCts.Token);
@@ -154,6 +155,10 @@ namespace SimpleW {
                 }
                 Sessions.Clear();
 
+                // stop idle timer
+                _sessionTimeoutTimer?.Dispose();
+                _sessionTimeoutTimer = null;
+
                 // reset state
                 IsStarted = false;
                 IsStopping = false;
@@ -183,12 +188,6 @@ namespace SimpleW {
         /// Max size of request body in bytes (default: 10 MB)
         /// </summary>
         public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
-
-        /// <summary>
-        /// Idle timeout (if no data received during timeout, then close connection)
-        /// Set TimeSpan.MinValue to disable.
-        /// </summary>
-        public TimeSpan IdleTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
         #endregion security
 
@@ -504,7 +503,6 @@ namespace SimpleW {
 
             // context
             HttpSession connection = new(this, socket, _bufferPool, Router);
-
             //RegisterSession(connection);
 
             try {
@@ -518,9 +516,8 @@ namespace SimpleW {
                 Console.WriteLine($"[HTTP] Connection error: {ex.Message}");
             }
             finally {
-                connection.Dispose();
-
                 //UnregisterSession(connection.Id);
+                connection.Dispose();
             }
         }
 
@@ -548,6 +545,74 @@ namespace SimpleW {
         internal void UnregisterSession(Guid id) {
             Sessions.TryRemove(id, out _);
         }
+
+        /// <summary>
+        /// Mark Session
+        /// </summary>
+        /// <param name="session"></param>
+        public void MarkSession(HttpSession session) {
+            if (OptionSessionTimeout == TimeSpan.MinValue) {
+                return;
+            }
+            session.MarkActivity();
+        }
+
+        #region idle timeout
+
+        /// <summary>
+        /// Idle timeout (if no data received during timeout, then close connection)
+        /// Set TimeSpan.MinValue to disable.
+        /// </summary>
+        public TimeSpan OptionSessionTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// Timer for Idel timeout
+        /// </summary>
+        private Timer? _sessionTimeoutTimer;
+
+        /// <summary>
+        /// Start Session Timeout Timer
+        /// </summary>
+        private void StartSessionTimeoutTimer() {
+            if (OptionSessionTimeout == TimeSpan.MinValue) {
+                return;
+            }
+            if (_sessionTimeoutTimer != null) {
+                return;
+            }
+
+            TimeSpan period = TimeSpan.FromSeconds(OptionSessionTimeout.Seconds / 2);
+            _sessionTimeoutTimer = new Timer(CheckSessionTimeout, null, period, period);
+        }
+
+        /// <summary>
+        /// Close and Remote Session Timeout
+        /// </summary>
+        /// <param name="state"></param>
+        private void CheckSessionTimeout(object? state) {
+            if (!IsStarted || IsStopping) {
+                return;
+            }
+
+            try {
+                long now = Environment.TickCount64;
+                long timeoutMs = (long)OptionSessionTimeout.TotalMilliseconds;
+
+                foreach (var kvp in Sessions) {
+                    var session = kvp.Value;
+                    long last = session.LastActivityTick;
+                    if (now - session.LastActivityTick > timeoutMs) {
+                        Sessions.TryRemove(session.Id, out HttpSession? s);
+                        s?.Dispose();
+                    }
+                }
+            }
+            catch (Exception ex) {
+                Console.WriteLine($"[SimpleW] CheckSessionTimeout error: {ex.Message}");
+            }
+        }
+
+        #endregion idle timeout
 
         #endregion session
 
