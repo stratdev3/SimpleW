@@ -423,7 +423,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="e"></param>
         private void AcceptSocket(SocketAsyncEventArgs e) {
-            if (_listenSocket == null) {
+            if (_listenSocket == null || IsStopping) {
                 return;
             }
 
@@ -479,7 +479,7 @@ namespace SimpleW {
         /// operations and is invoked when an accept operation is complete
         /// </summary>
         private void OnAcceptSocketCompleted(object? sender, SocketAsyncEventArgs e) {
-            if (_listenSocket == null || _listenSocket.SafeHandle.IsInvalid) {
+            if (_listenSocket == null || _listenSocket.SafeHandle.IsInvalid || IsStopping) {
                 Console.WriteLine("OnAcceptSocketCompleted ERROR");
                 return;
             }
