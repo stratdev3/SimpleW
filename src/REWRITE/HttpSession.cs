@@ -687,10 +687,20 @@ namespace SimpleW {
 
         #region handle idle/read timeouts
 
-        // properties for idle/read timeout
-        private Timer? _idleTimer;
+        /// <summary>
+        /// Idle Timeout
+        /// </summary>
         private readonly TimeSpan _idleTimeout;
 
+        /// <summary>
+        /// Timer for Idle
+        /// </summary>
+        private Timer? _idleTimer;
+
+        /// <summary>
+        /// Handle the Idle Timeout
+        /// </summary>
+        /// <param name="state"></param>
         private void OnIdleTimeout(object? state) {
             if (_disposed) {
                 return;
