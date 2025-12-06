@@ -12,22 +12,22 @@ namespace SimpleW {
         /// <summary>
         /// Get the HTTP request method
         /// </summary>
-        public string Method { get; init; } = string.Empty;
+        public string Method { get; internal set; } = string.Empty;
 
         /// <summary>
         /// Get the HTTP request Path
         /// </summary>
-        public string Path { get; init; } = string.Empty;
+        public string Path { get; internal set; } = string.Empty;
 
         /// <summary>
         /// Raw target (path + query)
         /// </summary>
-        public string RawTarget { get; init; } = string.Empty;
+        public string RawTarget { get; internal set; } = string.Empty;
 
         /// <summary>
         /// HTTP protocol version (e.g. "HTTP/1.1")
         /// </summary>
-        public string Protocol { get; init; } = string.Empty;
+        public string Protocol { get; internal set; } = string.Empty;
 
         /// <summary>
         /// HTTP headers (case-insensitive)
@@ -69,7 +69,7 @@ namespace SimpleW {
         /// <summary>
         /// QueryString
         /// </summary>
-        public string QueryString { get; init;  } = string.Empty;
+        public string QueryString { get; internal set;  } = string.Empty;
 
         /// <summary>
         /// Flag to Query parsing
@@ -88,13 +88,31 @@ namespace SimpleW {
             get {
                 if (!_queryInitialized) {
                     _queryInitialized = true;
-                    _query = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    _query ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
                     if (!string.IsNullOrEmpty(QueryString)) {
                         HttpRequestParserState.ParseQueryString(QueryString.AsSpan(), _query);
                     }
                 }
                 return _query!;
             }
+        }
+
+        /// <summary>
+        /// Reset HttpRequest for reuse
+        /// </summary>
+        internal void Reset() {
+            Method = string.Empty;
+            Path = string.Empty;
+            RawTarget = string.Empty;
+            Protocol = string.Empty;
+            QueryString = string.Empty;
+
+            Headers = default;
+            Body = ReadOnlySequence<byte>.Empty;
+
+            _queryInitialized = false;
+            _query?.Clear();
         }
 
         #region buffer
@@ -461,8 +479,8 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <param name="maxHeaderSize"></param>
         /// <param name="maxBodySize"></param>
-        public bool TryReadHttpRequest(ref ReadOnlySequence<byte> buffer, out HttpRequest request) {
-            request = null!;
+        public bool TryReadHttpRequest(ref ReadOnlySequence<byte> buffer, HttpRequest request) {
+            request.Reset();
 
             SequenceReader<byte> reader = new(buffer);
 
@@ -480,7 +498,7 @@ namespace SimpleW {
             SequencePosition bodyStart = reader.Position;
 
             // 2. parser request line + headers
-            if (!TryParseStartLineAndHeaders(headerSequence, out HttpRequest req, out long? contentLength, out bool isChunked)) {
+            if (!TryParseStartLineAndHeaders(headerSequence, request, out long? contentLength, out bool isChunked)) {
                 return false; // invalid request
             }
 
@@ -492,8 +510,8 @@ namespace SimpleW {
                     return false; // need more data
                 }
 
-                req.Body = body;
-                req.PooledBodyBuffer = pooledBuffer; // associate ArrayPool buffer to current req
+                request.Body = body;
+                request.PooledBodyBuffer = pooledBuffer; // associate ArrayPool buffer to current req
                 buffer = fullSequence.Slice(consumedTo);
             }
             else if (contentLength.HasValue && contentLength.Value > 0) {
@@ -507,16 +525,15 @@ namespace SimpleW {
                     return false; // need more data
                 }
 
-                req.Body = body;
+                request.Body = body;
                 buffer = fullSequence.Slice(consumedTo);
             }
             else {
                 // no body : reset sequence position at start
-                req.Body = ReadOnlySequence<byte>.Empty;
+                request.Body = ReadOnlySequence<byte>.Empty;
                 buffer = fullSequence.Slice(bodyStart);
             }
 
-            request = req;
             return true;
         }
 
@@ -528,8 +545,7 @@ namespace SimpleW {
         /// <param name="contentLength"></param>
         /// <param name="isChunked"></param>
         /// <returns></returns>
-        private static bool TryParseStartLineAndHeaders(in ReadOnlySequence<byte> headerSequence, out HttpRequest request, out long? contentLength, out bool isChunked) {
-            request = null!;
+        private static bool TryParseStartLineAndHeaders(in ReadOnlySequence<byte> headerSequence, HttpRequest request, out long? contentLength, out bool isChunked) {
             contentLength = null;
             isChunked = false;
 
@@ -544,13 +560,11 @@ namespace SimpleW {
                 return false;
             }
 
-            HttpRequest req = new HttpRequest {
-                Method = method.ToUpperInvariant(),
-                RawTarget = rawTarget,
-                Path = path,
-                Protocol = protocol,
-                QueryString = queryString
-            };
+            request.Method = method.ToUpperInvariant();
+            request.RawTarget = rawTarget;
+            request.Path = path;
+            request.Protocol = protocol;
+            request.QueryString = queryString;
 
             // headers
             HttpHeaders headers = default;
@@ -584,8 +598,7 @@ namespace SimpleW {
                 }
             }
 
-            req.Headers = headers;
-            request = req;
+            request.Headers = headers;
             return true;
         }
 

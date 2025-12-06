@@ -66,6 +66,16 @@ namespace SimpleW {
         private Pipe _pipe;
 
         /// <summary>
+        /// Last HttpRequest Parsed
+        /// </summary>
+        private readonly HttpRequest _request;
+
+        /// <summary>
+        /// Parser réutilisé pour cette session
+        /// </summary>
+        private HttpRequestParserState _parser;
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="socket"></param>
@@ -78,6 +88,9 @@ namespace SimpleW {
             _socket = socket;
             _bufferPool = bufferPool;
             _router = router;
+
+            _request = new HttpRequest();
+            _parser = new HttpRequestParserState(server.MaxRequestHeaderSize, server.MaxRequestBodySize);
 
             SocketOptions();
 
@@ -397,8 +410,6 @@ namespace SimpleW {
         ///  - HttpRouter Dispatch
         /// </summary>
         public async Task ReceiveLoopBufferAsync() {
-            HttpRequestParserState _parser = new(Server.MaxRequestHeaderSize, Server.MaxRequestBodySize);
-
             //
             // MAIN PROCESS LOOP
             //
@@ -448,19 +459,18 @@ namespace SimpleW {
                 _parseBufferCount += bytesRead;
                 ReadOnlySequence<byte> sequence = new(_parseBuffer, 0, _parseBufferCount);
 
-                HttpRequest? request = null;
                 try {
                     // parse HttpRequest (http pipelining support)
                     while (
-                        _parser.TryReadHttpRequest(ref sequence, out request)
-                        //FakeHttpRequest(ref buffer, out HttpRequest request)
+                        _parser.TryReadHttpRequest(ref sequence, _request)
+                        //FakeHttpRequest(ref buffer, _request)
                     ) {
                         try {
                             // should close connection
-                            _closeAfterResponse = ShouldCloseConnection(request);
+                            _closeAfterResponse = ShouldCloseConnection(_request);
 
                             // router and dispatch
-                            await _router.DispatchAsync(this, request).ConfigureAwait(false);
+                            await _router.DispatchAsync(this, _request).ConfigureAwait(false);
                             //await SendJsonAsync(new { message = "Hello World !" });
 
                             // if so, then close connection
@@ -469,9 +479,8 @@ namespace SimpleW {
                             }
                         }
                         finally {
-                            request.ReturnPooledBodyBuffer();
+                            _request.ReturnPooledBodyBuffer();
                         }
-                        request = null;
                     }
                 }
                 catch (HttpRequestTooLargeException) {
@@ -480,7 +489,7 @@ namespace SimpleW {
                     return;
                 }
                 catch (Exception ex) {
-                    Console.WriteLine($"[HTTP] Error while processing {request?.Method} {request?.Path} for host '{request?.Headers.Host ?? "<no-host>"}': {ex}");
+                    Console.WriteLine($"[HTTP] Error while processing {_request?.Method} {_request?.Path} for host '{_request?.Headers.Host ?? "<no-host>"}': {ex}");
                     await SendTextAsync("Internal Server Error", 500, "Internal Server Error").ConfigureAwait(false);
                     return;
                 }
@@ -542,8 +551,6 @@ namespace SimpleW {
                                     : _pipe.Reader;
 
             try {
-                HttpRequestParserState parser = new(Server.MaxRequestHeaderSize, Server.MaxRequestBodySize);
-
                 //
                 // MAIN PROCESS LOOP
                 //
@@ -581,19 +588,18 @@ namespace SimpleW {
                         }
                     }
 
-                    HttpRequest request = null!;
                     try {
                         // parse HttpRequest (http pipelining support)
                         while (
-                            parser.TryReadHttpRequest(ref buffer, out request)
-                            //FakeHttpRequest(ref buffer, out HttpRequest request)
+                            _parser.TryReadHttpRequest(ref buffer, _request)
+                            //FakeHttpRequest(ref buffer, _request)
                         ) {
                             try {
                                 // should close connection
-                                _closeAfterResponse = ShouldCloseConnection(request);
+                                _closeAfterResponse = ShouldCloseConnection(_request);
 
                                 // router and dispatch
-                                await _router.DispatchAsync(this, request).ConfigureAwait(false);
+                                await _router.DispatchAsync(this, _request).ConfigureAwait(false);
                                 //await SendJsonAsync(new { message = "Hello World !" });
 
                                 // if so, then close connection
@@ -603,7 +609,7 @@ namespace SimpleW {
                                 }
                             }
                             finally {
-                                request.ReturnPooledBodyBuffer();
+                                _request.ReturnPooledBodyBuffer();
                             }
                         }
                     }
@@ -614,7 +620,7 @@ namespace SimpleW {
                         return;
                     }
                     catch (Exception ex) {
-                        Console.WriteLine($"[HTTP] Error while processing {request?.Method} {request?.Path} for host '{request?.Headers.Host ?? "<no-host>"}': {ex}");
+                        Console.WriteLine($"[HTTP] Error while processing {_request?.Method} {_request?.Path} for host '{_request?.Headers.Host ?? "<no-host>"}': {ex}");
                         await SendTextAsync("Internal Server Error", 500, "Internal Server Error").ConfigureAwait(false);
                         break; // close connection after server error
                     }
@@ -637,19 +643,18 @@ namespace SimpleW {
         /// <param name="buffer"></param>
         /// <param name="request"></param>
         /// <returns></returns>
-        public static bool FakeHttpRequest(ref ReadOnlySequence<byte> buffer, out HttpRequest request) {
+        public static bool FakeHttpRequest(ref ReadOnlySequence<byte> buffer, HttpRequest request) {
+            request.Reset();
+
             if (buffer.Length == 0) {
-                request = null!;
                 return false;
             }
-            request = new HttpRequest {
-                Method = "GET",
-                Path = "/api/test/hello",
-                Protocol = "HTTP/1.1",
-                Headers = default,
-                Body = ReadOnlySequence<byte>.Empty,
-                // Query = new(...)
-            };
+
+            request.Method = "GET";
+            request.Path = "/api/test/hello";
+            request.Protocol = "HTTP/1.1";
+            request.Headers = default;
+
             buffer = buffer.Slice(buffer.End);
             return true;
         }
