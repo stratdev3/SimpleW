@@ -347,7 +347,7 @@ namespace SimpleW {
         /// <remarks>
         /// Strategy on How to read received data
         /// </remarks>
-        public ReceivedStrategy OptionReceiveStrategy { get; set; } = ReceivedStrategy.ReceiveLoop;
+        public ReceivedStrategy OptionReceiveStrategy { get; set; } = ReceivedStrategy.ReceiveLoopBuffer;
 
         #endregion options
 

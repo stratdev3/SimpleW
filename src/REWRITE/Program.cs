@@ -53,8 +53,8 @@ namespace Core {
             server.OptionReuseAddress = true;
             server.OptionNoDelay = true;
             server.OptionKeepAlive = true;
-            server.OptionRunAcceptSocketPerCore = true;
-            //server.OptionReceiveStrategy = SimpleW.ReceivedStrategy.NetworkStream;
+            //server.OptionRunAcceptSocketPerCore = true;
+            //server.OptionReceiveStrategy = SimpleW.ReceivedStrategy.ReceiveLoopBuffer;
 
             // start non blocking background server
             CancellationTokenSource cts = new();
