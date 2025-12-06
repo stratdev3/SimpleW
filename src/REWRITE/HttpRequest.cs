@@ -144,7 +144,8 @@ namespace SimpleW {
         public string? Cookie;
 
         // fallback for all other headers
-        private List<(string Name, string Value)>? _other;
+        private HeaderEntry[]? _other;
+        private int _otherCount;
 
         /// <summary>
         /// Add a Header (name/value).
@@ -194,7 +195,7 @@ namespace SimpleW {
             }
 
             // fallback
-            (_other ??= new()).Add((name, value));
+            AddFallback(name, value);
         }
 
         /// <summary>
@@ -245,10 +246,10 @@ namespace SimpleW {
 
             // fallback
             if (_other is not null) {
-                for (int i = 0; i < _other.Count; i++) {
-                    var (n, v) = _other[i];
-                    if (n.Equals(name, StringComparison.OrdinalIgnoreCase)) {
-                        value = v;
+                for (int i = 0; i < _otherCount; i++) {
+                    ref readonly HeaderEntry entry = ref _other[i];
+                    if (entry.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) {
+                        value = entry.Value;
                         return true;
                     }
                 }
@@ -297,8 +298,9 @@ namespace SimpleW {
 
             // fallback
             if (_other is not null) {
-                foreach (var (n, v) in _other) {
-                    yield return new(n, v);
+                for (int i = 0; i < _otherCount; i++) {
+                    ref readonly HeaderEntry e = ref _other[i];
+                    yield return new(e.Name, e.Value);
                 }
             }
         }
@@ -385,6 +387,33 @@ namespace SimpleW {
             }
         }
 
+        /// <summary>
+        /// Add header to array
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        private void AddFallback(string name, string value) {
+            if (_other is null) {
+                _other = new HeaderEntry[4];
+            }
+            else if (_otherCount == _other.Length) {
+                Array.Resize(ref _other, _other.Length * 2);
+            }
+            _other[_otherCount++] = new HeaderEntry(name, value);
+        }
+    }
+
+    /// <summary>
+    /// HeaderEntry
+    /// </summary>
+    public readonly struct HeaderEntry {
+        public readonly string Name;
+        public readonly string Value;
+
+        public HeaderEntry(string name, string value) {
+            Name = name;
+            Value = value;
+        }
     }
 
     /// <summary>
