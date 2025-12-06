@@ -442,13 +442,6 @@ namespace SimpleW {
                     _idleTimer?.Change(_idleTimeout, Timeout.InfiniteTimeSpan);
                 }
 
-                // check request size limit
-                long maxTotal = (long)Server.MaxRequestHeaderSize + Server.MaxRequestBodySize;
-                if ((long)_parseBufferCount + bytesRead > maxTotal) {
-                    await SendTextAsync("Payload Too Large", 413, "Payload Too Large").ConfigureAwait(false);
-                    return;
-                }
-
                 // byte operations
                 EnsureParseBufferCapacity(bytesRead);
                 Buffer.BlockCopy(_recvBuffer, 0, _parseBuffer, _parseBufferCount, bytesRead);
