@@ -447,14 +447,20 @@ namespace SimpleW {
                 EnsureParseBufferCapacity(bytesRead);
                 Buffer.BlockCopy(_recvBuffer, 0, _parseBuffer, _parseBufferCount, bytesRead);
                 _parseBufferCount += bytesRead;
-                ReadOnlySequence<byte> sequence = new(_parseBuffer, 0, _parseBufferCount);
 
                 try {
+                    int offset = 0;
+
                     // parse HttpRequest (http pipelining support)
-                    while (
-                        _parser.TryReadHttpRequest(ref sequence, _request)
-                        //FakeHttpRequest(ref buffer, _request)
-                    ) {
+                    while (true) {
+                        int consumed = _parser.TryReadHttpRequestFast(_parseBuffer, offset, _parseBufferCount - offset, _request);
+                        if (consumed == 0) {
+                            // if nothing consumed, we need/wait for more data
+                            break;
+                        }
+
+                        offset += consumed;
+
                         try {
                             // should close connection
                             _closeAfterResponse = ShouldCloseConnection(_request);
@@ -472,6 +478,15 @@ namespace SimpleW {
                             _request.ReturnPooledBodyBuffer();
                         }
                     }
+
+                    // compress buffer
+                    if (offset > 0) {
+                        int remaining = _parseBufferCount - offset;
+                        if (remaining > 0) {
+                            Buffer.BlockCopy(_parseBuffer, offset, _parseBuffer, 0, remaining);
+                        }
+                        _parseBufferCount = remaining;
+                    }
                 }
                 catch (HttpRequestTooLargeException) {
                     _closeAfterResponse = true;
@@ -483,18 +498,6 @@ namespace SimpleW {
                     await SendTextAsync("Internal Server Error", 500, "Internal Server Error").ConfigureAwait(false);
                     return;
                 }
-
-                // how many consumed the parser
-                int remaining = (int)sequence.Length;
-                int consumed = _parseBufferCount - remaining;
-
-                if (consumed > 0) {
-                    if (remaining > 0) {
-                        Buffer.BlockCopy(_parseBuffer, consumed, _parseBuffer, 0, remaining);
-                    }
-                    _parseBufferCount = remaining;
-                }
-                // if nothing consumed, we need/wait for more data
             }
         }
 
