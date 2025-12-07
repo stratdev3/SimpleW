@@ -581,7 +581,8 @@ namespace SimpleW {
                 return;
             }
 
-            TimeSpan period = TimeSpan.FromSeconds(OptionSessionTimeout.Seconds / 2);
+            double seconds = Math.Min(5, OptionSessionTimeout.TotalSeconds / 2);
+            TimeSpan period = TimeSpan.FromSeconds(seconds);
             _sessionTimeoutTimer = new Timer(CheckSessionTimeout, null, period, period);
         }
 
@@ -599,8 +600,7 @@ namespace SimpleW {
                 long timeoutMs = (long)OptionSessionTimeout.TotalMilliseconds;
 
                 foreach (var kvp in Sessions) {
-                    var session = kvp.Value;
-                    long last = session.LastActivityTick;
+                    HttpSession? session = kvp.Value;
                     if (now - session.LastActivityTick > timeoutMs) {
                         Sessions.TryRemove(session.Id, out HttpSession? s);
                         s?.Dispose();
