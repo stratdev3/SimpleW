@@ -502,6 +502,13 @@ namespace SimpleW {
                 return false; // invalid request
             }
 
+            // if no content-length and no chunked
+            if (!isChunked && (!contentLength.HasValue || contentLength.Value == 0)) {
+                request.Body = ReadOnlySequence<byte>.Empty;
+                buffer = buffer.Slice(bodyStart);
+                return true;
+            }
+
             ReadOnlySequence<byte> fullSequence = buffer;
 
             // 3. read the body if it exists
@@ -527,11 +534,6 @@ namespace SimpleW {
 
                 request.Body = body;
                 buffer = fullSequence.Slice(consumedTo);
-            }
-            else {
-                // no body : reset sequence position at start
-                request.Body = ReadOnlySequence<byte>.Empty;
-                buffer = fullSequence.Slice(bodyStart);
             }
 
             return true;
@@ -634,6 +636,12 @@ namespace SimpleW {
 
             request.Headers = headers;
 
+            // no content-length and no chunked
+            if (!isChunked && (!contentLength.HasValue || contentLength.Value == 0)) {
+                request.Body = ReadOnlySequence<byte>.Empty;
+                return headerBytesLen;
+            }
+
             // 4. body (Content-Length ou chunked)
             int bodyStart = headerBytesLen;
             int availableBodyBytes = length - bodyStart;
@@ -650,14 +658,8 @@ namespace SimpleW {
                 return totalConsumed;
             }
 
-            // context-length
-            if (!contentLength.HasValue || contentLength.Value == 0) {
-                request.Body = ReadOnlySequence<byte>.Empty;
-                return headerBytesLen;
-            }
-
-            // check for body max size
-            long clLong = contentLength.Value;
+            // check for body max size (hide warning on contextLengh as we already know it has value)
+            long clLong = contentLength!.Value;
             if (clLong > _maxBodySize) {
                 throw new HttpRequestTooLargeException($"Request body too large: {clLong} bytes (limit: {_maxBodySize}).");
             }
