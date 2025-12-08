@@ -768,7 +768,7 @@ namespace SimpleW {
                 //
                 bodyWriter = new PooledBufferWriter(_bufferPool);
 
-                Utf8JsonWriter jsonWriter = new(
+                using Utf8JsonWriter jsonWriter = new(
                     bodyWriter,
                     new JsonWriterOptions {
                         SkipValidation = true, // better perfs is JSON is already valid
