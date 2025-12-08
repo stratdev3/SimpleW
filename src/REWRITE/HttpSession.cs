@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
-using System.IO.Pipelines;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -46,6 +45,11 @@ namespace SimpleW {
         private readonly HttpRouter _router;
 
         /// <summary>
+        /// Flag to avoid multiple Connect() call
+        /// </summary>
+        private bool _receiving;
+
+        /// <summary>
         /// Received Buffer
         /// </summary>
         private byte[] _recvBuffer;
@@ -61,19 +65,14 @@ namespace SimpleW {
         private int _parseBufferCount;
 
         /// <summary>
-        /// Pipe from ReceiveLoop and NetworkStream Strategy
+        /// Parser réutilisé pour cette session
         /// </summary>
-        private Pipe _pipe;
+        private HttpRequestParserState _parser;
 
         /// <summary>
         /// Last HttpRequest Parsed
         /// </summary>
         private readonly HttpRequest _request;
-
-        /// <summary>
-        /// Parser réutilisé pour cette session
-        /// </summary>
-        private HttpRequestParserState _parser;
 
         /// <summary>
         /// Constructor
@@ -89,8 +88,12 @@ namespace SimpleW {
             _bufferPool = bufferPool;
             _router = router;
 
-            _request = new HttpRequest();
+            _recvBuffer = _bufferPool.Rent(BufferSize);
+            _parseBuffer = _bufferPool.Rent(BufferSize);
+            _parseBufferCount = 0;
+
             _parser = new HttpRequestParserState(server.MaxRequestHeaderSize, server.MaxRequestBodySize);
+            _request = new HttpRequest();
 
             SocketOptions();
 
@@ -100,41 +103,13 @@ namespace SimpleW {
         #region Connect
 
         /// <summary>
-        /// Flag to avoid multiple Connect() call
+        /// Connect
         /// </summary>
-        private bool _receiving;
-
-        /// <summary>
-        /// Receive Strategy
-        /// </summary>
-        private ReceivedStrategy _receivedStrategy;
-
-        /// <summary>
-        /// Connect with a received strategy
-        /// </summary>
-        public void Connect(ReceivedStrategy rs) {
+        public void Connect() {
             if (_receiving) {
                 return;
             }
             _receiving = true;
-            _receivedStrategy = rs;
-
-            if (_receivedStrategy == ReceivedStrategy.SocketEventArgs) {
-                _pipe = new Pipe(new PipeOptions(useSynchronizationContext: false));
-                ReceiveEventArgs();
-            }
-            else if (_receivedStrategy == ReceivedStrategy.ReceiveLoop) {
-                _pipe = new Pipe(new PipeOptions(useSynchronizationContext: false));
-                _ = ReceiveLoopAsync();
-            }
-            else if (_receivedStrategy == ReceivedStrategy.NetworkStream) {
-                ReceiveNetworkStream();
-            }
-            else if (_receivedStrategy == ReceivedStrategy.ReceiveLoopBuffer) {
-                _recvBuffer = _bufferPool.Rent(BufferSize);
-                _parseBuffer = _bufferPool.Rent(BufferSize);
-                _parseBufferCount = 0;
-            }
         }
 
         /// <summary>
@@ -171,11 +146,6 @@ namespace SimpleW {
         private bool IsSsl => _sslStream != null;
 
         /// <summary>
-        /// NetworkStream or SslStream
-        /// </summary>
-        private Stream? _transportStream;
-
-        /// <summary>
         /// SslStream
         /// </summary>
         private SslStream? _sslStream;
@@ -209,190 +179,32 @@ namespace SimpleW {
             ).ConfigureAwait(false);
 
             _sslStream = sslStream;
-            _transportStream = sslStream;
         }
 
         #endregion ssl
 
-        #region receive Strategy NetworkStream
+        #region handle idle/read timeouts
 
         /// <summary>
-        /// Reader for NetworkStream
+        /// Flag LastActivityTick
         /// </summary>
-        private PipeReader? _reader;
+        public long LastActivityTick { get; private set; }
 
         /// <summary>
-        /// Receive from NetworkStream
+        /// Update LastActivityTick
         /// </summary>
-        private void ReceiveNetworkStream() {
-            if (_transportStream is null) {
-                _transportStream = new NetworkStream(_socket, ownsSocket: false);
-            }
-
-            _reader = PipeReader.Create(
-                _transportStream,
-                new StreamPipeReaderOptions(
-                    pool: MemoryPool<byte>.Shared,
-                    bufferSize: BufferSize,
-                    minimumReadSize: BufferSize,
-                    leaveOpen: true
-                )
-            );
+        public void MarkActivity() {
+            LastActivityTick = Environment.TickCount64;
         }
 
-        #endregion receive Strategy NetworkStream
+        #endregion handle idle/read timeouts
 
-        #region receive Strategy ReceiveLoop
+        #region Process
 
         /// <summary>
-        /// Copy ReceiveAsync to Pipe Writer
+        /// Flag to close Connection after Response
         /// </summary>
-        /// <returns></returns>
-        private async Task ReceiveLoopAsync() {
-            PipeWriter writer = _pipe.Writer;
-
-            try {
-                while (true) {
-
-                    // 1. request a internal buffer to pipe
-                    Memory<byte> memory = writer.GetMemory(BufferSize);
-
-                    int bytesRead;
-                    try {
-                        if (_sslStream != null) {
-                            bytesRead = await _sslStream.ReadAsync(memory).ConfigureAwait(false);
-                        }
-                        else {
-                            bytesRead = await _socket.ReceiveAsync(memory, SocketFlags.None).ConfigureAwait(false);
-                        }
-                    }
-                    catch (ObjectDisposedException) {
-                        break;
-                    }
-                    catch (SocketException) {
-                        break;
-                    }
-                    catch (IOException ex) when (ex.InnerException is SocketException) {
-                        break; // ssl exception
-                    }
-
-                    if (bytesRead == 0) {
-                        // remote closed
-                        break;
-                    }
-
-                    // 2. update the pipe how many bytes has been read
-                    writer.Advance(bytesRead);
-
-                    // 3. reset idle timer
-                    Server.MarkSession(this);
-
-                    // 4. flush to the reader
-                    FlushResult result = await writer.FlushAsync().ConfigureAwait(false);
-
-                    if (result.IsCompleted) {
-                        break;
-                    }
-                }
-            }
-            finally {
-                await writer.CompleteAsync().ConfigureAwait(false);
-            }
-        }
-
-        #endregion receive Strategy ReceiveLoop
-
-        #region receive Strategy SocketEventArgs
-
-        private byte[]? _receiveBuffer;
-        private SocketAsyncEventArgs _receiveEventArg = null!;
-
-        private void ReceiveEventArgs() {
-
-            // buffer for socket
-            _receiveBuffer = _bufferPool.Rent(BufferSize);
-
-            // receive event arg
-            _receiveEventArg = new();
-            _receiveEventArg.UserToken = this;
-            _receiveEventArg.SetBuffer(_receiveBuffer, 0, _receiveBuffer.Length);
-            _receiveEventArg.Completed += OnReceiveAsyncCompleted;
-
-            TryReceive();
-        }
-
-        /// <summary>
-        /// Receive
-        /// </summary>
-        private void TryReceive() {
-            if (!_socket.Connected) {
-                return;
-            }
-
-            bool isAsyncOperation;
-            try {
-                isAsyncOperation = _socket.ReceiveAsync(_receiveEventArg);
-            }
-            catch (ObjectDisposedException) {
-                return;
-            }
-
-            // complete (sync)
-            if (!isAsyncOperation) {
-                ProcessReceive(_receiveEventArg);
-            }
-            // else it will call OnReceiveAsyncCompleted
-        }
-
-        private void ProcessReceive(SocketAsyncEventArgs e) {
-            // any error or no more byte, then close the writer pipe
-            if (e.SocketError != SocketError.Success || e.BytesTransferred <= 0) {
-                _pipe.Writer.Complete();
-                return;
-            }
-
-            // reset idle timer
-            Server.MarkSession(this);
-
-            // copy to pipe
-            ReadOnlySpan<byte> span = new(_receiveBuffer, e.Offset, e.BytesTransferred);
-            _pipe.Writer.Write(span);
-
-            _ = ContinueReceiveAsync();
-        }
-
-        private async Task ContinueReceiveAsync() {
-            try {
-                FlushResult result = await _pipe.Writer.FlushAsync().ConfigureAwait(false);
-
-                if (result.IsCompleted) {
-                    await _pipe.Writer.CompleteAsync().ConfigureAwait(false);
-                    return;
-                }
-
-                TryReceive();
-            }
-            catch (Exception ex) {
-                Console.WriteLine($"[HTTP] ContinueReceiveAsync error: {ex.Message}");
-                await _pipe.Writer.CompleteAsync(ex).ConfigureAwait(false);
-                try { _socket.Close(); }
-                catch { }
-            }
-        }
-
-        /// <summary>
-        /// Receive Completed
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private static void OnReceiveAsyncCompleted(object? sender, SocketAsyncEventArgs e) {
-            HttpSession? conn = (HttpSession)e.UserToken!;
-            conn.ProcessReceive(e);
-        }
-
-        #endregion receive Strategy SocketEventArgs
-
-        #region Strategy ReceiveLoopBuffer
+        private bool _closeAfterResponse;
 
         /// <summary>
         /// Main Process Loop :
@@ -401,7 +213,7 @@ namespace SimpleW {
         ///  - Parse with HttpRequestParserState
         ///  - HttpRouter Dispatch
         /// </summary>
-        public async Task ReceiveLoopBufferAsync() {
+        public async Task ProcessAsync() {
             //
             // MAIN PROCESS LOOP
             //
@@ -502,160 +314,6 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Enlarge Parse Buffer if needed
-        /// </summary>
-        /// <param name="additionalBytes">number of bytes to add</param>
-        private void EnsureParseBufferCapacity(int additionalBytes) {
-            int required = _parseBufferCount + additionalBytes;
-            if (_parseBuffer.Length >= required) {
-                return;
-            }
-
-            int newSize = _parseBuffer.Length * 2;
-            if (newSize < required) {
-                newSize = required;
-            }
-
-            byte[] newBuffer = _bufferPool.Rent(newSize);
-            Buffer.BlockCopy(_parseBuffer, 0, newBuffer, 0, _parseBufferCount);
-            _bufferPool.Return(_parseBuffer);
-            _parseBuffer = newBuffer;
-        }
-
-        #endregion Strategy ReceiveLoopBuffer
-
-        #region Process
-
-        /// <summary>
-        /// Main Process Loop :
-        ///     1. read pipe
-        ///     2. call router
-        ///     3. send response
-        /// </summary>
-        public async Task ProcessAsync() {
-
-            if (_receivedStrategy == ReceivedStrategy.ReceiveLoopBuffer) {
-                await ReceiveLoopBufferAsync().ConfigureAwait(false);
-                return;
-            }
-
-            PipeReader reader = _receivedStrategy == ReceivedStrategy.NetworkStream
-                                    ? _reader ?? throw new InvalidOperationException("NetworkStream strategy selected but _reader is null")
-                                    : _pipe.Reader;
-
-            try {
-                //
-                // MAIN PROCESS LOOP
-                //
-                while (true) {
-
-                    // init reader with idle timeout
-                    ReadResult result;
-                    try {
-                        result = await reader.ReadAsync().ConfigureAwait(false);
-                    }
-                    catch (IOException ex)
-                        when (ex.InnerException is SocketException se
-                              && (se.SocketErrorCode == SocketError.ConnectionReset
-                                  || se.SocketErrorCode == SocketError.ConnectionAborted)
-                    ) {
-                        // client a reset/abort (consider as a normal closed)
-                        return;
-                    }
-                    catch (SocketException se)
-                        when (se.SocketErrorCode == SocketError.ConnectionReset
-                              || se.SocketErrorCode == SocketError.ConnectionAborted
-                    ) {
-                        return;
-                    }
-                    catch (ObjectDisposedException) {
-                        // socket/stream closed (idle timeout or Dispose)
-                        return;
-                    }
-                    ReadOnlySequence<byte> buffer = result.Buffer;
-
-                    if (_receivedStrategy == ReceivedStrategy.NetworkStream) {
-                        // reset idle timer
-                        Server.MarkSession(this);
-                    }
-
-                    try {
-                        // parse HttpRequest (http pipelining support)
-                        while (
-                            _parser.TryReadHttpRequest(ref buffer, _request)
-                            //FakeHttpRequest(ref buffer, _request)
-                        ) {
-                            try {
-                                // should close connection
-                                _closeAfterResponse = ShouldCloseConnection(_request);
-
-                                // router and dispatch
-                                await _router.DispatchAsync(this, _request).ConfigureAwait(false);
-                                //await SendJsonAsync(new { message = "Hello World !" });
-
-                                // if so, then close connection
-                                if (_closeAfterResponse) {
-                                    reader.AdvanceTo(buffer.Start, buffer.End);
-                                    return;
-                                }
-                            }
-                            finally {
-                                _request.ReturnPooledBodyBuffer();
-                            }
-                        }
-                    }
-                    catch (HttpRequestTooLargeException) {
-                        _closeAfterResponse = true;
-                        await SendTextAsync("Payload Too Large", 413, "Payload Too Large").ConfigureAwait(false);
-                        reader.AdvanceTo(buffer.End);
-                        return;
-                    }
-                    catch (Exception ex) {
-                        Console.WriteLine($"[HTTP] Error while processing {_request?.Method} {_request?.Path} for host '{_request?.Headers.Host ?? "<no-host>"}': {ex}");
-                        await SendTextAsync("Internal Server Error", 500, "Internal Server Error").ConfigureAwait(false);
-                        break; // close connection after server error
-                    }
-
-                    reader.AdvanceTo(buffer.Start, buffer.End);
-
-                    if (result.IsCompleted) {
-                        break;
-                    }
-                }
-            }
-            finally {
-                await reader.CompleteAsync().ConfigureAwait(false);
-            }
-        }
-
-        /// <summary>
-        /// Fake HttpRequest
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="request"></param>
-        /// <returns></returns>
-        public static bool FakeHttpRequest(ref ReadOnlySequence<byte> buffer, HttpRequest request) {
-            request.Reset();
-
-            if (buffer.Length == 0) {
-                return false;
-            }
-
-            request.Method = "GET";
-            request.Path = "/api/test/hello";
-            request.Protocol = "HTTP/1.1";
-            request.Headers = default;
-
-            buffer = buffer.Slice(buffer.End);
-            return true;
-        }
-
-        /// <summary>
-        /// Flag to close Connection after Response
-        /// </summary>
-        private bool _closeAfterResponse;
-
-        /// <summary>
         /// Update the _closeAfterResponse flag
         /// </summary>
         /// <param name="request"></param>
@@ -676,15 +334,26 @@ namespace SimpleW {
             return true;
         }
 
-        #region handle idle/read timeouts
+        /// <summary>
+        /// Enlarge Parse Buffer if needed
+        /// </summary>
+        /// <param name="additionalBytes">number of bytes to add</param>
+        private void EnsureParseBufferCapacity(int additionalBytes) {
+            int required = _parseBufferCount + additionalBytes;
+            if (_parseBuffer.Length >= required) {
+                return;
+            }
 
-        public long LastActivityTick { get; private set; }
+            int newSize = _parseBuffer.Length * 2;
+            if (newSize < required) {
+                newSize = required;
+            }
 
-        internal void MarkActivity() {
-            LastActivityTick = Environment.TickCount64;
+            byte[] newBuffer = _bufferPool.Rent(newSize);
+            Buffer.BlockCopy(_parseBuffer, 0, newBuffer, 0, _parseBufferCount);
+            _bufferPool.Return(_parseBuffer);
+            _parseBuffer = newBuffer;
         }
-
-        #endregion handle idle/read timeouts
 
         #endregion Process
 
@@ -1029,21 +698,6 @@ namespace SimpleW {
 
             _disposed = true;
 
-            if (_receivedStrategy == ReceivedStrategy.ReceiveLoop || _receivedStrategy == ReceivedStrategy.NetworkStream) {
-                try {
-                    _pipe.Writer.Complete();
-                }
-                catch { }
-
-                if (_reader is not null) {
-                    try {
-                        _reader.Complete();
-                    }
-                    catch { }
-                    _reader = null;
-                }
-            }
-
             try {
                 if (_socket.Connected) {
                     _socket.Shutdown(SocketShutdown.Both);
@@ -1053,72 +707,50 @@ namespace SimpleW {
 
             try { _socket.Dispose(); } catch { }
 
-            if (_receivedStrategy == ReceivedStrategy.SocketEventArgs) {
-                if (_receiveEventArg is not null) {
-                    _receiveEventArg.Completed -= OnReceiveAsyncCompleted;
-                    _receiveEventArg.Dispose();
-                }
-                if (_receiveBuffer is not null) {
-                    _bufferPool.Return(_receiveBuffer);
-                    _receiveBuffer = null;
-                }
-            }
-            else if (_receivedStrategy == ReceivedStrategy.ReceiveLoopBuffer) {
-                try {
-                    if (_recvBuffer is not null) {
-                        _bufferPool.Return(_recvBuffer);
-                        _recvBuffer = null!;
-                    }
-                }
-                catch { }
-
-                try {
-                    if (_parseBuffer is not null) {
-                        _bufferPool.Return(_parseBuffer);
-                        _parseBuffer = null!;
-                        _parseBufferCount = 0;
-                    }
-                }
-                catch { }
-            }
-
-            try { _sslStream?.Dispose(); }
-            catch { }
+            try { _sslStream?.Dispose(); } catch { }
             _sslStream = null;
 
-            try { _transportStream?.Dispose(); }
-            catch { }
-            _transportStream = null;
+            if (_recvBuffer is not null) {
+                _bufferPool.Return(_recvBuffer);
+                _recvBuffer = null!;
+            }
+
+            if (_parseBuffer is not null) {
+                _bufferPool.Return(_parseBuffer);
+                _parseBuffer = null!;
+                _parseBufferCount = 0;
+            }
+
         }
 
         #endregion IDisposable
 
-    }
-
-    /// <summary>
-    /// Received Strategy
-    /// </summary>
-    public enum ReceivedStrategy {
+        #region helper
 
         /// <summary>
-        /// SocketEventArgs
+        /// Fake HttpRequest
         /// </summary>
-        SocketEventArgs = 1,
+        /// <param name="buffer"></param>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public static bool FakeHttpRequest(ref ReadOnlySequence<byte> buffer, HttpRequest request) {
+            request.Reset();
 
-        /// <summary>
-        /// Receive Loop until received read all data
-        /// </summary>
-        ReceiveLoop = 2,
+            if (buffer.Length == 0) {
+                return false;
+            }
 
-        /// <summary>
-        /// a NetworkStream handle all read operation other a PipeReader
-        /// </summary>
-        NetworkStream = 3,
+            request.Method = "GET";
+            request.Path = "/api/test/hello";
+            request.Protocol = "HTTP/1.1";
+            request.Headers = default;
 
-        /// <summary>
-        /// Receive Loop with buffer until received read all data
-        /// </summary>
-        ReceiveLoopBuffer = 4,
+            buffer = buffer.Slice(buffer.End);
+            return true;
+        }
+
+        #endregion helper
+
     }
 
     /// <summary>

@@ -365,14 +365,6 @@ namespace SimpleW {
         /// </remarks>
         public int OptionTcpKeepAliveRetryCount { get; set; } = -1;
 
-        /// <summary>
-        /// Receive Strategy
-        /// </summary>
-        /// <remarks>
-        /// Strategy on How to read received data
-        /// </remarks>
-        public ReceivedStrategy OptionReceiveStrategy { get; set; } = ReceivedStrategy.ReceiveLoopBuffer;
-
         #endregion options
 
         /// <summary>
@@ -400,9 +392,6 @@ namespace SimpleW {
                 if (!OptionRunAcceptSocketPerCore) {
                     throw new ArgumentException($"{nameof(OptionReusePort)} is only useful on linux when {nameof(OptionRunAcceptSocketPerCore)} is enable.");
                 }
-            }
-            if (SslContext != null && OptionReceiveStrategy == ReceivedStrategy.SocketEventArgs) {
-                throw new ArgumentException($"{nameof(ReceivedStrategy.SocketEventArgs)} strategy is not compatible with Https.");
             }
 
             // create socket
@@ -483,7 +472,7 @@ namespace SimpleW {
                     || e.SocketError == SocketError.ConnectionReset
                     || e.SocketError == SocketError.OperationAborted
                     || e.SocketError == SocketError.Shutdown)
-                ) {
+            ) {
                 OnError(e.SocketError);
             }
 
@@ -529,7 +518,7 @@ namespace SimpleW {
                 if (SslContext is not null) {
                     await connection.UseHttps(SslContext).ConfigureAwait(false);
                 }
-                connection.Connect(OptionReceiveStrategy);                  // receive data
+                connection.Connect()                    ;                   // receive data
                 await connection.ProcessAsync().ConfigureAwait(false);      // handle data
             }
             catch (Exception ex) {
