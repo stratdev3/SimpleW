@@ -26,7 +26,7 @@ The following example build a REST API with a clear routing and controller/metho
 
 :::
 
-Then just open your browser to http://localhost:2015/api/test/hello?name=Chris and you will see the `{ "message": "Chris, Hello World !" }` json response.
+Then just open your browser to <http://localhost:2015/api/test/hello?name=Chris> and you will see the `{ "message": "Hello Chris !" }` JSON response.
 
 ::: tip NOTE
 The controller __CAN NOT__ have constructor. All properties [`Request`](../reference/httprequest), [`Response`](../reference/httpresponse) (...) will be injected after session instanciation. See [callback](./api-callback) on how to inject specific code in controllers.
