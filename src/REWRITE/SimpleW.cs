@@ -412,7 +412,7 @@ namespace SimpleW {
                 SocketAsyncEventArgs listenSocketEventArgs = new();
                 listenSocketEventArgs.Completed += OnAcceptSocketCompleted;
 
-                // On lance la première acceptation
+                // start the first accept
                 AcceptSocket(listenSocketEventArgs);
             }
         }
@@ -451,25 +451,19 @@ namespace SimpleW {
                 // handle connection : create a HttpSession
                 _ = CreateSessionAsync(e.AcceptSocket);
             }
-            else {
-                // skip disconnect errors
-                if (e.SocketError == SocketError.ConnectionAborted
+            // non disconnect errors
+            else if (!(e.SocketError == SocketError.ConnectionAborted
                     || e.SocketError == SocketError.ConnectionRefused
                     || e.SocketError == SocketError.ConnectionReset
                     || e.SocketError == SocketError.OperationAborted
-                    || e.SocketError == SocketError.Shutdown
+                    || e.SocketError == SocketError.Shutdown)
                 ) {
-                    return;
-                }
                 OnError(e.SocketError);
             }
 
             // accept new client (except if socket is closed)
-            if (_listenSocket != null && !_listenSocket.SafeHandle.IsInvalid) {
+            if (_listenSocket != null && !_listenSocket.SafeHandle.IsInvalid && !IsStopping) {
                 AcceptSocket(e);
-            }
-            else {
-                Console.WriteLine("ProcessAcceptSocket ERROR");
             }
         }
 
