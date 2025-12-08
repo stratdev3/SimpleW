@@ -148,16 +148,20 @@ namespace SimpleW {
 
                 // close all active connections
                 foreach (var session in Sessions.Values) {
-                    try {
-                        session.Dispose();
-                    }
-                    catch { }
+                    try { session.Dispose(); } catch { }
                 }
                 Sessions.Clear();
 
                 // stop idle timer
                 _sessionTimeoutTimer?.Dispose();
                 _sessionTimeoutTimer = null;
+
+                // acceptors
+                foreach (var e in _acceptorEventArgs) {
+                    try { e.Completed -= OnAcceptSocketCompleted; } catch { }
+                    try { e.Dispose(); }  catch { }
+                }
+                _acceptorEventArgs.Clear();
 
                 // reset state
                 IsStarted = false;
@@ -248,6 +252,11 @@ namespace SimpleW {
         /// Liste Socket
         /// </summary>
         private Socket? _listenSocket;
+
+        /// <summary>
+        /// SocketAsyncEventArgs list
+        /// </summary>
+        private readonly List<SocketAsyncEventArgs> _acceptorEventArgs = new();
 
         #region options
 
@@ -411,6 +420,7 @@ namespace SimpleW {
                 // SocketAsyncEventArgs
                 SocketAsyncEventArgs listenSocketEventArgs = new();
                 listenSocketEventArgs.Completed += OnAcceptSocketCompleted;
+                _acceptorEventArgs.Add(listenSocketEventArgs);
 
                 // start the first accept
                 AcceptSocket(listenSocketEventArgs);
