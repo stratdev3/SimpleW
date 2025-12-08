@@ -8,7 +8,8 @@ namespace Sample {
 
         // use the Route attribute to target a public method
         [Route("GET", "/test")]
-        public object SomePublicMethod() {
+        public object SomePublicMethod(string name = "World") {
+            // Query param passed in through function params
 
             // the Request property contains all data (Url, Headers...) from the client Request
             var url = Request.Url;
@@ -19,8 +20,8 @@ namespace Sample {
             };
         }
 
-        private string Message() {
-            return "Hello World !";
+        private string Message(string name) {
+            return $"Hello {name} !";
         }
 
     }
