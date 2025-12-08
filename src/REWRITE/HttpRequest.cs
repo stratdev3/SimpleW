@@ -163,6 +163,10 @@ namespace SimpleW {
         public string? Connection;
         public string? TransferEncoding;
         public string? Cookie;
+        public string? Upgrade;
+        public string? SecWebSocketKey;
+        public string? SecWebSocketVersion;
+        public string? SecWebSocketProtocol;
 
         // fallback for all other headers
         private HeaderEntry[]? _other;
@@ -214,6 +218,22 @@ namespace SimpleW {
                 Cookie = value;
                 return;
             }
+            if (name.Equals("Upgrade", StringComparison.OrdinalIgnoreCase)) {
+                Upgrade = value;
+                return;
+            }
+            if (name.Equals("Sec-WebSocket-Key", StringComparison.OrdinalIgnoreCase)) {
+                SecWebSocketKey = value;
+                return;
+            }
+            if (name.Equals("Sec-WebSocket-Version", StringComparison.OrdinalIgnoreCase)) {
+                SecWebSocketVersion = value;
+                return;
+            }
+            if (name.Equals("Sec-WebSocket-Protocol", StringComparison.OrdinalIgnoreCase)) {
+                SecWebSocketProtocol = value;
+                return;
+            }
 
             // fallback
             AddFallback(name, value);
@@ -262,6 +282,10 @@ namespace SimpleW {
             }
             if (name.Equals("Cookie", StringComparison.OrdinalIgnoreCase)) {
                 value = Cookie;
+                return value is not null;
+            }
+            if (name.Equals("Upgrade", StringComparison.OrdinalIgnoreCase)) {
+                value = Upgrade;
                 return value is not null;
             }
 
@@ -315,6 +339,18 @@ namespace SimpleW {
             }
             if (Cookie is not null) {
                 yield return new("Cookie", Cookie);
+            }
+            if (Upgrade is not null) {
+                yield return new("Upgrade", Upgrade);
+            }
+            if (SecWebSocketKey is not null) {
+                yield return new("Sec-WebSocket-Key", SecWebSocketKey);
+            }
+            if (SecWebSocketVersion is not null) {
+                yield return new("Sec-WebSocket-Version", SecWebSocketVersion);
+            }
+            if (SecWebSocketProtocol is not null) {
+                yield return new("Sec-WebSocket-Protocol", SecWebSocketProtocol);
             }
 
             // fallback
