@@ -65,7 +65,7 @@ namespace Core {
             };
 
             Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
-            await server.StartAsync(cts.Token);
+            await server.RunAsync(cts.Token);
             Console.WriteLine("server stopped");
         }
 

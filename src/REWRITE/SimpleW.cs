@@ -68,36 +68,52 @@ namespace SimpleW {
         public bool IsStopping { get; private set; } = false;
 
         /// <summary>
-        /// Lifetime CTS (interne au serveur)
+        /// Lifetime CTS (server internal)
         /// </summary>
         private CancellationTokenSource? _lifetimeCts;
 
         /// <summary>
-        /// Task qui représente la boucle de vie du serveur
+        /// Task main server loop
         /// </summary>
-        private Task? _runTask;
+        private Task? _lifetimeTask;
 
         /// <summary>
-        /// Start the server
+        /// Start the server (not blocking)
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns>'true' if the server was successfully started, 'false' if the server failed to start</returns>
-        public virtual Task StartAsync(CancellationToken cancellationToken = default) {
-
+        /// <example>await server.StartAsync(appLifetime.ApplicationStopping);</example>
+        public Task StartAsync(CancellationToken cancellationToken = default) {
             if (IsStarted) {
-                return _runTask ?? Task.CompletedTask;
+                return Task.CompletedTask;
             }
 
             _lifetimeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
             IsStarted = true;
             IsStopping = false;
 
             ListenSocket();
             StartSessionTimeoutTimer();
 
-            // keep thread until cancelled
-            _runTask = WaitForCancellationAsync(_lifetimeCts.Token);
-            return _runTask;
+            _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
+
+            // not blocking
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Run the server (blocking)
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <example>await server.RunAsync(cts.Token);</example>
+        public async Task RunAsync(CancellationToken cancellationToken = default) {
+            await StartAsync(cancellationToken).ConfigureAwait(false);
+            if (_lifetimeTask != null) {
+                // blocking
+                await _lifetimeTask.ConfigureAwait(false);
+            }
         }
 
         /// <summary>
@@ -116,9 +132,9 @@ namespace SimpleW {
             }
             catch { }
 
-            if (_runTask != null) {
+            if (_lifetimeTask != null) {
                 try {
-                    await _runTask;
+                    await _lifetimeTask.ConfigureAwait(false);
                 }
                 catch { }
             }
@@ -169,7 +185,7 @@ namespace SimpleW {
 
                 _lifetimeCts?.Dispose();
                 _lifetimeCts = null;
-                _runTask = null;
+                _lifetimeTask = null;
             }
         }
 
