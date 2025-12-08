@@ -249,7 +249,7 @@ namespace SimpleW {
         public int Port => (EndPoint as IPEndPoint)?.Port ?? 0;
 
         /// <summary>
-        /// Liste Socket
+        /// Listen Socket
         /// </summary>
         private Socket? _listenSocket;
 
