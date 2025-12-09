@@ -72,6 +72,11 @@ namespace SimpleW {
         /// <summary>
         /// Last HttpRequest Parsed
         /// </summary>
+        public HttpRequest Request => _request;
+
+        /// <summary>
+        /// Last HttpRequest Parsed
+        /// </summary>
         private readonly HttpRequest _request;
 
         /// <summary>
