@@ -44,10 +44,10 @@ namespace Core {
                 server.UseHttps(sslContext);
             }
 
-            server.MapGet("/api/test/hello", static (session, req) => {
+            server.MapGet("/api/test/hello", static (session) => {
                 return session.SendJsonAsync(new { message = "Hello World !" });
             });
-            server.MapGet("/api/test/text", static (session, req) => {
+            server.MapGet("/api/test/text", static (session) => {
                 return session.SendTextAsync("Hello World !");
             });
             server.OptionReuseAddress = true;

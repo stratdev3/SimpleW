@@ -283,7 +283,7 @@ namespace SimpleW {
                             _closeAfterResponse = ShouldCloseConnection(_request);
 
                             // router and dispatch
-                            await _router.DispatchAsync(this, _request).ConfigureAwait(false);
+                            await _router.DispatchAsync(this).ConfigureAwait(false);
                             //await SendJsonAsync(new { message = "Hello World !" });
 
                             // if so, then close connection

@@ -211,6 +211,38 @@ namespace SimpleW {
 
         #endregion security
 
+        #region middleware and module
+
+        /// <summary>
+        /// Add a new Middleware
+        /// </summary>
+        /// <param name="middleware"></param>
+        public void UseMiddleware(HttpMiddleware middleware) => Router.UseMiddleware(middleware);
+
+        /// <summary>
+        /// Add a new Module
+        /// </summary>
+        /// <param name="module"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        /// <example>
+        /// // declare a test module
+        /// public sealed class TestModule : IHttpModule {
+        ///     public void Install(SimpleW server) {
+        ///         server.MapGet("/api/test/hello", static (session) => {
+        ///             return session.SendTextAsync("Hello World !");
+        ///         }
+        ///     }
+        /// }
+        /// // instanciate test module in SimpleW
+        /// server.UseModule(new TestModule())
+        /// </example>
+        public void UseModule(IHttpModule module) {
+            ArgumentNullException.ThrowIfNull(module);
+            module.Install(this);
+        }
+
+        #endregion middleware and module
+
         #region func
 
         /// <summary>
