@@ -370,7 +370,7 @@ namespace SimpleW {
         /// <summary>
         /// SendTextAsync
         /// </summary>
-        /// <param name="body"></param>
+        /// <param name="body">the string body</param>
         /// <param name="statusCode"></param>
         /// <param name="statusText"></param>
         /// <param name="contentType"></param>
@@ -427,7 +427,7 @@ namespace SimpleW {
         /// SendJsonAsync
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="value"></param>
+        /// <param name="value">the T value</param>
         /// <param name="statusCode"></param>
         /// <param name="statusText"></param>
         /// <param name="contentType"></param>
@@ -540,7 +540,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// SendAsync
+        /// SendAsync alias for body.AsMemory() to ReadOnlyMemory<byte>
         /// </summary>
         /// <param name="body"></param>
         /// <param name="statusCode"></param>
@@ -554,7 +554,7 @@ namespace SimpleW {
         /// <summary>
         /// SendAsync
         /// </summary>
-        /// <param name="body"></param>
+        /// <param name="body">the ReadOnlyMemory<byte> body</param>
         /// <param name="statusCode"></param>
         /// <param name="statusText"></param>
         /// <param name="contentType"></param>
@@ -605,7 +605,7 @@ namespace SimpleW {
             }
         }
 
-        #region lower level Socker SendAsync (thread safe)
+        #region lower level Socket SendAsync (thread safe)
 
         /// <summary>
         /// Semaphore for Socket.SendAsync
@@ -613,7 +613,8 @@ namespace SimpleW {
         private readonly SemaphoreSlim _sendLock = new(1, 1);
 
         /// <summary>
-        /// SendAsync Segments o socket (thread safe)
+        /// SendAsync Segments to socket (thread safe)
+        /// This is the lower level of sending
         /// </summary>
         /// <param name="segments"></param>
         /// <returns></returns>
@@ -650,6 +651,7 @@ namespace SimpleW {
 
         /// <summary>
         /// SendAsync Segments to socket (thread safe)
+        /// This is the lower level of sending
         /// </summary>
         /// <param name="segment1"></param>
         /// <param name="segment2"></param>
@@ -682,7 +684,7 @@ namespace SimpleW {
             }
         }
 
-        #endregion lower level Socker SendAsync (thread safe)
+        #endregion lower level Socket SendAsync (thread safe)
 
         #endregion SendAsync
 
