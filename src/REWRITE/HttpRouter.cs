@@ -148,17 +148,6 @@
         #endregion func
 
         /// <summary>
-        /// Fallback Handler
-        /// </summary>
-        private HttpHandler? _fallback;
-
-        /// <summary>
-        /// Set Fallback Handler
-        /// </summary>
-        /// <param name="handler"></param>
-        public void MapFallback(HttpHandler handler) => _fallback = handler;
-
-        /// <summary>
         /// Find Handler from Method/Path
         /// </summary>
         /// <param name="session"></param>
@@ -191,6 +180,17 @@
 
             return ExecutePipelineAsync(session, static (session) => session.SendTextAsync("Not Found", 404, "Not Found"));
         }
+
+        /// <summary>
+        /// Fallback Handler
+        /// </summary>
+        private HttpHandler? _fallback;
+
+        /// <summary>
+        /// Set Fallback Handler
+        /// </summary>
+        /// <param name="handler"></param>
+        public void MapFallback(HttpHandler handler) => _fallback = handler;
 
     }
 
