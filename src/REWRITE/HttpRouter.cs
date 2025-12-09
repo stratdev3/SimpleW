@@ -34,15 +34,9 @@
         /// <param name="handler"></param>
         /// <returns></returns>
         public void Map(string method, string path, HttpHandler handler) {
-            if (method is null) {
-                throw new ArgumentNullException(nameof(method));
-            }
-            if (path is null) {
-                throw new ArgumentNullException(nameof(path));
-            }
-            if (handler is null) {
-                throw new ArgumentNullException(nameof(handler));
-            }
+            ArgumentNullException.ThrowIfNull(method);
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(handler);
 
             HttpRoute route = new(new HttpRouteAttribute(method, path), handler);
 
