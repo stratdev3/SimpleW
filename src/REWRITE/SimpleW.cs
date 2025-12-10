@@ -217,6 +217,28 @@ namespace SimpleW {
         /// Add a new Middleware
         /// </summary>
         /// <param name="middleware"></param>
+        /// <example>
+        /// // add simple logging
+        /// server.UseMiddleware(static async (session, next) => {
+        ///     var sw = System.Diagnostics.Stopwatch.StartNew();
+        ///     try {
+        ///         await next();
+        ///     }
+        ///     finally {
+        ///         sw.Stop();
+        ///         Console.WriteLine($"[{DateTime.UtcNow:O}] {session.Request.Method} {session.Request.Path} in {sw.ElapsedMilliseconds} ms");
+        ///     }
+        /// });
+        /// // add firewall/auth
+        /// server.UseMiddleware(static (session, next) => {
+        ///     if (session.Request.Path.StartsWith("/api/secret", StringComparison.Ordinal)) {
+        ///         if (!session.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != "secret") {
+        ///             return session.SendTextAsync("Unauthorized", 401, "Unauthorized");
+        ///         }
+        ///     }
+        ///     return next();
+        /// });
+        /// </example>
         public void UseMiddleware(HttpMiddleware middleware) => Router.UseMiddleware(middleware);
 
         /// <summary>
@@ -273,6 +295,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Add Func content for GET request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -284,6 +307,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Add Func content for POST request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -299,6 +323,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Add Func content for GET request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -310,6 +335,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Add Func content for POST request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>

@@ -56,7 +56,7 @@
         }
 
         /// <summary>
-        /// Execute Middleware Pipeline
+        /// Execute Pipeline
         /// </summary>
         /// <param name="session"></param>
         /// <param name="terminalHandler"></param>
@@ -136,6 +136,7 @@
 
         /// <summary>
         /// Add Func content for method request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="method"></param>
         /// <param name="path"></param>
@@ -157,6 +158,7 @@
 
         /// <summary>
         /// Add Func content for GET request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -165,6 +167,7 @@
 
         /// <summary>
         /// Add Func content for POST request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -177,6 +180,7 @@
 
         /// <summary>
         /// Add Func content for method request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="method"></param>
         /// <param name="path"></param>
@@ -187,8 +191,7 @@
             ArgumentNullException.ThrowIfNull(path);
             ArgumentNullException.ThrowIfNull(handler);
 
-            HttpHandlerAsyncReturn asyncWrapper = session =>
-            {
+            HttpHandlerAsyncReturn asyncWrapper = session => {
                 object? result = handler(session);
                 return ValueTask.FromResult(result);
             };
@@ -197,6 +200,7 @@
 
         /// <summary>
         /// Add Func content for GET request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -205,6 +209,7 @@
 
         /// <summary>
         /// Add Func content for POST request
+        /// The return object will be automatically serialized to json and sent
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -228,10 +233,12 @@
                 _ => null
             };
 
+            // GET/POST methods
             if (dict is not null && dict.TryGetValue(session.Request.Path, out route)) {
                 return ExecutePipelineAsync(session, route.Handler);
             }
 
+            // other methods
             if (dict is null) {
                 if (_others.TryGetValue(session.Request.Method, out Dictionary<string, HttpRoute>? otherDict)
                     && otherDict.TryGetValue(session.Request.Path, out route)
@@ -240,6 +247,7 @@
                 }
             }
 
+            // fallback
             if (_fallback != null) {
                 return ExecutePipelineAsync(session, _fallback);
             }
