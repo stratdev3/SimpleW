@@ -1,11 +1,25 @@
 ﻿namespace SimpleW {
 
     /// <summary>
-    /// Delegate for MapGet() and MapPost()
+    /// Delegate for handler that send the response on their own (ValueTask)
     /// </summary>
     /// <param name="session"></param>
     /// <returns></returns>
-    public delegate ValueTask HttpHandler(HttpSession session);
+    public delegate ValueTask HttpHandlerVoid(HttpSession session);
+
+    /// <summary>
+    /// Delegate for async handler that return a result ValueTask<object?>
+    /// </summary>
+    /// <param name="session"></param>
+    /// <returns></returns>
+    public delegate ValueTask<object?> HttpHandlerAsyncReturn(HttpSession session);
+
+    /// <summary>
+    /// Delegate for sync handler that return a result object?
+    /// </summary>
+    /// <param name="session"></param>
+    /// <returns></returns>
+    public delegate object? HttpHandlerSyncResult(HttpSession session);
 
     /// <summary>
     /// Delete for Middleware
@@ -76,7 +90,7 @@
         /// <param name="session"></param>
         /// <param name="terminalHandler"></param>
         /// <returns></returns>
-        private ValueTask ExecutePipelineAsync(HttpSession session, HttpHandler terminalHandler) {
+        private ValueTask ExecutePipelineAsync(HttpSession session, HttpHandlerVoid terminalHandler) {
             if (_middlewares.Count == 0) {
                 return terminalHandler(session);
             }
@@ -96,7 +110,7 @@
 
         #endregion middleware
 
-        #region func
+        #region func void
 
         /// <summary>
         /// Add Func content for method request
@@ -105,7 +119,7 @@
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public void Map(string method, string path, HttpHandler handler) {
+        public void Map(string method, string path, HttpHandlerVoid handler) {
             ArgumentNullException.ThrowIfNull(method);
             ArgumentNullException.ThrowIfNull(path);
             ArgumentNullException.ThrowIfNull(handler);
@@ -135,7 +149,7 @@
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public void MapGet(string path, HttpHandler handler) => Map("GET", path, handler);
+        public void MapGet(string path, HttpHandlerVoid handler) => Map("GET", path, handler);
 
         /// <summary>
         /// Add Func content for POST request
@@ -143,9 +157,90 @@
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public void MapPost(string path, HttpHandler handler) => Map("POST", path, handler);
+        public void MapPost(string path, HttpHandlerVoid handler) => Map("POST", path, handler);
 
-        #endregion func
+        #endregion func void
+
+        #region func async return
+
+        /// <summary>
+        /// Add Func content for method request
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public void Map(string method, string path, HttpHandlerAsyncReturn handler) {
+            ArgumentNullException.ThrowIfNull(method);
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(handler);
+
+            HttpHandlerVoid wrapper = async session => {
+                object? result = await handler(session).ConfigureAwait(false);
+                if (result is not null) {
+                    await session.SendJsonAsync(result).ConfigureAwait(false);
+                }
+            };
+            Map(method, path, wrapper);
+        }
+
+        /// <summary>
+        /// Add Func content for GET request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public void MapGet(string path, HttpHandlerAsyncReturn handler) => Map("GET", path, handler);
+
+        /// <summary>
+        /// Add Func content for POST request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public void MapPost(string path, HttpHandlerAsyncReturn handler) => Map("POST", path, handler);
+
+        #endregion func async return
+
+        #region func sync return
+
+        /// <summary>
+        /// Add Func content for method request
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public void Map(string method, string path, HttpHandlerSyncResult handler) {
+            ArgumentNullException.ThrowIfNull(method);
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(handler);
+
+            HttpHandlerAsyncReturn asyncWrapper = session =>
+            {
+                object? result = handler(session);
+                return ValueTask.FromResult(result);
+            };
+            Map(method, path, asyncWrapper);
+        }
+
+        /// <summary>
+        /// Add Func content for GET request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public void MapGet(string path, HttpHandlerSyncResult handler) => Map("GET", path, handler);
+
+        /// <summary>
+        /// Add Func content for POST request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public void MapPost(string path, HttpHandlerSyncResult handler) => Map("POST", path, handler);
+
+        #endregion func sync return
 
         /// <summary>
         /// Find Handler from Method/Path
@@ -184,13 +279,13 @@
         /// <summary>
         /// Fallback Handler
         /// </summary>
-        private HttpHandler? _fallback;
+        private HttpHandlerVoid? _fallback;
 
         /// <summary>
         /// Set Fallback Handler
         /// </summary>
         /// <param name="handler"></param>
-        public void MapFallback(HttpHandler handler) => _fallback = handler;
+        public void MapFallback(HttpHandlerVoid handler) => _fallback = handler;
 
     }
 

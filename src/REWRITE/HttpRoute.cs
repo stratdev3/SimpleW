@@ -13,14 +13,14 @@
         /// <summary>
         /// The Handler
         /// </summary>
-        public HttpHandler Handler { get; internal set; }
+        public HttpHandlerVoid Handler { get; internal set; }
 
         /// <summary>
         /// Create HttpRoute from RouteAttribute
         /// </summary>
         /// <param name="attribute">the HttpRoute attribute.</param>
         /// <param name="handler">the HttpHandler.</param>
-        public HttpRoute(HttpRouteAttribute attribute, HttpHandler handler) {
+        public HttpRoute(HttpRouteAttribute attribute, HttpHandlerVoid handler) {
             Attribute = attribute;
             Handler = handler;
         }

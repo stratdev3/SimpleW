@@ -243,7 +243,7 @@ namespace SimpleW {
 
         #endregion middleware and module
 
-        #region func
+        #region func void
 
         /// <summary>
         /// Add Func content for GET request
@@ -251,7 +251,7 @@ namespace SimpleW {
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public SimpleW MapGet(string path, HttpHandler handler) {
+        public SimpleW MapGet(string path, HttpHandlerVoid handler) {
             Router.MapGet(path, handler);
             return this;
         }
@@ -262,12 +262,64 @@ namespace SimpleW {
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public SimpleW MapPost(string path, HttpHandler handler) {
+        public SimpleW MapPost(string path, HttpHandlerVoid handler) {
             Router.MapPost(path, handler);
             return this;
         }
 
-        #endregion func
+        #endregion func void
+
+        #region func async return
+
+        /// <summary>
+        /// Add Func content for GET request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleW MapGet(string path, HttpHandlerAsyncReturn handler) {
+            Router.MapGet(path, handler);
+            return this;
+        }
+
+        /// <summary>
+        /// Add Func content for POST request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleW MapPost(string path, HttpHandlerAsyncReturn handler) {
+            Router.MapPost(path, handler);
+            return this;
+        }
+
+        #endregion func async return
+
+        #region func sync return
+
+        /// <summary>
+        /// Add Func content for GET request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleW MapGet(string path, HttpHandlerSyncResult handler) {
+            Router.MapGet(path, handler);
+            return this;
+        }
+
+        /// <summary>
+        /// Add Func content for POST request
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleW MapPost(string path, HttpHandlerSyncResult handler) {
+            Router.MapPost(path, handler);
+            return this;
+        }
+
+        #endregion func sync return
 
         #region network
 
