@@ -135,6 +135,11 @@
         #region func async return
 
         /// <summary>
+        /// Action to do on the non null Result of HttpHandlerAsyncReturn/HttpHandlerSyncResult
+        /// </summary>
+        public HttpHandlerResult HandlerResult { get; set; } = HttpHandlerResults.SendJsonResult;
+
+        /// <summary>
         /// Add Func content for method request
         /// The return object will be automatically serialized to json and sent
         /// </summary>
@@ -150,7 +155,7 @@
             HttpHandlerVoid wrapper = async session => {
                 object? result = await handler(session).ConfigureAwait(false);
                 if (result is not null) {
-                    await session.SendJsonAsync(result).ConfigureAwait(false);
+                    await HandlerResult(session, result).ConfigureAwait(false);
                 }
             };
             Map(method, path, wrapper);

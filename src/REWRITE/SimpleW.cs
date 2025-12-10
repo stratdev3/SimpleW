@@ -294,6 +294,30 @@ namespace SimpleW {
         #region func async return
 
         /// <summary>
+        /// Action to do on the non null Result of HttpHandlerAsyncReturn/HttpHandlerSyncResult
+        /// The default action to the serialize the result and sent as a response (see HttpHandlerResults.SendJsonResult).
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        /// <example>
+        /// // example1 : log and sent
+        /// server.UseHandlerResult((session, result) => {
+        ///     Console.WriteLine("result will be serialized and sent as response");
+        ///     return session.SendJsonAsync(result);
+        /// });
+        /// // exemple2: do something async and sent response
+        /// server.UseHandlerResult(async (session, result) => {
+        ///     Console.WriteLine("wait 2sec then result will be serialized and sent as response");
+        ///     await Task.Delay(2_000);
+        ///     await session.SendJsonAsync(result);
+        /// });
+        /// </example>
+        public SimpleW UseHandlerResult(HttpHandlerResult handler) {
+            Router.HandlerResult = handler;
+            return this;
+        }
+
+        /// <summary>
         /// Add Func content for GET request
         /// The return object will be automatically serialized to json and sent
         /// </summary>
