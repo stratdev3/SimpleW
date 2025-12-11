@@ -59,15 +59,15 @@
         /// Execute Pipeline
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="terminalHandler"></param>
+        /// <param name="terminalExecutor"></param>
         /// <returns></returns>
-        private ValueTask ExecutePipelineAsync(HttpSession session, HttpHandlerVoid terminalHandler) {
+        private ValueTask ExecutePipelineAsync(HttpSession session, HttpRouteExecutor terminalExecutor) {
             if (_middlewares.Count == 0) {
-                return terminalHandler(session);
+                return terminalExecutor(session, HandlerResult);
             }
 
             // build the next()
-            Func<ValueTask> next = () => terminalHandler(session);
+            Func<ValueTask> next = () => terminalExecutor(session, HandlerResult);
 
             // loop the next()
             for (int i = _middlewares.Count - 1; i >= 0; i--) {
@@ -81,21 +81,30 @@
 
         #endregion middleware
 
-        #region func void
+        #region HandlerResult
 
         /// <summary>
-        /// Add Func content for method request
+        /// Action to do on the non null Result of any handler (Delegate).
+        /// </summary>
+        public HttpHandlerResult HandlerResult { get; set; } = HttpHandlerResults.SendJsonResult;
+
+        #endregion HandlerResult
+
+        #region Map Delegate
+
+        /// <summary>
+        /// Map a Method (GET, POST... anything) to a Delegate
         /// </summary>
         /// <param name="method"></param>
         /// <param name="path"></param>
         /// <param name="handler"></param>
-        /// <returns></returns>
-        public void Map(string method, string path, HttpHandlerVoid handler) {
+        public void Map(string method, string path, Delegate handler) {
             ArgumentNullException.ThrowIfNull(method);
             ArgumentNullException.ThrowIfNull(path);
             ArgumentNullException.ThrowIfNull(handler);
 
-            HttpRoute route = new(new HttpRouteAttribute(method, path), handler);
+            HttpRouteExecutor executor = HttpRouteExecutorFactory.Create(handler);
+            HttpRoute route = new(new HttpRouteAttribute(method, path), executor);
 
             switch (route.Attribute.Method) {
                 case "GET":
@@ -115,113 +124,16 @@
         }
 
         /// <summary>
-        /// Add Func content for GET request
+        /// Map GET to a Delegate
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void MapGet(string path, HttpHandlerVoid handler) => Map("GET", path, handler);
+        public void MapGet(string path, Delegate handler) => Map("GET", path, handler);
 
         /// <summary>
-        /// Add Func content for POST request
+        /// Map POST to a Delegate
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void MapPost(string path, HttpHandlerVoid handler) => Map("POST", path, handler);
+        public void MapPost(string path, Delegate handler) => Map("POST", path, handler);
 
-        #endregion func void
-
-        #region func async return
-
-        /// <summary>
-        /// Action to do on the non null Result of HttpHandlerAsyncReturn/HttpHandlerSyncResult
-        /// </summary>
-        public HttpHandlerResult HandlerResult { get; set; } = HttpHandlerResults.SendJsonResult;
-
-        /// <summary>
-        /// Add Func content for method request
-        /// The return object will be automatically serialized to json and sent
-        /// </summary>
-        /// <param name="method"></param>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void Map(string method, string path, HttpHandlerAsyncReturn handler) {
-            ArgumentNullException.ThrowIfNull(method);
-            ArgumentNullException.ThrowIfNull(path);
-            ArgumentNullException.ThrowIfNull(handler);
-
-            HttpHandlerVoid wrapper = async session => {
-                object? result = await handler(session).ConfigureAwait(false);
-                if (result is not null) {
-                    await HandlerResult(session, result).ConfigureAwait(false);
-                }
-            };
-            Map(method, path, wrapper);
-        }
-
-        /// <summary>
-        /// Add Func content for GET request
-        /// The return object will be automatically serialized to json and sent
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void MapGet(string path, HttpHandlerAsyncReturn handler) => Map("GET", path, handler);
-
-        /// <summary>
-        /// Add Func content for POST request
-        /// The return object will be automatically serialized to json and sent
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void MapPost(string path, HttpHandlerAsyncReturn handler) => Map("POST", path, handler);
-
-        #endregion func async return
-
-        #region func sync return
-
-        /// <summary>
-        /// Add Func content for method request
-        /// The return object will be automatically serialized to json and sent
-        /// </summary>
-        /// <param name="method"></param>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void Map(string method, string path, HttpHandlerSyncResult handler) {
-            ArgumentNullException.ThrowIfNull(method);
-            ArgumentNullException.ThrowIfNull(path);
-            ArgumentNullException.ThrowIfNull(handler);
-
-            HttpHandlerAsyncReturn asyncWrapper = session => {
-                object? result = handler(session);
-                return ValueTask.FromResult(result);
-            };
-            Map(method, path, asyncWrapper);
-        }
-
-        /// <summary>
-        /// Add Func content for GET request
-        /// The return object will be automatically serialized to json and sent
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void MapGet(string path, HttpHandlerSyncResult handler) => Map("GET", path, handler);
-
-        /// <summary>
-        /// Add Func content for POST request
-        /// The return object will be automatically serialized to json and sent
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="handler"></param>
-        /// <returns></returns>
-        public void MapPost(string path, HttpHandlerSyncResult handler) => Map("POST", path, handler);
-
-        #endregion func sync return
+        #endregion Map Delegate
 
         /// <summary>
         /// Find Handler from Method/Path
@@ -240,7 +152,7 @@
 
             // GET/POST methods
             if (dict is not null && dict.TryGetValue(session.Request.Path, out route)) {
-                return ExecutePipelineAsync(session, route.Handler);
+                return ExecutePipelineAsync(session, route.Executor);
             }
 
             // other methods
@@ -248,7 +160,7 @@
                 if (_others.TryGetValue(session.Request.Method, out Dictionary<string, HttpRoute>? otherDict)
                     && otherDict.TryGetValue(session.Request.Path, out route)
                 ) {
-                    return ExecutePipelineAsync(session, route.Handler);
+                    return ExecutePipelineAsync(session, route.Executor);
                 }
             }
 
@@ -257,19 +169,26 @@
                 return ExecutePipelineAsync(session, _fallback);
             }
 
-            return ExecutePipelineAsync(session, static (session) => session.SendTextAsync("Not Found", 404, "Not Found"));
+            // at last, return a 404
+            return ExecutePipelineAsync(
+                session,
+                HttpRouteExecutorFactory.Create(static (HttpSession s) => s.SendTextAsync("Not Found", 404, "Not Found"))
+            );
         }
 
         /// <summary>
         /// Fallback Handler
         /// </summary>
-        private HttpHandlerVoid? _fallback;
+        private HttpRouteExecutor? _fallback;
 
         /// <summary>
         /// Set Fallback Handler
         /// </summary>
         /// <param name="handler"></param>
-        public void MapFallback(HttpHandlerVoid handler) => _fallback = handler;
+        public void MapFallback(Delegate handler) {
+            ArgumentNullException.ThrowIfNull(handler);
+            _fallback = HttpRouteExecutorFactory.Create(handler);
+        }
 
     }
 

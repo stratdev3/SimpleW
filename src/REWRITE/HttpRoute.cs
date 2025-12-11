@@ -11,18 +11,18 @@
         public readonly HttpRouteAttribute Attribute;
 
         /// <summary>
-        /// The Handler
+        /// Executor
         /// </summary>
-        public HttpHandlerVoid Handler { get; internal set; }
+        public HttpRouteExecutor Executor { get; }
 
         /// <summary>
         /// Create HttpRoute from RouteAttribute
         /// </summary>
         /// <param name="attribute">the HttpRoute attribute.</param>
-        /// <param name="handler">the HttpHandler.</param>
-        public HttpRoute(HttpRouteAttribute attribute, HttpHandlerVoid handler) {
+        /// <param name="executor"></param>
+        public HttpRoute(HttpRouteAttribute attribute, HttpRouteExecutor executor) {
             Attribute = attribute;
-            Handler = handler;
+            Executor = executor;
         }
 
     }
