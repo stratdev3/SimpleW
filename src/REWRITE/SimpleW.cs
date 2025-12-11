@@ -36,25 +36,6 @@ namespace SimpleW {
 
         #endregion constructor
 
-        #region sslcontext
-
-        /// <summary>
-        /// SslContext
-        /// </summary>
-        public SslContext? SslContext { get; private set; }
-
-        /// <summary>
-        /// Add SslContext
-        /// </summary>
-        /// <param name="sslContext"></param>
-        /// <returns></returns>
-        public SimpleW UseHttps(SslContext sslContext) {
-            SslContext = sslContext;
-            return this;
-        }
-
-        #endregion sslcontext
-
         #region actions
 
         /// <summary>
@@ -594,6 +575,25 @@ namespace SimpleW {
         }
 
         #endregion network
+
+        #region sslcontext
+
+        /// <summary>
+        /// SslContext
+        /// </summary>
+        public SslContext? SslContext { get; private set; }
+
+        /// <summary>
+        /// Add SslContext
+        /// </summary>
+        /// <param name="sslContext"></param>
+        /// <returns></returns>
+        public SimpleW UseHttps(SslContext sslContext) {
+            SslContext = sslContext;
+            return this;
+        }
+
+        #endregion sslcontext
 
         #region session
 
