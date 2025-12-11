@@ -1,5 +1,6 @@
-﻿using System.Reflection;
-using System.Globalization;
+﻿using System.Globalization;
+using System.Linq.Expressions;
+using System.Reflection;
 
 
 namespace SimpleW {
@@ -11,10 +12,12 @@ namespace SimpleW {
 
         /// <summary>
         /// Create a HttpRouteExecutor from a Delegate
-        /// Note : the reflection slow code is only called once
+        /// Note : this slow reflection code is only called once
+        ///        to create an Expression Tree of the call to Delegate
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
+        /// <exception cref="NotSupportedException"></exception>
         public static HttpRouteExecutor Create(Delegate handler) {
             ArgumentNullException.ThrowIfNull(handler);
 
@@ -23,51 +26,206 @@ namespace SimpleW {
             ParameterInfo[] parameters = method.GetParameters();
             HandlerReturnKind kind = GetReturnKind(method.ReturnType);
 
-            // build the final executor that will be cached in a Route
-            return async (session, handlerResult) => {
-                object?[] args = BindArguments(session, parameters);
+            // lambda parameters (session + handlerResult)
+            ParameterExpression sessionParam = Expression.Parameter(typeof(HttpSession), "session");
+            ParameterExpression handlerResultParam = Expression.Parameter(typeof(HttpHandlerResult), "handlerResult");
 
-                object? result;
-                try {
-                    result = handler.DynamicInvoke(args);
+            // session.Request.Query
+            MemberExpression? requestProp = Expression.Property(sessionParam, nameof(HttpSession.Request));
+            MemberExpression? queryProp = Expression.Property(requestProp, "Query");
+
+            // TryGetValue(string, out string)
+            Type queryType = queryProp.Type;
+            MethodInfo? tryGetValueMethod = queryType.GetMethod(
+                "TryGetValue",
+                BindingFlags.Public | BindingFlags.Instance,
+                binder: null,
+                types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                modifiers: null
+            );
+
+            //
+            // Build handler arguments
+            // For each arguments, return a value that can be
+            //     1. session if parameter is HttpSesssion (special case)
+            //     2. value of the Request Query String if exists (mapping by name)
+            //     3. default value of the parameter
+            //
+
+            List<ParameterExpression> variables = new();
+            List<Expression> argExpressions = new();
+            List<Expression> body = new();
+
+            foreach (ParameterInfo p in parameters) {
+
+                // 1.) HttpSession type is a special parameter
+                if (p.ParameterType == typeof(HttpSession)) {
+                    argExpressions.Add(sessionParam);
+                    continue;
                 }
-                catch (TargetInvocationException tie) {
-                    throw tie.InnerException ?? tie;
+
+                // local var for final param
+                ParameterExpression paramVar = Expression.Variable(p.ParameterType, p.Name ?? "arg");
+                variables.Add(paramVar);
+
+                // local var for raw string
+                ParameterExpression rawVar = Expression.Variable(typeof(string), (p.Name ?? "arg") + "_raw");
+                variables.Add(rawVar);
+
+                // "default value" expression for the param
+                object? defaultObj = GetDefaultValueForParameter(p);
+                Expression defaultExpr;
+
+                if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
+                    // non nullable value type without default -> default(T)
+                    defaultExpr = Expression.Default(p.ParameterType);
+                }
+                else {
+                    defaultExpr = Expression.Constant(defaultObj, p.ParameterType);
                 }
 
-                switch (kind) {
-                    case HandlerReturnKind.Void:
-                        return;
+                Expression assignExpr;
+                if (tryGetValueMethod != null && p.Name is not null) {
 
-                    case HandlerReturnKind.SyncResult:
-                        if (result is not null) {
-                            await handlerResult(session, result).ConfigureAwait(false);
-                        }
-                        return;
+                    // query != null
+                    Expression queryNotNull = Expression.NotEqual(
+                        queryProp,
+                        Expression.Constant(null, queryType)
+                    );
 
-                    case HandlerReturnKind.TaskNoResult:
-                        if (result is Task t1) {
-                            await t1.ConfigureAwait(false);
-                        }
-                        return;
+                    // query.TryGetValue("name", out rawVar)
+                    Expression tryGet = Expression.Call(
+                        queryProp,
+                        tryGetValueMethod,
+                        Expression.Constant(p.Name, typeof(string)),
+                        rawVar
+                    );
 
-                    case HandlerReturnKind.TaskWithResult:
-                        if (result is Task t2) {
-                            await AwaitTaskWithResultAsync(t2, session, handlerResult).ConfigureAwait(false);
-                        }
-                        return;
+                    // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
+                    MethodInfo convertGeneric = typeof(HttpRouteExecutorFactory)
+                                                    .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Static)!
+                                                    .MakeGenericMethod(p.ParameterType);
 
-                    case HandlerReturnKind.ValueTaskNoResult:
-                        if (result is ValueTask vt1) {
-                            await vt1.ConfigureAwait(false);
-                        }
-                        return;
+                    Expression convertedExpr = Expression.Call(
+                        convertGeneric,
+                        rawVar,
+                        defaultExpr
+                    );
 
-                    case HandlerReturnKind.ValueTaskWithResult:
-                        await AwaitValueTaskWithResultAsync(result, session, handlerResult).ConfigureAwait(false);
-                        return;
+                    Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
+                    Expression assignDefault = Expression.Assign(paramVar, defaultExpr);
+
+                    assignExpr = Expression.IfThenElse(
+                        Expression.AndAlso(queryNotNull, tryGet),
+                        assignConverted,
+                        assignDefault
+                    );
                 }
-            };
+                else {
+                    // no TryGetValue, then default value
+                    assignExpr = Expression.Assign(paramVar, defaultExpr);
+                }
+
+                body.Add(assignExpr);
+                argExpressions.Add(paramVar);
+            }
+
+            //
+            // Call the handler
+            //
+            Expression call;
+            if (handler.Target is not null) {
+                call = Expression.Call(Expression.Constant(handler.Target), method, argExpressions);
+            }
+            else {
+                call = Expression.Call(method, argExpressions);
+            }
+
+            //
+            // Convert handle depending on return type
+            //
+            Expression returnExpr;
+
+            switch (kind) {
+                case HandlerReturnKind.Void: {
+                    // -> Completed()
+                    MethodInfo completedMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.Completed), BindingFlags.Public | BindingFlags.Static)!;
+                    body.Add(call);
+                    returnExpr = Expression.Call(completedMethod);
+                    break;
+                }
+
+                case HandlerReturnKind.SyncResult: {
+                    // result -> object -> RouteExecutorHelpers.InvokeHandlerResult(session, handlerResult, (object)result)
+                    MethodInfo invokeResultMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.InvokeHandlerResult), BindingFlags.Public | BindingFlags.Static)!;
+                    Expression resultAsObject = method.ReturnType.IsValueType
+                                                    ? Expression.Convert(call, typeof(object))
+                                                    : Expression.TypeAs(call, typeof(object));
+                    returnExpr = Expression.Call(
+                        invokeResultMethod,
+                        sessionParam,
+                        handlerResultParam,
+                        resultAsObject
+                    );
+                    break;
+                }
+
+                case HandlerReturnKind.TaskNoResult: {
+                    // Task -> RouteExecutorHelpers.FromTask(task)
+                    MethodInfo fromTaskMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromTask), BindingFlags.Public | BindingFlags.Static)!;
+                    returnExpr = Expression.Call(fromTaskMethod, call);
+                    break;
+                }
+
+                case HandlerReturnKind.TaskWithResult: {
+                    // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, handlerResult)
+                    Type[] args = method.ReturnType.GetGenericArguments();
+                    MethodInfo fromTaskWithResultGeneric = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
+                                                                                       .MakeGenericMethod(args[0]);
+                    returnExpr = Expression.Call(
+                        fromTaskWithResultGeneric,
+                        call,
+                        sessionParam,
+                        handlerResultParam
+                    );
+                    break;
+                }
+
+                case HandlerReturnKind.ValueTaskNoResult: {
+                    // ValueTask -> RouteExecutorHelpers.FromValueTask(vt)
+                    MethodInfo fromValueTaskMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromValueTask), BindingFlags.Public | BindingFlags.Static)!;
+                    returnExpr = Expression.Call(fromValueTaskMethod, call);
+                    break;
+                }
+
+                case HandlerReturnKind.ValueTaskWithResult: {
+                    // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, handlerResult)
+                    Type[] args = method.ReturnType.GetGenericArguments();
+                    MethodInfo fromValueTaskWithResultGeneric = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
+                                                                                            .MakeGenericMethod(args[0]);
+                    returnExpr = Expression.Call(
+                        fromValueTaskWithResultGeneric,
+                        call,
+                        sessionParam,
+                        handlerResultParam
+                    );
+                    break;
+                }
+
+                default:
+                    throw new NotSupportedException($"Unsupported handler return type: {method.ReturnType.FullName}");
+            }
+
+            // final expression
+            body.Add(returnExpr);
+            BlockExpression block = Expression.Block(variables, body);
+            Expression<HttpRouteExecutor>? lambda = Expression.Lambda<HttpRouteExecutor>(
+                block,
+                sessionParam,
+                handlerResultParam
+            );
+
+            return lambda.Compile();
         }
 
         #region return
@@ -113,134 +271,45 @@ namespace SimpleW {
                 }
             }
 
+            // tout le reste = sync avec résultat
             return HandlerReturnKind.SyncResult;
-        }
-
-        /// <summary>
-        /// Convert a Task with Result to a ValueTask
-        /// </summary>
-        /// <param name="task"></param>
-        /// <param name="session"></param>
-        /// <param name="handlerResult"></param>
-        /// <returns></returns>
-        private static async ValueTask AwaitTaskWithResultAsync(Task task, HttpSession session, HttpHandlerResult handlerResult) {
-            await task.ConfigureAwait(false);
-
-            PropertyInfo? resultProp = task.GetType().GetProperty("Result");
-            if (resultProp != null) {
-                object? val = resultProp.GetValue(task);
-                if (val is not null) {
-                    await handlerResult(session, val).ConfigureAwait(false);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Convert a ValueTask with Result to a ValueTask
-        /// </summary>
-        /// <param name="valueTaskObj"></param>
-        /// <param name="session"></param>
-        /// <param name="handlerResult"></param>
-        /// <returns></returns>
-        private static async ValueTask AwaitValueTaskWithResultAsync(object? valueTaskObj, HttpSession session, HttpHandlerResult handlerResult) {
-            if (valueTaskObj is null) {
-                return;
-            }
-
-            Type? vtType = valueTaskObj.GetType();
-            MethodInfo? asTaskMethod = vtType.GetMethod("AsTask", Type.EmptyTypes);
-            if (asTaskMethod == null) {
-                return;
-            }
-
-            if (asTaskMethod.Invoke(valueTaskObj, null) is Task task) {
-                await task.ConfigureAwait(false);
-                PropertyInfo? resultProp = task.GetType().GetProperty("Result");
-                if (resultProp != null) {
-                    object? val = resultProp.GetValue(task);
-                    if (val is not null) {
-                        await handlerResult(session, val).ConfigureAwait(false);
-                    }
-                }
-            }
         }
 
         #endregion return
 
-        #region argument binding
-
-        /// <summary>
-        /// For each parameter of the handler, return a value.
-        /// The value will be :
-        ///     1. session if parameter is HttpSesssion (special case)
-        ///     2. value of the Request Query String if exists (mapping by name)
-        ///     3. default value of the parameter
-        /// </summary>
-        /// <param name="session"></param>
-        /// <param name="parameters"></param>
-        /// <returns></returns>
-        private static object?[] BindArguments(HttpSession session, ParameterInfo[] parameters) {
-            // no parameter
-            if (parameters.Length == 0) {
-                return Array.Empty<object?>();
-            }
-
-            // arguments to return
-            object?[] args = new object?[parameters.Length];
-
-            for (int i = 0; i < parameters.Length; i++) {
-                ParameterInfo p = parameters[i];
-
-                // 1.) HttpSession type is a special parameter
-                if (p.ParameterType == typeof(HttpSession)) {
-                    args[i] = session;
-                    continue;
-                }
-
-                string name = p.Name ?? string.Empty;
-
-                // 2.) value of the Request Query String
-                string? raw = null;
-                if (session.Request.Query is not null && !string.IsNullOrEmpty(name) && session.Request.Query.TryGetValue(name, out string? v)) {
-                    raw = v;
-                }
-
-                // 3.) default value of the parameter
-                if (raw is null) {
-                    args[i] = GetDefaultValueForParameter(p);
-                    continue;
-                }
-
-                // 2.) value of the Request Query String
-                if (TryConvertFromString(raw, p.ParameterType, out object? converted)) {
-                    args[i] = converted;
-                }
-                // 3.) default value of the parameter
-                else {
-                    args[i] = GetDefaultValueForParameter(p);
-                }
-            }
-
-            return args;
-        }
+        #region argument
 
         /// <summary>
         /// Get the default value of ParameterInfo
         /// </summary>
         /// <param name="param"></param>
         /// <returns></returns>
-        private static object? GetDefaultValueForParameter(ParameterInfo param) {
-            if (param.HasDefaultValue) {
-                return param.DefaultValue;
+        private static object? GetDefaultValueForParameter(ParameterInfo p) {
+            if (p.HasDefaultValue) {
+                return p.DefaultValue;
             }
 
-            Type t = param.ParameterType;
+            Type t = p.ParameterType;
             Type? underlying = Nullable.GetUnderlyingType(t);
             if (!t.IsValueType || underlying != null) {
                 return null;
             }
 
             return Activator.CreateInstance(t);
+        }
+
+        /// <summary>
+        /// Convert a raw string into the target type else use its default value
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="raw"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        private static T ConvertFromStringOrDefault<T>(string raw, T defaultValue) {
+            if (TryConvertFromString(raw, typeof(T), out object? value)) {
+                return (T)value!;
+            }
+            return defaultValue;
         }
 
         /// <summary>
@@ -326,7 +395,88 @@ namespace SimpleW {
             return false;
         }
 
-        #endregion argument binding
+        #endregion argument
+
+    }
+
+    /// <summary>
+    /// RouteExecutorHelpers
+    /// Mostly contains methods to convert a Result into a ValueTask
+    /// </summary>
+    public static class RouteExecutorHelpers {
+
+        /// <summary>
+        /// Convert a void to a ValueTask
+        /// </summary>
+        /// <returns></returns>
+        public static ValueTask Completed() => default;
+
+        /// <summary>
+        /// Call HandlerResult if Result is not null else a return ValueTask
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="handlerResult"></param>
+        /// <param name="result"></param>
+        /// <returns></returns>
+        public static ValueTask InvokeHandlerResult(HttpSession session, HttpHandlerResult handlerResult, object? result) {
+            if (result is null) {
+                return default;
+            }
+            return handlerResult(session, result);
+        }
+
+        /// <summary>
+        /// Convert a Task without Result to a ValueTask
+        /// </summary>
+        /// <param name="task"></param>
+        /// <returns></returns>
+        public static ValueTask FromTask(Task task) => new(task);
+
+        /// <summary>
+        /// Convert a ValueTask without Result to a ValueTask
+        /// </summary>
+        /// <param name="task"></param>
+        /// <returns></returns>
+        public static ValueTask FromValueTask(ValueTask task) => task;
+
+        /// <summary>
+        /// Convert a Task with Result to a ValueTask
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="task"></param>
+        /// <param name="session"></param>
+        /// <param name="handlerResult"></param>
+        /// <returns></returns>
+        public static ValueTask FromTaskWithResult<T>(Task<T> task, HttpSession session, HttpHandlerResult handlerResult) {
+            return AwaitTaskWithResultAsync(task, session, handlerResult);
+        }
+
+        private static async ValueTask AwaitTaskWithResultAsync<T>(Task<T> task, HttpSession session, HttpHandlerResult handlerResult) {
+            T? result = await task.ConfigureAwait(false);
+            if (result is not null) {
+                await handlerResult(session, result!).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Convert a ValueTask with Result to a ValueTask
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="task"></param>
+        /// <param name="session"></param>
+        /// <param name="handlerResult"></param>
+        /// <returns></returns>
+        public static ValueTask FromValueTaskWithResult<T>(ValueTask<T> task, HttpSession session, HttpHandlerResult handlerResult) {
+            return AwaitValueTaskWithResultAsync(task, session, handlerResult);
+        }
+
+        private static async ValueTask AwaitValueTaskWithResultAsync<T>(ValueTask<T> task, HttpSession session, HttpHandlerResult handlerResult) {
+            T? result = await task.ConfigureAwait(false);
+            if (result is not null) {
+                await handlerResult(session, result!).ConfigureAwait(false);
+            }
+        }
+
     }
 
 }
