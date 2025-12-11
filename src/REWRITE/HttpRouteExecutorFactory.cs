@@ -332,11 +332,13 @@ namespace SimpleW {
                 targetType = underlying;
             }
 
+            // string
             if (targetType == typeof(string)) {
                 value = raw;
                 return true;
             }
 
+            // bool
             if (targetType == typeof(bool)) {
                 if (bool.TryParse(raw, out bool b)) {
                     value = b;
@@ -350,6 +352,7 @@ namespace SimpleW {
             NumberStyles style = NumberStyles.Any;
             CultureInfo? culture = CultureInfo.InvariantCulture;
 
+            // int
             if (targetType == typeof(int)) {
                 if (int.TryParse(raw, style, culture, out int i)) {
                     value = i;
@@ -358,6 +361,7 @@ namespace SimpleW {
                 return false;
             }
 
+            // long
             if (targetType == typeof(long)) {
                 if (long.TryParse(raw, style, culture, out long l)) {
                     value = l;
@@ -366,6 +370,7 @@ namespace SimpleW {
                 return false;
             }
 
+            // double
             if (targetType == typeof(double)) {
                 if (double.TryParse(raw, style, culture, out double d)) {
                     value = d;
@@ -374,6 +379,7 @@ namespace SimpleW {
                 return false;
             }
 
+            // float
             if (targetType == typeof(float)) {
                 if (float.TryParse(raw, style, culture, out float f)) {
                     value = f;
@@ -382,6 +388,83 @@ namespace SimpleW {
                 return false;
             }
 
+            // DateTime
+            if (targetType == typeof(DateTime)) {
+                // ISO
+                if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime dt)) {
+                    value = dt;
+                    return true;
+                }
+                // fallback
+                if (DateTime.TryParse(raw, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal, out dt)) {
+                    value = dt;
+                    return true;
+                }
+                return false;
+            }
+
+            // DateOnly
+            if (targetType == typeof(DateOnly)) {
+                if (DateOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateOnly dOnly)) {
+                    value = dOnly;
+                    return true;
+                }
+                if (DateOnly.TryParse(raw, CultureInfo.CurrentCulture, DateTimeStyles.None, out dOnly)) {
+                    value = dOnly;
+                    return true;
+                }
+                return false;
+            }
+
+            // TimeOnly
+            if (targetType == typeof(TimeOnly)) {
+                if (TimeOnly.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly tOnly)) {
+                    value = tOnly;
+                    return true;
+                }
+                if (TimeOnly.TryParse(raw, CultureInfo.CurrentCulture, DateTimeStyles.None, out tOnly)) {
+                    value = tOnly;
+                    return true;
+                }
+                return false;
+            }
+
+            // DateTimeOffset
+            if (targetType == typeof(DateTimeOffset)) {
+                if (DateTimeOffset.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTimeOffset dto)) {
+                    value = dto;
+                    return true;
+                }
+                if (DateTimeOffset.TryParse(raw, CultureInfo.CurrentCulture, DateTimeStyles.AssumeLocal, out dto)) {
+                    value = dto;
+                    return true;
+                }
+                return false;
+            }
+
+            // TimeSpan
+            if (targetType == typeof(TimeSpan)) {
+                if (TimeSpan.TryParse(raw, CultureInfo.InvariantCulture, out TimeSpan ts)) {
+                    value = ts;
+                    return true;
+                }
+                if (TimeSpan.TryParse(raw, CultureInfo.CurrentCulture, out ts)) {
+                    value = ts;
+                    return true;
+                }
+                return false;
+            }
+
+            // Guid
+            if (targetType == typeof(Guid)) {
+                if (Guid.TryParse(raw, out Guid g)) {
+                    value = g;
+                    return true;
+                }
+                return false;
+            }
+
+            // Enum
             if (targetType.IsEnum) {
                 try {
                     value = Enum.Parse(targetType, raw, ignoreCase: true);
