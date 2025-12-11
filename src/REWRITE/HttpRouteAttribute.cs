@@ -7,43 +7,23 @@
     public class HttpRouteAttribute : Attribute {
 
         /// <summary>
-        /// Gets or sets the method.
+        /// Method (GET, POST...)
         /// </summary>
-        /// <value>
-        /// The verb.
-        /// </value>
         public string Method { get; protected set; }
 
         /// <summary>
-        /// Gets or sets the paths.
+        /// Path
         /// </summary>
-        /// <value>
-        /// The paths.
-        /// </value>
         public string Path { get; protected set; }
 
         /// <summary>
-        /// Gets or sets the QueryStringMappingEnabled.
+        /// IsAbsolutePath
         /// </summary>
-        /// <value>
-        /// The QueryStringMappingEnabled.
-        /// </value>
-        public bool QueryStringMappingEnabled { get; protected set; }
-
-        /// <summary>
-        /// Gets or sets the IsAbsolutePath.
-        /// </summary>
-        /// <value>
-        /// The IsAbsolutePath.
-        /// </value>
         public bool IsAbsolutePath { get; protected set; }
 
         /// <summary>
-        /// Gets or sets the Description.
+        /// Description
         /// </summary>
-        /// <value>
-        /// The Description.
-        /// </value>
         public string? Description { get; protected set; }
 
         /// <summary>
@@ -51,12 +31,10 @@
         /// </summary>
         /// <param name="method">The method.</param>
         /// <param name="path">The path.</param>
-        /// <param name="queryStringMappingEnabled">The queryStringMappingEnabled.</param>
-        /// <param name="isAbsolutePath">The absolutePath.</param>
         /// <param name="description">The string description for this route</param>
         /// <exception cref="ArgumentException">The argument 'verb' must be specified.</exception>
         /// <exception cref="ArgumentException">The argument 'path' must be specified.</exception>
-        public HttpRouteAttribute(string method, string path, bool queryStringMappingEnabled = true, bool isAbsolutePath = false, string? description = null) {
+        public HttpRouteAttribute(string method, string path, bool isAbsolutePath = false, string? description = null) {
             if (string.IsNullOrWhiteSpace(method)) {
                 throw new ArgumentException($"The argument '{nameof(method)}' must be specified.");
             }
@@ -66,7 +44,6 @@
 
             Method = method.ToUpperInvariant();
             Path = path;
-            QueryStringMappingEnabled = queryStringMappingEnabled;
             IsAbsolutePath = isAbsolutePath;
             Description = description;
         }
