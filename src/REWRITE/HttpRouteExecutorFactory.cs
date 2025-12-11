@@ -8,7 +8,7 @@ namespace SimpleW {
     /// <summary>
     /// HttpRouteExecutorFactory
     /// </summary>
-    internal static class HttpRouteExecutorFactory {
+    public static class HttpRouteExecutorFactory {
 
         /// <summary>
         /// Create a HttpRouteExecutor from a Delegate
