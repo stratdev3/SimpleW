@@ -317,6 +317,43 @@ namespace SimpleW {
 
         #endregion map delegate
 
+        #region controllers
+
+        /// <summary>
+        /// Register a Controller type and map all its routes
+        /// </summary>
+        /// <typeparam name="TController"></typeparam>
+        /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
+        /// <returns></returns>
+        public SimpleW UseController<TController>(string? basePrefix = null) where TController : Controller {
+            ControllerRouteBuilder.RegisterController(typeof(TController), Router, basePrefix);
+            return this;
+        }
+
+        /// <summary>
+        /// Register all controllers assignable to TController found in the same assembly
+        /// </summary>
+        /// <typeparam name="TController"></typeparam>
+        /// <param name="basePrefix"></param>
+        /// <param name="excludes"></param>
+        /// <returns></returns>
+        public SimpleW UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
+            Type baseType = typeof(TController);
+
+            foreach (Type type in baseType.Assembly
+                                          .GetTypes()
+                                          .Where(t => !t.IsAbstract
+                                                      && baseType.IsAssignableFrom(t)
+                                                      && typeof(Controller).IsAssignableFrom(t))
+            ) {
+                ControllerRouteBuilder.RegisterController(type, Router, basePrefix);
+            }
+
+            return this;
+        }
+
+        #endregion controllers
+
         #region network
 
         /// <summary>

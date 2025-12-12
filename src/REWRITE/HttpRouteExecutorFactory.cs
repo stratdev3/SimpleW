@@ -134,11 +134,38 @@ namespace SimpleW {
             // Call the handler
             //
             Expression call;
-            if (handler.Target is not null) {
+
+            // 1. static method
+            if (method.IsStatic) {
+                call = Expression.Call(method, argExpressions);
+            }
+            // 2. instance and non null target, close delegate instance
+            else if (handler.Target is not null) {
                 call = Expression.Call(Expression.Constant(handler.Target), method, argExpressions);
             }
+            // 3. instance and null target, open delegate instance (fallback)
             else {
-                call = Expression.Call(method, argExpressions);
+                if (argExpressions.Count == 0) {
+                    throw new InvalidOperationException($"Instance method '{method.Name}' requires an instance parameter.");
+                }
+                Expression instanceExpr = argExpressions[0];
+                if (!method.DeclaringType!.IsAssignableFrom(instanceExpr.Type)) {
+                    throw new InvalidOperationException($"First parameter type '{instanceExpr.Type}' is not assignable to declaring type '{method.DeclaringType}'.");
+                }
+
+                List<Expression> callArgs;
+                if (argExpressions.Count > 1) {
+                    callArgs = argExpressions.GetRange(1, argExpressions.Count - 1);
+                }
+                else {
+                    callArgs = new List<Expression>();
+                }
+
+                call = Expression.Call(
+                    Expression.Convert(instanceExpr, method.DeclaringType),
+                    method,
+                    callArgs
+                );
             }
 
             //
@@ -558,6 +585,178 @@ namespace SimpleW {
             if (result is not null) {
                 await handlerResult(session, result!).ConfigureAwait(false);
             }
+        }
+
+    }
+
+    /// <summary>
+    /// ControllerRouteBuilder
+    /// </summary>
+    public static class ControllerRouteBuilder {
+
+        /// <summary>
+        /// Register a Controller type and map all its routes
+        /// </summary>
+        /// <param name="controllerType"></param>
+        /// <param name="router"></param>
+        /// <param name="basePrefix"></param>
+        /// <exception cref="ArgumentException"></exception>
+        public static void RegisterController(Type controllerType, HttpRouter router, string? basePrefix) {
+            ArgumentNullException.ThrowIfNull(controllerType);
+            ArgumentNullException.ThrowIfNull(router);
+
+            if (controllerType.IsAbstract) {
+                throw new ArgumentException($"Type '{controllerType.FullName}' must not be abstract.", nameof(controllerType));
+            }
+            if (!typeof(Controller).IsAssignableFrom(controllerType)) {
+                throw new ArgumentException($"Type '{controllerType.FullName}' must inherit from Controller.", nameof(controllerType));
+            }
+
+            // RouteAttribut
+            HttpRouteAttribute? classRoute = controllerType.GetCustomAttribute<HttpRouteAttribute>(inherit: true);
+            string controllerPrefix = classRoute?.Path ?? string.Empty;
+
+            foreach (MethodInfo method in controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
+
+                HttpRouteAttribute[] methodRoutes = method.GetCustomAttributes<HttpRouteAttribute>(inherit: true).ToArray();
+                if (methodRoutes.Length == 0) {
+                    continue;
+                }
+
+                foreach (HttpRouteAttribute attr in methodRoutes.Where(a => !string.IsNullOrWhiteSpace(a.Method) && a.Method != "*")) {
+                    Delegate handlerDelegate = Create(controllerType, method);
+                    string fullPath = BuildFullPath(basePrefix ?? string.Empty, controllerPrefix, attr);
+                    router.Map(attr.Method, fullPath, handlerDelegate);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Build Path from controller 
+        /// </summary>
+        /// <param name="basePrefix"></param>
+        /// <param name="controllerPrefix"></param>
+        /// <param name="methodAttr"></param>
+        /// <returns></returns>
+        private static string BuildFullPath(string basePrefix, string controllerPrefix, HttpRouteAttribute methodAttr) {
+
+            // absolute path
+            if (methodAttr.IsAbsolutePath) {
+                string absolutePath = methodAttr.Path;
+                return string.IsNullOrEmpty(absolutePath) ? "/" : absolutePath;
+            }
+
+            // full path
+            string fullPath = string.Empty;
+
+            if (!string.IsNullOrEmpty(basePrefix)) {
+                fullPath += basePrefix;
+            }
+            if (!string.IsNullOrEmpty(controllerPrefix)) {
+                string c = controllerPrefix; 
+                fullPath += c;
+            }
+            if (!string.IsNullOrEmpty(methodAttr.Path)) {
+                string m = methodAttr.Path;
+                fullPath += m;
+            }
+            if (string.IsNullOrEmpty(fullPath)) {
+                fullPath = "/";
+            }
+
+            return fullPath;
+        }
+
+        /// <summary>
+        /// Create a Delegate
+        /// </summary>
+        /// <param name="controllerType"></param>
+        /// <param name="method"></param>
+        /// <returns></returns>
+        private static Delegate Create(Type controllerType, MethodInfo method) {
+
+            // get parameter info
+            ParameterInfo[] methodParams = method.GetParameters();
+
+            // lambda parameters (session + methodParams)
+            ParameterExpression[] lambdaParams = new ParameterExpression[1 + methodParams.Length];
+            lambdaParams[0] = Expression.Parameter(typeof(HttpSession), "session");
+            for (int i = 0; i < methodParams.Length; i++) {
+                ParameterInfo p = methodParams[i];
+                lambdaParams[i + 1] = Expression.Parameter(p.ParameterType, p.Name ?? $"arg{i}");
+            }
+
+            // declare var controller
+            ParameterExpression controllerVar = Expression.Variable(controllerType, "controller");
+
+            // instanciate a new Type instance and assign to controller var
+            MethodInfo createInstanceMethod = typeof(Activator).GetMethod(
+                nameof(Activator.CreateInstance),
+                BindingFlags.Public | BindingFlags.Static,
+                binder: null,
+                types: new[] { typeof(Type) },
+                modifiers: null
+            )!;
+            Expression newControllerExpr = Expression.Convert(
+                Expression.Call(createInstanceMethod, Expression.Constant(controllerType)),
+                controllerType
+            );
+            Expression assignController = Expression.Assign(controllerVar, newControllerExpr);
+
+            // assign controller.Session = session;
+            PropertyInfo sessionProp = typeof(Controller).GetProperty(nameof(Controller.Session), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
+            Expression assignSession = Expression.Assign(Expression.Property(controllerVar, sessionProp), lambdaParams[0]); // lambdaParams[0] is session
+
+            // call controller.Method(p1, p2, ...)
+            Expression[]? callArgs = new Expression[methodParams.Length];
+            for (int i = 0; i < methodParams.Length; i++) {
+                callArgs[i] = lambdaParams[i + 1];
+            }
+            MethodCallExpression call = Expression.Call(controllerVar, method, callArgs);
+
+            // body
+            Expression body;
+            if (method.ReturnType == typeof(void)) {
+                body = Expression.Block(
+                    new[] { controllerVar },
+                    assignController,
+                    assignSession,
+                    call
+                );
+            }
+            else {
+                body = Expression.Block(
+                    new[] { controllerVar },
+                    assignController,
+                    assignSession,
+                    call
+                );
+            }
+
+            Type delegateType;
+            // delegate return void
+            if (method.ReturnType == typeof(void)) {
+                Type[] paramTypes = lambdaParams.Select(p => p.Type).ToArray();
+                delegateType = Expression.GetActionType(paramTypes);
+            }
+            // delegate return
+            else {
+                Type[] typeArgs = new Type[lambdaParams.Length + 1];
+                for (int i = 0; i < lambdaParams.Length; i++) {
+                    typeArgs[i] = lambdaParams[i].Type;
+                }
+                typeArgs[^1] = method.ReturnType;
+                delegateType = Expression.GetDelegateType(typeArgs);
+            }
+
+            // final expression
+            LambdaExpression lambda = Expression.Lambda(
+                delegateType,
+                body,
+                lambdaParams
+            );
+
+            return lambda.Compile();
         }
 
     }
