@@ -209,7 +209,7 @@ namespace SimpleW {
         /// <summary>
         /// Flag to close Connection after Response
         /// </summary>
-        private bool _closeAfterResponse;
+        public bool CloseAfterResponse { get; private set; }
 
         /// <summary>
         /// Main Process Loop :
@@ -280,14 +280,14 @@ namespace SimpleW {
 
                         try {
                             // should close connection
-                            _closeAfterResponse = ShouldCloseConnection(_request);
+                            CloseAfterResponse = ShouldCloseConnection(_request);
 
                             // router and dispatch
                             await _router.DispatchAsync(this).ConfigureAwait(false);
                             //await SendJsonAsync(new { message = "Hello World !" });
 
                             // if so, then close connection
-                            if (_closeAfterResponse) {
+                            if (CloseAfterResponse) {
                                 return;
                             }
                         }
@@ -306,7 +306,7 @@ namespace SimpleW {
                     }
                 }
                 catch (HttpRequestTooLargeException) {
-                    _closeAfterResponse = true;
+                    CloseAfterResponse = true;
                     await SendTextAsync("Payload Too Large", 413, "Payload Too Large").ConfigureAwait(false);
                     return;
                 }
@@ -398,7 +398,7 @@ namespace SimpleW {
                 string header = $"HTTP/1.1 {statusCode} {statusText}\r\n" +
                                 $"Content-Length: {bodyLength}\r\n" +
                                 $"Content-Type: {contentType}\r\n" +
-                                $"Connection: {(_closeAfterResponse ? "close" : "keep-alive")}\r\n" +
+                                $"Connection: {(CloseAfterResponse ? "close" : "keep-alive")}\r\n" +
                                 "\r\n";
 
                 int headerByteCount = Ascii.GetByteCount(header);
@@ -462,7 +462,7 @@ namespace SimpleW {
                 string header = $"HTTP/1.1 {statusCode} {statusText}\r\n" +
                                 $"Content-Length: {bodyLength}\r\n" +
                                 $"Content-Type: {contentType}\r\n" +
-                                $"Connection: {(_closeAfterResponse ? "close" : "keep-alive")}\r\n" +
+                                $"Connection: {(CloseAfterResponse ? "close" : "keep-alive")}\r\n" +
                                 "\r\n";
 
                 int headerByteCount = Encoding.ASCII.GetByteCount(header);
@@ -515,7 +515,7 @@ namespace SimpleW {
                 string header = $"HTTP/1.1 {statusCode} {statusText}\r\n" +
                                 $"Content-Length: {bodyLength}\r\n" +
                                 $"Content-Type: {contentType}\r\n" +
-                                $"Connection: {(_closeAfterResponse ? "close" : "keep-alive")}\r\n" +
+                                $"Connection: {(CloseAfterResponse ? "close" : "keep-alive")}\r\n" +
                                 "\r\n";
 
                 int headerByteCount = Encoding.ASCII.GetByteCount(header);
@@ -574,7 +574,7 @@ namespace SimpleW {
                 string header = $"HTTP/1.1 {statusCode} {statusText}\r\n" +
                                 $"Content-Length: {bodyLength}\r\n" +
                                 $"Content-Type: {contentType}\r\n" +
-                                $"Connection: {(_closeAfterResponse ? "close" : "keep-alive")}\r\n" +
+                                $"Connection: {(CloseAfterResponse ? "close" : "keep-alive")}\r\n" +
                                 "\r\n";
 
                 int headerByteCount = Encoding.ASCII.GetByteCount(header);
