@@ -16,6 +16,11 @@ namespace SimpleW {
         /// </summary>
         public HttpRequest Request => Session.Request;
 
+        /// <summary>
+        /// Called before any Controller.Method()
+        /// </summary>
+        public virtual void OnBeforeMethod() { }
+
     }
 
 }

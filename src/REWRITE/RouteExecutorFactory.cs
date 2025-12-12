@@ -703,6 +703,10 @@ namespace SimpleW {
             PropertyInfo sessionProp = typeof(Controller).GetProperty(nameof(Controller.Session), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
             Expression assignSession = Expression.Assign(Expression.Property(controllerVar, sessionProp), lambdaParams[0]); // lambdaParams[0] is session
 
+            // call controller.OnBeforeMethod()
+            MethodInfo onBeforeMethodInfo = typeof(Controller).GetMethod(nameof(Controller.OnBeforeMethod), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
+            Expression callOnBefore = Expression.Call(controllerVar, onBeforeMethodInfo);
+
             // call controller.Method(p1, p2, ...)
             Expression[]? callArgs = new Expression[methodParams.Length];
             for (int i = 0; i < methodParams.Length; i++) {
@@ -717,6 +721,7 @@ namespace SimpleW {
                     new[] { controllerVar },
                     assignController,
                     assignSession,
+                    callOnBefore,
                     call
                 );
             }
@@ -725,6 +730,7 @@ namespace SimpleW {
                     new[] { controllerVar },
                     assignController,
                     assignSession,
+                    callOnBefore,
                     call
                 );
             }
