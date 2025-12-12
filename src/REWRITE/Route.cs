@@ -3,12 +3,12 @@
     /// <summary>
     /// HttpRoute
     /// </summary>
-    public sealed class HttpRoute {
+    public sealed class Route {
 
         /// <summary>
         /// The RouteAttribute
         /// </summary>
-        public readonly HttpRouteAttribute Attribute;
+        public readonly RouteAttribute Attribute;
 
         /// <summary>
         /// Executor
@@ -20,7 +20,7 @@
         /// </summary>
         /// <param name="attribute">the HttpRoute attribute.</param>
         /// <param name="executor"></param>
-        public HttpRoute(HttpRouteAttribute attribute, HttpRouteExecutor executor) {
+        public Route(RouteAttribute attribute, HttpRouteExecutor executor) {
             Attribute = attribute;
             Executor = executor;
         }

@@ -4,7 +4,7 @@
     /// Decorate methods within controllers with this attribute in order to make them callable from the Rest API
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = true, Inherited = true)]
-    public class HttpRouteAttribute : Attribute {
+    public class RouteAttribute : Attribute {
 
         /// <summary>
         /// Method (GET, POST...)
@@ -27,14 +27,14 @@
         public string? Description { get; protected set; }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="HttpRouteAttribute"/> class for Method.
+        /// Initializes a new instance of the <see cref="RouteAttribute"/> class for Method.
         /// </summary>
         /// <param name="method">The method.</param>
         /// <param name="path">The path.</param>
         /// <param name="description">The string description for this route</param>
         /// <exception cref="ArgumentException">The argument 'verb' must be specified.</exception>
         /// <exception cref="ArgumentException">The argument 'path' must be specified.</exception>
-        public HttpRouteAttribute(string method, string path, bool isAbsolutePath = false, string? description = null) {
+        public RouteAttribute(string method, string path, bool isAbsolutePath = false, string? description = null) {
             if (string.IsNullOrWhiteSpace(method)) {
                 throw new ArgumentException($"The argument '{nameof(method)}' must be specified.");
             }
@@ -49,11 +49,11 @@
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="HttpRouteAttribute"/> class for Class.
+        /// Initializes a new instance of the <see cref="RouteAttribute"/> class for Class.
         /// </summary>
         /// <param name="path">The path.</param>
         /// <exception cref="ArgumentException">The argument 'path' must be specified.</exception>
-        public HttpRouteAttribute(string path) {
+        public RouteAttribute(string path) {
             if (string.IsNullOrWhiteSpace(path)) {
                 throw new ArgumentException($"The argument '{nameof(path)}' must be specified.");
             }

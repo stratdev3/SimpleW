@@ -14,7 +14,7 @@ namespace SimpleW {
         /// <summary>
         /// Router
         /// </summary>
-        public HttpRouter Router { get; private set; }
+        public Router Router { get; private set; }
 
         #region constructor
 
@@ -31,7 +31,7 @@ namespace SimpleW {
         /// <param name="endpoint">IP endpoint</param>
         public SimpleW(EndPoint endpoint) {
             EndPoint = endpoint;
-            Router = new HttpRouter();
+            Router = new Router();
         }
 
         #endregion constructor
@@ -326,7 +326,7 @@ namespace SimpleW {
         /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
         /// <returns></returns>
         public SimpleW UseController<TController>(string? basePrefix = null) where TController : Controller {
-            ControllerRouteBuilder.RegisterController(typeof(TController), Router, basePrefix);
+            ControllerDelegateFactory.RegisterController(typeof(TController), Router, basePrefix);
             return this;
         }
 
@@ -346,7 +346,7 @@ namespace SimpleW {
                                                       && baseType.IsAssignableFrom(t)
                                                       && typeof(Controller).IsAssignableFrom(t))
             ) {
-                ControllerRouteBuilder.RegisterController(type, Router, basePrefix);
+                ControllerDelegateFactory.RegisterController(type, Router, basePrefix);
             }
 
             return this;

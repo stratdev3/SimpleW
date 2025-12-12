@@ -1,20 +1,20 @@
 ﻿namespace SimpleW {
 
     /// <summary>
-    /// HttpRouter
+    /// Router
     /// </summary>
-    public sealed class HttpRouter {
+    public sealed class Router {
 
         /// <summary>
         /// Dictionary of GET/POST Routes
         /// </summary>
-        private readonly Dictionary<string, HttpRoute> _get = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, HttpRoute> _post = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, Route> _get = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, Route> _post = new(StringComparer.Ordinal);
 
         /// <summary>
         /// Dictionary of all others Routes (PATCH, HEAD, OPTIONS, etc.)
         /// </summary>
-        private readonly Dictionary<string, Dictionary<string, HttpRoute>> _others = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, Dictionary<string, Route>> _others = new(StringComparer.Ordinal);
 
         #region middleware
 
@@ -103,8 +103,8 @@
             ArgumentNullException.ThrowIfNull(path);
             ArgumentNullException.ThrowIfNull(handler);
 
-            HttpRouteExecutor executor = HttpRouteExecutorFactory.Create(handler);
-            HttpRoute route = new(new HttpRouteAttribute(method, path), executor);
+            HttpRouteExecutor executor = DelegateExecutorFactory.Create(handler);
+            Route route = new(new RouteAttribute(method, path), executor);
 
             switch (route.Attribute.Method) {
                 case "GET":
@@ -115,7 +115,7 @@
                     break;
                 default:
                     if (!_others.TryGetValue(route.Attribute.Method, out var dict)) {
-                        dict = new Dictionary<string, HttpRoute>(StringComparer.Ordinal);
+                        dict = new Dictionary<string, Route>(StringComparer.Ordinal);
                         _others[route.Attribute.Method] = dict;
                     }
                     dict[route.Attribute.Path] = route;
@@ -142,9 +142,9 @@
         /// <param name="request"></param>
         /// <returns></returns>
         public ValueTask DispatchAsync(HttpSession session) {
-            HttpRoute? route;
+            Route? route;
 
-            Dictionary<string, HttpRoute>? dict = session.Request.Method switch {
+            Dictionary<string, Route>? dict = session.Request.Method switch {
                 "GET" => _get,
                 "POST" => _post,
                 _ => null
@@ -157,7 +157,7 @@
 
             // other methods
             if (dict is null) {
-                if (_others.TryGetValue(session.Request.Method, out Dictionary<string, HttpRoute>? otherDict)
+                if (_others.TryGetValue(session.Request.Method, out Dictionary<string, Route>? otherDict)
                     && otherDict.TryGetValue(session.Request.Path, out route)
                 ) {
                     return ExecutePipelineAsync(session, route.Executor);
@@ -172,7 +172,7 @@
             // at last, return a 404
             return ExecutePipelineAsync(
                 session,
-                HttpRouteExecutorFactory.Create(static (HttpSession s) => s.SendTextAsync("Not Found", 404, "Not Found"))
+                DelegateExecutorFactory.Create(static (HttpSession s) => s.SendTextAsync("Not Found", 404, "Not Found"))
             );
         }
 
@@ -187,7 +187,7 @@
         /// <param name="handler"></param>
         public void MapFallback(Delegate handler) {
             ArgumentNullException.ThrowIfNull(handler);
-            _fallback = HttpRouteExecutorFactory.Create(handler);
+            _fallback = DelegateExecutorFactory.Create(handler);
         }
 
     }

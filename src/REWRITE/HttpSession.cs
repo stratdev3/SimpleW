@@ -42,7 +42,7 @@ namespace SimpleW {
         /// <summary>
         /// Router
         /// </summary>
-        private readonly HttpRouter _router;
+        private readonly Router _router;
 
         /// <summary>
         /// Flag to avoid multiple Connect() call
@@ -85,7 +85,7 @@ namespace SimpleW {
         /// <param name="socket"></param>
         /// <param name="bufferPool"></param>
         /// <param name="router"></param>
-        public HttpSession(SimpleW server, Socket socket, ArrayPool<byte> bufferPool, HttpRouter router) {
+        public HttpSession(SimpleW server, Socket socket, ArrayPool<byte> bufferPool, Router router) {
             Id = Guid.NewGuid();
 
             Server = server;

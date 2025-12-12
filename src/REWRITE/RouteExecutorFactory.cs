@@ -6,9 +6,9 @@ using System.Reflection;
 namespace SimpleW {
 
     /// <summary>
-    /// HttpRouteExecutorFactory
+    /// DelegateExecutorFactory
     /// </summary>
-    public static class HttpRouteExecutorFactory {
+    public static class DelegateExecutorFactory {
 
         /// <summary>
         /// Create a HttpRouteExecutor from a Delegate
@@ -102,7 +102,7 @@ namespace SimpleW {
                     );
 
                     // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
-                    MethodInfo convertGeneric = typeof(HttpRouteExecutorFactory)
+                    MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
                                                     .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Static)!
                                                     .MakeGenericMethod(p.ParameterType);
 
@@ -176,7 +176,7 @@ namespace SimpleW {
             switch (kind) {
                 case HandlerReturnKind.Void: {
                     // -> Completed()
-                    MethodInfo completedMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.Completed), BindingFlags.Public | BindingFlags.Static)!;
+                    MethodInfo completedMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.Completed), BindingFlags.Public | BindingFlags.Static)!;
                     body.Add(call);
                     returnExpr = Expression.Call(completedMethod);
                     break;
@@ -184,7 +184,7 @@ namespace SimpleW {
 
                 case HandlerReturnKind.SyncResult: {
                     // result -> object -> RouteExecutorHelpers.InvokeHandlerResult(session, handlerResult, (object)result)
-                    MethodInfo invokeResultMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.InvokeHandlerResult), BindingFlags.Public | BindingFlags.Static)!;
+                    MethodInfo invokeResultMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.InvokeHandlerResult), BindingFlags.Public | BindingFlags.Static)!;
                     Expression resultAsObject = method.ReturnType.IsValueType
                                                     ? Expression.Convert(call, typeof(object))
                                                     : Expression.TypeAs(call, typeof(object));
@@ -199,7 +199,7 @@ namespace SimpleW {
 
                 case HandlerReturnKind.TaskNoResult: {
                     // Task -> RouteExecutorHelpers.FromTask(task)
-                    MethodInfo fromTaskMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromTask), BindingFlags.Public | BindingFlags.Static)!;
+                    MethodInfo fromTaskMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromTask), BindingFlags.Public | BindingFlags.Static)!;
                     returnExpr = Expression.Call(fromTaskMethod, call);
                     break;
                 }
@@ -207,8 +207,8 @@ namespace SimpleW {
                 case HandlerReturnKind.TaskWithResult: {
                     // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, handlerResult)
                     Type[] args = method.ReturnType.GetGenericArguments();
-                    MethodInfo fromTaskWithResultGeneric = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
-                                                                                       .MakeGenericMethod(args[0]);
+                    MethodInfo fromTaskWithResultGeneric = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
+                                                                                          .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
                         fromTaskWithResultGeneric,
                         call,
@@ -220,7 +220,7 @@ namespace SimpleW {
 
                 case HandlerReturnKind.ValueTaskNoResult: {
                     // ValueTask -> RouteExecutorHelpers.FromValueTask(vt)
-                    MethodInfo fromValueTaskMethod = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromValueTask), BindingFlags.Public | BindingFlags.Static)!;
+                    MethodInfo fromValueTaskMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromValueTask), BindingFlags.Public | BindingFlags.Static)!;
                     returnExpr = Expression.Call(fromValueTaskMethod, call);
                     break;
                 }
@@ -228,8 +228,8 @@ namespace SimpleW {
                 case HandlerReturnKind.ValueTaskWithResult: {
                     // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, handlerResult)
                     Type[] args = method.ReturnType.GetGenericArguments();
-                    MethodInfo fromValueTaskWithResultGeneric = typeof(RouteExecutorHelpers).GetMethod(nameof(RouteExecutorHelpers.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
-                                                                                            .MakeGenericMethod(args[0]);
+                    MethodInfo fromValueTaskWithResultGeneric = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
+                                                                                               .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
                         fromValueTaskWithResultGeneric,
                         call,
@@ -507,13 +507,7 @@ namespace SimpleW {
 
         #endregion argument
 
-    }
-
-    /// <summary>
-    /// RouteExecutorHelpers
-    /// Mostly contains methods to convert a Result into a ValueTask
-    /// </summary>
-    public static class RouteExecutorHelpers {
+        #region helpers
 
         /// <summary>
         /// Convert a void to a ValueTask
@@ -587,12 +581,14 @@ namespace SimpleW {
             }
         }
 
+        #endregion helpers
+
     }
 
     /// <summary>
-    /// ControllerRouteBuilder
+    /// ControllerDelegateFactory
     /// </summary>
-    public static class ControllerRouteBuilder {
+    public static class ControllerDelegateFactory {
 
         /// <summary>
         /// Register a Controller type and map all its routes
@@ -601,7 +597,7 @@ namespace SimpleW {
         /// <param name="router"></param>
         /// <param name="basePrefix"></param>
         /// <exception cref="ArgumentException"></exception>
-        public static void RegisterController(Type controllerType, HttpRouter router, string? basePrefix) {
+        public static void RegisterController(Type controllerType, Router router, string? basePrefix) {
             ArgumentNullException.ThrowIfNull(controllerType);
             ArgumentNullException.ThrowIfNull(router);
 
@@ -613,17 +609,17 @@ namespace SimpleW {
             }
 
             // RouteAttribut
-            HttpRouteAttribute? classRoute = controllerType.GetCustomAttribute<HttpRouteAttribute>(inherit: true);
+            RouteAttribute? classRoute = controllerType.GetCustomAttribute<RouteAttribute>(inherit: true);
             string controllerPrefix = classRoute?.Path ?? string.Empty;
 
             foreach (MethodInfo method in controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
 
-                HttpRouteAttribute[] methodRoutes = method.GetCustomAttributes<HttpRouteAttribute>(inherit: true).ToArray();
+                RouteAttribute[] methodRoutes = method.GetCustomAttributes<RouteAttribute>(inherit: true).ToArray();
                 if (methodRoutes.Length == 0) {
                     continue;
                 }
 
-                foreach (HttpRouteAttribute attr in methodRoutes.Where(a => !string.IsNullOrWhiteSpace(a.Method) && a.Method != "*")) {
+                foreach (RouteAttribute attr in methodRoutes.Where(a => !string.IsNullOrWhiteSpace(a.Method) && a.Method != "*")) {
                     Delegate handlerDelegate = Create(controllerType, method);
                     string fullPath = BuildFullPath(basePrefix ?? string.Empty, controllerPrefix, attr);
                     router.Map(attr.Method, fullPath, handlerDelegate);
@@ -632,13 +628,13 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Build Path from controller 
+        /// Build Path from controller
         /// </summary>
         /// <param name="basePrefix"></param>
         /// <param name="controllerPrefix"></param>
         /// <param name="methodAttr"></param>
         /// <returns></returns>
-        private static string BuildFullPath(string basePrefix, string controllerPrefix, HttpRouteAttribute methodAttr) {
+        private static string BuildFullPath(string basePrefix, string controllerPrefix, RouteAttribute methodAttr) {
 
             // absolute path
             if (methodAttr.IsAbsolutePath) {
@@ -668,7 +664,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Create a Delegate
+        /// Create a Delegate from a ControllerType
         /// </summary>
         /// <param name="controllerType"></param>
         /// <param name="method"></param>
