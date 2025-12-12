@@ -172,7 +172,7 @@
             // at last, return a 404
             return ExecutePipelineAsync(
                 session,
-                DelegateExecutorFactory.Create(static (HttpSession s) => s.SendTextAsync("Not Found", 404, "Not Found"))
+                DelegateExecutorFactory.Create(static (HttpSession s) => s.Response.SendTextAsync("Not Found", 404, "Not Found"))
             );
         }
 

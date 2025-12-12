@@ -45,10 +45,10 @@ namespace Core {
             }
 
             server.MapGet("/api/test/hello", static (HttpSession session) => {
-                return session.SendJsonAsync(new { message = "Hello World !" });
+                return session.Response.SendJsonAsync(new { message = "Hello World !" });
             });
             server.MapGet("/api/test/text", static (HttpSession session) => {
-                return session.SendTextAsync("Hello World !");
+                return session.Response.SendTextAsync("Hello World !");
             });
             server.OptionReuseAddress = true;
             server.OptionNoDelay = true;
