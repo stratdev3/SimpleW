@@ -614,11 +614,11 @@ namespace SimpleW {
 
         /// <summary>
         /// SendAsync Segments to socket (thread safe)
-        /// This is the lower level of sending
+        /// Lower level of sending
         /// </summary>
         /// <param name="segments"></param>
         /// <returns></returns>
-        private async ValueTask SendSegmentsAsync(ArraySegment<byte>[] segments) {
+        public async ValueTask SendSegmentsAsync(ArraySegment<byte>[] segments) {
             await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
                 if (_sslStream is not null) {
@@ -651,27 +651,27 @@ namespace SimpleW {
 
         /// <summary>
         /// SendAsync Segments to socket (thread safe)
-        /// This is the lower level of sending
+        /// Lower level of sending
         /// </summary>
-        /// <param name="segment1"></param>
-        /// <param name="segment2"></param>
+        /// <param name="header"></param>
+        /// <param name="body"></param>
         /// <returns></returns>
-        private async ValueTask SendSegmentsAsync(ArraySegment<byte> segment1, ArraySegment<byte> segment2) {
+        public async ValueTask SendSegmentsAsync(ArraySegment<byte> header, ArraySegment<byte> body) {
             await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
                 if (_sslStream is not null) {
                     // HTTPS : write each segment to sslStream
-                    if (segment1.Array is not null && segment1.Count > 0) {
-                        await _sslStream.WriteAsync(segment1.Array, segment1.Offset, segment1.Count).ConfigureAwait(false);
+                    if (header.Array is not null && header.Count > 0) {
+                        await _sslStream.WriteAsync(header.Array, header.Offset, header.Count).ConfigureAwait(false);
                     }
-                    if (segment2.Array is not null && segment2.Count > 0) {
-                        await _sslStream.WriteAsync(segment2.Array, segment2.Offset, segment2.Count).ConfigureAwait(false);
+                    if (body.Array is not null && body.Count > 0) {
+                        await _sslStream.WriteAsync(body.Array, body.Offset, body.Count).ConfigureAwait(false);
                     }
                     await _sslStream.FlushAsync().ConfigureAwait(false);
                 }
                 else {
-                    _sendSegments2[0] = segment1;
-                    _sendSegments2[1] = segment2;
+                    _sendSegments2[0] = header;
+                    _sendSegments2[1] = body;
                     await _socket.SendAsync(_sendSegments2, SocketFlags.None).ConfigureAwait(false);
                 }
             }
