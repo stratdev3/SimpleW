@@ -550,12 +550,21 @@ namespace SimpleW {
             // 2. request line
             int firstCrlf = headerSpan.IndexOf(Crlf);
             if (firstCrlf <= 0) {
-                return 0; // invalid
+                throw new HttpBadRequestException("Invalid request line.");
             }
 
             ReadOnlySpan<byte> requestLineSpan = headerSpan.Slice(0, firstCrlf);
             if (!TryParseRequestLineFast(requestLineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString)) {
-                return 0;
+                throw new HttpBadRequestException("");
+            }
+            if (string.IsNullOrEmpty(rawTarget)) {
+                throw new HttpBadRequestException("Empty request-target.");
+            }
+            if (rawTarget[0] != '/') {
+                throw new HttpBadRequestException("Unsupported request-target form.");
+            }
+            if (string.IsNullOrEmpty(path)) {
+                throw new HttpBadRequestException("Empty path.");
             }
 
             request.Method = method;
@@ -585,7 +594,7 @@ namespace SimpleW {
                 }
 
                 if (!TryParseHeaderLineFast(lineSpan, out string? name, out string? value) || name is null) {
-                    continue;
+                    throw new HttpBadRequestException("Invalid header line.");
                 }
 
                 value ??= string.Empty;
@@ -602,6 +611,9 @@ namespace SimpleW {
                     }
                 }
             }
+            //if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && headers.Host is null) {
+            //    throw new HttpBadRequestException("Missing Host header (HTTP/1.1).");
+            //}
 
             request.Headers = headers;
 
@@ -780,7 +792,7 @@ namespace SimpleW {
                     if (rented is not null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
-                    throw new InvalidOperationException("Invalid chunk size.");
+                    throw new HttpBadRequestException("Invalid chunk size.");
                 }
 
                 pos += lineEndRel + Crlf.Length;

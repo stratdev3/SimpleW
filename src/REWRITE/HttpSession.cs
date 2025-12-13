@@ -318,6 +318,11 @@ namespace SimpleW {
                     await _response.Status(413).Text("Payload Too Large").SendAsync().ConfigureAwait(false);
                     return;
                 }
+                catch (HttpBadRequestException ex) {
+                    CloseAfterResponse = true;
+                    await _response.Status(400).Text("Bad Request").SendAsync().ConfigureAwait(false);
+                    return;
+                }
                 catch (Exception ex) {
                     Console.WriteLine($"[HTTP] Error while processing {_request?.Method} {_request?.Path} for host '{_request?.Headers.Host ?? "<no-host>"}': {ex}");
                     await _response.Status(500).Text("Internal Server Error").SendAsync().ConfigureAwait(false);
@@ -586,6 +591,9 @@ namespace SimpleW {
     /// </summary>
     public sealed class HttpRequestTooLargeException(string message) : Exception(message) {
     }
+    public sealed class HttpBadRequestException(string message) : Exception(message) {
+    }
+
 
     /// <summary>
     /// ArrayPool with Reuse Buffer
