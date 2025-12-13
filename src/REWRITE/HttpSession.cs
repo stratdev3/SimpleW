@@ -383,6 +383,34 @@ namespace SimpleW {
         private readonly ArraySegment<byte>[] _sendSegments2 = new ArraySegment<byte>[2];
 
         /// <summary>
+        /// SendAsync native to socket (thread safe)
+        /// Lower level of sending
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public async ValueTask SendAsync(ReadOnlyMemory<byte> buffer) {
+            try {
+                if (Interlocked.Exchange(ref _sending, 1) != 0) {
+                    throw new InvalidOperationException("Concurrent SendAsync on same session");
+                }
+                if (_sslStream is not null) {
+                    await _sslStream.WriteAsync(buffer).ConfigureAwait(false);
+                }
+                else {
+                    await _socket.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                }
+            }
+            catch (ObjectDisposedException) {
+            }
+            catch (SocketException) {
+            }
+            finally {
+                Volatile.Write(ref _sending, 0);
+            }
+        }
+
+        /// <summary>
         /// SendAsync to socket (thread safe)
         /// Lower level of sending
         /// </summary>
@@ -440,6 +468,34 @@ namespace SimpleW {
                     _sendSegments2[0] = header;
                     _sendSegments2[1] = body;
                     await _socket.SendAsync(_sendSegments2, SocketFlags.None).ConfigureAwait(false);
+                }
+            }
+            catch (ObjectDisposedException) {
+            }
+            catch (SocketException) {
+            }
+            finally {
+                Volatile.Write(ref _sending, 0);
+            }
+        }
+
+        /// <summary>
+        /// SendAsync to socket (thread safe)
+        /// Lower level of sending
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public async ValueTask SendAsync(ArraySegment<byte> buffer) {
+            try {
+                if (Interlocked.Exchange(ref _sending, 1) != 0) {
+                    throw new InvalidOperationException("Concurrent SendAsync on same session");
+                }
+                if (_sslStream is not null) {
+                    await _sslStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
+                }
+                else {
+                    await _socket.SendAsync(buffer.AsMemory(), SocketFlags.None).ConfigureAwait(false);
                 }
             }
             catch (ObjectDisposedException) {
