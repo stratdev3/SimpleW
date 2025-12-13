@@ -28,7 +28,7 @@
         /// Send Result as Json
         /// </summary>
         public static readonly HttpHandlerResult SendJsonResult = (session, result) => {
-            return session.Response.SendJsonAsync(result);
+            return session.Response.Json(result).SendAsync();
         };
 
         /// <summary>

@@ -318,12 +318,12 @@ namespace SimpleW {
                 }
                 catch (HttpRequestTooLargeException) {
                     CloseAfterResponse = true;
-                    await _response.SendTextAsync("Payload Too Large", 413, "Payload Too Large").ConfigureAwait(false);
+                    await _response.Status(413).Text("Payload Too Large").SendAsync().ConfigureAwait(false);
                     return;
                 }
                 catch (Exception ex) {
                     Console.WriteLine($"[HTTP] Error while processing {_request?.Method} {_request?.Path} for host '{_request?.Headers.Host ?? "<no-host>"}': {ex}");
-                    await _response.SendTextAsync("Internal Server Error", 500, "Internal Server Error").ConfigureAwait(false);
+                    await _response.Status(500).Text("Internal Server Error").SendAsync().ConfigureAwait(false);
                     return;
                 }
             }
