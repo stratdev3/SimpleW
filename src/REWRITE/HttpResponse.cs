@@ -232,10 +232,12 @@ namespace SimpleW {
         public static string DefaultContentType(string extension) => extension switch {
 
             ".html" => "text/html",
+            ".htm" => "text/html",
             ".css" => "text/css",
             ".js" => "text/javascript",
             ".vue" => "text/html",
             ".xml" => "text/xml",
+            ".wasm" => "application/wasm",
 
             // Application content types
             ".atom" => "application/atom+xml",
@@ -258,13 +260,17 @@ namespace SimpleW {
             ".ogg" => "audio/ogg",
 
             // Font content types
+            ".woff" => "font/woff",
+            ".woff2" => "font/woff2",
             ".ttf" => "font/ttf",
 
             // Image content types
+            ".webp" => "image/webp",
             ".bmp" => "image/bmp",
             ".emf" => "image/emf",
             ".gif" => "image/gif",
             ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
             ".jpm" => "image/jpm",
             ".jpx" => "image/jpx",
             ".jrx" => "image/jrx",
@@ -272,6 +278,7 @@ namespace SimpleW {
             ".svg" => "image/svg+xml",
             ".tiff" => "image/tiff",
             ".wmf" => "image/wmf",
+            ".ico" => "image/x-icon",
 
             // Message content types
             ".http" => "message/http",
@@ -283,6 +290,7 @@ namespace SimpleW {
 
             // Text content types
             ".csv" => "text/csv",
+            ".txt" => "text/plain",
             ".plain" => "text/plain",
             ".richtext" => "text/richtext",
             ".rtf" => "text/rtf",
