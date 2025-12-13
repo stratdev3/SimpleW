@@ -401,7 +401,6 @@ namespace SimpleW {
                         }
                         await _sslStream.WriteAsync(seg.Array, seg.Offset, seg.Count).ConfigureAwait(false);
                     }
-                    await _sslStream.FlushAsync().ConfigureAwait(false);
                 }
                 else {
                     await _socket.SendAsync(segments, SocketFlags.None).ConfigureAwait(false);
@@ -436,7 +435,6 @@ namespace SimpleW {
                     if (body.Array is not null && body.Count > 0) {
                         await _sslStream.WriteAsync(body.Array, body.Offset, body.Count).ConfigureAwait(false);
                     }
-                    await _sslStream.FlushAsync().ConfigureAwait(false);
                 }
                 else {
                     _sendSegments2[0] = header;
