@@ -24,6 +24,11 @@ namespace SimpleW {
         private readonly ArrayPool<byte> _bufferPool;
 
         /// <summary>
+        /// Flag Response Sent
+        /// </summary>
+        private bool _sent;
+
+        /// <summary>
         /// Status Code
         /// </summary>
         private int _statusCode;
@@ -48,21 +53,26 @@ namespace SimpleW {
         /// </summary>
         private int _headerCount;
 
+        //
+        // BODY
+        //
+
         /// <summary>
         /// Kind of Body
         /// </summary>
         private BodyKind _bodyKind;
 
         /// <summary>
-        /// body as direct memory (not owned)
+        /// for BodyKind.Memory
         /// </summary>
         private ReadOnlyMemory<byte> _bodyMemory;
 
         /// <summary>
-        /// owned body buffer (ArrayPool)
+        /// for BodyKind.Segment / OwnedBuffer
         /// </summary>
-        private byte[]? _ownedBodyBuffer;
-        private int _ownedBodyLength;
+        private byte[]? _bodyArray;
+        private int _bodyOffset;
+        private int _bodyLength;
 
         /// <summary>
         /// owned body writer (ArrayPool)
@@ -70,9 +80,9 @@ namespace SimpleW {
         private PooledBufferWriter? _ownedBodyWriter;
 
         /// <summary>
-        /// Flag Response Sent
+        /// optional owner for lifetime-managed body
         /// </summary>
-        private bool _sent;
+        private IDisposable? _bodyOwner;
 
         /// <summary>
         /// Constructor
@@ -91,6 +101,9 @@ namespace SimpleW {
 
             _bodyKind = BodyKind.None;
             _bodyMemory = ReadOnlyMemory<byte>.Empty;
+            _bodyArray = null;
+            _bodyOffset = 0;
+            _bodyLength = 0;
 
             _cookieCount = 0;
 
@@ -302,16 +315,34 @@ namespace SimpleW {
             return this;
         }
 
+
         /// <summary>
-        /// Set Body to provided bytes (not owned). Caller keeps ownership
+        /// Body from byte[] (borrowed stable, array-backed)
         /// </summary>
         /// <param name="body"></param>
         /// <param name="contentType"></param>
         /// <returns></returns>
-        public HttpResponse Body(ReadOnlyMemory<byte> body, string? contentType = "application/octet-stream") {
-            ClearBody();
-            _bodyKind = BodyKind.Memory;
-            _bodyMemory = body;
+        public HttpResponse Body(byte[] body, string? contentType = "application/octet-stream") {
+            return Body(new ArraySegment<byte>(body, 0, body.Length), contentType);
+        }
+
+        /// <summary>
+        /// Body from ArraySegment (borrowed stable, array-backed, supports offset/len)
+        /// </summary>
+        /// <param name="body"></param>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
+        public HttpResponse Body(ArraySegment<byte> body, string? contentType = "application/octet-stream") {
+            DisposeBody();
+
+            _bodyKind = BodyKind.Segment;
+            _bodyArray = body.Array;
+            _bodyOffset = body.Offset;
+            _bodyLength = body.Count;
+
+            _bodyMemory = default;
+            _bodyOwner = null;
+
             if (contentType is not null) {
                 _contentType = contentType;
             }
@@ -319,13 +350,76 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Set Body to provided bytes (not owned). Caller keeps ownership
+        /// Body from ReadOnlyMemory (borrowed stable if no owner provided)
+        /// If array-backed => store as Segment immediately
+        /// If not array-backed => store as Memory
         /// </summary>
         /// <param name="body"></param>
         /// <param name="contentType"></param>
         /// <returns></returns>
-        public HttpResponse Body(byte[] body, string? contentType = "application/octet-stream") {
-            return Body(body.AsMemory(), contentType);
+        public HttpResponse Body(ReadOnlyMemory<byte> body, string? contentType = "application/octet-stream") {
+            DisposeBody();
+
+            // is body an underlying segment ?
+            if (MemoryMarshal.TryGetArray(body, out ArraySegment<byte> seg)) {
+                _bodyKind = BodyKind.Segment;
+                _bodyArray = seg.Array;
+                _bodyOffset = seg.Offset;
+                _bodyLength = seg.Count;
+
+                _bodyMemory = default;
+            }
+            else {
+                _bodyKind = BodyKind.Memory;
+                _bodyMemory = body;
+
+                _bodyArray = null;
+                _bodyOffset = 0;
+                _bodyLength = 0;
+            }
+
+            _bodyOwner = null;
+
+            if (contentType is not null) {
+                _contentType = contentType;
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Body with explicit owner (zero-copy + safe lifetime)
+        /// </summary>
+        /// <param name="body"></param>
+        /// <param name="owner"></param>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
+        public HttpResponse Body(ReadOnlyMemory<byte> body, IDisposable owner, string? contentType = "application/octet-stream") {
+            DisposeBody();
+
+            // is body an underlying segment ?
+            if (MemoryMarshal.TryGetArray(body, out ArraySegment<byte> seg)) {
+                _bodyKind = BodyKind.Segment;
+                _bodyArray = seg.Array;
+                _bodyOffset = seg.Offset;
+                _bodyLength = seg.Count;
+
+                _bodyMemory = default;
+            }
+            else {
+                _bodyKind = BodyKind.Memory;
+                _bodyMemory = body;
+
+                _bodyArray = null;
+                _bodyOffset = 0;
+                _bodyLength = 0;
+            }
+
+            _bodyOwner = owner;
+
+            if (contentType is not null) {
+                _contentType = contentType;
+            }
+            return this;
         }
 
         /// <summary>
@@ -335,16 +429,18 @@ namespace SimpleW {
         /// <param name="contentType"></param>
         /// <returns></returns>
         public HttpResponse Text(string body, string contentType = "text/plain; charset=utf-8") {
-            ClearBody();
+            DisposeBody();
             _contentType = contentType;
 
             int maxBytes = Utf8NoBom.GetMaxByteCount(body.Length);
             byte[] buf = _bufferPool.Rent(maxBytes);
             int len = Utf8NoBom.GetBytes(body.AsSpan(), buf.AsSpan());
 
-            _ownedBodyBuffer = buf;
-            _ownedBodyLength = len;
             _bodyKind = BodyKind.OwnedBuffer;
+            _bodyArray = buf;
+            _bodyOffset = 0;
+            _bodyLength = len;
+
             return this;
         }
 
@@ -356,7 +452,7 @@ namespace SimpleW {
         /// <param name="contentType"></param>
         /// <returns></returns>
         public HttpResponse Json<T>(T value, string contentType = "application/json; charset=utf-8") {
-            ClearBody();
+            DisposeBody();
             _contentType = contentType;
 
             PooledBufferWriter writer = new(_bufferPool);
@@ -368,6 +464,10 @@ namespace SimpleW {
 
             _ownedBodyWriter = writer;
             _bodyKind = BodyKind.OwnedWriter;
+            _bodyArray = writer.Buffer;
+            _bodyOffset = 0;
+            _bodyLength = writer.Length;
+
             return this;
         }
 
@@ -381,39 +481,37 @@ namespace SimpleW {
             }
             _sent = true;
 
-            // determine body segment + length
-            ArraySegment<byte> bodySeg = default;
+            // reserve (depending on body kind): body length or a ReadOnlyMemory 
+            ReadOnlyMemory<byte> bodyMem = ReadOnlyMemory<byte>.Empty;
             int bodyLength = 0;
 
             switch (_bodyKind) {
                 case BodyKind.None:
-                    bodySeg = default;
+                    bodyMem = ReadOnlyMemory<byte>.Empty;
                     bodyLength = 0;
                     break;
 
-                case BodyKind.Memory: {
-                    bodyLength = _bodyMemory.Length;
-                    if (!MemoryMarshal.TryGetArray(_bodyMemory, out bodySeg)) {
-                        // fallback (rare)
-                        byte[] tmp = _bodyMemory.ToArray();
-                        bodySeg = new ArraySegment<byte>(tmp, 0, tmp.Length);
-                        // NOTE: tmp will be GC'ed; if you want ultra hardcore, add an OwnedTemp kind.
-                    }
-                    break;
-                }
-
+                case BodyKind.Segment:
                 case BodyKind.OwnedBuffer:
-                    bodyLength = _ownedBodyLength;
-                    bodySeg = new ArraySegment<byte>(_ownedBodyBuffer!, 0, _ownedBodyLength);
+                    if (_bodyArray is not null && _bodyLength > 0) {
+                        bodyMem = _bodyArray.AsMemory(_bodyOffset, _bodyLength);
+                        bodyLength = _bodyLength;
+                    }
                     break;
 
                 case BodyKind.OwnedWriter:
-                    bodyLength = _ownedBodyWriter!.Length;
-                    bodySeg = new ArraySegment<byte>(_ownedBodyWriter.Buffer, 0, _ownedBodyWriter.Length);
+                    if (_ownedBodyWriter is not null && _ownedBodyWriter.Length > 0) {
+                        bodyMem = _ownedBodyWriter.Buffer.AsMemory(0, _ownedBodyWriter.Length);
+                        bodyLength = _ownedBodyWriter.Length;
+                    }
+                    break;
+
+                case BodyKind.Memory:
+                    bodyMem = _bodyMemory;
+                    bodyLength = bodyMem.Length;
                     break;
             }
 
-            // build header bytes (pooled)
             PooledBufferWriter? headerWriter = null;
             try {
                 headerWriter = new PooledBufferWriter(_bufferPool, initialSize: 512);
@@ -447,11 +545,10 @@ namespace SimpleW {
 
                 // custom headers
                 for (int i = 0; i < _headerCount; i++) {
-                    ref readonly var h = ref _headers[i];
+                    ref readonly HeaderEntry h = ref _headers[i];
                     if (string.IsNullOrEmpty(h.Name)) {
                         continue;
                     }
-
                     WriteAscii(headerWriter, h.Name);
                     WriteBytes(headerWriter, COLON_SP);
                     WriteAscii(headerWriter, h.Value ?? string.Empty);
@@ -461,21 +558,26 @@ namespace SimpleW {
                 // end headers
                 WriteCRLF(headerWriter);
 
-                ArraySegment<byte> headerSeg = new(headerWriter.Buffer, 0, headerWriter.Length);
+                ArraySegment<byte> headerSeg = new ArraySegment<byte>(headerWriter.Buffer, 0, headerWriter.Length);
 
-                // send
+                // SEND STRATEGY
                 if (bodyLength == 0) {
-                    // header only (still uses segments)
-                    await _session.SendAsync(headerSeg, default).ConfigureAwait(false);
+                    await _session.SendAsync(headerSeg).ConfigureAwait(false);
+                }
+                else if (_bodyKind == BodyKind.Segment || _bodyKind == BodyKind.OwnedBuffer || _bodyKind == BodyKind.OwnedWriter) {
+                    // array-backed body => 1 socket send (exception for https)
+                    ArraySegment<byte> bodySeg = new ArraySegment<byte>(_bodyArray!, _bodyOffset, _bodyLength);
+                    await _session.SendAsync(headerSeg, bodySeg).ConfigureAwait(false);
                 }
                 else {
-                    await _session.SendAsync(headerSeg, bodySeg).ConfigureAwait(false);
+                    // non array-backed => 2 socket sends but zero-copy
+                    await _session.SendAsync(headerSeg).ConfigureAwait(false);
+                    await _session.SendAsync(bodyMem).ConfigureAwait(false);
                 }
             }
             finally {
                 headerWriter?.Dispose();
-                // keep response state but free owned buffers
-                ClearBody();
+                DisposeBody(); // disposes owner if any + returns owned buffers
             }
         }
 
@@ -674,7 +776,7 @@ namespace SimpleW {
 
             _headerCount = 0;
 
-            ClearBody();
+            DisposeBody();
 
             _cookieCount = 0;
 
@@ -685,20 +787,29 @@ namespace SimpleW {
         /// Dispose Body
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ClearBody() {
+        private void DisposeBody() {
+            // dispose explicit owner
+            if (_bodyOwner is not null) {
+                _bodyOwner.Dispose();
+                _bodyOwner = null;
+            }
+
+            // dispose writer (returns its pooled array)
             if (_ownedBodyWriter is not null) {
                 _ownedBodyWriter.Dispose();
                 _ownedBodyWriter = null;
             }
 
-            if (_ownedBodyBuffer is not null) {
-                _bufferPool.Return(_ownedBodyBuffer);
-                _ownedBodyBuffer = null;
-                _ownedBodyLength = 0;
+            // return pooled buffer only if we own it
+            if (_bodyKind == BodyKind.OwnedBuffer && _bodyArray is not null) {
+                _bufferPool.Return(_bodyArray);
             }
 
             _bodyKind = BodyKind.None;
             _bodyMemory = ReadOnlyMemory<byte>.Empty;
+            _bodyArray = null;
+            _bodyOffset = 0;
+            _bodyLength = 0;
         }
 
         #endregion Dispose
@@ -782,7 +893,8 @@ namespace SimpleW {
             None = 0,
             Memory = 1,
             OwnedBuffer = 2,
-            OwnedWriter = 3
+            OwnedWriter = 3,
+            Segment = 4
         }
 
         #endregion response helpers
