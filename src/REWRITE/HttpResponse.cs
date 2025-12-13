@@ -419,27 +419,27 @@ namespace SimpleW {
                 headerWriter = new PooledBufferWriter(_bufferPool, initialSize: 512);
 
                 // Status line: HTTP/1.1 <code> <text>\r\n
-                WriteAscii(headerWriter, "HTTP/1.1 ");
+                WriteBytes(headerWriter, H_HTTP11);
                 WriteIntAscii(headerWriter, _statusCode);
                 WriteAscii(headerWriter, " ");
                 WriteAscii(headerWriter, _statusText);
                 WriteCRLF(headerWriter);
 
                 // Content-Length
-                WriteAscii(headerWriter, "Content-Length: ");
+                WriteBytes(headerWriter, H_CL);
                 WriteIntAscii(headerWriter, bodyLength);
                 WriteCRLF(headerWriter);
 
                 // Content-Type (only if set)
                 if (!string.IsNullOrEmpty(_contentType)) {
-                    WriteAscii(headerWriter, "Content-Type: ");
+                    WriteBytes(headerWriter, H_CT);
                     WriteAscii(headerWriter, _contentType!);
                     WriteCRLF(headerWriter);
                 }
 
                 // Connection (session decides keep-alive/close)
-                WriteAscii(headerWriter, "Connection: ");
-                WriteAscii(headerWriter, _session.CloseAfterResponse ? "close" : "keep-alive");
+                WriteBytes(headerWriter, H_CONN);
+                WriteBytes(headerWriter, _session.CloseAfterResponse ? H_CONN_CLOSE : H_CONN_KA);
                 WriteCRLF(headerWriter);
 
                 // Set-Cookie headers (multi allowed)
@@ -707,6 +707,13 @@ namespace SimpleW {
 
         private static readonly Encoding Ascii = Encoding.ASCII;
         private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        private static ReadOnlySpan<byte> H_HTTP11 => "HTTP/1.1 "u8;
+        private static ReadOnlySpan<byte> H_CL => "Content-Length: "u8;
+        private static ReadOnlySpan<byte> H_CT => "Content-Type: "u8;
+        private static ReadOnlySpan<byte> H_CONN => "Connection: "u8;
+        private static ReadOnlySpan<byte> H_CONN_CLOSE => "close"u8;
+        private static ReadOnlySpan<byte> H_CONN_KA => "keep-alive"u8;
 
         private static readonly byte[] CRLF = new byte[] { (byte)'\r', (byte)'\n' };
         private static readonly byte[] COLON_SP = new byte[] { (byte)':', (byte)' ' };
