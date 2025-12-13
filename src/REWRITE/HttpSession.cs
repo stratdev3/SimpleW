@@ -2,9 +2,6 @@
 using System.Diagnostics;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.Json;
 
 
 namespace SimpleW {
@@ -376,9 +373,9 @@ namespace SimpleW {
         #region SendAsync
 
         /// <summary>
-        /// Semaphore for Socket.SendAsync
+        /// State Gate for SendAsync thread-safe
         /// </summary>
-        private readonly SemaphoreSlim _sendLock = new(1, 1);
+        private int _sending;
 
         /// <summary>
         /// Storage Segment Array for SendAsync(header, body)
@@ -392,8 +389,10 @@ namespace SimpleW {
         /// <param name="segments"></param>
         /// <returns></returns>
         public async ValueTask SendAsync(ArraySegment<byte>[] segments) {
-            await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
+                if (Interlocked.Exchange(ref _sending, 1) != 0) {
+                    throw new InvalidOperationException("Concurrent SendAsync on same session");
+                }
                 if (_sslStream is not null) {
                     // HTTPS : write each segment to sslStream
                     foreach (ArraySegment<byte> seg in segments) {
@@ -413,7 +412,7 @@ namespace SimpleW {
             catch (SocketException) {
             }
             finally {
-                _sendLock.Release();
+                Volatile.Write(ref _sending, 0);
             }
         }
 
@@ -425,8 +424,10 @@ namespace SimpleW {
         /// <param name="body"></param>
         /// <returns></returns>
         public async ValueTask SendAsync(ArraySegment<byte> header, ArraySegment<byte> body) {
-            await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
+                if (Interlocked.Exchange(ref _sending, 1) != 0) {
+                    throw new InvalidOperationException("Concurrent SendAsync on same session");
+                }
                 if (_sslStream is not null) {
                     // HTTPS : write each segment to sslStream
                     if (header.Array is not null && header.Count > 0) {
@@ -448,7 +449,7 @@ namespace SimpleW {
             catch (SocketException) {
             }
             finally {
-                _sendLock.Release();
+                Volatile.Write(ref _sending, 0);
             }
         }
 
