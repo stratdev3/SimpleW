@@ -127,7 +127,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="code"></param>
         /// <returns></returns>
-        private static string DefaultStatusText(int code) => code switch {
+        public static string DefaultStatusText(int code) => code switch {
 
             100 => "Continue",
             101 => "Switching Protocols",
@@ -229,7 +229,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="extension"></param>
         /// <returns></returns>
-        private static string DefaultContentType(string extension) => extension switch {
+        public static string DefaultContentType(string extension) => extension switch {
 
             ".html" => "text/html",
             ".css" => "text/css",
