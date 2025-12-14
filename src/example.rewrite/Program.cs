@@ -1,10 +1,12 @@
 ﻿using System.Net;
+using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
+using System.Xml.Xsl;
 using SimpleW;
 
 
-namespace Core {
+namespace example.rewrite {
 
     /// <summary>
     /// Example Program
@@ -51,11 +53,43 @@ namespace Core {
 #pragma warning restore CS0162 // Code inaccessible détecté
 
             server.MapGet("/api/test/hello", static (HttpSession session) => {
-                return session.Response.Json(new { message = "Hello World !" });
+                return session.Response.Json(new { message = "Hello World !" }).SendAsync();
             });
-            server.MapGet("/api/test/text", static (HttpSession session) => {
-                return session.Response.Text("Hello World !");
-            });
+            //server.UseModule(new StaticFilesModule(
+            //    @"C:\www\toto\embediotest", "/html"
+            //    ,timeout: TimeSpan.FromDays(1)
+            //) {
+            //    AutoIndex = true
+            //});
+
+            //server.MapGet("/api/test/hello2", static async (HttpSession session) => {
+            //    await session.SendJsonAsync(new { message = "Hello World !" });
+            //});
+            //server.MapGet("/api/test/hello2", static (HttpSession session, DateTime? date = null) => {
+            //    date ??= DateTime.Now;
+            //    return session.SendJsonAsync(new { message = $"Hello {date.Value.ToString("o")} !" });
+            //});
+            //server.MapGet("/api/test/hello3", static (HttpSession session, Guid id = new Guid()) => {
+            //    if (id == Guid.Empty) {
+            //        id = Guid.NewGuid();
+            //    }
+            //    return session.SendJsonAsync(new { message = $"Hello {id} !" });
+            //});
+            server.UseControllers<Controller>("/api");
+            //server.MapGet("/api/test/hello3", static (string? name = null) => {
+            //    return new { message = $"Hello {name} !" };
+            //});
+            //server.MapGet("/api/test/hello4", static async (string? name = null) => {
+            //    await Task.Delay(2_000);
+            //    return new { message = $"Hello {name} !" };
+            //});
+            //server.MapGet("/api/test/hello5", static async (HttpSession session, string? name = null) => {
+            //    await Task.Delay(2_000);
+            //    await session.SendJsonAsync(new { message = $"Hello {name} !" });
+            //});
+            //server.MapGet("/api/test/text", static (HttpSession session) => {
+            //    return session.SendTextAsync("Hello World !");
+            //});
             server.OptionReuseAddress = true;
             server.OptionNoDelay = true;
             server.OptionKeepAlive = true;
@@ -94,6 +128,18 @@ namespace Core {
             Console.WriteLine("server stopped");
         }
 
+    }
+
+    [Route("/user")]
+    public class UserController : Controller {
+
+        [Route("GET", "/details")]
+        public object Details(string id = "1", int page = 1) {
+            return new {
+                Id = id,
+                Page = page,
+            };
+        }
     }
 
 }
