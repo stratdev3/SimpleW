@@ -501,13 +501,24 @@ namespace SimpleW {
         /// <param name="contentType"></param>
         /// <returns></returns>
         public HttpResponse File(string path, string? contentType = null) {
+            return File(new FileInfo(path), contentType);
+        }
+
+        /// <summary>
+        /// Set File Body from FileInfo (avoids re-stat / allows caller to pre-validate)
+        /// </summary>
+        /// <param name="fi"></param>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public HttpResponse File(FileInfo fi, string? contentType = null) {
+            ArgumentNullException.ThrowIfNull(fi);
             DisposeBody();
 
             _bodyKind = BodyKind.File;
-            _filePath = path;
 
-            FileInfo fi = new(path);
-            _fileLength = fi.Length;
+            _filePath = fi.FullName; // set fullname !
+            _fileLength = fi.Length; // can throw if file does not exists or cannot be access
 
             _contentType = contentType ?? DefaultContentType(fi.Extension);
 
