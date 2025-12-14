@@ -356,7 +356,11 @@ namespace SimpleW {
             // fallback
             if (_other is not null) {
                 for (int i = 0; i < _otherCount; i++) {
+#if NET9_0_OR_GREATER
                     ref readonly HeaderEntry e = ref _other[i];
+#else
+                    HeaderEntry e = _other[i];
+#endif
                     yield return new(e.Name, e.Value);
                 }
             }

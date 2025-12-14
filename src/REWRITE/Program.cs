@@ -34,7 +34,11 @@ namespace Core {
                 File.WriteAllBytes(certificateFilePath, Convert.FromBase64String(SslCertificateBase64));
 
                 // create a context with certificate, support for password protection
+#if NET9_0_OR_GREATER
                 X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(certificateFilePath, "secret");
+#else
+                X509Certificate2 cert = new(@"C:\Users\SimpleW\ssl\domain.pfx", "password");
+#endif
                 SslContext sslContext = new(
                     SslProtocols.Tls12 | SslProtocols.Tls13,
                     cert,

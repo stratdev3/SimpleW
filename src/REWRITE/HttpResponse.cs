@@ -612,7 +612,11 @@ namespace SimpleW {
 
                 // custom headers
                 for (int i = 0; i < _headerCount; i++) {
+#if NET9_0_OR_GREATER
                     ref readonly HeaderEntry h = ref _headers[i];
+#else
+                    HeaderEntry h = _headers[i];
+#endif
                     if (string.IsNullOrEmpty(h.Name)) {
                         continue;
                     }
