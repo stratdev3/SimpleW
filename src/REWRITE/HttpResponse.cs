@@ -323,7 +323,6 @@ namespace SimpleW {
             return this;
         }
 
-
         /// <summary>
         /// Body from byte[] (borrowed stable, array-backed)
         /// </summary>
