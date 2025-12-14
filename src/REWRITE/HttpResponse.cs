@@ -53,6 +53,11 @@ namespace SimpleW {
         /// </summary>
         private int _headerCount;
 
+        /// <summary>
+        /// True if user added a Content-Length via AddHeader (so we must not auto-write it)
+        /// </summary>
+        private bool _hasCustomContentLength;
+
         //
         // BODY
         //
@@ -316,6 +321,9 @@ namespace SimpleW {
         /// <param name="value"></param>
         /// <returns></returns>
         public HttpResponse AddHeader(string name, string value) {
+            if (string.Equals(name, "Content-Length", StringComparison.OrdinalIgnoreCase)) {
+                _hasCustomContentLength = true;
+            }
             if (_headerCount == _headers.Length) {
                 Array.Resize(ref _headers, _headers.Length * 2);
             }
@@ -531,9 +539,11 @@ namespace SimpleW {
                 WriteCRLF(headerWriter);
 
                 // Content-Length
-                WriteBytes(headerWriter, H_CL);
-                WriteIntAscii(headerWriter, bodyLength);
-                WriteCRLF(headerWriter);
+                if (!_hasCustomContentLength) {
+                    WriteBytes(headerWriter, H_CL);
+                    WriteIntAscii(headerWriter, bodyLength);
+                    WriteCRLF(headerWriter);
+                }
 
                 // Content-Type (only if set)
                 if (!string.IsNullOrEmpty(_contentType)) {
@@ -782,6 +792,7 @@ namespace SimpleW {
             _contentType = null;
 
             _headerCount = 0;
+            _hasCustomContentLength = false;
 
             DisposeBody();
 
