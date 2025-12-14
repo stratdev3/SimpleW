@@ -137,7 +137,7 @@ namespace SimpleW {
 
             // resolve FS target (no disk hit here)
             if (!TryResolvePath(session, out string fullPath, out bool endsWithSlash)) {
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                await SendNotFoundAsync(session).ConfigureAwait(false);
                 return;
             }
 
@@ -172,13 +172,13 @@ namespace SimpleW {
                     return;
                 }
 
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                await SendNotFoundAsync(session).ConfigureAwait(false);
                 return;
             }
 
             // if path ends with "/" but isn't a directory -> 404
             if (endsWithSlash) {
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                await SendNotFoundAsync(session).ConfigureAwait(false);
                 return;
             }
 
@@ -238,7 +238,6 @@ namespace SimpleW {
             return true;
         }
 
-
         /// <summary>
         /// normalize prefix to "/xxx" (no trailing slash unless it's "/")
         /// </summary>
@@ -266,18 +265,13 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <param name="filePath"></param>
         /// <returns></returns>
-        private async Task ServeFileAsync(HttpSession session, HttpRequest request, string filePath) {
-
-            // Normalize key (important for cache hits)
-            string key;
-            try { key = Path.GetFullPath(filePath); }
-            catch { key = filePath; }
+        private async ValueTask ServeFileAsync(HttpSession session, HttpRequest request, string filePath) {
 
             // Cache ON (server from cache first, fallback disk on miss)
             if (_cacheTimeout.HasValue) {
 
                 // 1) cache hit
-                if (_cache.TryGetValue(key, out var entry) && !entry.IsExpired) {
+                if (_cache.TryGetValue(filePath, out var entry) && !entry.IsExpired) {
 
                     // 304 based on cache metadata
                     if (TryGetIfModifiedSince(request, out DateTimeOffset ims) && ims >= entry.LastModifiedUtc) {
@@ -287,11 +281,8 @@ namespace SimpleW {
 
                     await SendBytesAsync(
                         session,
-                        statusCode: 200,
-                        statusText: "OK",
                         contentType: entry.ContentType,
                         body: entry.Data.AsMemory(0, entry.Length),
-                        method: request.Method,
                         lastModifiedUtc: entry.LastModifiedUtc,
                         cacheSeconds: (int)_cacheTimeout.Value.TotalSeconds
                     ).ConfigureAwait(false);
@@ -301,15 +292,15 @@ namespace SimpleW {
                 // 2) cache miss => fallback disk (verify exists + load)
                 FileInfo fi;
                 try {
-                    fi = new FileInfo(key);
+                    fi = new FileInfo(filePath);
                 }
                 catch {
-                    await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                    await SendNotFoundAsync(session).ConfigureAwait(false);
                     return;
                 }
 
                 if (!fi.Exists) {
-                    await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                    await SendNotFoundAsync(session).ConfigureAwait(false);
                     return;
                 }
 
@@ -327,12 +318,12 @@ namespace SimpleW {
                     return;
                 }
                 catch {
-                    await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                    await SendNotFoundAsync(session).ConfigureAwait(false);
                     return;
                 }
 
                 // 3) fill cache
-                _cache[key] = new CacheEntry(
+                _cache[filePath] = new CacheEntry(
                     data,
                     len,
                     contentType,
@@ -349,11 +340,8 @@ namespace SimpleW {
                 // 4) serve
                 await SendBytesAsync(
                     session,
-                    statusCode: 200,
-                    statusText: "OK",
                     contentType: contentType,
                     body: data.AsMemory(0, len),
-                    method: request.Method,
                     lastModifiedUtc: lastModified,
                     cacheSeconds: (int)_cacheTimeout.Value.TotalSeconds
                 ).ConfigureAwait(false);
@@ -364,15 +352,15 @@ namespace SimpleW {
             // Cache OFF (stream from disk)
             FileInfo fi2;
             try {
-                fi2 = new FileInfo(key);
+                fi2 = new FileInfo(filePath);
             }
             catch {
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                await SendNotFoundAsync(session).ConfigureAwait(false);
                 return;
             }
 
             if (!fi2.Exists) {
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                await SendNotFoundAsync(session).ConfigureAwait(false);
                 return;
             }
 
@@ -384,45 +372,37 @@ namespace SimpleW {
             }
 
             string ct2 = HttpResponse.DefaultContentType(fi2.Extension);
-            await SendFileStreamAsync(session, fi2, ct2, request.Method, lastModified2).ConfigureAwait(false);
+            await SendFileStreamAsync(session, fi2, ct2, lastModified2).ConfigureAwait(false);
         }
 
-        private async Task SendFileStreamAsync(HttpSession session, FileInfo fi, string contentType, string method, DateTimeOffset lastModifiedUtc) {
+        /// <summary>
+        /// Send File Stream
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="fi"></param>
+        /// <param name="contentType"></param>
+        /// <param name="lastModifiedUtc"></param>
+        /// <returns></returns>
+        private async ValueTask SendFileStreamAsync(HttpSession session, FileInfo fi, string contentType, DateTimeOffset lastModifiedUtc) {
             long length = fi.Length;
 
-            // headers first
-            await SendHeadersAsync(
-                session,
-                statusCode: 200,
-                statusText: "OK",
-                contentType: contentType,
-                contentLength: length,
-                lastModifiedUtc: lastModifiedUtc,
-                cacheSeconds: null
-            ).ConfigureAwait(false);
+            session.Response
+                   .AddHeader("Content-Type", contentType)
+                   .AddHeader("Content-Length", length.ToString())
+                   .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                   .AddHeader("Cache-Control", "no-cache");
 
-            if (method.Equals("HEAD", StringComparison.Ordinal)) {
-                return;
+            // headers only
+            if (session.Request.Method == "HEAD") {
+                await session.Response
+                             .SendAsync()
+                             .ConfigureAwait(false);
             }
-
-            // stream body
-            const int chunkSize = 64 * 1024;
-            byte[] buffer = _pool.Rent(chunkSize);
-            try {
-                using FileStream fs = new(fi.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize: chunkSize, useAsync: true);
-
-                while (true) {
-                    int read = await fs.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
-                    if (read <= 0)
-                        break;
-                    await session.SendAsync(new ArraySegment<byte>(buffer, 0, read)).ConfigureAwait(false);
-                }
-            }
-            catch {
-                // si le client s'est barré, on s'en fout, alpha rules.
-            }
-            finally {
-                _pool.Return(buffer);
+            // header + stream file
+            else {
+                await session.Response
+                             .File(fi, contentType)
+                             .SendAsync();
             }
         }
 
@@ -433,18 +413,15 @@ namespace SimpleW {
         /// <param name="request"></param>
         /// <param name="dirPath"></param>
         /// <returns></returns>
-        private async Task ServeAutoIndexAsync(HttpSession session, HttpRequest request, string dirPath) {
+        private async ValueTask ServeAutoIndexAsync(HttpSession session, HttpRequest request, string dirPath) {
 
             // Cache ON ?
             if (_cacheTimeout.HasValue) {
                 if (_dirIndexCache.TryGetValue(dirPath, out var cached) && !cached.IsExpired) {
                     await SendBytesAsync(
                         session,
-                        statusCode: 200,
-                        statusText: "OK",
                         contentType: "text/html; charset=utf-8",
                         body: cached.Html.AsMemory(0, cached.Length),
-                        method: request.Method,
                         lastModifiedUtc: DateTimeOffset.UtcNow,
                         cacheSeconds: null
                     ).ConfigureAwait(false);
@@ -496,7 +473,7 @@ namespace SimpleW {
                 return;
             }
             catch {
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                await SendNotFoundAsync(session).ConfigureAwait(false);
                 return;
             }
 
@@ -515,11 +492,8 @@ namespace SimpleW {
 
             await SendBytesAsync(
                 session,
-                statusCode: 200,
-                statusText: "OK",
                 contentType: "text/html; charset=utf-8",
                 body: html,
-                method: request.Method,
                 lastModifiedUtc: DateTimeOffset.UtcNow,
                 cacheSeconds: null
             ).ConfigureAwait(false);
@@ -541,166 +515,81 @@ namespace SimpleW {
 
         #region response
 
-        private async Task SendNotFoundAsync(HttpSession session, string path) {
+        /// <summary>
+        /// Send a 404
+        /// </summary>
+        /// <param name="session"></param>
+        /// <returns></returns>
+        private async ValueTask SendNotFoundAsync(HttpSession session) {
             await session.Response
-                .Status(404, "Not Found")
-                .Text($"Not Found: {path}")
-                .SendAsync()
-                .ConfigureAwait(false);
+                         .Status(404)
+                         .Text($"Not Found: {session.Request.Path}")
+                         .SendAsync()
+                         .ConfigureAwait(false);
         }
 
-        private async Task SendForbiddenAsync(HttpSession session) {
+        /// <summary>
+        /// Send a 403
+        /// </summary>
+        /// <param name="session"></param>
+        /// <returns></returns>
+        private async ValueTask SendForbiddenAsync(HttpSession session) {
             await session.Response
-                .Status(403, "Forbidden")
-                .Text("Forbidden")
-                .SendAsync()
-                .ConfigureAwait(false);
+                         .Status(403)
+                         .Text($"Forbidden: {session.Request.Path}")
+                         .SendAsync()
+                         .ConfigureAwait(false);
         }
 
-        private async Task SendNotModifiedAsync(HttpSession session, DateTimeOffset lastModifiedUtc) {
-            // 304 must not include body
-            await SendHeadersAsync(
-                session,
-                statusCode: 304,
-                statusText: "Not Modified",
-                contentType: null,
-                contentLength: 0,
-                lastModifiedUtc: lastModifiedUtc,
-                cacheSeconds: null
-            ).ConfigureAwait(false);
+        /// <summary>
+        /// Send a 304 (must not include body)
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="lastModifiedUtc"></param>
+        /// <returns></returns>
+        private async ValueTask SendNotModifiedAsync(HttpSession session, DateTimeOffset lastModifiedUtc) {
+            await session.Response
+                         .Status(304)
+                         .AddHeader("Content-Length", "0")
+                         .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                         .AddHeader("Cache-Control", "no-cache")
+                         .SendAsync()
+                         .ConfigureAwait(false);
         }
 
-        private async Task SendBytesAsync(
-            HttpSession session,
-            int statusCode,
-            string statusText,
-            string? contentType,
-            ReadOnlyMemory<byte> body,
-            string method,
-            DateTimeOffset lastModifiedUtc,
-            int? cacheSeconds
-        ) {
+        /// <summary>
+        /// Send a 200
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="contentType"></param>
+        /// <param name="body"></param>
+        /// <param name="lastModifiedUtc"></param>
+        /// <param name="cacheSeconds"></param>
+        /// <returns></returns>
+        private async ValueTask SendBytesAsync(HttpSession session, string? contentType, ReadOnlyMemory<byte> body, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
             long len = body.Length;
 
-            await SendHeadersAsync(
-                session,
-                statusCode: statusCode,
-                statusText: statusText,
-                contentType: contentType,
-                contentLength: len,
-                lastModifiedUtc: lastModifiedUtc,
-                cacheSeconds: cacheSeconds
-            ).ConfigureAwait(false);
+            session.Response
+                   .AddHeader("Content-Length", len.ToString())
+                   .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                   .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache");
 
-            if (method.Equals("HEAD", StringComparison.Ordinal) || len == 0) {
-                return;
+            if (contentType != null) {
+                session.Response.AddHeader("Content-Type", contentType);
             }
 
-            await session.SendAsync(body).ConfigureAwait(false);
-        }
-
-        private async ValueTask SendHeadersAsync(
-            HttpSession session,
-            int statusCode,
-            string statusText,
-            string? contentType,
-            long contentLength,
-            DateTimeOffset lastModifiedUtc,
-            int? cacheSeconds
-        ) {
-            // Build headers using your PooledBufferWriter to avoid allocations
-            PooledBufferWriter w = new(ArrayPool<byte>.Shared, initialSize: 512);
-            try {
-                WriteAscii(w, "HTTP/1.1 ");
-                WriteIntAscii(w, statusCode);
-                WriteAscii(w, " ");
-                WriteAscii(w, statusText);
-                WriteCRLF(w);
-
-                WriteAscii(w, "Content-Length: ");
-                WriteLongAscii(w, contentLength);
-                WriteCRLF(w);
-
-                if (!string.IsNullOrEmpty(contentType)) {
-                    WriteAscii(w, "Content-Type: ");
-                    WriteAscii(w, contentType!);
-                    WriteCRLF(w);
-                }
-
-                // Last-Modified
-                WriteAscii(w, "Last-Modified: ");
-                WriteAscii(w, lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture));
-                WriteCRLF(w);
-
-                // Cache-Control (simple)
-                if (cacheSeconds.HasValue && cacheSeconds.Value > 0) {
-                    WriteAscii(w, "Cache-Control: public, max-age=");
-                    WriteIntAscii(w, cacheSeconds.Value);
-                    WriteCRLF(w);
-                }
-                else {
-                    WriteAscii(w, "Cache-Control: no-cache");
-                    WriteCRLF(w);
-                }
-
-                // Connection: keep-alive/close according to session
-                WriteAscii(w, "Connection: ");
-                WriteAscii(w, session.CloseAfterResponse ? "close" : "keep-alive");
-                WriteCRLF(w);
-
-                // end
-                WriteCRLF(w);
-
-                await session.SendAsync(new ArraySegment<byte>(w.Buffer, 0, w.Length)).ConfigureAwait(false);
+            if (session.Request.Method == "HEAD" || len == 0) {
+                await session.Response
+                         .SendAsync()
+                         .ConfigureAwait(false);
             }
-            finally {
-                w.Dispose();
+            else {
+                await session.Response
+                             .Body(body)
+                             .SendAsync()
+                             .ConfigureAwait(false);
             }
         }
-
-        #region writers
-
-        private static void WriteCRLF(PooledBufferWriter w) {
-            Span<byte> span = w.GetSpan(2);
-            span[0] = (byte)'\r';
-            span[1] = (byte)'\n';
-            w.Advance(2);
-        }
-
-        private static void WriteAscii(PooledBufferWriter w, string s) {
-            if (string.IsNullOrEmpty(s))
-                return;
-            int max = Encoding.ASCII.GetMaxByteCount(s.Length);
-            Span<byte> span = w.GetSpan(max);
-            int len = Encoding.ASCII.GetBytes(s.AsSpan(), span);
-            w.Advance(len);
-        }
-
-        private static void WriteIntAscii(PooledBufferWriter w, int value) {
-            Span<char> tmp = stackalloc char[16];
-            if (!value.TryFormat(tmp, out int chars)) {
-                WriteAscii(w, value.ToString(CultureInfo.InvariantCulture));
-                return;
-            }
-            Span<byte> dst = w.GetSpan(chars);
-            for (int i = 0; i < chars; i++)
-                dst[i] = (byte)tmp[i];
-            w.Advance(chars);
-        }
-
-        private static void WriteLongAscii(PooledBufferWriter w, long value) {
-            Span<char> tmp = stackalloc char[32];
-            if (!value.TryFormat(tmp, out int chars)) {
-                WriteAscii(w, value.ToString(CultureInfo.InvariantCulture));
-                return;
-            }
-            Span<byte> dst = w.GetSpan(chars);
-            for (int i = 0; i < chars; i++)
-                dst[i] = (byte)tmp[i];
-            w.Advance(chars);
-        }
-
-        #endregion writers
 
         private static bool TryGetIfModifiedSince(HttpRequest request, out DateTimeOffset imsUtc) {
             imsUtc = default;
