@@ -221,19 +221,6 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - type: CommandStep
-    name: rename dll
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/REWRITE/bin/@param:build_configuration@/
-        cd *
-        mv REWRITE.dll SimpleW.dll
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
   - type: PublishArtifactStep
     name: publish artifact REWRITE
     sourcePath: src/REWRITE/bin/@param:build_configuration@/
@@ -260,6 +247,63 @@ jobs:
   - type: BranchUpdateTrigger
     paths: src/REWRITE/
     userMatch: anyone
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: CD REWRITE nuget
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/REWRITE
+        TS=$(date +"%Y%m%d-%H%M")
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" REWRITE.csproj
+        dotnet pack -c Release REWRITE.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW
+    sourcePath: src/REWRITE/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/REWRITE/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  jobDependencies:
+  - jobName: CI REWRITE
+    requireSuccessful: true
     paramMatrix:
     - valuesProvider:
         type: SpecifiedValues
