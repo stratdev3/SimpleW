@@ -318,7 +318,7 @@ namespace SimpleW {
                     await _response.Status(413).Text("Payload Too Large").SendAsync().ConfigureAwait(false);
                     return;
                 }
-                catch (HttpBadRequestException ex) {
+                catch (HttpBadRequestException) {
                     CloseAfterResponse = true;
                     await _response.Status(400).Text("Bad Request").SendAsync().ConfigureAwait(false);
                     return;
