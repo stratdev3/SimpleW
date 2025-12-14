@@ -79,7 +79,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="path">Static content path</param>
         /// <param name="prefix">Cache prefix (default is "/")</param>
-        /// <param name="filter">Cache filter (default is "*.*")</param>
+        /// <param name="filter">Cache filter (default is "*")</param>
         /// <param name="timeout">Refresh cache timeout (0 or null mean no cache, default: null)</param>
         public StaticFilesModule(string path, string prefix = "/", string filter = "*", TimeSpan? timeout = null) {
             if (string.IsNullOrWhiteSpace(path)) {
@@ -438,8 +438,11 @@ namespace SimpleW {
             sb.Append("</h1><hr /><pre>");
 
             // parent link
-            if (request.Path != "/" && request.Path.StartsWith(_prefix, StringComparison.Ordinal)) {
-                string parent = request.Path.TrimEnd('/');
+            string reqPath = NormalizePrefix(request.Path);
+            bool isAtModuleRoot = (_prefix == "/" && reqPath == "/")
+                                  || (_prefix != "/" && string.Equals(reqPath, _prefix, StringComparison.Ordinal));
+            if (!isAtModuleRoot) {
+                string parent = reqPath;
                 int lastSlash = parent.LastIndexOf('/');
                 if (lastSlash >= 0) {
                     parent = parent[..(lastSlash + 1)];
