@@ -8,8 +8,14 @@ using System.Text;
 namespace SimpleW {
 
     /// <summary>
-    /// StaticFilesModule
+    /// Serve Static Files
+    /// This module install a middleware
     /// </summary>
+    /// <example>
+    /// server.UseModule(new StaticFilesModule(@"C:\www", "/www",timeout: TimeSpan.FromDays(1)) {
+    ///    AutoIndex = true
+    /// });
+    /// </example>
     public class StaticFilesModule : IHttpModule, IDisposable {
 
         /// <summary>
