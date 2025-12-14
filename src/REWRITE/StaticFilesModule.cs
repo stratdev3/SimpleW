@@ -135,14 +135,32 @@ namespace SimpleW {
                 return;
             }
 
-            // resolve FS target
-            if (!TryResolvePath(session, out string fullPath, out bool isDirectory)) {
+            // resolve FS target (no disk hit here)
+            if (!TryResolvePath(session, out string fullPath, out bool endsWithSlash)) {
                 await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
                 return;
             }
 
-            if (isDirectory) {
-                // directory => default document or auto-index
+            // if cache is ON and we already cached an auto-index for this directory
+            if (_cacheTimeout.HasValue && AutoIndex) {
+                if (_dirIndexCache.TryGetValue(fullPath, out var dirCached) && !dirCached.IsExpired) {
+                    // ServeAutoIndexAsync will immediately hit the cache and return.
+                    await ServeAutoIndexAsync(session, request, fullPath).ConfigureAwait(false);
+                    return;
+                }
+            }
+
+            // fast path if URL ends with "/" (directory intent) and we have a cached
+            if (_cacheTimeout.HasValue && AutoIndex && endsWithSlash) {
+                if (_dirIndexCache.TryGetValue(fullPath, out var cachedDir) && !cachedDir.IsExpired) {
+                    // ServeAutoIndexAsync will hit the cache and return immediately.
+                    await ServeAutoIndexAsync(session, request, fullPath).ConfigureAwait(false);
+                    return;
+                }
+            }
+
+            // directory ?
+            if (Directory.Exists(fullPath)) {
                 string defaultFile = Path.Combine(fullPath, DefaultDocument);
                 if (File.Exists(defaultFile)) {
                     await ServeFileAsync(session, request, defaultFile).ConfigureAwait(false);
@@ -158,12 +176,13 @@ namespace SimpleW {
                 return;
             }
 
-            // file
-            if (!File.Exists(fullPath)) {
+            // if path ends with "/" but isn't a directory -> 404
+            if (endsWithSlash) {
                 await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
                 return;
             }
 
+            // file: IMPORTANT => no File.Exists here if cache is ON (ServeFileAsync will fallback to disk)
             await ServeFileAsync(session, request, fullPath).ConfigureAwait(false);
         }
 
@@ -187,12 +206,12 @@ namespace SimpleW {
         /// <param name="fullPath"></param>
         /// <param name="isDirectory"></param>
         /// <returns></returns>
-        private bool TryResolvePath(HttpSession session, out string fullPath, out bool isDirectory) {
+        private bool TryResolvePath(HttpSession session, out string fullPath, out bool endsWithSlash) {
             fullPath = string.Empty;
-            isDirectory = false;
+            endsWithSlash = false;
 
-            // strip query/fragment (par sécurité si ton parser laisse passer)
             string pathOnly = session.Request.Path;
+            endsWithSlash = pathOnly.EndsWith("/", StringComparison.Ordinal);
 
             // remove prefix
             string relativePath = pathOnly.Length == _prefix.Length ? "" : pathOnly[_prefix.Length..];
@@ -210,34 +229,15 @@ namespace SimpleW {
             string combined = Path.Combine(_rootPathFull, relativePath.Replace('/', Path.DirectorySeparatorChar));
             string combinedFull = Path.GetFullPath(combined);
 
-            // anti traversal: must stay under root
+            // anti traversal
             if (!combinedFull.StartsWith(_rootPathFull, StringComparison.Ordinal)) {
                 return false;
             }
 
-            // directory request?
-            if (Directory.Exists(combinedFull)) {
-                isDirectory = true;
-                fullPath = combinedFull;
-                return true;
-            }
-
-            // file request
-            if (File.Exists(combinedFull)) {
-                isDirectory = false;
-                fullPath = combinedFull;
-                return true;
-            }
-
-            // special case: if request ends with "/" consider directory even if missing
-            if (pathOnly.EndsWith("/", StringComparison.Ordinal) && Directory.Exists(combinedFull)) {
-                isDirectory = true;
-                fullPath = combinedFull;
-                return true;
-            }
-
-            return false;
+            fullPath = combinedFull;
+            return true;
         }
+
 
         /// <summary>
         /// normalize prefix to "/xxx" (no trailing slash unless it's "/")
@@ -267,36 +267,24 @@ namespace SimpleW {
         /// <param name="filePath"></param>
         /// <returns></returns>
         private async Task ServeFileAsync(HttpSession session, HttpRequest request, string filePath) {
-            FileInfo fi;
-            try {
-                fi = new FileInfo(filePath);
-            }
-            catch {
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
-                return;
-            }
 
-            if (!fi.Exists) {
-                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
-                return;
-            }
+            // Normalize key (important for cache hits)
+            string key;
+            try { key = Path.GetFullPath(filePath); }
+            catch { key = filePath; }
 
-            DateTimeOffset lastModified = fi.LastWriteTimeUtc;
-
-            // 304 If-Modified-Since (simple)
-            if (TryGetIfModifiedSince(request, out var ims) && ims >= lastModified) {
-                await SendNotModifiedAsync(session, lastModified).ConfigureAwait(false);
-                return;
-            }
-
-            string contentType = HttpResponse.DefaultContentType(fi.Extension);
-
-            // Cached path?
+            // Cache ON (server from cache first, fallback disk on miss)
             if (_cacheTimeout.HasValue) {
-                string key = fi.FullName;
 
-                if (_cache.TryGetValue(key, out var entry) && !entry.IsExpired && entry.LastModifiedUtc == lastModified) {
-                    // serve from cache
+                // 1) cache hit
+                if (_cache.TryGetValue(key, out var entry) && !entry.IsExpired) {
+
+                    // 304 based on cache metadata
+                    if (TryGetIfModifiedSince(request, out DateTimeOffset ims) && ims >= entry.LastModifiedUtc) {
+                        await SendNotModifiedAsync(session, entry.LastModifiedUtc).ConfigureAwait(false);
+                        return;
+                    }
+
                     await SendBytesAsync(
                         session,
                         statusCode: 200,
@@ -310,24 +298,41 @@ namespace SimpleW {
                     return;
                 }
 
-                // refresh cache
+                // 2) cache miss => fallback disk (verify exists + load)
+                FileInfo fi;
+                try {
+                    fi = new FileInfo(key);
+                }
+                catch {
+                    await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                    return;
+                }
+
+                if (!fi.Exists) {
+                    await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                    return;
+                }
+
+                DateTimeOffset lastModified = fi.LastWriteTimeUtc;
+                string contentType = HttpResponse.DefaultContentType(fi.Extension);
+
                 byte[] data;
                 int len;
                 try {
-                    // alpha choice: read all. (si tu veux du giga-file, on passera en stream + cache disabled)
                     data = File.ReadAllBytes(fi.FullName);
                     len = data.Length;
-                }
-                catch (IOException) {
-                    await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
-                    return;
                 }
                 catch (UnauthorizedAccessException) {
                     await SendForbiddenAsync(session).ConfigureAwait(false);
                     return;
                 }
+                catch {
+                    await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                    return;
+                }
 
-                var newEntry = new CacheEntry(
+                // 3) fill cache
+                _cache[key] = new CacheEntry(
                     data,
                     len,
                     contentType,
@@ -335,8 +340,13 @@ namespace SimpleW {
                     DateTimeOffset.UtcNow + _cacheTimeout.Value
                 );
 
-                _cache[key] = newEntry;
+                // 304 after load
+                if (TryGetIfModifiedSince(request, out var ims2) && ims2 >= lastModified) {
+                    await SendNotModifiedAsync(session, lastModified).ConfigureAwait(false);
+                    return;
+                }
 
+                // 4) serve
                 await SendBytesAsync(
                     session,
                     statusCode: 200,
@@ -351,8 +361,30 @@ namespace SimpleW {
                 return;
             }
 
-            // No cache: stream
-            await SendFileStreamAsync(session, fi, contentType, request.Method, lastModified).ConfigureAwait(false);
+            // Cache OFF (stream from disk)
+            FileInfo fi2;
+            try {
+                fi2 = new FileInfo(key);
+            }
+            catch {
+                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                return;
+            }
+
+            if (!fi2.Exists) {
+                await SendNotFoundAsync(session, request.Path).ConfigureAwait(false);
+                return;
+            }
+
+            DateTimeOffset lastModified2 = fi2.LastWriteTimeUtc;
+
+            if (TryGetIfModifiedSince(request, out DateTimeOffset ims3) && ims3 >= lastModified2) {
+                await SendNotModifiedAsync(session, lastModified2).ConfigureAwait(false);
+                return;
+            }
+
+            string ct2 = HttpResponse.DefaultContentType(fi2.Extension);
+            await SendFileStreamAsync(session, fi2, ct2, request.Method, lastModified2).ConfigureAwait(false);
         }
 
         private async Task SendFileStreamAsync(HttpSession session, FileInfo fi, string contentType, string method, DateTimeOffset lastModifiedUtc) {
@@ -394,9 +426,16 @@ namespace SimpleW {
             }
         }
 
+        /// <summary>
+        /// Generate AutoIndex file
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="request"></param>
+        /// <param name="dirPath"></param>
+        /// <returns></returns>
         private async Task ServeAutoIndexAsync(HttpSession session, HttpRequest request, string dirPath) {
 
-            // Cache ON ? (on réutilise _cacheTimeout comme TTL d'index, simple)
+            // Cache ON ?
             if (_cacheTimeout.HasValue) {
                 if (_dirIndexCache.TryGetValue(dirPath, out var cached) && !cached.IsExpired) {
                     await SendBytesAsync(
@@ -406,7 +445,7 @@ namespace SimpleW {
                         contentType: "text/html; charset=utf-8",
                         body: cached.Html.AsMemory(0, cached.Length),
                         method: request.Method,
-                        lastModifiedUtc: DateTimeOffset.UtcNow, // ou garde une date, mais c'est de l'index dynamique
+                        lastModifiedUtc: DateTimeOffset.UtcNow,
                         cacheSeconds: null
                     ).ConfigureAwait(false);
                     return;
@@ -419,7 +458,7 @@ namespace SimpleW {
             sb.Append(HtmlEncode(request.Path));
             sb.Append("</title></head><body><h1>Index of ");
             sb.Append(HtmlEncode(request.Path));
-            sb.Append("</h1><ul>");
+            sb.Append("</h1><hr /><pre>");
 
             // parent link
             if (request.Path != "/" && request.Path.StartsWith(_prefix, StringComparison.Ordinal)) {
@@ -427,29 +466,29 @@ namespace SimpleW {
                 int lastSlash = parent.LastIndexOf('/');
                 if (lastSlash >= 0) {
                     parent = parent[..(lastSlash + 1)];
-                    sb.Append("<li><a href=\"");
+                    sb.Append("<a href=\"");
                     sb.Append(HtmlEncode(parent));
-                    sb.Append("\">../</a></li>");
+                    sb.Append("\">../</a><br />");
                 }
             }
 
             try {
                 foreach (var d in Directory.EnumerateDirectories(dirPath)) {
                     string name = Path.GetFileName(d);
-                    sb.Append("<li><a href=\"");
+                    sb.Append("<a href=\"");
                     sb.Append(HtmlEncode(EnsureTrailingSlash(JoinUrl(request.Path, name))));
                     sb.Append("\">");
                     sb.Append(HtmlEncode(name));
-                    sb.Append("/</a></li>");
+                    sb.Append("/</a><br />");
                 }
 
                 foreach (var f in Directory.EnumerateFiles(dirPath)) {
                     string name = Path.GetFileName(f);
-                    sb.Append("<li><a href=\"");
+                    sb.Append("<a href=\"");
                     sb.Append(HtmlEncode(JoinUrl(request.Path, name)));
                     sb.Append("\">");
                     sb.Append(HtmlEncode(name));
-                    sb.Append("</a></li>");
+                    sb.Append("</a><br />");
                 }
             }
             catch (UnauthorizedAccessException) {
@@ -461,9 +500,18 @@ namespace SimpleW {
                 return;
             }
 
-            sb.Append("</ul><hr><small>SimpleW static index</small></body></html>");
+            sb.Append("</pre><hr /></body></html>");
 
             byte[] html = Encoding.UTF8.GetBytes(sb.ToString());
+
+            // store HTML in directory index cache
+            if (_cacheTimeout.HasValue) {
+                _dirIndexCache[dirPath] = new DirIndexCacheEntry(
+                    Html: html,
+                    Length: html.Length,
+                    ExpiresUtc: DateTimeOffset.UtcNow + _cacheTimeout.Value
+                );
+            }
 
             await SendBytesAsync(
                 session,
@@ -480,17 +528,18 @@ namespace SimpleW {
         private static string EnsureTrailingSlash(string p) => p.EndsWith('/') ? p : p + "/";
 
         private static string JoinUrl(string basePath, string segment) {
-            if (string.IsNullOrEmpty(basePath))
+            if (string.IsNullOrEmpty(basePath)) {
                 return "/" + segment;
-            if (!basePath.EndsWith('/'))
+            }
+            if (!basePath.EndsWith('/')) {
                 basePath += "/";
+            }
             return basePath + Uri.EscapeDataString(segment);
         }
 
         #endregion serving
 
         #region response
-
 
         private async Task SendNotFoundAsync(HttpSession session, string path) {
             await session.Response
@@ -550,7 +599,7 @@ namespace SimpleW {
             await session.SendAsync(body).ConfigureAwait(false);
         }
 
-        private async Task SendHeadersAsync(
+        private async ValueTask SendHeadersAsync(
             HttpSession session,
             int statusCode,
             string statusText,
@@ -690,7 +739,7 @@ namespace SimpleW {
                 _watcher.Created += OnFsChanged;
                 _watcher.Deleted += OnFsChanged;
                 _watcher.Renamed += OnFsRenamed;
-                _watcher.Error += (_, __) => _cache.Clear();
+                _watcher.Error += (_, __) => { _cache.Clear(); _dirIndexCache.Clear(); };
 
                 _watcher.EnableRaisingEvents = true;
             }
