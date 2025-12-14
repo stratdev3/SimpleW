@@ -80,6 +80,12 @@ namespace SimpleW {
         private int _bodyLength;
 
         /// <summary>
+        /// for BodyKind.File
+        /// </summary>
+        private string? _filePath;
+        private long _fileLength;
+
+        /// <summary>
         /// owned body writer (ArrayPool)
         /// </summary>
         private PooledBufferWriter? _ownedBodyWriter;
@@ -109,6 +115,8 @@ namespace SimpleW {
             _bodyArray = null;
             _bodyOffset = 0;
             _bodyLength = 0;
+            _filePath = null;
+            _fileLength = 0;
 
             _cookieCount = 0;
 
@@ -487,6 +495,26 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Set File Body
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
+        public HttpResponse File(string path, string? contentType = null) {
+            DisposeBody();
+
+            _bodyKind = BodyKind.File;
+            _filePath = path;
+
+            FileInfo fi = new(path);
+            _fileLength = fi.Length;
+
+            _contentType = contentType ?? DefaultContentType(fi.Extension);
+
+            return this;
+        }
+
+        /// <summary>
         /// Send the response now
         /// </summary>
         /// <returns></returns>
@@ -499,6 +527,7 @@ namespace SimpleW {
             // reserve (depending on body kind): body length or a ReadOnlyMemory 
             ReadOnlyMemory<byte> bodyMem = ReadOnlyMemory<byte>.Empty;
             int bodyLength = 0;
+            long bodyLengthLong = 0;
 
             switch (_bodyKind) {
                 case BodyKind.None:
@@ -525,6 +554,11 @@ namespace SimpleW {
                     bodyMem = _bodyMemory;
                     bodyLength = bodyMem.Length;
                     break;
+
+                case BodyKind.File:
+                    bodyLengthLong = _fileLength;
+                    // bodyMem reste vide, on stream après
+                    break;
             }
 
             PooledBufferWriter? headerWriter = null;
@@ -541,7 +575,12 @@ namespace SimpleW {
                 // Content-Length
                 if (!_hasCustomContentLength) {
                     WriteBytes(headerWriter, H_CL);
-                    WriteIntAscii(headerWriter, bodyLength);
+                    if (_bodyKind == BodyKind.File) {
+                        WriteLongAscii(headerWriter, bodyLengthLong);
+                    }
+                    else {
+                        WriteIntAscii(headerWriter, bodyLength);
+                    }
                     WriteCRLF(headerWriter);
                 }
 
@@ -578,7 +617,34 @@ namespace SimpleW {
                 ArraySegment<byte> headerSeg = new ArraySegment<byte>(headerWriter.Buffer, 0, headerWriter.Length);
 
                 // SEND STRATEGY
-                if (bodyLength == 0) {
+                if (_bodyKind == BodyKind.File) {
+                    // header
+                    await _session.SendAsync(headerSeg).ConfigureAwait(false);
+                    // stream body file
+                    const int FileChunkSize = 64 * 1024;
+                    using var fs = new FileStream(
+                        _filePath!,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize: FileChunkSize,
+                        options: FileOptions.Asynchronous | FileOptions.SequentialScan
+                    );
+                    byte[] buf = _bufferPool.Rent(FileChunkSize);
+                    try {
+                        while (true) {
+                            int read = await fs.ReadAsync(buf.AsMemory(0, buf.Length)).ConfigureAwait(false);
+                            if (read <= 0) {
+                                break;
+                            }
+                            await _session.SendAsync(new ArraySegment<byte>(buf, 0, read)).ConfigureAwait(false);
+                        }
+                    }
+                    finally {
+                        _bufferPool.Return(buf);
+                    }
+                }
+                else if (bodyLength == 0) {
                     await _session.SendAsync(headerSeg).ConfigureAwait(false);
                 }
                 else if (_bodyKind == BodyKind.Segment || _bodyKind == BodyKind.OwnedBuffer || _bodyKind == BodyKind.OwnedWriter) {
@@ -828,6 +894,8 @@ namespace SimpleW {
             _bodyArray = null;
             _bodyOffset = 0;
             _bodyLength = 0;
+            _filePath = null;
+            _fileLength = 0;
         }
 
         #endregion Dispose
@@ -905,14 +973,34 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Kind of Body memory
+        /// Write Long in PoolBuffer
+        /// </summary>
+        /// <param name="w"></param>
+        /// <param name="value"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void WriteLongAscii(PooledBufferWriter w, long value) {
+            Span<char> tmp = stackalloc char[32];
+            if (!value.TryFormat(tmp, out int chars)) {
+                WriteAscii(w, value.ToString());
+                return;
+            }
+            Span<byte> dst = w.GetSpan(chars);
+            for (int i = 0; i < chars; i++) {
+                dst[i] = (byte)tmp[i];
+            }
+            w.Advance(chars);
+        }
+
+        /// <summary>
+        /// Kind of Body
         /// </summary>
         private enum BodyKind : byte {
             None = 0,
             Memory = 1,
             OwnedBuffer = 2,
             OwnedWriter = 3,
-            Segment = 4
+            Segment = 4,
+            File = 5
         }
 
         #endregion response helpers
