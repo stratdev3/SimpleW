@@ -117,29 +117,18 @@ namespace SimpleW {
                 StartWatcher();
             }
 
-            server.UseMiddleware(HandleAsync);
+            // map GET + HEAD
+            server.MapGet(this._prefix+"/*", (HttpSession session) => HandlerAsync(session));
+            server.Map("HEAD", this._prefix+"/*", (HttpSession session) => HandlerAsync(session));
         }
 
         /// <summary>
-        /// Middleware
+        /// Handler for Map GET/HEAD
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="next"></param>
         /// <returns></returns>
-        private async ValueTask HandleAsync(HttpSession session, Func<ValueTask> next) {
+        private async ValueTask HandlerAsync(HttpSession session) {
             HttpRequest request = session.Request;
-
-            // only GET/HEAD
-            if (request.Method != "GET" && request.Method != "HEAD") {
-                await next().ConfigureAwait(false);
-                return;
-            }
-
-            // only this prefix
-            if (!request.Path.StartsWith(_prefix)) {
-                await next().ConfigureAwait(false);
-                return;
-            }
 
             // resolve FS target (no disk hit here)
             if (!TryResolvePath(session, out string fullPath, out bool endsWithSlash)) {
