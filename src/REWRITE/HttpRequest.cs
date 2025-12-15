@@ -99,6 +99,12 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Route values extracted from matched route (ex: :id, :path*)
+        /// Null when route has no parameters.
+        /// </summary>
+        public Dictionary<string, string>? RouteValues { get; internal set; }
+
+        /// <summary>
         /// Reset HttpRequest for reuse
         /// </summary>
         internal void Reset() {
@@ -113,6 +119,8 @@ namespace SimpleW {
 
             _queryInitialized = false;
             _query?.Clear();
+
+            RouteValues = null;
         }
 
         #region buffer
@@ -140,9 +148,6 @@ namespace SimpleW {
 
         #endregion helpers
 
-        // plus tard :
-        // public Dictionary<string, string?> Query { get; } = new(StringComparer.OrdinalIgnoreCase);
-        // public Dictionary<string, string> RouteValues { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>

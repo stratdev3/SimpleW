@@ -30,13 +30,28 @@ namespace SimpleW {
             ParameterExpression sessionParam = Expression.Parameter(typeof(HttpSession), "session");
             ParameterExpression handlerResultParam = Expression.Parameter(typeof(HttpHandlerResult), "handlerResult");
 
-            // session.Request.Query
+            // session.Request
             MemberExpression? requestProp = Expression.Property(sessionParam, nameof(HttpSession.Request));
+
+            // session.Request.Query
             MemberExpression? queryProp = Expression.Property(requestProp, "Query");
 
             // TryGetValue(string, out string)
             Type queryType = queryProp.Type;
-            MethodInfo? tryGetValueMethod = queryType.GetMethod(
+            MethodInfo? queryTryGetValueMethod = queryType.GetMethod(
+                "TryGetValue",
+                BindingFlags.Public | BindingFlags.Instance,
+                binder: null,
+                types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                modifiers: null
+            );
+
+            // session.Request.RouteValues
+            MemberExpression routeValuesProp = Expression.Property(requestProp, nameof(HttpRequest.RouteValues));
+
+            // TryGetValue(string, out string)
+            Type routeValuesType = routeValuesProp.Type;
+            MethodInfo? routeTryGetValueMethod = typeof(Dictionary<string, string>).GetMethod(
                 "TryGetValue",
                 BindingFlags.Public | BindingFlags.Instance,
                 binder: null,
@@ -48,8 +63,9 @@ namespace SimpleW {
             // Build handler arguments
             // For each arguments, return a value that can be
             //     1. session if parameter is HttpSesssion (special case)
-            //     2. value of the Request Query String if exists (mapping by name)
-            //     3. default value of the parameter
+            //     2. value of the Request RouteValues String if exists (mapping by name)
+            //     3. value of the Request Query String if exists (mapping by name)
+            //     4. default value of the parameter
             //
 
             List<ParameterExpression> variables = new();
@@ -85,44 +101,108 @@ namespace SimpleW {
                 }
 
                 Expression assignExpr;
-                if (tryGetValueMethod != null && p.Name is not null) {
+                if (p.Name is not null) {
 
-                    // query != null
-                    Expression queryNotNull = Expression.NotEqual(
-                        queryProp,
-                        Expression.Constant(null, queryType)
+                    //
+                    // RouteValues
+                    //
+
+                    // routeValues != null
+                    Expression routeNotNull = Expression.NotEqual(
+                        routeValuesProp,
+                        Expression.Constant(null, routeValuesType)
                     );
 
-                    // query.TryGetValue("name", out rawVar)
-                    Expression tryGet = Expression.Call(
-                        queryProp,
-                        tryGetValueMethod,
-                        Expression.Constant(p.Name, typeof(string)),
-                        rawVar
-                    );
+                    // routeValues.TryGetValue("name", out rawVar)
+                    Expression routeTryGet = (routeTryGetValueMethod is null)
+                                                ? Expression.Constant(false)
+                                                : Expression.Call(
+                                                    Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
+                                                    routeTryGetValueMethod,
+                                                    Expression.Constant(p.Name, typeof(string)),
+                                                    rawVar
+                                                );
 
                     // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
                     MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
                                                     .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Static)!
                                                     .MakeGenericMethod(p.ParameterType);
 
-                    Expression convertedExpr = Expression.Call(
-                        convertGeneric,
-                        rawVar,
-                        defaultExpr
-                    );
+                    Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
 
                     Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
                     Expression assignDefault = Expression.Assign(paramVar, defaultExpr);
 
-                    assignExpr = Expression.IfThenElse(
-                        Expression.AndAlso(queryNotNull, tryGet),
+                    // if (routeValues != null && routeTryGet) param = converted else ... (fallback query)
+                    Expression routeBranch = Expression.IfThenElse(
+                        Expression.AndAlso(routeNotNull, routeTryGet),
                         assignConverted,
-                        assignDefault
+                        Expression.Empty()
+                    );
+
+                    //
+                    // QueryString
+                    //
+                    Expression queryBranch;
+
+                    
+                    if (queryTryGetValueMethod != null) {
+
+                        // query != null
+                        Expression queryNotNull = Expression.NotEqual(
+                            queryProp,
+                            Expression.Constant(null, queryType)
+                        );
+
+                        // query.TryGetValue("name", out rawVar)
+                        Expression queryTryGet = Expression.Call(
+                            queryProp,
+                            queryTryGetValueMethod,
+                            Expression.Constant(p.Name, typeof(string)),
+                            rawVar
+                        );
+
+                        Expression queryAssign = Expression.IfThenElse(
+                            Expression.AndAlso(queryNotNull, queryTryGet),
+                            assignConverted,
+                            assignDefault
+                        );
+
+                        queryBranch = queryAssign;
+                    }
+                    else {
+                        queryBranch = assignDefault;
+                    }
+
+                    // Compose: try route; if route matched we must NOT overwrite with query.
+                    // So: if route matched => assignConverted else => queryBranch
+                    // To do that cleanly: make a bool local "matchedRoute".
+                    ParameterExpression matchedRouteVar = Expression.Variable(typeof(bool), (p.Name ?? "arg") + "_matchedRoute");
+                    variables.Add(matchedRouteVar);
+
+                    Expression setMatchedFalse = Expression.Assign(matchedRouteVar, Expression.Constant(false));
+                    Expression setMatchedTrue = Expression.Assign(matchedRouteVar, Expression.Constant(true));
+
+                    Expression routeTryBlock = Expression.IfThenElse(
+                        Expression.AndAlso(routeNotNull, routeTryGet),
+                        Expression.Block(setMatchedTrue, assignConverted),
+                        Expression.Empty()
+                    );
+
+                    Expression finalAssign = Expression.IfThenElse(
+                        matchedRouteVar,
+                        Expression.Empty(), // already assigned
+                        queryBranch
+                    );
+
+                    assignExpr = Expression.Block(
+                        setMatchedFalse,
+                        routeTryBlock,
+                        finalAssign
                     );
                 }
                 else {
-                    // no TryGetValue, then default value
+                    // no name, then default value
                     assignExpr = Expression.Assign(paramVar, defaultExpr);
                 }
 

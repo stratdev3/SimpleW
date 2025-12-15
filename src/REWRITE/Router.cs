@@ -5,6 +5,8 @@
     /// </summary>
     public sealed class Router {
 
+        #region route exact
+
         /// <summary>
         /// Dictionary of GET/POST Routes
         /// </summary>
@@ -15,6 +17,17 @@
         /// Dictionary of all others Routes (PATCH, HEAD, OPTIONS, etc.)
         /// </summary>
         private readonly Dictionary<string, Dictionary<string, Route>> _others = new(StringComparer.Ordinal);
+
+        #endregion route exact
+
+        #region route pattern
+
+        // patterns (wildcards + params)
+        private readonly List<RouteMatcher> _getMatchers = new();
+        private readonly List<RouteMatcher> _postMatchers = new();
+        private readonly Dictionary<string, List<RouteMatcher>> _otherMatchers = new(StringComparer.Ordinal);
+
+        #endregion route pattern
 
         #region middleware
 
@@ -106,21 +119,7 @@
             HttpRouteExecutor executor = DelegateExecutorFactory.Create(handler);
             Route route = new(new RouteAttribute(method, path), executor);
 
-            switch (route.Attribute.Method) {
-                case "GET":
-                    _get[route.Attribute.Path] = route;
-                    break;
-                case "POST":
-                    _post[route.Attribute.Path] = route;
-                    break;
-                default:
-                    if (!_others.TryGetValue(route.Attribute.Method, out var dict)) {
-                        dict = new Dictionary<string, Route>(StringComparer.Ordinal);
-                        _others[route.Attribute.Method] = dict;
-                    }
-                    dict[route.Attribute.Path] = route;
-                    break;
-            }
+            AddRouteInternal(route.Attribute.Method, route);
         }
 
         /// <summary>
@@ -133,13 +132,60 @@
         /// </summary>
         public void MapPost(string path, Delegate handler) => Map("POST", path, handler);
 
+        /// <summary>
+        /// AddRouteInternal
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="route"></param>
+        private void AddRouteInternal(string method, Route route) {
+            string p = route.Attribute.Path;
+
+            bool isPattern = p.IndexOf('*') >= 0 || p.IndexOf(':') >= 0;
+
+            if (!isPattern) {
+                switch (method) {
+                    case "GET":
+                        _get[p] = route;
+                        return;
+                    case "POST":
+                        _post[p] = route;
+                        return;
+                    default:
+                        if (!_others.TryGetValue(method, out var dict)) {
+                            dict = new Dictionary<string, Route>(StringComparer.Ordinal);
+                            _others[method] = dict;
+                        }
+                        dict[p] = route;
+                        return;
+                }
+            }
+
+            // pattern
+            RouteMatcher matcher = new(route);
+
+            switch (method) {
+                case "GET":
+                    _getMatchers.Add(matcher);
+                    return;
+                case "POST":
+                    _postMatchers.Add(matcher);
+                    return;
+                default:
+                    if (!_otherMatchers.TryGetValue(method, out var list)) {
+                        list = new List<RouteMatcher>();
+                        _otherMatchers[method] = list;
+                    }
+                    list.Add(matcher);
+                    return;
+            }
+        }
+
         #endregion Map Delegate
 
         /// <summary>
         /// Find Handler from Method/Path
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="request"></param>
         /// <returns></returns>
         public ValueTask DispatchAsync(HttpSession session) {
             Route? route;
@@ -150,18 +196,23 @@
                 _ => null
             };
 
-            // GET/POST methods
+            // GET/POST methods on exact route
             if (dict is not null && dict.TryGetValue(session.Request.Path, out route)) {
                 return ExecutePipelineAsync(session, route.Executor);
             }
 
-            // other methods
+            // other methods on exact route
             if (dict is null) {
                 if (_others.TryGetValue(session.Request.Method, out Dictionary<string, Route>? otherDict)
                     && otherDict.TryGetValue(session.Request.Path, out route)
                 ) {
                     return ExecutePipelineAsync(session, route.Executor);
                 }
+            }
+
+            // pattern routes (params + wildcard)
+            if (TryDispatchPattern(session, out ValueTask task)) {
+                return task;
             }
 
             // fallback
@@ -177,6 +228,55 @@
         }
 
         /// <summary>
+        /// Find Handler in route pattern
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="task"></param>
+        /// <returns></returns>
+        private bool TryDispatchPattern(HttpSession session, out ValueTask task) {
+            task = default;
+
+            // router owns this data
+            session.Request.RouteValues = null;
+
+            List<RouteMatcher>? matchers = session.Request.Method switch {
+                "GET" => _getMatchers,
+                "POST" => _postMatchers,
+                _ => _otherMatchers.TryGetValue(session.Request.Method, out var l) ? l : null
+            };
+
+            if (matchers is null || matchers.Count == 0) {
+                return false;
+            }
+
+            RouteMatcher? best = null;
+            Dictionary<string, string>? bestValues = null;
+
+            string path = session.Request.Path;
+
+            for (int i = 0; i < matchers.Count; i++) {
+                RouteMatcher m = matchers[i];
+
+                if (!m.TryMatch(path, out Dictionary<string, string>? values)) {
+                    continue;
+                }
+
+                if (best is null || m.Specificity > best.Specificity) {
+                    best = m;
+                    bestValues = values;
+                }
+            }
+
+            if (best is null) {
+                return false;
+            }
+
+            session.Request.RouteValues = bestValues;
+            task = ExecutePipelineAsync(session, best.Route.Executor);
+            return true;
+        }
+
+        /// <summary>
         /// Fallback Handler
         /// </summary>
         private HttpRouteExecutor? _fallback;
@@ -189,6 +289,114 @@
             ArgumentNullException.ThrowIfNull(handler);
             _fallback = DelegateExecutorFactory.Create(handler);
         }
+
+        #region RouteMatcher
+
+        /// <summary>
+        /// RouteMatcher (segments + :params + * + :param*)
+        /// </summary>
+        private sealed class RouteMatcher {
+
+            public readonly Route Route;
+            private readonly Segment[] _segments;
+            public readonly int Specificity;
+
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="route"></param>
+            public RouteMatcher(Route route) {
+                Route = route;
+
+                string pattern = route.Attribute.Path.Trim('/');
+                string[] parts = pattern.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+                _segments = new Segment[parts.Length];
+
+                int spec = 0;
+                for (int i = 0; i < parts.Length; i++) {
+                    Segment seg = new Segment(parts[i]);
+                    _segments[i] = seg;
+
+                    // specificity = sum of literal segment lengths (more literal => more specific)
+                    if (!seg.IsParam && !seg.IsWildcard) {
+                        spec += seg.Value.Length;
+                    }
+                }
+                Specificity = spec;
+            }
+
+            /// <summary>
+            /// Find parameters in path
+            /// </summary>
+            /// <param name="path"></param>
+            /// <param name="values"></param>
+            /// <returns></returns>
+            public bool TryMatch(string path, out Dictionary<string, string>? values) {
+                values = null;
+
+                string trimmed = path.Trim('/');
+                string[] req = (trimmed.Length == 0)
+                                    ? Array.Empty<string>()
+                                    : trimmed.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+                int i = 0;
+                for (; i < _segments.Length; i++) {
+                    if (i >= req.Length) {
+                        return false;
+                    }
+
+                    ref readonly Segment seg = ref _segments[i];
+
+                    if (seg.IsWildcard) {
+                        // "*" matches the rest
+                        return true;
+                    }
+
+                    if (seg.IsParam) {
+                        values ??= new Dictionary<string, string>(StringComparer.Ordinal);
+
+                        if (seg.IsCatchAll) {
+                            // :name* = capture the rest
+                            values[seg.Value] = string.Join('/', req[i..]);
+                            return true;
+                        }
+
+                        values[seg.Value] = req[i];
+                        continue;
+                    }
+
+                    if (!string.Equals(seg.Value, req[i], StringComparison.Ordinal)) {
+                        return false;
+                    }
+                }
+
+                // must consume all segments unless pattern ended with wildcard/catchall (handled above)
+                return i == req.Length;
+            }
+
+            /// <summary>
+            /// Segment
+            /// </summary>
+            private readonly struct Segment {
+
+                public readonly string Value;
+                public readonly bool IsParam;
+                public readonly bool IsWildcard;
+                public readonly bool IsCatchAll;
+
+                public Segment(string raw) {
+                    IsWildcard = (raw == "*");
+                    IsParam = (raw.Length > 1 && raw[0] == ':');
+                    IsCatchAll = (IsParam && raw.EndsWith("*", StringComparison.Ordinal));
+
+                    Value = (IsParam ? raw.TrimStart(':').TrimEnd('*') : raw);
+                }
+            }
+
+        }
+
+        #endregion RouteMatcher
 
     }
 
