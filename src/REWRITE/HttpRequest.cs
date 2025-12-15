@@ -144,6 +144,9 @@ namespace SimpleW {
 
         #region helpers
 
+        /// <summary>
+        /// Alias to UTF8Encoding
+        /// </summary>
         private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
         #endregion helpers
@@ -157,24 +160,85 @@ namespace SimpleW {
     /// </summary>
     public struct HttpHeaders {
 
-        // most common headers
+        /// <summary>
+        /// Host
+        /// </summary>
         public string? Host;
+
+        /// <summary>
+        /// Content-Type
+        /// </summary>
         public string? ContentType;
-        public string? ContentLengthRaw;   // raw string "123", parser use long
+
+        /// <summary>
+        /// Content-Length
+        /// raw string "123", parser use long
+        /// </summary>
+        public string? ContentLengthRaw;
+
+        /// <summary>
+        /// User Agent
+        /// </summary>
         public string? UserAgent;
+
+        /// <summary>
+        /// Accept
+        /// </summary>
         public string? Accept;
+
+        /// <summary>
+        /// Accept Encoding
+        /// </summary>
         public string? AcceptEncoding;
+
+        /// <summary>
+        /// Accept Language
+        /// </summary>
         public string? AcceptLanguage;
+
+        /// <summary>
+        /// Contection
+        /// </summary>
         public string? Connection;
+
+        /// <summary>
+        /// Transfert Encoding
+        /// </summary>
         public string? TransferEncoding;
+
+        /// <summary>
+        /// Cookie
+        /// </summary>
         public string? Cookie;
+
+        /// <summary>
+        /// Upgrade
+        /// </summary>
         public string? Upgrade;
+
+        /// <summary>
+        /// SecWebSocketKey
+        /// </summary>
         public string? SecWebSocketKey;
+
+        /// <summary>
+        /// SecWebSocketVersion
+        /// </summary>
         public string? SecWebSocketVersion;
+
+        /// <summary>
+        /// SecWebSocketProtocol
+        /// </summary>
         public string? SecWebSocketProtocol;
 
-        // fallback for all other headers
+        /// <summary>
+        /// fallback for all other headers
+        /// </summary>
         private HeaderEntry[]? _other;
+
+        /// <summary>
+        /// number of other headers
+        /// </summary>
         private int _otherCount;
 
         /// <summary>
@@ -473,9 +537,22 @@ namespace SimpleW {
     /// HeaderEntry
     /// </summary>
     public readonly struct HeaderEntry {
+
+        /// <summary>
+        /// Name
+        /// </summary>
         public readonly string Name;
+
+        /// <summary>
+        /// Value
+        /// </summary>
         public readonly string Value;
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
         public HeaderEntry(string name, string value) {
             Name = name;
             Value = value;

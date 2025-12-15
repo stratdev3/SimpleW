@@ -389,7 +389,7 @@ namespace SimpleW {
         /// <summary>
         /// Get the default value of ParameterInfo
         /// </summary>
-        /// <param name="param"></param>
+        /// <param name="p"></param>
         /// <returns></returns>
         private static object? GetDefaultValueForParameter(ParameterInfo p) {
             if (p.HasDefaultValue) {
@@ -635,6 +635,14 @@ namespace SimpleW {
             return AwaitTaskWithResultAsync(task, session, handlerResult);
         }
 
+        /// <summary>
+        /// Convert a Task with Restult to a async ValueTask
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="task"></param>
+        /// <param name="session"></param>
+        /// <param name="handlerResult"></param>
+        /// <returns></returns>
         private static async ValueTask AwaitTaskWithResultAsync<T>(Task<T> task, HttpSession session, HttpHandlerResult handlerResult) {
             T? result = await task.ConfigureAwait(false);
             if (result is not null) {
@@ -654,6 +662,14 @@ namespace SimpleW {
             return AwaitValueTaskWithResultAsync(task, session, handlerResult);
         }
 
+        /// <summary>
+        /// Convert a ValueTask with Restult to a async ValueTask
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="task"></param>
+        /// <param name="session"></param>
+        /// <param name="handlerResult"></param>
+        /// <returns></returns>
         private static async ValueTask AwaitValueTaskWithResultAsync<T>(ValueTask<T> task, HttpSession session, HttpHandlerResult handlerResult) {
             T? result = await task.ConfigureAwait(false);
             if (result is not null) {

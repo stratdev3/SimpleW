@@ -210,7 +210,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="session"></param>
         /// <param name="fullPath"></param>
-        /// <param name="isDirectory"></param>
+        /// <param name="endsWithSlash"></param>
         /// <returns></returns>
         private bool TryResolvePath(HttpSession session, out string fullPath, out bool endsWithSlash) {
             fullPath = string.Empty;

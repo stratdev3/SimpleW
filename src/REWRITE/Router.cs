@@ -8,13 +8,17 @@
         #region route exact
 
         /// <summary>
-        /// Dictionary of GET/POST Routes
+        /// GET Routes
         /// </summary>
         private readonly Dictionary<string, Route> _get = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// POST Routes
+        /// </summary>
         private readonly Dictionary<string, Route> _post = new(StringComparer.Ordinal);
 
         /// <summary>
-        /// Dictionary of all others Routes (PATCH, HEAD, OPTIONS, etc.)
+        /// (PATCH, HEAD, OPTIONS, etc.) Routes
         /// </summary>
         private readonly Dictionary<string, Dictionary<string, Route>> _others = new(StringComparer.Ordinal);
 
@@ -22,9 +26,19 @@
 
         #region route pattern
 
-        // patterns (wildcards + params)
+        /// <summary>
+        /// GET Routes patterns (wildcards + params)
+        /// </summary>
         private readonly List<RouteMatcher> _getMatchers = new();
+
+        /// <summary>
+        /// POST Routes patterns (wildcards + params)
+        /// </summary>
         private readonly List<RouteMatcher> _postMatchers = new();
+
+        /// <summary>
+        /// (PATCH, HEAD, OPTIONS, etc.) Routes (wildcards + params)
+        /// </summary>
         private readonly Dictionary<string, List<RouteMatcher>> _otherMatchers = new(StringComparer.Ordinal);
 
         #endregion route pattern
@@ -103,10 +117,10 @@
 
         #endregion HandlerResult
 
-        #region Map Delegate
+        #region Map Method Path Delegate
 
         /// <summary>
-        /// Map a Method (GET, POST... anything) to a Delegate
+        /// Map Method/Path to a Delegate
         /// </summary>
         /// <param name="method"></param>
         /// <param name="path"></param>
@@ -123,12 +137,12 @@
         }
 
         /// <summary>
-        /// Map GET to a Delegate
+        /// Map GET/Path to a Delegate
         /// </summary>
         public void MapGet(string path, Delegate handler) => Map("GET", path, handler);
 
         /// <summary>
-        /// Map POST to a Delegate
+        /// Map POST/Path to a Delegate
         /// </summary>
         public void MapPost(string path, Delegate handler) => Map("POST", path, handler);
 
@@ -180,7 +194,7 @@
             }
         }
 
-        #endregion Map Delegate
+        #endregion Map Method Path Delegate
 
         /// <summary>
         /// Find Handler from Method/Path

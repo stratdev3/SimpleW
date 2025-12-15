@@ -766,9 +766,23 @@ namespace SimpleW {
         /// Cookie SameSite Mode
         /// </summary>
         public enum SameSiteMode : byte {
+            /// <summary>
+            /// No SameSite field will be set, the client should follow its default cookie policy.
+            /// </summary>
             Unspecified = 0,
+            /// <summary>
+            /// Indicates the client should send the cookie with "same-site" requests,
+            /// and with "cross-site" top-level navigations.
+            /// </summary>
             Lax = 1,
+            /// <summary>
+            /// Indicates the client should only send the cookie with "same-site" requests.
+            /// </summary>
             Strict = 2,
+            /// <summary>
+            /// Indicates the client should disable same-site restrictions.
+            /// When using this value, the cookie must also have the Secure property set to true.
+            /// </summary>
             None = 3
         }
 
@@ -776,18 +790,48 @@ namespace SimpleW {
         /// Cookie Options
         /// </summary>
         public readonly struct CookieOptions {
+
+            /// <summary>
+            /// Path
+            /// </summary>
             public readonly string? Path;
+
+            /// <summary>
+            /// Domaine
+            /// </summary>
             public readonly string? Domain;
 
-            public readonly int MaxAge;          // seconds
+            /// <summary>
+            /// MaxAge in seconds
+            /// </summary>
+            public readonly int MaxAge;
+            /// <summary>
+            /// HasMaxAge
+            /// </summary>
             public readonly bool HasMaxAge;
 
+            /// <summary>
+            /// Expires
+            /// </summary>
             public readonly DateTimeOffset Expires;
+            /// <summary>
+            /// HasExpires
+            /// </summary>
             public readonly bool HasExpires;
 
+            /// <summary>
+            /// Secure
+            /// </summary>
             public readonly bool Secure;
+
+            /// <summary>
+            /// HttpOnly
+            /// </summary>
             public readonly bool HttpOnly;
 
+            /// <summary>
+            /// SameSite
+            /// </summary>
             public readonly SameSiteMode SameSite;
 
             /// <summary>
@@ -917,17 +961,48 @@ namespace SimpleW {
 
         #region response helpers
 
+        /// <summary>
+        /// Ascii Encoding Alias
+        /// </summary>
         private static readonly Encoding Ascii = Encoding.ASCII;
+        /// <summary>
+        /// UTF8 Encoding Alias
+        /// </summary>
         private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
+        /// <summary>
+        /// "HTTP/1.1 "
+        /// </summary>
         private static ReadOnlySpan<byte> H_HTTP11 => "HTTP/1.1 "u8;
+        /// <summary>
+        /// "Content-Length: "
+        /// </summary>
         private static ReadOnlySpan<byte> H_CL => "Content-Length: "u8;
+        /// <summary>
+        /// "Content-Type: "
+        /// </summary>
         private static ReadOnlySpan<byte> H_CT => "Content-Type: "u8;
+        /// <summary>
+        /// "Connection: "
+        /// </summary>
         private static ReadOnlySpan<byte> H_CONN => "Connection: "u8;
+        /// <summary>
+        /// "close"
+        /// </summary>
         private static ReadOnlySpan<byte> H_CONN_CLOSE => "close"u8;
+        /// <summary>
+        /// "keep-alive"
+        /// </summary>
         private static ReadOnlySpan<byte> H_CONN_KA => "keep-alive"u8;
 
+        /// <summary>
+        /// Cariage Return Line Feed
+        /// </summary>
         private static readonly byte[] CRLF = new byte[] { (byte)'\r', (byte)'\n' };
+
+        /// <summary>
+        /// Colon Separator
+        /// </summary>
         private static readonly byte[] COLON_SP = new byte[] { (byte)':', (byte)' ' };
 
         /// <summary>
@@ -1022,21 +1097,53 @@ namespace SimpleW {
 
         #region cookie helpers
 
+        /// <summary>
+        /// Equals
+        /// </summary>
         private static readonly byte[] EQ = new byte[] { (byte)'=' };
+        /// <summary>
+        /// Semi-Colunm Separator
+        /// </summary>
         private static readonly byte[] SEMI_SP = new byte[] { (byte)';', (byte)' ' };
 
-        // "Set-Cookie: "
+        /// <summary>
+        /// "Set-Cookie: "
+        /// </summary>
         private const string SET_COOKIE = "Set-Cookie: ";
-
-        // attribute names
+        /// <summary>
+        /// "Path"
+        /// </summary>
         private const string ATTR_PATH = "Path";
+        /// <summary>
+        /// "Domain"
+        /// </summary>
         private const string ATTR_DOMAIN = "Domain";
+        /// <summary>
+        /// "Max-Age"
+        /// </summary>
         private const string ATTR_MAXAGE = "Max-Age";
+        /// <summary>
+        /// "Expires"
+        /// </summary>
         private const string ATTR_EXPIRES = "Expires";
+        /// <summary>
+        /// "Secure"
+        /// </summary>
         private const string ATTR_SECURE = "Secure";
+        /// <summary>
+        /// "HttpOnly"
+        /// </summary>
         private const string ATTR_HTTPONLY = "HttpOnly";
+        /// <summary>
+        /// "SameSite"
+        /// </summary>
         private const string ATTR_SAMESITE = "SameSite";
 
+        /// <summary>
+        /// Write RFC1123 date format
+        /// </summary>
+        /// <param name="w"></param>
+        /// <param name="dto"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void WriteRfc1123DateAscii(PooledBufferWriter w, DateTimeOffset dto) {
             // RFC1123 / IMF-fixdate, always UTC

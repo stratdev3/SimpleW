@@ -30,6 +30,9 @@ namespace SimpleW {
         /// </summary>
         public bool CheckCertificateRevocation { get; }
 
+        /// <summary>
+        /// Client Certificate Validation
+        /// </summary>
         public RemoteCertificateValidationCallback? ClientCertificateValidation { get; }
 
         /// <summary>

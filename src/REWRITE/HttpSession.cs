@@ -80,11 +80,16 @@ namespace SimpleW {
         /// Current HttpResponse
         /// </summary>
         public HttpResponse Response => _response;
+
+        /// <summary>
+        /// Current HttpResponse
+        /// </summary>
         private readonly HttpResponse _response;
 
         /// <summary>
         /// Constructor
         /// </summary>
+        /// <param name="server"></param>
         /// <param name="socket"></param>
         /// <param name="bufferPool"></param>
         /// <param name="router"></param>
@@ -591,6 +596,11 @@ namespace SimpleW {
     /// </summary>
     public sealed class HttpRequestTooLargeException(string message) : Exception(message) {
     }
+
+    /// <summary>
+    /// HttpBadRequest Exception
+    /// </summary>
+    /// <param name="message"></param>
     public sealed class HttpBadRequestException(string message) : Exception(message) {
     }
 

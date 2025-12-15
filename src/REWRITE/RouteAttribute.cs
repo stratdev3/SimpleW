@@ -31,6 +31,7 @@
         /// </summary>
         /// <param name="method">The method.</param>
         /// <param name="path">The path.</param>
+        /// <param name="isAbsolutePath"></param>
         /// <param name="description">The string description for this route</param>
         /// <exception cref="ArgumentException">The argument 'verb' must be specified.</exception>
         /// <exception cref="ArgumentException">The argument 'path' must be specified.</exception>
