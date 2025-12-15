@@ -249,7 +249,20 @@ namespace SimpleW {
         #region map delegate
 
         /// <summary>
+        /// Add handler for Method/Path
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleW Map(string method, string path, Delegate handler) {
+            Router.Map(method, path, handler);
+            return this;
+        }
+
+        /// <summary>
         /// Add handler for GET request
+        /// alias for Map("GET", path, handler)
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
@@ -285,6 +298,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Add handler for POST request
+        /// alias for Map("POST", path, handler)
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
