@@ -9,7 +9,7 @@ on:
       - master
       - testing
     paths:
-      - 'documentation/**'
+      - 'documentation/simplew/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -40,19 +40,19 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: documentation/package-lock.json
+          cache-dependency-path: documentation/simplew/package-lock.json
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Install dependencies
         run: npm ci
-        working-directory: documentation/
+        working-directory: documentation/simplew/
       - name: Build with VitePress
         run: npm run docs:build
-        working-directory: documentation/
+        working-directory: documentation/simplew/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: documentation/docs/.vitepress/dist
+          path: documentation/simplew/docs/.vitepress/dist
 
   # Deployment job
   deploy:

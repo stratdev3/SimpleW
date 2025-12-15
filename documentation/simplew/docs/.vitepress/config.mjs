@@ -133,7 +133,7 @@ export default defineConfig({
             provider: 'local'
         },
         editLink: {
-            pattern: 'https://github.com/stratdev3/SimpleW/edit/master/documentation/docs/:path'
+            pattern: 'https://github.com/stratdev3/SimpleW/edit/master/documentation/simplew/docs/:path'
         },
         externalLinkIcon: true
     },
