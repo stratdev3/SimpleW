@@ -1,0 +1,34 @@
+//
+// project : https://genhttp.org/
+//
+
+using GenHTTP.Engine.Internal;
+using GenHTTP.Modules.Layouting;
+using GenHTTP.Modules.Practices;
+using GenHTTP.Modules.Webservices;
+
+namespace Sample {
+
+    class Program {
+        static async Task<int> Main() {
+            Console.WriteLine("genhttp started at http://127.0.0.1:8080/api/test/hello");
+
+            var project = Layout
+                            .Create()
+                            .AddService<TestService>("api/test/hello");
+            return await Host.Create()
+                            .Port(8080)
+                            .Handler(project)
+                            .Defaults()
+                            .RunAsync();
+        }
+    }
+
+    public class TestService {
+        [ResourceMethod]
+        public object Hello() {
+            return new { message = "Hello World !" };
+        }
+    }
+
+}

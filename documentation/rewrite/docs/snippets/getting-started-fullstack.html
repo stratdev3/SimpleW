@@ -1,0 +1,44 @@
+<html>
+    <head>
+        <title>index</title>
+    </head>
+    <body>
+        <h1>Welcome<h1>
+        <input type="text" id="nameInput" placeholder="Enter your name" />
+        <button id="greetBtn">Greet me</button>
+        <p id="hello"></p>
+    </body>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const api = "/api";
+        const input  = document.getElementById('nameInput');
+        const button = document.getElementById('greetBtn');
+        const output = document.getElementById('hello');
+
+        button.addEventListener('click', () => {
+            const name = input.value.trim();
+
+            if (!name) {
+                output.textContent = 'Please enter a name.';
+                return;
+            }
+
+            fetch(`/test/hello?name=${encodeURIComponent(name)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    output.textContent = data.message || 'No message in response';
+                })
+                .catch(err => {
+                    console.error('Fetch error:', err);
+                    output.textContent = 'Failed to fetch greeting.';
+                });
+        });
+    });
+    </script>
+</html>

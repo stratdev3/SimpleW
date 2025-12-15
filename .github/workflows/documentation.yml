@@ -31,28 +31,54 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Not needed if lastUpdated is not enabled
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: documentation/simplew/package-lock.json
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
+      # build simplew doc
       - name: Install dependencies
         run: npm ci
         working-directory: documentation/simplew/
       - name: Build with VitePress
         run: npm run docs:build
         working-directory: documentation/simplew/
+
+      - name: Stage to public/
+        run: |
+          rm -rf public
+          mkdir -p public
+          cp -r documentation/simplew/docs/.vitepress/dist/* public/
+
+      # build rewrite doc
+      - name: Install dependencies
+        run: npm ci
+        working-directory: documentation/rewrite/
+      - name: Build with VitePress
+        run: npm run docs:build
+        working-directory: documentation/rewrite/
+
+      - name: Stage to public/rewrite/
+        run: |
+          mkdir -p public/rewrite
+          cp -r documentation/rewrite/docs/.vitepress/dist/* public/rewrite/
+
+      # final artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: documentation/simplew/docs/.vitepress/dist
+          path: public
 
   # Deployment job
   deploy:

@@ -1,0 +1,41 @@
+//
+// project : https://nodejs.org
+//
+
+const cluster = require('cluster');
+const http = require('http');
+const os = require('os');
+
+
+if (cluster.isMaster) {
+    const cpuCount = os.cpus().length;
+    console.log(`Master ${process.pid} — démarrage de ${cpuCount} workers...`);
+    for (let i = 0; i < cpuCount; i++) {
+        cluster.fork();
+    }
+    cluster.on('exit', (worker) => {
+        console.log(`Worker ${worker.process.pid} mort, respawn…`);
+        cluster.fork();
+    });
+}
+else {
+    const server = http.createServer((req, res) => {
+        if (req.method === 'GET' && req.url === '/api/test/hello') {
+            let payload = Buffer.from(JSON.stringify({ message: 'helloworld' }));
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Content-Length': payload.length,
+                'Connection': 'keep-alive'
+            });
+            res.end(payload);
+        }
+        else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not Found');
+        }
+    });
+
+    server.listen(8080, () => {
+        console.log(`Worker ${process.pid} listen on http://127.0.0.1:8080/api/test/hello`);
+    });
+}

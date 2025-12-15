@@ -1,0 +1,7 @@
+.no-link-decoration {
+    text-decoration: none !important;
+}
+.no-external-link-icon::after {
+    content: none !important;
+    display: none !important;
+}
