@@ -308,21 +308,37 @@
             public RouteMatcher(Route route) {
                 Route = route;
 
-                string pattern = route.Attribute.Path.Trim('/');
-                string[] parts = pattern.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                // pattern compile once (alloc OK here: called on Map, not per request)
+                string pattern = route.Attribute.Path;
+                ReadOnlySpan<char> p = pattern.AsSpan();
 
-                _segments = new Segment[parts.Length];
+                // count segments without Split
+                int count = CountSegments(p);
+                _segments = new Segment[count];
 
+                int segIndex = 0;
                 int spec = 0;
-                for (int i = 0; i < parts.Length; i++) {
-                    Segment seg = new Segment(parts[i]);
-                    _segments[i] = seg;
 
-                    // specificity = sum of literal segment lengths (more literal => more specific)
-                    if (!seg.IsParam && !seg.IsWildcard) {
-                        spec += seg.Value.Length;
+                int i = 0;
+                SkipSlashes(p, ref i);
+
+                while (i < p.Length) {
+                    int start = i;
+                    i = IndexOfSlashOrEnd(p, i);
+
+                    ReadOnlySpan<char> seg = p.Slice(start, i - start);
+
+                    string s = seg.ToString(); // OK ici : compile-time, une seule fois au Map()
+                    var compiled = new Segment(s);
+                    _segments[segIndex++] = compiled;
+
+                    if (!compiled.IsParam && !compiled.IsWildcard) {
+                        spec += compiled.LiteralOrName.Length;
                     }
+
+                    SkipSlashes(p, ref i);
                 }
+
                 Specificity = spec;
             }
 
@@ -335,62 +351,121 @@
             public bool TryMatch(string path, out Dictionary<string, string>? values) {
                 values = null;
 
-                string trimmed = path.Trim('/');
-                string[] req = (trimmed.Length == 0)
-                                    ? Array.Empty<string>()
-                                    : trimmed.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                ReadOnlySpan<char> p = path.AsSpan();
 
-                int i = 0;
-                for (; i < _segments.Length; i++) {
-                    if (i >= req.Length) {
-                        return false;
+                int segPos = 0;     // position in path
+                int segIndex = 0;   // index in pattern segments
+
+                // iterate pattern segments and compare to path segments (streaming)
+                while (true) {
+                    if (segIndex >= _segments.Length) {
+                        // pattern ended: path must also end (no remaining non-empty segments)
+                        SkipSlashes(p, ref segPos);
+                        return segPos >= p.Length;
                     }
 
-                    ref readonly Segment seg = ref _segments[i];
+                    ref readonly Segment pat = ref _segments[segIndex];
 
-                    if (seg.IsWildcard) {
-                        // "*" matches the rest
+                    // wildcard segment "*" matches the rest (including empty)
+                    if (pat.IsWildcard) {
                         return true;
                     }
 
-                    if (seg.IsParam) {
+                    // read next request segment
+                    SkipSlashes(p, ref segPos);
+                    if (segPos >= p.Length) {
+                        return false; // pattern expects more, path ended
+                    }
+
+                    int segStart = segPos;
+                    int segEnd = IndexOfSlashOrEnd(p, segPos);
+                    ReadOnlySpan<char> reqSeg = p.Slice(segStart, segEnd - segStart);
+                    segPos = segEnd;
+
+                    if (pat.IsParam) {
                         values ??= new Dictionary<string, string>(StringComparer.Ordinal);
 
-                        if (seg.IsCatchAll) {
-                            // :name* = capture the rest
-                            values[seg.Value] = string.Join('/', req[i..]);
+                        if (pat.IsCatchAll) {
+                            // catch-all gets current segment + the rest (without allocating intermediates)
+                            // include current segment + whatever remains (including slashes)
+                            int catchStart = segStart;
+                            // also trim leading '/' if any (shouldn't happen because we skipped slashes)
+                            ReadOnlySpan<char> rest = p.Slice(catchStart);
+
+                            // drop trailing slashes
+                            int end = rest.Length;
+                            while (end > 0 && rest[end - 1] == '/') {
+                                end--;
+                            }
+
+                            values[pat.LiteralOrName] = rest.Slice(0, end).ToString();
                             return true;
                         }
 
-                        values[seg.Value] = req[i];
+                        // normal param: allocate only this captured segment
+                        values[pat.LiteralOrName] = reqSeg.ToString();
+                        segIndex++;
                         continue;
                     }
 
-                    if (!string.Equals(seg.Value, req[i], StringComparison.Ordinal)) {
+                    // literal compare without allocations
+                    if (!reqSeg.Equals(pat.LiteralOrName.AsSpan(), StringComparison.Ordinal)) {
                         return false;
                     }
+
+                    segIndex++;
+                }
+            }
+
+            #region helpers
+
+            private static void SkipSlashes(ReadOnlySpan<char> s, ref int i) {
+                while (i < s.Length && s[i] == '/') {
+                    i++;
+                }
+            }
+
+            private static int IndexOfSlashOrEnd(ReadOnlySpan<char> s, int start) {
+                int i = start;
+                while (i < s.Length && s[i] != '/') {
+                    i++;
+                }
+                return i;
+            }
+
+            private static int CountSegments(ReadOnlySpan<char> path) {
+                int i = 0;
+                int count = 0;
+
+                SkipSlashes(path, ref i);
+
+                while (i < path.Length) {
+                    count++;
+                    i = IndexOfSlashOrEnd(path, i);
+                    SkipSlashes(path, ref i);
                 }
 
-                // must consume all segments unless pattern ended with wildcard/catchall (handled above)
-                return i == req.Length;
+                return count;
             }
+
+            #endregion helpers
 
             /// <summary>
             /// Segment
             /// </summary>
             private readonly struct Segment {
 
-                public readonly string Value;
+                public readonly string LiteralOrName;   // literal OR param name
                 public readonly bool IsParam;
-                public readonly bool IsWildcard;
-                public readonly bool IsCatchAll;
+                public readonly bool IsWildcard;        // "*" segment
+                public readonly bool IsCatchAll;        // ":name*"
 
                 public Segment(string raw) {
                     IsWildcard = (raw == "*");
                     IsParam = (raw.Length > 1 && raw[0] == ':');
                     IsCatchAll = (IsParam && raw.EndsWith("*", StringComparison.Ordinal));
 
-                    Value = (IsParam ? raw.TrimStart(':').TrimEnd('*') : raw);
+                    LiteralOrName = (IsParam ? raw.TrimStart(':').TrimEnd('*') : raw);
                 }
             }
 
