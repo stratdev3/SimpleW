@@ -217,6 +217,11 @@ namespace SimpleW {
         public string? Upgrade;
 
         /// <summary>
+        /// Authorization
+        /// </summary>
+        public string? Authorization;
+
+        /// <summary>
         /// SecWebSocketKey
         /// </summary>
         public string? SecWebSocketKey;
@@ -291,6 +296,10 @@ namespace SimpleW {
                 Upgrade = value;
                 return;
             }
+            if (name.Equals("Authorization", StringComparison.OrdinalIgnoreCase)) {
+                Authorization = value;
+                return;
+            }
             if (name.Equals("Sec-WebSocket-Key", StringComparison.OrdinalIgnoreCase)) {
                 SecWebSocketKey = value;
                 return;
@@ -357,6 +366,22 @@ namespace SimpleW {
                 value = Upgrade;
                 return value is not null;
             }
+            if (name.Equals("Authorization", StringComparison.OrdinalIgnoreCase)) {
+                value = Authorization;
+                return value is not null;
+            }
+            if (name.Equals("Sec-WebSocket-Key", StringComparison.OrdinalIgnoreCase)) {
+                value = SecWebSocketKey;
+                return value is not null;
+            }
+            if (name.Equals("Sec-WebSocket-Version", StringComparison.OrdinalIgnoreCase)) {
+                value = SecWebSocketVersion;
+                return value is not null;
+            }
+            if (name.Equals("Sec-WebSocket-Protocol", StringComparison.OrdinalIgnoreCase)) {
+                value = SecWebSocketProtocol;
+                return value is not null;
+            }
 
             // fallback
             if (_other is not null) {
@@ -411,6 +436,9 @@ namespace SimpleW {
             }
             if (Upgrade is not null) {
                 yield return new("Upgrade", Upgrade);
+            }
+            if (Authorization is not null) {
+                yield return new("Authorization", Authorization);
             }
             if (SecWebSocketKey is not null) {
                 yield return new("Sec-WebSocket-Key", SecWebSocketKey);
