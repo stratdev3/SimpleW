@@ -87,6 +87,12 @@ namespace SimpleW {
         private readonly HttpResponse _response;
 
         /// <summary>
+        /// Exposes the underlying transport as a Stream (NetworkStream or SslStream)
+        /// NOTE: caller must NOT dispose this stream (it would close the socket)
+        /// </summary>
+        public Stream TransportStream => (_sslStream != null ? _sslStream : new NetworkStream(_socket, ownsSocket: false));
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="server"></param>
