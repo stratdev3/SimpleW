@@ -303,7 +303,6 @@ namespace SimpleW {
 
                             // router and dispatch
                             await _router.DispatchAsync(this).ConfigureAwait(false);
-                            //await SendJsonAsync(new { message = "Hello World !" });
 
                             // if so, then close connection
                             if (CloseAfterResponse) {
