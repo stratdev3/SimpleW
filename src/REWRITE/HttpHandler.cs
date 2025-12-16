@@ -32,6 +32,14 @@
         };
 
         /// <summary>
+        /// Set Result as Json Body Response
+        /// </summary>
+        public static readonly HttpHandlerResult SetJsonBodyResponseResult = (session, result) => {
+            session.Response.Json(result);
+            return ValueTask.CompletedTask;
+        };
+
+        /// <summary>
         /// Do nothing with the Result
         /// </summary>
         public static readonly HttpHandlerResult DoNothingWithResult = (session, result) => {
