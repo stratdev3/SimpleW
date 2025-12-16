@@ -7,9 +7,9 @@ using System.Net.Sockets;
 namespace SimpleW {
 
     /// <summary>
-    /// SimpleW
+    /// SimpleW Server
     /// </summary>
-    public class SimpleW {
+    public class SimpleWServer {
 
         /// <summary>
         /// Router
@@ -23,13 +23,13 @@ namespace SimpleW {
         /// </summary>
         /// <param name="address">IP address</param>
         /// <param name="port">Port number</param>
-        public SimpleW(IPAddress address, int port) : this(new IPEndPoint(address, port)) { }
+        public SimpleWServer(IPAddress address, int port) : this(new IPEndPoint(address, port)) { }
 
         /// <summary>
         /// Initialize TCP server with a given IP endpoint
         /// </summary>
         /// <param name="endpoint">IP endpoint</param>
-        public SimpleW(EndPoint endpoint) {
+        public SimpleWServer(EndPoint endpoint) {
             EndPoint = endpoint;
             Router = new Router();
         }
@@ -255,7 +255,7 @@ namespace SimpleW {
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
-        public SimpleW Map(string method, string path, Delegate handler) {
+        public SimpleWServer Map(string method, string path, Delegate handler) {
             Router.Map(method, path, handler);
             return this;
         }
@@ -291,7 +291,7 @@ namespace SimpleW {
         ///     return new { message = $"Hello {name} !" };
         /// });
         /// </example>
-        public SimpleW MapGet(string path, Delegate handler) {
+        public SimpleWServer MapGet(string path, Delegate handler) {
             Router.MapGet(path, handler);
             return this;
         }
@@ -302,7 +302,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
-        public SimpleW MapPost(string path, Delegate handler) {
+        public SimpleWServer MapPost(string path, Delegate handler) {
             Router.MapPost(path, handler);
             return this;
         }
@@ -324,7 +324,7 @@ namespace SimpleW {
         ///     await session.SendJsonAsync(result);
         /// });
         /// </example>
-        public SimpleW UseHandlerResult(HttpHandlerResult handler) {
+        public SimpleWServer UseHandlerResult(HttpHandlerResult handler) {
             Router.HandlerResult = handler;
             return this;
         }
@@ -339,7 +339,7 @@ namespace SimpleW {
         /// <typeparam name="TController"></typeparam>
         /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
         /// <returns></returns>
-        public SimpleW UseController<TController>(string? basePrefix = null) where TController : Controller {
+        public SimpleWServer UseController<TController>(string? basePrefix = null) where TController : Controller {
             ControllerDelegateFactory.RegisterController(typeof(TController), Router, basePrefix);
             return this;
         }
@@ -351,7 +351,7 @@ namespace SimpleW {
         /// <param name="basePrefix"></param>
         /// <param name="excludes"></param>
         /// <returns></returns>
-        public SimpleW UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
+        public SimpleWServer UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
             Type baseType = typeof(TController);
 
             foreach (Type type in baseType.Assembly
@@ -639,7 +639,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="sslContext"></param>
         /// <returns></returns>
-        public SimpleW UseHttps(SslContext sslContext) {
+        public SimpleWServer UseHttps(SslContext sslContext) {
             SslContext = sslContext;
             return this;
         }

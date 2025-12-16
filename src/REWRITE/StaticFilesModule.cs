@@ -107,7 +107,7 @@ namespace SimpleW {
         /// Install Module in server (called by SimpleW)
         /// </summary>
         /// <param name="server"></param>
-        public void Install(SimpleW server) {
+        public void Install(SimpleWServer server) {
             if (server.IsStarted) {
                 throw new InvalidOperationException("StaticFilesModule must be installed before server start.");
             }

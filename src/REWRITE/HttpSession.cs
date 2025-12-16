@@ -24,7 +24,7 @@ namespace SimpleW {
         /// <summary>
         /// Underlying SimpleW Server
         /// </summary>
-        private readonly SimpleW Server;
+        private readonly SimpleWServer Server;
 
         /// <summary>
         /// Socket from SocketAsyncEventArgs
@@ -93,7 +93,7 @@ namespace SimpleW {
         /// <param name="socket"></param>
         /// <param name="bufferPool"></param>
         /// <param name="router"></param>
-        public HttpSession(SimpleW server, Socket socket, ArrayPool<byte> bufferPool, Router router) {
+        public HttpSession(SimpleWServer server, Socket socket, ArrayPool<byte> bufferPool, Router router) {
             Id = Guid.NewGuid();
 
             Server = server;

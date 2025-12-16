@@ -26,7 +26,7 @@ namespace example.rewrite {
 
         static async Task Rewrite() {
 
-            SimpleW.SimpleW server = new(IPAddress.Any, 8080);
+            SimpleWServer server = new(IPAddress.Any, 8080);
 
 #pragma warning disable CS0162 // Code inaccessible détecté
             if (false) {

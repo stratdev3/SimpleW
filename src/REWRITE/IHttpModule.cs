@@ -9,7 +9,7 @@
         /// Callback to Install Module in server
         /// </summary>
         /// <param name="server"></param>
-        void Install(SimpleW server);
+        void Install(SimpleWServer server);
 
     }
 
