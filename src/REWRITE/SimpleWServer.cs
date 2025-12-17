@@ -352,8 +352,17 @@ namespace SimpleW {
         /// <param name="basePrefix"></param>
         /// <param name="excludes"></param>
         /// <returns></returns>
+        /// <example>
+        /// <code>
+        /// server.UseControllers&lt;Controller&gt;(
+        ///     "/api",
+        ///     new[] { typeof(MaintenanceController) }
+        /// );
+        /// </code>
+        /// </example>
         public SimpleWServer UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
             Type baseType = typeof(TController);
+            HashSet<Type> excluded = new(excludes ?? Enumerable.Empty<Type>());
 
             foreach (Type type in AppDomain.CurrentDomain.GetAssemblies()
                                                          .SelectMany(a => {
@@ -363,7 +372,8 @@ namespace SimpleW {
                                                          .Where(t => t != null
                                                                      && !t.IsAbstract
                                                                      && baseType.IsAssignableFrom(t)
-                                                                     && typeof(Controller).IsAssignableFrom(t))
+                                                                     && typeof(Controller).IsAssignableFrom(t)
+                                                                     && !excluded.Contains(t))
             ) {
                 ControllerDelegateFactory.RegisterController(type, Router, basePrefix);
             }
