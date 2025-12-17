@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 
 
 namespace SimpleW {
@@ -354,11 +355,15 @@ namespace SimpleW {
         public SimpleWServer UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
             Type baseType = typeof(TController);
 
-            foreach (Type type in baseType.Assembly
-                                          .GetTypes()
-                                          .Where(t => !t.IsAbstract
-                                                      && baseType.IsAssignableFrom(t)
-                                                      && typeof(Controller).IsAssignableFrom(t))
+            foreach (Type type in AppDomain.CurrentDomain.GetAssemblies()
+                                                         .SelectMany(a => {
+                                                            try { return a.GetTypes(); }
+                                                            catch (ReflectionTypeLoadException e) { return e.Types.OfType<Type>(); }
+                                                         })
+                                                         .Where(t => t != null
+                                                                     && !t.IsAbstract
+                                                                     && baseType.IsAssignableFrom(t)
+                                                                     && typeof(Controller).IsAssignableFrom(t))
             ) {
                 ControllerDelegateFactory.RegisterController(type, Router, basePrefix);
             }
