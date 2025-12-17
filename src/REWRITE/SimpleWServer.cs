@@ -291,6 +291,19 @@ namespace SimpleW {
         ///     await Task.Delay(2_000);
         ///     return new { message = $"Hello {name} !" };
         /// });
+        /// server.MapGet("/api/test/hello", static object (HttpSession session,string? name = null) => {
+        ///     if (string.IsNullOrWhiteSpace(name)); {
+        ///         return Session.Response.Status(404).Text("you must set a name parameter");
+        ///     }
+        ///     return new { message = $"Hello {name} !" };
+        /// });
+        /// server.MapGet("/api/test/hello", static async ValueTask&lt;object&gt; (HttpSession session,string? name = null) => {
+        ///     if (string.IsNullOrWhiteSpace(name)); {
+        ///         await Task.Delay(2_000);
+        ///         return Session.Response.Status(404).Text("you must set a name parameter");
+        ///     }
+        ///     return new { message = $"Hello {name} !" };
+        /// });
         /// </example>
         public SimpleWServer MapGet(string path, Delegate handler) {
             Router.MapGet(path, handler);
