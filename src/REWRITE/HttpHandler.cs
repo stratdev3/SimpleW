@@ -28,6 +28,14 @@
         /// Send Result as Json
         /// </summary>
         public static readonly HttpHandlerResult SendJsonResult = (session, result) => {
+            if (result is HttpResponse response) {
+                // must be sure the response return result is the one of the current session !
+                if (!ReferenceEquals(response, session.Response)) {
+                    throw new InvalidOperationException("Returned HttpResponse is not session.Response");
+                }
+                return response.SendAsync();
+            }
+            // fallback
             return session.Response.Json(result).SendAsync();
         };
 
