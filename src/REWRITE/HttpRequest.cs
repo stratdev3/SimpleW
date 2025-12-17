@@ -634,7 +634,7 @@ namespace SimpleW {
         /// or 0 if need more data to read the request
         /// </returns>
         /// <exception cref="HttpRequestTooLargeException"></exception>
-        public int TryReadHttpRequestFast(byte[] buffer, int offset, int length, HttpRequest request) {
+        public int TryReadHttpRequest(byte[] buffer, int offset, int length, HttpRequest request) {
             request.Reset();
 
             if (length <= 0) {
@@ -668,7 +668,7 @@ namespace SimpleW {
             }
 
             ReadOnlySpan<byte> requestLineSpan = headerSpan.Slice(0, firstCrlf);
-            if (!TryParseRequestLineFast(requestLineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString)) {
+            if (!TryParseRequestLine(requestLineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString)) {
                 throw new HttpBadRequestException("");
             }
             if (string.IsNullOrEmpty(rawTarget)) {
@@ -707,7 +707,7 @@ namespace SimpleW {
                     continue;
                 }
 
-                if (!TryParseHeaderLineFast(lineSpan, out string? name, out string? value) || name is null) {
+                if (!TryParseHeaderLine(lineSpan, out string? name, out string? value) || name is null) {
                     throw new HttpBadRequestException("Invalid header line.");
                 }
 
@@ -743,7 +743,7 @@ namespace SimpleW {
 
             // chunked
             if (isChunked) {
-                if (!TryReadChunkedBodyFast(span, bodyStart, out ReadOnlySequence<byte> bodySeq, out byte[]? pooledBuffer, out int totalConsumed)) {
+                if (!TryReadChunkedBody(span, bodyStart, out ReadOnlySequence<byte> bodySeq, out byte[]? pooledBuffer, out int totalConsumed)) {
                     // need more data
                     return 0;
                 }
@@ -784,7 +784,7 @@ namespace SimpleW {
         /// <param name="protocol"></param>
         /// <param name="queryString"></param>
         /// <returns></returns>
-        private static bool TryParseRequestLineFast(ReadOnlySpan<byte> lineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString) {
+        private static bool TryParseRequestLine(ReadOnlySpan<byte> lineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString) {
             method = rawTarget = path = protocol = string.Empty;
             queryString = string.Empty;
 
@@ -834,7 +834,7 @@ namespace SimpleW {
         /// <param name="name"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        private static bool TryParseHeaderLineFast(ReadOnlySpan<byte> lineSpan, out string? name, out string? value) {
+        private static bool TryParseHeaderLine(ReadOnlySpan<byte> lineSpan, out string? name, out string? value) {
             name = null;
             value = null;
 
@@ -870,7 +870,7 @@ namespace SimpleW {
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="HttpRequestTooLargeException"></exception>
-        private bool TryReadChunkedBodyFast(ReadOnlySpan<byte> span, int bodyStart, out ReadOnlySequence<byte> body, out byte[]? pooledBuffer, out int totalConsumed) {
+        private bool TryReadChunkedBody(ReadOnlySpan<byte> span, int bodyStart, out ReadOnlySequence<byte> body, out byte[]? pooledBuffer, out int totalConsumed) {
             body = ReadOnlySequence<byte>.Empty;
             pooledBuffer = null;
             totalConsumed = 0;

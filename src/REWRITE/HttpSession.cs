@@ -286,7 +286,7 @@ namespace SimpleW {
 
                     // parse HttpRequest (http pipelining support)
                     while (true) {
-                        int consumed = _parser.TryReadHttpRequestFast(_parseBuffer, offset, _parseBufferCount - offset, _request);
+                        int consumed = _parser.TryReadHttpRequest(_parseBuffer, offset, _parseBufferCount - offset, _request);
                         if (consumed == 0) {
                             // if nothing consumed, we need/wait for more data
                             break;
