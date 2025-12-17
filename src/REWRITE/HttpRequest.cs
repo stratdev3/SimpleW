@@ -12,32 +12,32 @@ namespace SimpleW {
         /// <summary>
         /// Get the HTTP request method
         /// </summary>
-        public string Method { get; internal set; } = string.Empty;
+        public string Method { get; private set; } = string.Empty;
 
         /// <summary>
         /// Get the HTTP request Path
         /// </summary>
-        public string Path { get; internal set; } = string.Empty;
+        public string Path { get; private set; } = string.Empty;
 
         /// <summary>
         /// Raw target (path + query)
         /// </summary>
-        public string RawTarget { get; internal set; } = string.Empty;
+        public string RawTarget { get; private set; } = string.Empty;
 
         /// <summary>
         /// HTTP protocol version (e.g. "HTTP/1.1")
         /// </summary>
-        public string Protocol { get; internal set; } = string.Empty;
+        public string Protocol { get; private set; } = string.Empty;
 
         /// <summary>
         /// HTTP headers (case-insensitive)
         /// </summary>
-        public HttpHeaders Headers;
+        public HttpHeaders Headers { get; private set; }
 
         /// <summary>
         /// Body (buffer only valid during the time of the underlying Handler)
         /// </summary>
-        public ReadOnlySequence<byte> Body { get; internal set; } = ReadOnlySequence<byte>.Empty;
+        public ReadOnlySequence<byte> Body { get; private set; } = ReadOnlySequence<byte>.Empty;
 
         /// <summary>
         /// Body as String (only valid during the time of the underlying Handler)
@@ -69,7 +69,7 @@ namespace SimpleW {
         /// <summary>
         /// QueryString
         /// </summary>
-        public string QueryString { get; internal set;  } = string.Empty;
+        public string QueryString { get; private set;  } = string.Empty;
 
         /// <summary>
         /// Flag to Query parsing
@@ -102,12 +102,12 @@ namespace SimpleW {
         /// Route values extracted from matched route (ex: :id, :path*)
         /// Null when route has no parameters.
         /// </summary>
-        public Dictionary<string, string>? RouteValues { get; internal set; }
+        public Dictionary<string, string>? RouteValues { get; private set; }
 
         /// <summary>
         /// Reset HttpRequest for reuse
         /// </summary>
-        internal void Reset() {
+        public void Reset() {
             Method = string.Empty;
             Path = string.Empty;
             RawTarget = string.Empty;
@@ -128,12 +128,12 @@ namespace SimpleW {
         /// <summary>
         /// public Property to received a buffer from an ArrayPool
         /// </summary>
-        internal byte[]? PooledBodyBuffer { get; set; }
+        public byte[]? PooledBodyBuffer { get; set; }
 
         /// <summary>
         /// Return the buffer to ArrayPool
         /// </summary>
-        internal void ReturnPooledBodyBuffer() {
+        public void ReturnPooledBodyBuffer() {
             if (PooledBodyBuffer is not null) {
                 ArrayPool<byte>.Shared.Return(PooledBodyBuffer);
                 PooledBodyBuffer = null;
@@ -148,6 +148,62 @@ namespace SimpleW {
         /// Alias to UTF8Encoding
         /// </summary>
         private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        /// <summary>
+        /// Set Method
+        /// </summary>
+        /// <param name="method"></param>
+        public void ParserSetMethod(string method) {
+            Method = method;
+        }
+        /// <summary>
+        /// Set Path
+        /// </summary>
+        /// <param name="path"></param>
+        public void ParserSetPath(string path) {
+            Path = path;
+        }
+        /// <summary>
+        /// Set RawTarget
+        /// </summary>
+        /// <param name="rawTarget"></param>
+        public void ParserSetRawTarget(string rawTarget) {
+            RawTarget = rawTarget;
+        }
+        /// <summary>
+        /// Set Protocol
+        /// </summary>
+        /// <param name="protocol"></param>
+        public void ParserSetProtocol(string protocol) {
+            Protocol = protocol;
+        }
+        /// <summary>
+        /// Set Headers
+        /// </summary>
+        public void ParserSetHeaders(HttpHeaders headers) {
+            Headers = headers;
+        }
+        /// <summary>
+        /// Set Body
+        /// </summary>
+        /// <param name="body"></param>
+        public void ParserSetBody(ReadOnlySequence<byte> body) {
+            Body = body;
+        }
+        /// <summary>
+        /// Set QueryString
+        /// </summary>
+        /// <param name="qs"></param>
+        public void ParserSetQueryString(string qs) {
+            QueryString = qs;
+        }
+        /// <summary>
+        /// Set RouteValues
+        /// </summary>
+        /// <param name="rv"></param>
+        public void ParserSetRouteValues(Dictionary<string, string>? rv) {
+            RouteValues = rv;
+        }
 
         #endregion helpers
 
@@ -681,11 +737,11 @@ namespace SimpleW {
                 throw new HttpBadRequestException("Empty path.");
             }
 
-            request.Method = method;
-            request.RawTarget = rawTarget;
-            request.Path = path;
-            request.Protocol = protocol;
-            request.QueryString = queryString;
+            request.ParserSetMethod(method);
+            request.ParserSetRawTarget(rawTarget);
+            request.ParserSetPath(path);
+            request.ParserSetProtocol(protocol);
+            request.ParserSetQueryString(queryString);
 
             // 3. headers
             HttpHeaders headers = default;
@@ -729,11 +785,11 @@ namespace SimpleW {
             //    throw new HttpBadRequestException("Missing Host header (HTTP/1.1).");
             //}
 
-            request.Headers = headers;
+            request.ParserSetHeaders(headers);
 
             // no content-length and no chunked
             if (!isChunked && (!contentLength.HasValue || contentLength.Value == 0)) {
-                request.Body = ReadOnlySequence<byte>.Empty;
+                request.ParserSetBody(ReadOnlySequence<byte>.Empty);
                 return headerBytesLen;
             }
 
@@ -748,7 +804,7 @@ namespace SimpleW {
                     return 0;
                 }
 
-                request.Body = bodySeq;
+                request.ParserSetBody(bodySeq);
                 request.PooledBodyBuffer = pooledBuffer;
                 return totalConsumed;
             }
@@ -768,7 +824,7 @@ namespace SimpleW {
 
             // contiguous body in the same buffer
             int bodyOffsetInBuffer = offset + bodyStart;
-            request.Body = new ReadOnlySequence<byte>(buffer, bodyOffsetInBuffer, bodyLength);
+            request.ParserSetBody(new ReadOnlySequence<byte>(buffer, bodyOffsetInBuffer, bodyLength));
 
             // total consumed = headers + body
             return headerBytesLen + bodyLength;

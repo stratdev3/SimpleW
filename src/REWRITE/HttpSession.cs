@@ -583,10 +583,10 @@ namespace SimpleW {
                 return false;
             }
 
-            request.Method = "GET";
-            request.Path = "/api/test/hello";
-            request.Protocol = "HTTP/1.1";
-            request.Headers = default;
+            request.ParserSetMethod("GET");
+            request.ParserSetPath("/api/test/hello");
+            request.ParserSetProtocol("HTTP/1.1");
+            request.ParserSetHeaders(default);
 
             buffer = buffer.Slice(buffer.End);
             return true;

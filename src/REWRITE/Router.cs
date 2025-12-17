@@ -251,7 +251,7 @@
             task = default;
 
             // router owns this data
-            session.Request.RouteValues = null;
+            session.Request.ParserSetRouteValues(null);
 
             List<RouteMatcher>? matchers = session.Request.Method switch {
                 "GET" => _getMatchers,
@@ -285,7 +285,7 @@
                 return false;
             }
 
-            session.Request.RouteValues = bestValues;
+            session.Request.ParserSetRouteValues(bestValues);
             task = ExecutePipelineAsync(session, best.Route.Executor);
             return true;
         }
