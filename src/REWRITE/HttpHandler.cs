@@ -40,9 +40,9 @@
         };
 
         /// <summary>
-        /// Do nothing with the Result
+        /// Do nothing
         /// </summary>
-        public static readonly HttpHandlerResult DoNothingWithResult = (session, result) => {
+        public static readonly HttpHandlerResult DoNothingResult = (session, result) => {
             return ValueTask.CompletedTask;
         };
 
