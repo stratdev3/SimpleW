@@ -197,7 +197,17 @@
         #endregion Map Method Path Delegate
 
         /// <summary>
-        /// Find Handler from Method/Path
+        /// A.) Find Handler from Method/Path with the following priority :
+        ///     1. find exact route for GET/POST method, O(1) complexity, goto B
+        ///     2. if not found, find exact route for other methods, O(n) complexity, goto B
+        ///     3. if not found, find pattern route for GET/POST method, goto B
+        ///     4. if not found, find pattern route for other methods, goto B
+        ///     5. if not found, execute fallback handler
+        ///     6. if not fallback handler, send a 404 response
+        ///     
+        /// B.) Once the Handler is found, Execute with the following pipeline :
+        ///     1. fast path if no middleware : execute Handler
+        ///     2. loop to all middleware until next()
         /// </summary>
         /// <param name="session"></param>
         /// <returns></returns>
