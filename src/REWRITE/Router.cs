@@ -212,30 +212,15 @@
         /// <param name="session"></param>
         /// <returns></returns>
         public ValueTask DispatchAsync(HttpSession session) {
-            Route? route;
+            ValueTask task;
 
-            Dictionary<string, Route>? dict = session.Request.Method switch {
-                "GET" => _get,
-                "POST" => _post,
-                _ => null
-            };
-
-            // GET/POST methods on exact route
-            if (dict is not null && dict.TryGetValue(session.Request.Path, out route)) {
-                return ExecutePipelineAsync(session, route.Executor);
-            }
-
-            // other methods on exact route
-            if (dict is null) {
-                if (_others.TryGetValue(session.Request.Method, out Dictionary<string, Route>? otherDict)
-                    && otherDict.TryGetValue(session.Request.Path, out route)
-                ) {
-                    return ExecutePipelineAsync(session, route.Executor);
-                }
+            // exact routes
+            if (TryDispatchExact(session, out task)) {
+                return task;
             }
 
             // pattern routes (params + wildcard)
-            if (TryDispatchPattern(session, out ValueTask task)) {
+            if (TryDispatchPattern(session, out task)) {
                 return task;
             }
 
@@ -249,6 +234,41 @@
                 session,
                 DelegateExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync())
             );
+        }
+
+        /// <summary>
+        /// Find Handler in route exact
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="task"></param>
+        /// <returns></returns>
+        private bool TryDispatchExact(HttpSession session, out ValueTask task) {
+            task = default;
+
+            Route? route;
+
+            Dictionary<string, Route>? dict = session.Request.Method switch {
+                "GET" => _get,
+                "POST" => _post,
+                _ => null
+            };
+
+            // GET / POST exact
+            if (dict is not null && dict.TryGetValue(session.Request.Path, out route)) {
+                task = ExecutePipelineAsync(session, route.Executor);
+                return true;
+            }
+
+            // other methods exact
+            if (dict is null
+                && _others.TryGetValue(session.Request.Method, out Dictionary<string, Route>? otherDict)
+                && otherDict.TryGetValue(session.Request.Path, out route)
+            ) {
+                task = ExecutePipelineAsync(session, route.Executor);
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
