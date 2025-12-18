@@ -218,6 +218,21 @@ namespace SimpleW {
         #region Process
 
         /// <summary>
+        /// Flag
+        /// </summary>
+        private int _isTransportOwned;
+
+        /// <summary>
+        /// Is Transport Owner by external entity and not HttpSession anymore
+        /// </summary>
+        internal bool IsTransportOwned => Volatile.Read(ref _isTransportOwned) == 1;
+
+        /// <summary>
+        /// Called to stop HTTP parsing and take over the transport
+        /// </summary>
+        internal bool TryTakeTransportOwnership() => Interlocked.Exchange(ref _isTransportOwned, 1) == 0;
+
+        /// <summary>
         /// Flag to close Connection after Response
         /// </summary>
         public bool CloseAfterResponse { get; private set; }
@@ -230,6 +245,10 @@ namespace SimpleW {
         ///  - HttpRouter Dispatch
         /// </summary>
         public async Task ProcessAsync() {
+            if (IsTransportOwned) {
+                return;
+            }
+
             //
             // MAIN PROCESS LOOP
             //
