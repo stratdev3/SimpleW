@@ -679,6 +679,90 @@ namespace SimpleW {
             }
         }
 
+        #region alias
+
+        /// <summary>
+        /// Not Found 404
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
+        public HttpResponse NotFound(string? body = null) {
+            DisposeBody();
+            Status(404);
+            if (!string.IsNullOrWhiteSpace(body)) {
+                Text(body);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Internal Server Error 500
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
+        public HttpResponse InternalServerError(string? body = null) {
+            DisposeBody();
+            Status(500);
+            if (!string.IsNullOrWhiteSpace(body)) {
+                Text(body);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Redirect 302
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        public HttpResponse Redirect(string url) {
+            DisposeBody();
+            Status(302);
+            AddHeader("Location", url);
+            return this;
+        }
+
+        /// <summary>
+        /// Unauthorized 401
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
+        public HttpResponse Unauthorized(string? body = null) {
+            DisposeBody();
+            Status(401);
+            if (!string.IsNullOrWhiteSpace(body)) {
+                Text(body);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Forbidden 403
+        /// </summary>
+        /// <param name="body"></param>
+        /// <returns></returns>
+        public HttpResponse Forbidden(string? body = null) {
+            DisposeBody();
+            Status(403);
+            if (!string.IsNullOrWhiteSpace(body)) {
+                Text(body);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Access 401/403
+        /// </summary>
+        /// <param name="isWebuser"></param>
+        /// <returns></returns>
+        public HttpResponse Access(bool isWebuser = false) {
+            if (isWebuser) {
+                return Forbidden();
+            }
+            return Unauthorized();
+        }
+
+        #endregion alias
+
         #region cookies
 
         /// <summary>
