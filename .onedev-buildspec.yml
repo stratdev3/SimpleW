@@ -221,6 +221,18 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: test
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/test.rewrite/
+        dotnet test
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - type: PublishArtifactStep
     name: publish artifact REWRITE
     sourcePath: src/REWRITE/bin/@param:build_configuration@/
