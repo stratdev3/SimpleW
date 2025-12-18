@@ -12,11 +12,6 @@ namespace SimpleW {
     public sealed class HttpSession : IDisposable {
 
         /// <summary>
-        /// Buffer Size
-        /// </summary>
-        private const int BufferSize = 16 * 1024;
-
-        /// <summary>
         /// Guid of the current HttpSession
         /// </summary>
         public Guid Id { get; }
@@ -107,8 +102,8 @@ namespace SimpleW {
             _bufferPool = bufferPool;
             _router = router;
 
-            _recvBuffer = _bufferPool.Rent(BufferSize);
-            _parseBuffer = _bufferPool.Rent(BufferSize);
+            _recvBuffer = _bufferPool.Rent(server.OptionReceiveBufferSize);
+            _parseBuffer = _bufferPool.Rent(server.OptionReceiveBufferSize);
             _parseBufferCount = 0;
 
             _parser = new HttpRequestParserState(server.MaxRequestHeaderSize, server.MaxRequestBodySize);

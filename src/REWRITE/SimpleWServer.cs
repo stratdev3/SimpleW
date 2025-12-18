@@ -524,6 +524,11 @@ namespace SimpleW {
         /// </remarks>
         public int OptionTcpKeepAliveRetryCount { get; set; } = -1;
 
+        /// <summary>
+        /// Option: receive buffer size
+        /// </summary>
+        public int OptionReceiveBufferSize { get; set; } = 16 * 1024;
+
         #endregion options
 
         /// <summary>
