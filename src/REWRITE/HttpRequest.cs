@@ -715,7 +715,7 @@ namespace SimpleW {
                 throw new HttpRequestTooLargeException($"Request headers too large: {headerBytesLen} bytes (limit: {_maxHeaderSize}).");
             }
 
-            ReadOnlySpan<byte> headerSpan = span.Slice(0, headerEnd);
+            ReadOnlySpan<byte> headerSpan = span.Slice(0, headerEnd + Crlf.Length);
 
             // 2. request line
             int firstCrlf = headerSpan.IndexOf(Crlf);
