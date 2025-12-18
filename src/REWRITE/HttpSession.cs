@@ -350,12 +350,12 @@ namespace SimpleW {
 
             // HTTP/1.1 : keep-alive by default, except when "Connection: close"
             if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase)) {
-                return string.Equals(request.Headers.Connection, "close", StringComparison.OrdinalIgnoreCase);
+                return request.Headers.Connection != null && request.Headers.Connection.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0;
             }
 
             // HTTP/1.0 : close by default, except when "Connection: keep-alive"
-            if (request.Protocol.Equals("HTTP/1.0", StringComparison.OrdinalIgnoreCase) && request.Headers.Connection != null) {
-                return !(request.Headers.Connection.IndexOf("keep-alive", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (request.Protocol.Equals("HTTP/1.0", StringComparison.OrdinalIgnoreCase)) {
+                return request.Headers.Connection == null || request.Headers.Connection.IndexOf("keep-alive", StringComparison.OrdinalIgnoreCase) < 0;
             }
 
             // true to close
