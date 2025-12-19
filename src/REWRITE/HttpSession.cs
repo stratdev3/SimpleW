@@ -380,27 +380,6 @@ namespace SimpleW {
             return true;
         }
 
-        /// <summary>
-        /// Enlarge Parse Buffer if needed
-        /// </summary>
-        /// <param name="additionalBytes">number of bytes to add</param>
-        private void EnsureParseBufferCapacity(int additionalBytes) {
-            int required = _parseBufferCount + additionalBytes;
-            if (_parseBuffer.Length >= required) {
-                return;
-            }
-
-            int newSize = _parseBuffer.Length * 2;
-            if (newSize < required) {
-                newSize = required;
-            }
-
-            byte[] newBuffer = _bufferPool.Rent(newSize);
-            Buffer.BlockCopy(_parseBuffer, 0, newBuffer, 0, _parseBufferCount);
-            _bufferPool.Return(_parseBuffer);
-            _parseBuffer = newBuffer;
-        }
-
         #endregion Process
 
         #region SendAsync
@@ -587,6 +566,27 @@ namespace SimpleW {
         #endregion IDisposable
 
         #region helper
+
+        /// <summary>
+        /// Enlarge Parse Buffer if needed
+        /// </summary>
+        /// <param name="additionalBytes">number of bytes to add</param>
+        private void EnsureParseBufferCapacity(int additionalBytes) {
+            int required = _parseBufferCount + additionalBytes;
+            if (_parseBuffer.Length >= required) {
+                return;
+            }
+
+            int newSize = _parseBuffer.Length * 2;
+            if (newSize < required) {
+                newSize = required;
+            }
+
+            byte[] newBuffer = _bufferPool.Rent(newSize);
+            Buffer.BlockCopy(_parseBuffer, 0, newBuffer, 0, _parseBufferCount);
+            _bufferPool.Return(_parseBuffer);
+            _parseBuffer = newBuffer;
+        }
 
         /// <summary>
         /// Fake HttpRequest
