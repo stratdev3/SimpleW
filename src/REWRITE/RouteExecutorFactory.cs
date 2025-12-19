@@ -91,7 +91,6 @@ namespace SimpleW {
                 // "default value" expression for the param
                 object? defaultObj = GetDefaultValueForParameter(p);
                 Expression defaultExpr;
-
                 if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
                     // non nullable value type without default -> default(T)
                     defaultExpr = Expression.Default(p.ParameterType);
@@ -101,7 +100,7 @@ namespace SimpleW {
                 }
 
                 Expression assignExpr;
-                if (p.Name is not null) {
+                if (!string.IsNullOrEmpty(p.Name)) {
 
                     //
                     // RouteValues
@@ -391,7 +390,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="p"></param>
         /// <returns></returns>
-        private static object? GetDefaultValueForParameter(ParameterInfo p) {
+        public static object? GetDefaultValueForParameter(ParameterInfo p) {
             if (p.HasDefaultValue) {
                 return p.DefaultValue;
             }
@@ -412,7 +411,7 @@ namespace SimpleW {
         /// <param name="raw"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        private static T ConvertFromStringOrDefault<T>(string raw, T defaultValue) {
+        public static T ConvertFromStringOrDefault<T>(string raw, T defaultValue) {
             if (TryConvertFromString(raw, typeof(T), out object? value)) {
                 return (T)value!;
             }
@@ -427,7 +426,7 @@ namespace SimpleW {
         /// <param name="targetType"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        private static bool TryConvertFromString(string raw, Type targetType, out object? value) {
+        public static bool TryConvertFromString(string raw, Type targetType, out object? value) {
             value = null;
 
             Type? underlying = Nullable.GetUnderlyingType(targetType);
@@ -770,88 +769,176 @@ namespace SimpleW {
             // get parameter info
             ParameterInfo[] methodParams = method.GetParameters();
 
-            // lambda parameters (session + methodParams)
-            ParameterExpression[] lambdaParams = new ParameterExpression[1 + methodParams.Length];
-            lambdaParams[0] = Expression.Parameter(typeof(HttpSession), "session");
-            for (int i = 0; i < methodParams.Length; i++) {
-                ParameterInfo p = methodParams[i];
-                lambdaParams[i + 1] = Expression.Parameter(p.ParameterType, p.Name ?? $"arg{i}");
-            }
+            // lambda parameters (session only)
+            ParameterExpression sessionParam = Expression.Parameter(typeof(HttpSession), "session");
+
+            // session.Request
+            MemberExpression requestProp = Expression.Property(sessionParam, nameof(HttpSession.Request));
+
+            // session.Request.Query
+            MemberExpression queryProp = Expression.Property(requestProp, nameof(HttpRequest.Query));
+
+            // TryGetValue(string, out string)
+            MethodInfo? queryTryGetValueMethod = queryProp.Type.GetMethod(
+                "TryGetValue",
+                BindingFlags.Public | BindingFlags.Instance,
+                binder: null,
+                types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                modifiers: null
+            );
+
+            // session.Request.RouteValues
+            MemberExpression routeValuesProp = Expression.Property(requestProp, nameof(HttpRequest.RouteValues));
+
+            // TryGetValue(string, out string)
+            MethodInfo? routeTryGetValueMethod = typeof(Dictionary<string, string>).GetMethod(
+                "TryGetValue",
+                BindingFlags.Public | BindingFlags.Instance,
+                binder: null,
+                types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                modifiers: null
+            );
 
             // declare var controller
             ParameterExpression controllerVar = Expression.Variable(controllerType, "controller");
 
-            // instanciate a new Type instance and assign to controller var
-            MethodInfo createInstanceMethod = typeof(Activator).GetMethod(
-                nameof(Activator.CreateInstance),
-                BindingFlags.Public | BindingFlags.Static,
-                binder: null,
-                types: new[] { typeof(Type) },
-                modifiers: null
-            )!;
-            Expression newControllerExpr = Expression.Convert(
-                Expression.Call(createInstanceMethod, Expression.Constant(controllerType)),
-                controllerType
-            );
-            Expression assignController = Expression.Assign(controllerVar, newControllerExpr);
+            // controller = new ControllerType()
+            NewExpression newController = Expression.New(controllerType);
 
-            // assign controller.Session = session;
-            PropertyInfo sessionProp = typeof(Controller).GetProperty(nameof(Controller.Session), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-            Expression assignSession = Expression.Assign(Expression.Property(controllerVar, sessionProp), lambdaParams[0]); // lambdaParams[0] is session
+            // assign controller
+            BinaryExpression assignController = Expression.Assign(controllerVar, newController);
 
-            // call controller.OnBeforeMethod()
+            // controller.Session = session
+            MemberExpression sessionProp = Expression.Property(controllerVar, nameof(Controller.Session));
+            BinaryExpression assignSession = Expression.Assign(sessionProp, sessionParam);
+
+            // controller.OnBeforeMethod()
             MethodInfo onBeforeMethodInfo = typeof(Controller).GetMethod(nameof(Controller.OnBeforeMethod), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-            Expression callOnBefore = Expression.Call(controllerVar, onBeforeMethodInfo);
+            MethodCallExpression callOnBefore = Expression.Call(controllerVar, onBeforeMethodInfo);
 
-            // call controller.Method(p1, p2, ...)
-            Expression[]? callArgs = new Expression[methodParams.Length];
+            // Build method arguments (routeValues -> query -> default)
+            List<ParameterExpression> variables = new() { controllerVar };
+            List<Expression> body = new() {
+                assignController,
+                assignSession,
+                callOnBefore
+            };
+
+            // call controller.Method(param1, param2, ...)
+            Expression[] callArgs = new Expression[methodParams.Length];
             for (int i = 0; i < methodParams.Length; i++) {
-                callArgs[i] = lambdaParams[i + 1];
+
+                ParameterInfo p = methodParams[i];
+
+                // 1.) HttpSession type is a special parameter
+                if (p.ParameterType == typeof(HttpSession)) {
+                    callArgs[i] = sessionParam;
+                    continue;
+                }
+
+                // local var for final param
+                ParameterExpression paramVar = Expression.Variable(p.ParameterType, string.IsNullOrEmpty(p.Name) ? $"arg{i}" : p.Name!);
+                variables.Add(paramVar);
+
+                // local var for raw string
+                ParameterExpression rawVar = Expression.Variable(typeof(string), (string.IsNullOrEmpty(p.Name) ? $"arg{i}" : p.Name!) + "_raw");
+                variables.Add(rawVar);
+
+                // "default value" value expression for the param
+                object? defaultObj = DelegateExecutorFactory.GetDefaultValueForParameter(p);
+                Expression defaultExpr;
+                if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
+                    defaultExpr = Expression.Default(p.ParameterType);
+                }
+                else {
+                    defaultExpr = Expression.Constant(defaultObj, p.ParameterType);
+                }
+
+                MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
+                                                .GetMethod(nameof(DelegateExecutorFactory.ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
+                                                .MakeGenericMethod(p.ParameterType);
+
+                Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
+
+                Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
+                Expression assignDefault = Expression.Assign(paramVar, defaultExpr);
+
+                Expression assignExpr;
+                if (!string.IsNullOrEmpty(p.Name)) {
+
+                    // routeValues != null
+                    Expression routeNotNull = Expression.NotEqual(
+                        routeValuesProp,
+                        Expression.Constant(null, routeValuesProp.Type)
+                    );
+
+                    // routeValues.TryGetValue("name", out rawVar)
+                    Expression routeTryGet = (routeTryGetValueMethod is null)
+                                                ? Expression.Constant(false)
+                                                : Expression.Call(
+                                                    Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
+                                                    routeTryGetValueMethod,
+                                                    Expression.Constant(p.Name!, typeof(string)),
+                                                    rawVar
+                                                );
+
+                    // query != null (Query is non-null but keep safe)
+                    Expression queryNotNull = Expression.NotEqual(
+                        queryProp,
+                        Expression.Constant(null, queryProp.Type)
+                    );
+
+                    // query.TryGetValue("name", out rawVar)
+                    Expression queryTryGet = (queryTryGetValueMethod is null)
+                                                ? Expression.Constant(false)
+                                                : Expression.Call(
+                                                    queryProp,
+                                                    queryTryGetValueMethod,
+                                                    Expression.Constant(p.Name!, typeof(string)),
+                                                    rawVar
+                                                );
+
+                    assignExpr = Expression.IfThenElse(
+                                    Expression.AndAlso(routeNotNull, routeTryGet),
+                                    assignConverted,
+                                    Expression.IfThenElse(
+                                        Expression.AndAlso(queryNotNull, queryTryGet),
+                                        assignConverted,
+                                        assignDefault
+                                    )
+                                );
+                }
+                else {
+                    // unnamed parameter, then default value
+                    assignExpr = assignDefault;
+                }
+
+                body.Add(assignExpr);
+                callArgs[i] = paramVar;
             }
+
+            // call controller.Method(...)
             MethodCallExpression call = Expression.Call(controllerVar, method, callArgs);
 
-            // body
-            Expression body;
-            if (method.ReturnType == typeof(void)) {
-                body = Expression.Block(
-                    new[] { controllerVar },
-                    assignController,
-                    assignSession,
-                    callOnBefore,
-                    call
-                );
-            }
-            else {
-                body = Expression.Block(
-                    new[] { controllerVar },
-                    assignController,
-                    assignSession,
-                    callOnBefore,
-                    call
-                );
-            }
+            // append call as last expression
+            body.Add(call);
 
+            // build block
+            Expression block = Expression.Block(variables, body);
+
+            // delegate type: (HttpSession) to returnType
             Type delegateType;
-            // delegate return void
             if (method.ReturnType == typeof(void)) {
-                Type[] paramTypes = lambdaParams.Select(p => p.Type).ToArray();
-                delegateType = Expression.GetActionType(paramTypes);
+                delegateType = typeof(Action<HttpSession>);
             }
-            // delegate return
             else {
-                Type[] typeArgs = new Type[lambdaParams.Length + 1];
-                for (int i = 0; i < lambdaParams.Length; i++) {
-                    typeArgs[i] = lambdaParams[i].Type;
-                }
-                typeArgs[^1] = method.ReturnType;
-                delegateType = Expression.GetDelegateType(typeArgs);
+                delegateType = typeof(Func<,>).MakeGenericType(typeof(HttpSession), method.ReturnType);
             }
 
-            // final expression
             LambdaExpression lambda = Expression.Lambda(
                 delegateType,
-                body,
-                lambdaParams
+                block,
+                sessionParam
             );
 
             return lambda.Compile();
