@@ -19,7 +19,7 @@ namespace SimpleW {
         /// <summary>
         /// Underlying SimpleW Server
         /// </summary>
-        private readonly SimpleWServer Server;
+        public readonly SimpleWServer Server;
 
         /// <summary>
         /// Socket from SocketAsyncEventArgs
@@ -540,8 +540,8 @@ namespace SimpleW {
 
             try {
                 if (_socket.Connected) {
-                    _socket.Shutdown(SocketShutdown.Both);
-                }
+                        _socket.Shutdown(SocketShutdown.Both);
+                    }
             }
             catch { }
 
