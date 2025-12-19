@@ -133,7 +133,7 @@
             HttpRouteExecutor executor = DelegateExecutorFactory.Create(handler);
             Route route = new(new RouteAttribute(method, path), executor);
 
-            AddRouteInternal(route.Attribute.Method, route);
+            AddRouteInternal(route);
         }
 
         /// <summary>
@@ -149,15 +149,14 @@
         /// <summary>
         /// AddRouteInternal
         /// </summary>
-        /// <param name="method"></param>
         /// <param name="route"></param>
-        private void AddRouteInternal(string method, Route route) {
+        private void AddRouteInternal(Route route) {
             string p = route.Attribute.Path;
 
             bool isPattern = p.IndexOf('*') >= 0 || p.IndexOf(':') >= 0;
 
             if (!isPattern) {
-                switch (method) {
+                switch (route.Attribute.Method) {
                     case "GET":
                         _get[p] = route;
                         return;
@@ -165,9 +164,9 @@
                         _post[p] = route;
                         return;
                     default:
-                        if (!_others.TryGetValue(method, out var dict)) {
+                        if (!_others.TryGetValue(route.Attribute.Method, out var dict)) {
                             dict = new Dictionary<string, Route>(StringComparer.Ordinal);
-                            _others[method] = dict;
+                            _others[route.Attribute.Method] = dict;
                         }
                         dict[p] = route;
                         return;
@@ -177,7 +176,7 @@
             // pattern
             RouteMatcher matcher = new(route);
 
-            switch (method) {
+            switch (route.Attribute.Method) {
                 case "GET":
                     _getMatchers.Add(matcher);
                     return;
@@ -185,9 +184,9 @@
                     _postMatchers.Add(matcher);
                     return;
                 default:
-                    if (!_otherMatchers.TryGetValue(method, out var list)) {
+                    if (!_otherMatchers.TryGetValue(route.Attribute.Method, out var list)) {
                         list = new List<RouteMatcher>();
-                        _otherMatchers[method] = list;
+                        _otherMatchers[route.Attribute.Method] = list;
                     }
                     list.Add(matcher);
                     return;
