@@ -11,7 +11,6 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
 
-        const api = "/api";
         const input  = document.getElementById('nameInput');
         const button = document.getElementById('greetBtn');
         const output = document.getElementById('hello');
@@ -24,7 +23,7 @@
                 return;
             }
 
-            fetch(`/test/hello?name=${encodeURIComponent(name)}`)
+            fetch(`/api/test/hello?name=${encodeURIComponent(name)}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
