@@ -106,7 +106,7 @@ namespace SimpleW {
             _parseBuffer = _bufferPool.Rent(server.OptionReceiveBufferSize);
             _parseBufferCount = 0;
 
-            _parser = new HttpRequestParserState(server.MaxRequestHeaderSize, server.MaxRequestBodySize);
+            _parser = new HttpRequestParserState(server.OptionMaxRequestHeaderSize, server.OptionMaxRequestBodySize);
             _request = new HttpRequest();
 
             _response = new HttpResponse(this, _bufferPool);

@@ -184,12 +184,12 @@ namespace SimpleW {
         /// <summary>
         /// Max size of request headers in bytes (default: 64 KB)
         /// </summary>
-        public int MaxRequestHeaderSize { get; set; } = 64 * 1024;
+        public int OptionMaxRequestHeaderSize { get; set; } = 64 * 1024;
 
         /// <summary>
         /// Max size of request body in bytes (default: 10 MB)
         /// </summary>
-        public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
+        public long OptionMaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 
         #endregion security
 
