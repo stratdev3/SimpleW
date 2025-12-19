@@ -132,6 +132,10 @@ namespace SimpleW {
         /// Configure Socket Options
         /// </summary>
         private void SocketOptions() {
+
+            // enable=false : normal "graceful" close par défaut (send FIN and flush buffer)
+            // enable=true, seconds=0 : abort and send immediate RST
+            // enable=true, seconds>0 : wait flush buffer for X second, abort and send RST
             _socket.LingerState = new LingerOption(enable: false, seconds: 0);
 
             if (Server.OptionKeepAlive) {
