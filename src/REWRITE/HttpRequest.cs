@@ -91,7 +91,7 @@ namespace SimpleW {
                     _query ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
                     if (!string.IsNullOrEmpty(QueryString)) {
-                        HttpRequestParserState.ParseQueryString(QueryString.AsSpan(), _query);
+                        HttpRequestParser.ParseQueryString(QueryString.AsSpan(), _query);
                     }
                 }
                 return _query!;
@@ -646,7 +646,7 @@ namespace SimpleW {
     /// <summary>
     /// HttpRequest Parser Instance
     /// </summary>
-    internal struct HttpRequestParserState {
+    internal struct HttpRequestParser {
 
         #region Constants & shared fields
 
@@ -673,7 +673,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="maxHeaderSize"></param>
         /// <param name="maxBodySize"></param>
-        public HttpRequestParserState(int maxHeaderSize, long maxBodySize) {
+        public HttpRequestParser(int maxHeaderSize, long maxBodySize) {
             _maxHeaderSize = maxHeaderSize;
             _maxBodySize = maxBodySize;
         }

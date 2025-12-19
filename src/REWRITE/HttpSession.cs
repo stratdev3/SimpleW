@@ -59,7 +59,7 @@ namespace SimpleW {
         /// <summary>
         /// Parser réutilisé pour cette session
         /// </summary>
-        private HttpRequestParserState _parser;
+        private HttpRequestParser _parser;
 
         /// <summary>
         /// Last HttpRequest Parsed
@@ -106,7 +106,7 @@ namespace SimpleW {
             _parseBuffer = _bufferPool.Rent(server.OptionReceiveBufferSize);
             _parseBufferCount = 0;
 
-            _parser = new HttpRequestParserState(server.OptionMaxRequestHeaderSize, server.OptionMaxRequestBodySize);
+            _parser = new HttpRequestParser(server.OptionMaxRequestHeaderSize, server.OptionMaxRequestBodySize);
             _request = new HttpRequest();
 
             _response = new HttpResponse(this, _bufferPool);
