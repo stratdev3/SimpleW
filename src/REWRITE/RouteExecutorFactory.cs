@@ -102,6 +102,24 @@ namespace SimpleW {
                 Expression assignExpr;
                 if (!string.IsNullOrEmpty(p.Name)) {
 
+                    // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
+                    MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
+                                                    .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
+                                                    .MakeGenericMethod(p.ParameterType);
+
+                    Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
+
+                    Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
+                    Expression assignDefault = p.HasDefaultValue
+                                                    ? Expression.Assign(paramVar, defaultExpr)
+                                                    : Expression.Throw(
+                                                        Expression.New(
+                                                            typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
+                                                                                                             Expression.Constant($"Missing required parameter '{p.Name}'")
+                                                        ),
+                                                        p.ParameterType
+                                                    );
+
                     //
                     // RouteValues
                     //
@@ -121,16 +139,6 @@ namespace SimpleW {
                                                     Expression.Constant(p.Name, typeof(string)),
                                                     rawVar
                                                 );
-
-                    // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
-                    MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
-                                                    .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
-                                                    .MakeGenericMethod(p.ParameterType);
-
-                    Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
-
-                    Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
-                    Expression assignDefault = Expression.Assign(paramVar, defaultExpr);
 
                     // if (routeValues != null && routeTryGet) param = converted else ... (fallback query)
                     Expression routeBranch = Expression.IfThenElse(
@@ -861,7 +869,15 @@ namespace SimpleW {
                 Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
 
                 Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
-                Expression assignDefault = Expression.Assign(paramVar, defaultExpr);
+                Expression assignDefault = p.HasDefaultValue
+                                                ? Expression.Assign(paramVar, defaultExpr)
+                                                : Expression.Throw(
+                                                    Expression.New(
+                                                        typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
+                                                                                                         Expression.Constant($"Missing required parameter '{p.Name}'")
+                                                    ),
+                                                    p.ParameterType
+                                                );
 
                 Expression assignExpr;
                 if (!string.IsNullOrEmpty(p.Name)) {
@@ -884,9 +900,9 @@ namespace SimpleW {
 
                     // query != null (Query is non-null but keep safe)
                     Expression queryNotNull = Expression.NotEqual(
-                        queryProp,
-                        Expression.Constant(null, queryProp.Type)
-                    );
+                                                  queryProp,
+                                                  Expression.Constant(null, queryProp.Type)
+                                              );
 
                     // query.TryGetValue("name", out rawVar)
                     Expression queryTryGet = (queryTryGetValueMethod is null)
