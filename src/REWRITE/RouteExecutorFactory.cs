@@ -124,7 +124,7 @@ namespace SimpleW {
 
                     // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
                     MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
-                                                    .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Static)!
+                                                    .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
                                                     .MakeGenericMethod(p.ParameterType);
 
                     Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
