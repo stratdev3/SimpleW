@@ -673,6 +673,9 @@ namespace SimpleW {
         /// <param name="sslContext"></param>
         /// <returns></returns>
         public SimpleWServer UseHttps(SslContext sslContext) {
+            if (IsStarted) {
+                throw new InvalidOperationException("SslContext must be configured before starting the server.");
+            }
             SslContext = sslContext;
             return this;
         }
