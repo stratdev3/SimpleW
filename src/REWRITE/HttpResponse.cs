@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -57,6 +58,21 @@ namespace SimpleW {
         /// True if user added a Content-Length via AddHeader (so we must not auto-write it)
         /// </summary>
         private bool _hasCustomContentLength;
+
+        /// <summary>
+        /// Current compression mode (default: Auto)
+        /// </summary>
+        private ResponseCompressionMode _compressionMode = ResponseCompressionMode.Auto;
+
+        /// <summary>
+        /// Minimum body size (bytes) before auto-compress kicks in (default: 512)
+        /// </summary>
+        private int _compressionMinSize = 512;
+
+        /// <summary>
+        /// Compression level (default: Fastest)
+        /// </summary>
+        private CompressionLevel _compressionLevel = CompressionLevel.Fastest;
 
         //
         // BODY
@@ -526,6 +542,35 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Configure compression policy for this response
+        /// </summary>
+        /// <param name="mode"></param>
+        /// <param name="minSize"></param>
+        /// <param name="level"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public HttpResponse Compression(ResponseCompressionMode mode, int? minSize = null, CompressionLevel? level = null) {
+            _compressionMode = mode;
+            if (minSize.HasValue) {
+                _compressionMinSize = (minSize.Value < 0 ? 0 : minSize.Value);
+            }
+            if (level.HasValue) {
+                _compressionLevel = level.Value;
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Convenience: disable compression for this response
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public HttpResponse NoCompression() => Compression(ResponseCompressionMode.Disabled);
+
+        //
+        // SEND
+        //
+
+        /// <summary>
         /// Send the response now
         /// </summary>
         /// <returns></returns>
@@ -572,6 +617,46 @@ namespace SimpleW {
                     break;
             }
 
+            // negotiate/compress (optional)
+            PooledBufferWriter? compressedWriter = null;
+            ArraySegment<byte> compressedSeg = default;
+            NegotiatedEncoding negotiated = NegotiatedEncoding.None;
+
+            bool canCompressBody = bodyLength > 0
+                                   && _bodyKind != BodyKind.File
+                                   && !_hasCustomContentLength
+                                   && _statusCode != 204
+                                   && _statusCode != 304
+                                   && !HasHeaderIgnoreCase("Content-Encoding")
+                                   && IsCompressibleContentType(_contentType);
+
+            if (_compressionMode != ResponseCompressionMode.Disabled && canCompressBody) {
+                bool wantCompress = _compressionMode switch {
+                    ResponseCompressionMode.Auto => (bodyLength >= _compressionMinSize),
+                    ResponseCompressionMode.ForceGzip => true,
+                    ResponseCompressionMode.ForceDeflate => true,
+                    _ => false
+                };
+
+                if (wantCompress) {
+                    bool allowGzip = _compressionMode != ResponseCompressionMode.ForceDeflate;
+                    bool allowDeflate = _compressionMode != ResponseCompressionMode.ForceGzip;
+                    negotiated = NegotiateEncoding(_session.Request.Headers.AcceptEncoding, allowGzip, allowDeflate);
+
+                    if (negotiated != NegotiatedEncoding.None) {
+                        compressedWriter = CompressToPooledWriter(_bufferPool, bodyMem, negotiated, _compressionLevel);
+                        compressedSeg = new ArraySegment<byte>(compressedWriter.Buffer, 0, compressedWriter.Length);
+
+                        bool forced = _compressionMode == ResponseCompressionMode.ForceGzip || _compressionMode == ResponseCompressionMode.ForceDeflate;
+                        if (!forced && compressedWriter.Length >= bodyLength) {
+                            compressedWriter.Dispose();
+                            compressedWriter = null;
+                            negotiated = NegotiatedEncoding.None;
+                        }
+                    }
+                }
+            }
+
             PooledBufferWriter? headerWriter = null;
             try {
                 headerWriter = new PooledBufferWriter(_bufferPool, initialSize: 512);
@@ -584,13 +669,14 @@ namespace SimpleW {
                 WriteCRLF(headerWriter);
 
                 // Content-Length
+                int finalBodyLength = (negotiated != NegotiatedEncoding.None && compressedWriter != null) ? compressedWriter.Length : bodyLength;
                 if (!_hasCustomContentLength) {
                     WriteBytes(headerWriter, H_CL);
                     if (_bodyKind == BodyKind.File) {
                         WriteLongAscii(headerWriter, bodyLengthLong);
                     }
                     else {
-                        WriteIntAscii(headerWriter, bodyLength);
+                        WriteIntAscii(headerWriter, finalBodyLength);
                     }
                     WriteCRLF(headerWriter);
                 }
@@ -600,6 +686,20 @@ namespace SimpleW {
                     WriteBytes(headerWriter, H_CT);
                     WriteAscii(headerWriter, _contentType!);
                     WriteCRLF(headerWriter);
+                }
+
+                // Content-Encoding + Vary (only if compressed)
+                if (negotiated != NegotiatedEncoding.None && compressedWriter != null) {
+                    WriteBytes(headerWriter, H_CE);
+                    WriteBytes(headerWriter, negotiated == NegotiatedEncoding.Gzip ? H_GZIP : H_DEFLATE);
+                    WriteCRLF(headerWriter);
+
+                    // Vary: Accept-Encoding (avoid duplicates if caller already set it)
+                    if (!HasHeaderValueTokenIgnoreCase("Vary", "Accept-Encoding")) {
+                        WriteBytes(headerWriter, H_VARY);
+                        WriteAscii(headerWriter, "Accept-Encoding");
+                        WriteCRLF(headerWriter);
+                    }
                 }
 
                 // Connection (session decides keep-alive/close)
@@ -659,8 +759,12 @@ namespace SimpleW {
                         _bufferPool.Return(buf);
                     }
                 }
-                else if (bodyLength == 0) {
+                else if (finalBodyLength == 0) {
                     await _session.SendAsync(headerSeg).ConfigureAwait(false);
+                }
+                else if (negotiated != NegotiatedEncoding.None && compressedWriter != null) {
+                    // compressed payload is always array-backed
+                    await _session.SendAsync(headerSeg, compressedSeg).ConfigureAwait(false);
                 }
                 else if (_bodyKind == BodyKind.Segment || _bodyKind == BodyKind.OwnedBuffer || _bodyKind == BodyKind.OwnedWriter) {
                     // array-backed body => 1 socket send (exception for https)
@@ -674,6 +778,7 @@ namespace SimpleW {
                 }
             }
             finally {
+                compressedWriter?.Dispose();
                 headerWriter?.Dispose();
                 DisposeBody(); // disposes owner if any + returns owned buffers
             }
@@ -1003,6 +1108,10 @@ namespace SimpleW {
             _headerCount = 0;
             _hasCustomContentLength = false;
 
+            _compressionMode = ResponseCompressionMode.Auto;
+            _compressionMinSize = 512;
+            _compressionLevel = CompressionLevel.Fastest;
+
             DisposeBody();
 
             _cookieCount = 0;
@@ -1043,7 +1152,7 @@ namespace SimpleW {
 
         #endregion Dispose
 
-        #region response helpers
+        #region write helpers
 
         /// <summary>
         /// Ascii Encoding Alias
@@ -1067,6 +1176,14 @@ namespace SimpleW {
         /// </summary>
         private static ReadOnlySpan<byte> H_CT => "Content-Type: "u8;
         /// <summary>
+        /// "Content-Encoding: "
+        /// </summary>
+        private static ReadOnlySpan<byte> H_CE => "Content-Encoding: "u8;
+        /// <summary>
+        /// "Vary: "
+        /// </summary>
+        private static ReadOnlySpan<byte> H_VARY => "Vary: "u8;
+        /// <summary>
         /// "Connection: "
         /// </summary>
         private static ReadOnlySpan<byte> H_CONN => "Connection: "u8;
@@ -1078,6 +1195,18 @@ namespace SimpleW {
         /// "keep-alive"
         /// </summary>
         private static ReadOnlySpan<byte> H_CONN_KA => "keep-alive"u8;
+        /// <summary>
+        /// "gzip"
+        /// </summary>
+        private static ReadOnlySpan<byte> H_GZIP => "gzip"u8;
+        /// <summary>
+        /// "deflate"
+        /// </summary>
+        private static ReadOnlySpan<byte> H_DEFLATE => "deflate"u8;
+        /// <summary>
+        /// "Accept-Encoding"
+        /// </summary>
+        private static ReadOnlySpan<byte> H_ACCEPT_ENCODING => "Accept-Encoding"u8;
 
         /// <summary>
         /// Cariage Return Line Feed
@@ -1177,9 +1306,273 @@ namespace SimpleW {
             File = 5
         }
 
-        #endregion response helpers
+        #endregion write helpers
 
-        #region cookie helpers
+        #region compression write helpers
+
+        /// <summary>
+        /// Response compression mode
+        /// </summary>
+        public enum ResponseCompressionMode : byte {
+            /// <summary>
+            /// Choose automatically based on request Accept-Encoding and heuristics
+            /// </summary>
+            Auto = 0,
+            /// <summary>
+            /// Disable response compression
+            /// </summary>
+            Disabled = 1,
+            /// <summary>
+            /// Force gzip (if client allows it)
+            /// </summary>
+            ForceGzip = 2,
+            /// <summary>
+            /// Force deflate (if client allows it)
+            /// </summary>
+            ForceDeflate = 3
+        }
+
+        /// <summary>
+        /// Stream wrapper writing into an IBufferWriter (no intermediate allocations).
+        /// </summary>
+        private sealed class BufferWriterStream : Stream {
+            private readonly IBufferWriter<byte> _writer;
+            public BufferWriterStream(IBufferWriter<byte> writer) => _writer = writer;
+
+            public override bool CanRead => false;
+            public override bool CanSeek => false;
+            public override bool CanWrite => true;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+            public override void Flush() { }
+            public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
+
+            public override void Write(byte[] buffer, int offset, int count) {
+                Write(buffer.AsSpan(offset, count));
+            }
+
+            public override void Write(ReadOnlySpan<byte> buffer) {
+                if (buffer.IsEmpty)
+                    return;
+                Span<byte> dst = _writer.GetSpan(buffer.Length);
+                buffer.CopyTo(dst);
+                _writer.Advance(buffer.Length);
+            }
+
+            public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) {
+                Write(buffer.Span);
+                return default;
+            }
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) {
+                Write(buffer.AsSpan(offset, count));
+                return Task.CompletedTask;
+            }
+        }
+
+        /// <summary>
+        /// Negotiated Encoding
+        /// </summary>
+        private enum NegotiatedEncoding : byte { None = 0, Gzip = 1, Deflate = 2 }
+
+        /// <summary>
+        /// Return true if the current HttpResponse has header matching name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool HasHeaderIgnoreCase(string name) {
+            for (int i = 0; i < _headerCount; i++) {
+#if NET9_0_OR_GREATER
+                ref readonly HeaderEntry h = ref _headers[i];
+#else
+                HeaderEntry h = _headers[i];
+#endif
+                if (!string.IsNullOrEmpty(h.Name) && h.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Return true if the current HttpResponse has header containing name
+        /// </summary>
+        /// <param name="headerName"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool HasHeaderValueTokenIgnoreCase(string headerName, string token) {
+            for (int i = 0; i < _headerCount; i++) {
+#if NET9_0_OR_GREATER
+                ref readonly HeaderEntry h = ref _headers[i];
+#else
+                HeaderEntry h = _headers[i];
+#endif
+                if (!string.IsNullOrEmpty(h.Name) && h.Name.Equals(headerName, StringComparison.OrdinalIgnoreCase)) {
+                    string v = h.Value ?? string.Empty;
+                    if (v.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Check if body can be compress depending on its content type
+        /// </summary>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
+        private static bool IsCompressibleContentType(string? contentType) {
+            if (string.IsNullOrEmpty(contentType)) {
+                return true;
+            }
+
+            if (contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("video/", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (contentType.StartsWith("application/zip", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("application/gzip", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("application/x-gzip", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("application/zlib", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("application/x-rar", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("application/x-7z", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (contentType.StartsWith("application/pdf", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// Return the Negotiated Encoding depending on client accept encoding and server settings
+        /// </summary>
+        /// <param name="acceptEncoding"></param>
+        /// <param name="allowGzip"></param>
+        /// <param name="allowDeflate"></param>
+        /// <returns></returns>
+        private static NegotiatedEncoding NegotiateEncoding(string? acceptEncoding, bool allowGzip, bool allowDeflate) {
+            if (string.IsNullOrEmpty(acceptEncoding)) {
+                return NegotiatedEncoding.None;
+            }
+
+            float qGzip = -1f;
+            float qDeflate = -1f;
+
+            ReadOnlySpan<char> s = acceptEncoding.AsSpan();
+            int i = 0;
+
+            while (i < s.Length) {
+                while (i < s.Length && (s[i] == ' ' || s[i] == '\t' || s[i] == ',')) {
+                    i++;
+                }
+                if (i >= s.Length) {
+                    break;
+                }
+
+                int tokenStart = i;
+                while (i < s.Length && s[i] != ',') {
+                    i++;
+                }
+                ReadOnlySpan<char> item = s.Slice(tokenStart, i - tokenStart).Trim();
+                if (item.IsEmpty) {
+                    continue;
+                }
+
+                int semi = item.IndexOf(';');
+                ReadOnlySpan<char> name = semi >= 0 ? item.Slice(0, semi).Trim() : item;
+                ReadOnlySpan<char> parms = semi >= 0 ? item.Slice(semi + 1) : ReadOnlySpan<char>.Empty;
+
+                float q = 1f;
+                if (!parms.IsEmpty) {
+                    int qi = parms.IndexOf("q=".AsSpan(), StringComparison.OrdinalIgnoreCase);
+                    if (qi >= 0) {
+                        ReadOnlySpan<char> qspan = parms.Slice(qi + 2).Trim();
+                        int end = qspan.IndexOf(';');
+                        if (end >= 0)
+                            qspan = qspan.Slice(0, end);
+                        if (float.TryParse(qspan, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out float parsed)) {
+                            q = parsed;
+                        }
+                    }
+                }
+
+                if (name.Equals("gzip".AsSpan(), StringComparison.OrdinalIgnoreCase)) {
+                    qGzip = q;
+                }
+                else if (name.Equals("deflate".AsSpan(), StringComparison.OrdinalIgnoreCase)) {
+                    qDeflate = q;
+                }
+            }
+
+            if (!allowGzip) {
+                qGzip = -1f;
+            }
+            if (!allowDeflate) {
+                qDeflate = -1f;
+            }
+
+            if (qGzip <= 0f && qDeflate <= 0f) {
+                return NegotiatedEncoding.None;
+            }
+
+            if (qGzip >= qDeflate) {
+                return qGzip > 0f ? NegotiatedEncoding.Gzip : NegotiatedEncoding.None;
+            }
+            return qDeflate > 0f ? NegotiatedEncoding.Deflate : NegotiatedEncoding.None;
+        }
+
+        /// <summary>
+        /// CompressTo pooled writer
+        /// </summary>
+        /// <param name="pool"></param>
+        /// <param name="input"></param>
+        /// <param name="encoding"></param>
+        /// <param name="level"></param>
+        /// <returns></returns>
+        private static PooledBufferWriter CompressToPooledWriter(ArrayPool<byte> pool, ReadOnlyMemory<byte> input, NegotiatedEncoding encoding, CompressionLevel level) {
+            int init = input.Length <= 0 ? 256 : Math.Min(Math.Max(256, input.Length / 2), 64 * 1024);
+            PooledBufferWriter output = new(pool, initialSize: init);
+
+            try {
+                using Stream bw = new BufferWriterStream(output);
+                Stream compressor = encoding switch {
+                    NegotiatedEncoding.Gzip => new GZipStream(bw, level, leaveOpen: true),
+                    NegotiatedEncoding.Deflate => new DeflateStream(bw, level, leaveOpen: true),
+                    _ => throw new ArgumentOutOfRangeException(nameof(encoding))
+                };
+
+                using (compressor) {
+                    compressor.Write(input.Span);
+                    compressor.Flush();
+                }
+
+                return output;
+            }
+            catch {
+                output.Dispose();
+                throw;
+            }
+        }
+
+        #endregion compression write helpers
+
+        #region cookie write helpers
 
         /// <summary>
         /// Equals
@@ -1334,7 +1727,7 @@ namespace SimpleW {
             }
         }
 
-        #endregion cookie helpers
+        #endregion cookie write helpers
 
     }
 }
