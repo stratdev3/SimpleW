@@ -650,8 +650,6 @@ namespace SimpleW {
 
         #region Constants & shared fields
 
-        private const int MaxStackLineSize = 256;
-
         private static readonly byte[] Crlf = { (byte)'\r', (byte)'\n' };
         private static readonly byte[] HeaderTerminator = { (byte)'\r', (byte)'\n', (byte)'\r', (byte)'\n' };
 
