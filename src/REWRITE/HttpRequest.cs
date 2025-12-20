@@ -105,6 +105,12 @@ namespace SimpleW {
         public Dictionary<string, string>? RouteValues { get; private set; }
 
         /// <summary>
+        /// JsonEngine
+        /// Can be used to parse body
+        /// </summary>
+        public IJsonEngine JsonEngine { get; private set; }
+
+        /// <summary>
         /// Reset HttpRequest for reuse
         /// </summary>
         public void Reset() {
@@ -203,6 +209,13 @@ namespace SimpleW {
         /// <param name="rv"></param>
         public void ParserSetRouteValues(Dictionary<string, string>? rv) {
             RouteValues = rv;
+        }
+        /// <summary>
+        /// Set JsonEngine
+        /// </summary>
+        /// <param name="jsonEngine"></param>
+        public void ParserSetJsonEngine(IJsonEngine jsonEngine) {
+            JsonEngine = jsonEngine;
         }
 
         #endregion helpers

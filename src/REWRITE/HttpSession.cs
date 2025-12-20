@@ -108,6 +108,7 @@ namespace SimpleW {
 
             _parser = new HttpRequestParser(server.OptionMaxRequestHeaderSize, server.OptionMaxRequestBodySize);
             _request = new HttpRequest();
+            _request.ParserSetJsonEngine(server.JsonEngine);
 
             _response = new HttpResponse(this, _bufferPool);
 

@@ -811,6 +811,28 @@ namespace SimpleW {
 
         #endregion session
 
+        #region json engine
+
+        /// <summary>
+        /// Json Serializer/Deserializer
+        /// </summary>
+        public IJsonEngine JsonEngine { get; private set; } = new SystemTextJsonEngine(SystemTextJsonEngine.OptionsSimpleWBuilder());
+
+        /// <summary>
+        /// Set the Json Serializer/Deserializer
+        /// </summary>
+        /// <param name="jsonEngine"></param>
+        /// <returns></returns>
+        public SimpleWServer UseJsonEngine(IJsonEngine jsonEngine) {
+            if (IsStarted) {
+                throw new InvalidOperationException("JsonEngine must be configured before starting the server.");
+            }
+            JsonEngine = jsonEngine;
+            return this;
+        }
+
+        #endregion json engine
+
     }
 
 }
