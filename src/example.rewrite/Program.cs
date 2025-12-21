@@ -1,9 +1,11 @@
 ﻿using System.Net;
-using System.Runtime.InteropServices;
+using System.Net.WebSockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
-using System.Xml.Xsl;
+using System.Text;
+using System.Text.Json;
 using SimpleW;
+using SimpleW.Modules;
 
 
 namespace example.rewrite {
@@ -52,50 +54,94 @@ namespace example.rewrite {
             }
 #pragma warning restore CS0162 // Code inaccessible détecté
 
-            server.MapGet("/api/test/hello", static (HttpSession session) => {
-                return session.Response.Json(new { message = "Hello World !" }).SendAsync();
-            });
+            //server.MapGet("/api/test/hello", (string? name = null) => {
+            //    return new { message = $"{name}, Hello World !" };
+            //});
+            //server.MapGet("/api/test/hello", static (HttpSession session, string? name = null) => {
+            //    return session.Response.Json(new { message = $"{name} Hello World !" }).SendAsync();
+            //});
+            //server.MapGet("/api/user/*", static async ValueTask<object> (HttpSession session, int? id = 999999) => {
+            //    if (id == 999999) {
+            //        await Task.Delay(2_000);
+            //        return session.Response.Status(404);
+            //    }
+            //    return new { message = "Hello World !", id };
+            //});
             //server.UseModule(new StaticFilesModule(
-            //    @"C:\www\toto\embediotest", "/html"
-            //    ,timeout: TimeSpan.FromDays(1)
+            //    @"C:\www\spa\refresh\", "/"
+            //    , timeout: TimeSpan.FromDays(1)
             //) {
             //    AutoIndex = true
             //});
 
-            //server.MapGet("/api/test/hello2", static async (HttpSession session) => {
-            //    await session.SendJsonAsync(new { message = "Hello World !" });
-            //});
-            //server.MapGet("/api/test/hello2", static (HttpSession session, DateTime? date = null) => {
-            //    date ??= DateTime.Now;
-            //    return session.SendJsonAsync(new { message = $"Hello {date.Value.ToString("o")} !" });
-            //});
-            //server.MapGet("/api/test/hello3", static (HttpSession session, Guid id = new Guid()) => {
-            //    if (id == Guid.Empty) {
-            //        id = Guid.NewGuid();
-            //    }
-            //    return session.SendJsonAsync(new { message = $"Hello {id} !" });
-            //});
-            server.UseControllers<Controller>("/api");
-            //server.MapGet("/api/test/hello3", static (string? name = null) => {
-            //    return new { message = $"Hello {name} !" };
-            //});
-            //server.MapGet("/api/test/hello4", static async (string? name = null) => {
-            //    await Task.Delay(2_000);
-            //    return new { message = $"Hello {name} !" };
-            //});
-            //server.MapGet("/api/test/hello5", static async (HttpSession session, string? name = null) => {
-            //    await Task.Delay(2_000);
-            //    await session.SendJsonAsync(new { message = $"Hello {name} !" });
-            //});
-            //server.MapGet("/api/test/text", static (HttpSession session) => {
-            //    return session.SendTextAsync("Hello World !");
-            //});
+            server.UseStaticFilesModule(options => {
+                options.Path = @"C:\www\spa\refresh\";
+                options.Prefix = "/";
+            });
+
+            //server.UseModule(
+            //    new WebsocketModule(
+            //        path: "/websocket",
+            //        onClient: async (ws, session) => {
+
+            //            if (ws.SubProtocol != "json") {
+            //                await ws.CloseAsync(WebSocketCloseStatus.ProtocolError, "json required", CancellationToken.None);
+            //                return;
+            //            }
+
+            //            byte[] buffer = new byte[4096];
+
+            //            while (ws.State == WebSocketState.Open) {
+            //                WebSocketReceiveResult result = await ws.ReceiveAsync(buffer, CancellationToken.None);
+
+            //                if (result.MessageType == WebSocketMessageType.Close) {
+            //                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
+            //                    break;
+            //                }
+            //                if (result.MessageType != WebSocketMessageType.Text) {
+            //                    await ws.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Text(JSON) only", CancellationToken.None);
+            //                    return;
+            //                }
+
+            //                // validate JSON
+            //                try {
+            //                    // reassembly minimal (si tu veux être carré: concat jusqu'à EndOfMessage)
+            //                    var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
+            //                    using var _ = JsonDocument.Parse(text);
+            //                }
+            //                catch {
+            //                    await ws.SendAsync(
+            //                        Encoding.UTF8.GetBytes("""{"type":"error","message":"invalid json"}"""),
+            //                        WebSocketMessageType.Text,
+            //                        true,
+            //                        CancellationToken.None
+            //                    );
+            //                    continue;
+            //                }
+
+            //                // echo
+            //                await ws.SendAsync(
+            //                    buffer.AsMemory(0, result.Count),
+            //                    result.MessageType,
+            //                    result.EndOfMessage,
+            //                    CancellationToken.None
+            //                );
+            //            }
+
+            //        }
+            //    )
+            //);
+
+            //server.UseControllers<Controller>("/api");
+            server.UseController<Post_DynamicContent_HelloWorld_Controller>("/api");
+
             server.OptionReuseAddress = true;
             server.OptionNoDelay = true;
             server.OptionKeepAlive = true;
             //server.OptionSessionTimeout = TimeSpan.MinValue;
             //server.OptionRunAcceptSocketPerCore = true;
             //server.OptionReceiveStrategy = SimpleW.ReceivedStrategy.ReceiveLoopBuffer;
+            //server.OptionMaxRequestBodySize = 100 * 1024 * 1024;
 
             // start non blocking background server
             CancellationTokenSource cts = new();
@@ -130,16 +176,154 @@ namespace example.rewrite {
 
     }
 
-    [Route("/user")]
-    public class UserController : Controller {
+    [Route("/test")]
+    public class TestController : Controller {
 
-        [Route("GET", "/details")]
-        public object Details(string id = "1", int page = 1) {
-            return new {
-                Id = id,
-                Page = page,
-            };
+        [Route("GET", "/hello")]
+        public object Hello(string? name = null) {
+
+            // the return will be serialized to json
+            //return new {
+            //    message = $"{name}, Hello World !"
+            //};
+            string message = "Hello World";
+            for (var i = 0; i < 10; i++) {
+                message += message;
+            }
+            
+            return Session.Response.Json(new { message });
+        }
+
+        [Route("POST", "/api/user/update", isAbsolutePath: true)]
+        public object UserUpdate() {
+
+            User chris = new();
+            Request.BodyMap(chris);
+            
+            return Session.Response.Json(new { message = "ok", chris });
+        }
+
+
+    }
+
+
+    public class User {
+        public string nom { get; set; }
+        public string prenom { get; set; }
+        public int age { get; set; }
+    }
+
+
+    public sealed class UploadController : Controller {
+        private static readonly string UploadDir = @"C:\www\spa\tmp\";
+
+        [Route("POST", "/upload", isAbsolutePath: true)]
+        public async ValueTask<HttpResponse> Upload() {
+            Directory.CreateDirectory(UploadDir);
+
+            string? title = null;
+
+            // On collecte des infos à renvoyer
+            var saved = new List<object>();
+
+            bool ok = Request.BodyMultipartStream(
+                onField: (k, v) => {
+                    if (string.Equals(k, "title", StringComparison.OrdinalIgnoreCase))
+                        title = v;
+                },
+                onFile: (info, content) => {
+                    // filename vient du client => sanitize + fallback
+                    string originalName = info.FileName ?? "";
+                    string safeName = Path.GetFileName(originalName);
+                    if (string.IsNullOrWhiteSpace(safeName))
+                        safeName = "upload.bin";
+
+                    // évite les collisions: ajoute un suffixe
+                    string finalName = $"{Path.GetFileNameWithoutExtension(safeName)}_{Guid.NewGuid():N}{Path.GetExtension(safeName)}";
+                    string fullPath = Path.Combine(UploadDir, finalName);
+
+                    using var fs = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 64 * 1024);
+                    content.CopyTo(fs); // extension ReadOnlySequence<byte> -> Stream (qu’on a ajoutée)
+
+                    saved.Add(new {
+                        field = info.FieldName,
+                        originalName = originalName,
+                        savedAs = finalName,
+                        size = info.Length,
+                        contentType = info.ContentType
+                    });
+                },
+                maxParts: 200,
+                maxFileBytes: Session.Server.OptionMaxRequestBodySize
+            );
+
+            if (!ok) {
+                return Session.Response
+                    .Status(400)
+                    .Json(new { ok = false, error = "Invalid multipart/form-data" });
+            }
+
+            // réponse JSON
+            return Session.Response
+                .Status(200)
+                .Json(new {
+                    ok = true,
+                    title,
+                    uploadDir = UploadDir,
+                    files = saved
+                });
         }
     }
+
+
+    [Route("/test")]
+    public class Post_DynamicContent_HelloWorld_Controller : Controller {
+
+        [Route("POST", "/hello")]
+        public object HelloWorld() {
+            var user = new User();
+            Request.BodyMap(user);
+
+            return new { message = $"{user.Name}, Hello World ! It's {user.CreatedAt.ToLongDateString()}" };
+        }
+
+        [Route("POST", "/raw")]
+        public object Raw() {
+            return Session.Response.Text(Session.Request.BodyString);
+        }
+
+        [Route("POST", "/file")]
+        public object File() {
+            var parser = Request.BodyMultipart();
+            if (parser == null || parser.Files.Any(f => f.Content.Length >= 0)) {
+                return "no file found in the body";
+            }
+
+            var file = parser.Files.First();
+            var extension = Path.GetExtension(file.FileName).ToLower();
+
+            var content = "";
+            try {
+                content = Encoding.UTF8.GetString(file.Content.ToArray());
+            }
+            catch (Exception ex) {
+                return Session.Response.Status(500).Json(ex.Message);
+            }
+
+            var name = parser.Fields.Where(p => p.Key == nameof(Post_DynamicContent_HelloWorld_Controller.User.Name)).FirstOrDefault().Value;
+
+            return new { message = $"{name}, {content}" };
+        }
+
+        public class User {
+            public Guid Id { get; set; }
+            public bool Enabled { get; set; }
+            public string? Name { get; set; }
+            public int Counter { get; set; }
+            public DateTime CreatedAt { get; set; }
+        }
+
+    }
+
 
 }
