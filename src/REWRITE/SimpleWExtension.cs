@@ -116,14 +116,14 @@ namespace SimpleW {
         /// </summary>
         /// <param name="request"></param>
         public static Dictionary<string, object> BodyForm(this HttpRequest request) {
-            var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, object> result = new(StringComparer.OrdinalIgnoreCase);
 
-            var body = request.Body;
+            ReadOnlySequence<byte> body = request.Body;
             if (body.IsEmpty) {
                 return result;
             }
 
-            var reader = new SequenceReader<byte>(body);
+            SequenceReader<byte> reader = new SequenceReader<byte>(body);
 
             while (!reader.End) {
                 // read token up to '&'
