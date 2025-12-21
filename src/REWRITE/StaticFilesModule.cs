@@ -5,7 +5,7 @@ using System.Net;
 using System.Text;
 
 
-namespace SimpleW {
+namespace SimpleW.Modules {
 
     /// <summary>
     /// Serve Static Files

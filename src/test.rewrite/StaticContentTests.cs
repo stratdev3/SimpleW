@@ -1,8 +1,8 @@
 ﻿using System.Net;
 using NFluent;
 using SimpleW;
+using SimpleW.Modules;
 using Xunit;
-
 
 
 namespace test {

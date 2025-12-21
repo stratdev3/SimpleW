@@ -1,4 +1,4 @@
-﻿namespace SimpleW {
+﻿namespace SimpleW.Modules {
 
     /// <summary>
     /// IHttpModule
