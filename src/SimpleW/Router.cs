@@ -516,6 +516,61 @@
 
         #endregion RouteMatcher
 
+        /// <summary>
+        /// All declared Routes
+        /// </summary>
+        public IEnumerable<RouteInfo> Routes {
+            get {
+                List<RouteInfo> routes = new();
+
+                static RouteInfo ToInfo(Route r, bool isPattern) => new(
+                    r.Attribute.Method,
+                    r.Attribute.Path,
+                    r.Attribute.IsAbsolutePath,
+                    r.Attribute.Description,
+                    isPattern
+                );
+
+                // exact routes
+                foreach (var r in _get.Values) {
+                    routes.Add(ToInfo(r, isPattern: false));
+                }
+                foreach (var r in _post.Values) {
+                    routes.Add(ToInfo(r, isPattern: false));
+                }
+                foreach (var dict in _others.Values) {
+                    foreach (var r in dict.Values) {
+                        routes.Add(ToInfo(r, isPattern: false));
+                    }
+                }
+
+                // pattern routes
+                foreach (var m in _getMatchers) {
+                    routes.Add(ToInfo(m.Route, isPattern: true));
+                }
+                foreach (var m in _postMatchers) {
+                    routes.Add(ToInfo(m.Route, isPattern: true));
+                }
+                foreach (var list in _otherMatchers.Values) {
+                    foreach (var m in list) {
+                        routes.Add(ToInfo(m.Route, isPattern: true));
+                    }
+                }
+
+                return routes;
+            }
+        }
+
+        /// <summary>
+        /// Route Info
+        /// </summary>
+        /// <param name="Method"></param>
+        /// <param name="Path"></param>
+        /// <param name="IsAbsolutePath"></param>
+        /// <param name="Description"></param>
+        /// <param name="IsPattern"></param>
+        public sealed record RouteInfo(string Method, string Path, bool IsAbsolutePath, string? Description, bool IsPattern);
+
     }
 
 }
