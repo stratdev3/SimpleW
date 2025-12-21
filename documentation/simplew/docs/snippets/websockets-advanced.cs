@@ -1,22 +1,21 @@
 using System;
 using System.Net;
-using NetCoreServer;
 using Newtonsoft.Json;
 using SimpleW;
 
 namespace Sample {
     class Program {
 
-        static void Main() {
+        static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddStaticContent(@"C:\www\client\", "/", TimeSpan.FromDays(1));
 
             // find all Controllers class and serve on the "/websocket/" endpoint
             server.AddWebSocketContent("/websocket");
 
-            server.Start();
-            Console.WriteLine("http server started at http://localhost:2015/");
-            Console.WriteLine("websocket server started at ws://localhost:2015/websocket");
+            await server.RunAsync();
+            Console.WriteLine("http server started at http://localhost:{server.Port}/");
+            Console.WriteLine("websocket server started at ws://localhost:{server.Port}/websocket");
             Console.ReadKey();
 
         }

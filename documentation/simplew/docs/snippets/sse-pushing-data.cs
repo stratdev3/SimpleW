@@ -17,9 +17,9 @@ namespace Sample {
             // find all Controllers classes and serve on the "/api" endpoint
             server.AddDynamicContent("/api");
 
-            server.Start();
-            Console.WriteLine("http server started at http://localhost:2015/");
-            Console.WriteLine("sse server started at ws://localhost:2015/api/test/sse");
+            await server.RunAsync();
+            Console.WriteLine("http server started at http://localhost:{server.Port}/");
+            Console.WriteLine("sse server started at ws://localhost:{server.Port}/api/test/sse");
 
             // menu
             while (true) {

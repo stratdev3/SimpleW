@@ -2,6 +2,8 @@
 
 Not only can you serve all your static files, but SimpleW is also great at serving your JavaScript applications — whether they're built with Vue, React, or anything else.
 
+That's the goal of the `StaticFilesModule`.
+
 
 ## Basic
 
@@ -9,7 +11,7 @@ To serve statics files with very few lines of code :
 
 ::: code-group
 
-<<< @/snippets/static-files.cs#basic{csharp:line-numbers} [program.cs]
+<<< @/snippets/static-files.cs#basic{4,15-20 csharp:line-numbers} [program.cs]
 
 :::
 
@@ -37,31 +39,25 @@ You can change some settings before server start.
 
 To change the default document `index.html` by your own page
 ```csharp:line-numbers
-server.DefaultDocument = "maintenance.html";
-```
-
-To add custom mime types
-
-```csharp:line-numbers
-server.AddMimeTypes(".vue", "text/html");
+option.DefaultDocument = "maintenance.html";
 ```
 
 
 ## Cache
 
-By default, the `AddStaticContent()` serves directories/files from disk to each request.
-To enable cache, set the `timeout` property to anything but null.<br />
+By default, the `StaticFilesModule()` serves directories/files from disk to each request.
+To enable cache, set the `CacheTimeout` property to anything but null.<br />
 
 The following example enable cache for 1 day :
 
 ```csharp:line-numbers
 // serve statics files
-server.AddStaticContent(
-    @"C:\www\",             // under C:\www or its subdirectories
-    "/",                    // to / endpoint
-    "*.csv",                // only CSV files
-    TimeSpan.FromDays(1)    // set cache to 1 day
-);
+server.UseStaticFilesModule(options => {
+options.Path = @"C:\www\";                      // serve your files located here
+options.Prefix = "/";                           // to "/" endpoint
+options.CacheFilter = "*.csv";                  // cache only csv files
+options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
+});
 ```
 
 ::: tip NOTE

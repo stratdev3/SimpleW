@@ -5,7 +5,7 @@ using SimpleW.Newtonsoft;
 namespace Sample {
     class Program {
 
-        static void Main() {
+        static async Task Main() {
 
             // listen to all IPs on port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -32,14 +32,10 @@ namespace Sample {
             // find all Controllers classes and serve on the "/api" endpoint
             server.AddDynamicContent("/api");
 
-            // start non blocking background server
-            server.Start();
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
 
-            Console.WriteLine("server started at http://localhost:2015/");
-
-            // block console for debug
-            Console.ReadKey();
-
+            // start a blocking background server
+            await server.RunAsync();
         }
     }
 

@@ -12,7 +12,7 @@ The following minimal example can be used for rapid prototyping.
 
 :::
 
-It uses the [`MapGet`](../reference/simplew.md#inline-func) and [`MapPost`](../reference/simplew.md#inline-func) methods, which are quite the same as asp.net core.
+It uses the [`MapGet`](../reference/simplewserver.md#map-handler) and [`MapPost`](../reference/simplewserver.md#map-handler) methods, which are quite the same as asp.net core.
 
 ## Rest API Example
 
@@ -26,10 +26,10 @@ The following example build a REST API with a clear routing and controller/metho
 
 :::
 
-Then just open your browser to <http://localhost:2015/api/test/hello?name=Chris> and you will see the `{ "message": "Hello Chris !" }` JSON response.
+Then just open your browser to http://localhost:2015/api/test/hello?name=Chris and you will see the `{ "message": "Hello Chris !" }` JSON response.
 
 ::: tip NOTE
-The controller __CAN NOT__ have constructor. All properties [`Request`](../reference/httprequest), [`Response`](../reference/httpresponse) (...) will be injected after session instanciation. See [callback](./api-callback) on how to inject specific code in controllers.
+The controller __CAN NOT__ have constructor. All properties [`Request`](../reference/httprequest.md), [`Response`](../reference/httpresponse.md) (...) will be injected after session instanciation. See [callback](./api-callback.md) on how to inject specific code in controllers.
 :::
 
 
@@ -63,10 +63,3 @@ The following example will serve both static files in your `c:\www` directory an
 :::
 
 Then just point your browser to http://localhost:2015/ and interact with the form.
-
-::: tip NOTE
-You frontend can be anything, you can serve a vue/react/whatever javascript application you want.
-In fact, for [my needs](./what-is-simplew.md#my-needs), I have to serve a frontend [vuetify](https://vuetifyjs.com) application.
-
-See the [How to serve a vue.js app](./static-files.md#how-to-serve-a-vue-app) with SimpleW.
-:::

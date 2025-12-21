@@ -1,6 +1,6 @@
 # Server
 
-The `simplew` is the main class to instanciate and manipulate the web server
+The `SimpleWServer` is the main class to instanciate and manipulate the web server
 
 ## Constructors
 
@@ -12,7 +12,7 @@ The `simplew` is the main class to instanciate and manipulate the web server
 /// </summary>
 /// <param name="address"></param>
 /// <param name="port"></param>
-public simplew(IPAddress address, int port)
+public SimpleWServer(IPAddress address, int port)
 ```
 
 ```csharp
@@ -20,7 +20,7 @@ public simplew(IPAddress address, int port)
 /// Initialize WebSocket server with a given DNS endpoint
 /// </summary>
 /// <param name="endpoint">DNS endpoint</param>
-public simplew(DnsEndPoint endpoint)
+public SimpleWServer(DnsEndPoint endpoint)
 ```
 
 ```csharp
@@ -28,7 +28,7 @@ public simplew(DnsEndPoint endpoint)
 /// Initialize WebSocket server with a given IP endpoint
 /// </summary>
 /// <param name="endpoint">IP endpoint</param>
-public simplew(IPEndPoint endpoint)
+public SimpleWServer(IPEndPoint endpoint)
 ```
 
 ```csharp
@@ -48,7 +48,7 @@ public WsServer(UnixDomainSocketEndPoint endpoint)
 /// <param name="context">SSL context</param>
 /// <param name="address">IP address</param>
 /// <param name="port">Port number</param>
-public SimpleWSServer(SslContext context, IPAddress address, int port)
+public SimpleWServerSServer(SslContext context, IPAddress address, int port)
 ```
 
 ```csharp
@@ -57,7 +57,7 @@ public SimpleWSServer(SslContext context, IPAddress address, int port)
 /// </summary>
 /// <param name="context">SSL context</param>
 /// <param name="endpoint">DNS endpoint</param>
-public SimpleWSServer(SslContext context, DnsEndPoint endpoint)
+public SimpleWServerSServer(SslContext context, DnsEndPoint endpoint)
 ```
 
 ```csharp
@@ -66,7 +66,7 @@ public SimpleWSServer(SslContext context, DnsEndPoint endpoint)
 /// </summary>
 /// <param name="context">SSL context</param>
 /// <param name="endpoint">IP endpoint</param>
-public SimpleWSServer(SslContext context, IPEndPoint endpoint)
+public SimpleWServerSServer(SslContext context, IPEndPoint endpoint)
 ```
 
 The class `SimpleWSServer` is exactly the same as `simplew` except it takes a `SslContext` as primary argument.
@@ -218,7 +218,7 @@ Stops the web server.
 The [`Router`](./router) property contains all routes handled by the web server.
 You can list them with `Router.Routes`.
 
-## Inline Func
+## Map Handler
 
 For a rapid prototyping, `Func` can be set inline.
 
@@ -504,35 +504,4 @@ public bool TrustXHeaders { get; set; } = false;
 /// True to generate Telemetry Traces, Logs and Metrics
 /// </summary>
 public bool EnableTelemetry { get; set; } = false;
-```
-
-
-## Statistics
-
-```csharp
-/// <summary>
-/// Number of sessions connected to the server
-/// </summary>
-public long ConnectedSessions { get { return Sessions.Count; } }
-```
-
-```csharp
-/// <summary>
-/// Number of bytes pending sent by the server
-/// </summary>
-public long BytesPending { get { return _bytesPending; } }
-```
-
-```csharp
-/// <summary>
-/// Number of bytes sent by the server
-/// </summary>
-public long BytesSent { get { return _bytesSent; } }
-```
-
-```csharp
-/// <summary>
-/// Number of bytes received by the server
-/// </summary>
-public long BytesReceived { get { return _bytesReceived; } }
 ```

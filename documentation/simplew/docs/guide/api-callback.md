@@ -34,5 +34,5 @@ The subclass can contains route's method too. To avoid this subclass being parse
 :::
 
 Note : the method `BaseController.Conf()` with its `Route` attribute is shared across all controllers. It can be access through :
-- http://localhost:2015/api/user/conf
-- http://localhost:2015/api/department/conf
+- http://localhost:{server.Port}/api/user/conf
+- http://localhost:{server.Port}/api/department/conf

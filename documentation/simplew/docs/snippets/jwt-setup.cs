@@ -5,15 +5,15 @@ using SimpleW;
 namespace Sample {
 
     class Program {
-        static void Main() {
+        static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
 
             // set passphrase and issuer
             server.SetToken("abcdefghijklmnopqrstuvwxyz", "issuer");
 
-            server.Start();
-            Console.WriteLine("server started at http://localhost:2015/");
+            await server.RunAsync();
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
             Console.ReadKey();
         }
     }

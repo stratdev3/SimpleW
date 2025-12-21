@@ -5,14 +5,14 @@ using SimpleW;
 namespace Sample {
 
     class Program {
-        static void Main() {
+        static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // exclude BaseController as a regular Controller
             server.AddDynamicContent("/api", new Type[] { typeof(BaseController) });
 
-            server.Start();
-            Console.WriteLine("server started at http://localhost:2015/");
+            await server.RunAsync();
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
             Console.ReadKey();
         }
     }

@@ -31,18 +31,18 @@ using SimpleW;
 namespace Sample {
 
     class Program {
-        static void Main() {
+        static async Task Main() {
             var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
-            server.Start();
-            Console.WriteLine("server started at http://localhost:2015/");
+            await server.RunAsync();
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
             Console.ReadKey();
         }
     }
 
     public class TestController : Controller {
 
-        // http://localhost:2015/api/test/index
+        // http://localhost:{server.Port}/api/test/index
         [Route("GET", "test/index")]
         public List<string> Index() {
             return new List<string>() {
@@ -86,11 +86,11 @@ using SimpleW;
 namespace Sample {
 
     class Program {
-        static void Main() {
+        static async Task Main() {
             var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
-            server.Start();
-            Console.WriteLine("server started at http://localhost:2015/");
+            await server.RunAsync();
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
             Console.ReadKey();
         }
     }
@@ -98,7 +98,7 @@ namespace Sample {
     [Route("test/")]
     public class TestController : Controller {
 
-        // http://localhost:2015/api/test/index
+        // http://localhost:{server.Port}/api/test/index
         [Route("GET", "/index")]
         public List<string> Index() {
             return new List<string>() {
@@ -106,7 +106,7 @@ namespace Sample {
             };
         }
 
-        // http://localhost:2015/api/test/about
+        // http://localhost:{server.Port}/api/test/about
         [Route("GET", "/about")]
         public object About() {
             return "about page";

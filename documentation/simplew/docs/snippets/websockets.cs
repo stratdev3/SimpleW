@@ -5,7 +5,7 @@ using SimpleW;
 namespace Sample {
     class Program {
 
-        static void Main() {
+        static async Task Main() {
 
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -16,9 +16,9 @@ namespace Sample {
             // find all Controllers class and serve on the "/websocket/" endpoint
             server.AddWebSocketContent("/websocket");
 
-            server.Start();
-            Console.WriteLine("http server started at http://localhost:2015/");
-            Console.WriteLine("websocket server started at ws://localhost:2015/websocket");
+            await server.RunAsync();
+            Console.WriteLine("http server started at http://localhost:{server.Port}/");
+            Console.WriteLine("websocket server started at ws://localhost:{server.Port}/websocket");
 
             // menu
             while (true) {

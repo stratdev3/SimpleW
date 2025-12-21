@@ -6,23 +6,19 @@ using SimpleW;
 namespace Sample {
     class Program {
 
-        static void Main() {
+        static async Task Main() {
 
             // unix socket
             string unixSocketPath = @"C:\www\server.sock";
             var server = new SimpleWServer(new UnixDomainSocketEndPoint(unixSocketPath));
 
             // find all Controllers classes and serve on the "/api" endpoint
-            server.AddDynamicContent("/api");
-
-            // start non blocking background server
-            server.Start();
+            server.UseControllers<Controller>("/api");
 
             Console.WriteLine(@"server available on : unix:C:\www\server.sock");
 
-            // block console for debug
-            Console.ReadKey();
-
+            // start a blocking background server
+            await server.RunAsync();
         }
     }
 

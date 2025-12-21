@@ -10,7 +10,7 @@ using SimpleW;
 namespace Sample {
     class Program {
 
-        static void Main() {
+        static async Task Main() {
 
             // subscribe to all SimpleW events
             openTelemetryObserver("SimpleW");
@@ -21,8 +21,8 @@ namespace Sample {
             server.EnableTelemetry = true;
 
             server.AddDynamicContent("/api");
-            server.Start();
-            Console.WriteLine("server started at http://localhost:2015/");
+            await server.RunAsync();
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
             Console.ReadKey();
         }
 

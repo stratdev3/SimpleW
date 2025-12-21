@@ -11,7 +11,7 @@
             logs.append(log);
         }
         // websocket client
-        var ws = new WebSocket('ws://localhost:2015/websocket');
+        var ws = new WebSocket('ws://localhost:{server.Port}/websocket');
         ws.onopen = function(e) {
             logs('[connected] connection established to server.', 'green');
             logs('// you can press S key from the server console.', 'blue');

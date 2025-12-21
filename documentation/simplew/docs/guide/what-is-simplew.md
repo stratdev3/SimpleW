@@ -20,8 +20,6 @@ SimpleW’s architecture and motivations behind its core design choices :
 - **Cross‑platform support**, Windows/Linux/Android/MacOS.
 - **NuGet package available**, easy to integrate
 
-It is based on the great [NetCoreServer](https://github.com/chronoxor/NetCoreServer) socket server.
-
 
 ## Use Cases
 
@@ -74,13 +72,13 @@ I believe modern web application architecture should be based on a REST API whic
 - [IIS](https://iis.net/) an old _« usine à gaz »_ on Windows, Kestrel and SignalR the same on Linux.
 - [EmbedIO](https://github.com/unosquare/embedio) : long time v2 user, I dislike the rewrite of the v3. Moreover, it uses the old Microsoft `HttpListener` and the `websocket-sharp` alternative was not perfect.
 - [GenHttp](https://genhttp.org) : feels promising but I was in the process of writting my own.
-- __[NetCoreServer](https://github.com/chronoxor/NetCoreServer)__ : WHOA 😮 ! Fast, simple, extremly well design, extendable BUT no RESTAPI... Wait, what if I use the whole `OnReceivedRequest()` event to do exactly what i want 🤔
+- __[NetCoreServer](https://github.com/chronoxor/NetCoreServer)__ : Fast, simple, extremly well design, and extendable. Until the v16.0.1, SimpleW was a project on top of the NetCoreServer's `OnReceivedRequest()`
 
 
 ### This project
 
-SimpleW is the result of adding features to the `OnReceivedRequest()` of [NetCoreServer](https://github.com/chronoxor/NetCoreServer).
+SimpleW is the result of my past experiences working on C# web server.
 
-After 3 years grade production, SimpleW serves many APIs without any issue, gains some cool features but still always lightweight and easy to integrate.
+After 4 years grade production, SimpleW serves many APIs without any issue, gains some cool features but still always lightweight and easy to integrate.
 
 Feel free to report issue.
