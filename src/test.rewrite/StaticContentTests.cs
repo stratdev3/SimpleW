@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.IO;
+using System.Net;
 using NFluent;
 using SimpleW;
 using SimpleW.Modules;
@@ -20,9 +21,11 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
-
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files"));
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                // options.AutoIndex = false; // default
+            });
 
             await server.StartAsync();
 
@@ -45,9 +48,11 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
-
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files"));
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                // options.AutoIndex = false; // default
+            });
 
             await server.StartAsync();
 
@@ -70,9 +75,10 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files") {
-                // enable autoindex
-                AutoIndex = true
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.AutoIndex = true;
             });
 
             await server.StartAsync();
@@ -98,9 +104,10 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files") {
-                // enable autoindex
-                AutoIndex = true
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.AutoIndex = true;
             });
 
             await server.StartAsync();
@@ -127,7 +134,12 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_NoCache_DefaultDocument_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "index.html"), "index");
-            server.UseModule(new StaticFilesModule(path, "/files"));
+
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                // options.DefaultDocument = "index.html"; // default
+            });
 
             // default document is index.html
 
@@ -156,9 +168,10 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_NoCache_DefaultDocumentMaintenance_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "maintenance.html"), "maintenance");
-            server.UseModule(new StaticFilesModule(path, "/files") {
-                // change default document
-                DefaultDocument = "maintenance.html"
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.DefaultDocument = "maintenance.html";
             });
 
             await server.StartAsync();
@@ -187,9 +200,12 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
-
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)));
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                // options.AutoIndex = false; // default
+            });
 
             await server.StartAsync();
 
@@ -212,9 +228,12 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
-
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)));
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                // options.AutoIndex = false; // default
+            });
 
             await server.StartAsync();
 
@@ -237,9 +256,11 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)) {
-                // enable autoindex
-                AutoIndex = true
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
             });
 
             await server.StartAsync();
@@ -267,9 +288,11 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)) {
-                // enable autoindex
-                AutoIndex = true
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
             });
 
             await server.StartAsync();
@@ -296,9 +319,12 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_DefaultDocument_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "index.html"), "index");
-            server.UseModule(new StaticFilesModule(path, "/files", timeout: TimeSpan.FromDays(1)));
-
-            // default document is index.html
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                //options.DefaultDocument = "index.html"; // default
+            });
 
             await server.StartAsync();
 
@@ -325,9 +351,11 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_DefaultDocumentMaintenance_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "maintenance.html"), "maintenance");
-            server.UseModule(new StaticFilesModule(path, "/files", timeout: TimeSpan.FromDays(1)) {
-                // change default document
-                DefaultDocument = "maintenance.html"
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.DefaultDocument = "maintenance.html";
             });
 
             await server.StartAsync();
