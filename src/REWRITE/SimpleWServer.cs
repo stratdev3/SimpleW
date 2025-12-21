@@ -447,92 +447,59 @@ namespace SimpleW {
         #region options
 
         /// <summary>
-        /// Option: acceptor backlog size
-        /// </summary>
-        /// <remarks>
         /// This option will set the maximum length of the pending connections queue.
-        /// </remarks>
+        /// </summary>
         public int OptionListenSocketBacklog { get; set; } = 1024;
 
         /// <summary>
-        /// Option: dual mode socket
-        /// </summary>
-        /// <remarks>
         /// Specifies whether the Socket is a dual-mode socket used for both IPv4 and IPv6.
         /// Will work only if socket is bound on IPv6 address.
-        /// </remarks>
+        /// </summary>
         public bool OptionDualMode { get; set; }
 
         /// <summary>
-        /// Option: no delay
-        /// </summary>
-        /// <remarks>
         /// This option will enable/disable Nagle's algorithm for TCP protocol
-        /// </remarks>
+        /// </summary>
         public bool OptionNoDelay { get; set; }
 
         /// <summary>
-        /// Option: reuse address
-        /// </summary>
-        /// <remarks>
         /// This option will enable/disable SO_REUSEADDR if the OS support this feature
-        /// </remarks>
+        /// </summary>
         public bool OptionReuseAddress { get; set; }
 
         /// <summary>
-        /// Option: enables a socket to be bound for exclusive access
-        /// </summary>
-        /// <remarks>
         /// This option will enable/disable SO_EXCLUSIVEADDRUSE if the OS support this feature
-        /// </remarks>
+        /// </summary>
         public bool OptionExclusiveAddressUse { get; set; }
 
         /// <summary>
-        /// Option: reuse port
-        /// </summary>
-        /// <remarks>
         /// This option will enable SO_REUSEPORT if the OS support this feature (linux only)
-        /// </remarks>
+        /// </summary>
         public bool OptionReusePort { get; set; }
 
         /// <summary>
-        /// Option : run accept socket per core
-        /// </summary>
-        /// <remarks>
         /// This option will run the accept socket on each machine's core
-        /// </remarks>
+        /// </summary>
         public bool OptionRunAcceptSocketPerCore { get; set; }
 
         /// <summary>
-        /// Option: keep alive
-        /// </summary>
-        /// <remarks>
         /// This option will setup SO_KEEPALIVE if the OS support this feature
-        /// </remarks>
+        /// </summary>
         public bool OptionKeepAlive { get; set; }
 
         /// <summary>
-        /// Option: TCP keep alive time
-        /// </summary>
-        /// <remarks>
         /// The number of seconds a TCP connection will remain alive/idle before keepalive probes are sent to the remote
-        /// </remarks>
+        /// </summary>
         public int OptionTcpKeepAliveTime { get; set; } = -1;
 
         /// <summary>
-        /// Option: TCP keep alive interval
-        /// </summary>
-        /// <remarks>
         /// The number of seconds a TCP connection will wait for a keepalive response before sending another keepalive probe
-        /// </remarks>
+        /// </summary>
         public int OptionTcpKeepAliveInterval { get; set; } = -1;
 
         /// <summary>
-        /// Option: TCP keep alive retry count
-        /// </summary>
-        /// <remarks>
         /// The number of TCP keep alive probes that will be sent before the connection is terminated
-        /// </remarks>
+        /// </summary>
         public int OptionTcpKeepAliveRetryCount { get; set; } = -1;
 
         /// <summary>
