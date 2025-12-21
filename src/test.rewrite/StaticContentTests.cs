@@ -22,7 +22,7 @@ namespace test {
 
             // autoindex default is false
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files"));
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files"));
 
             await server.StartAsync();
 
@@ -47,7 +47,7 @@ namespace test {
 
             // autoindex default is false
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files"));
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files"));
 
             await server.StartAsync();
 
@@ -70,7 +70,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files") {
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files") {
                 // enable autoindex
                 AutoIndex = true
             });
@@ -98,7 +98,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files") {
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files") {
                 // enable autoindex
                 AutoIndex = true
             });
@@ -189,7 +189,7 @@ namespace test {
 
             // autoindex default is false
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1)));
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)));
 
             await server.StartAsync();
 
@@ -214,7 +214,7 @@ namespace test {
 
             // autoindex default is false
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1)));
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)));
 
             await server.StartAsync();
 
@@ -237,7 +237,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1)) {
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)) {
                 // enable autoindex
                 AutoIndex = true
             });
@@ -267,7 +267,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1)) {
+            server.UseModule(new StaticFilesModule(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!, "/files", timeout: TimeSpan.FromDays(1)) {
                 // enable autoindex
                 AutoIndex = true
             });

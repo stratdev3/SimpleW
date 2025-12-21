@@ -30,6 +30,9 @@ namespace SimpleW {
 
             // use default if null
             jsonEngine ??= request.JsonEngine;
+            if (jsonEngine == null) {
+                throw new Exception("BodyMap cannot use a null jsonEngine");
+            }
 
             // if uploading data from html from multipart/form-data
             if (contentType.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase)) {
@@ -38,7 +41,7 @@ namespace SimpleW {
 
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
-                Dictionary<string, object> kv = request.BodyForm();
+                Dictionary<string, object?> kv = request.BodyForm();
                 body = jsonEngine.Serialize(kv);
                 contentType = "application/json";
             }
@@ -67,6 +70,9 @@ namespace SimpleW {
 
             // use default if null
             jsonEngine ??= request.JsonEngine;
+            if (jsonEngine == null) {
+                throw new Exception("BodyMapAnonymous cannot use a null jsonEngine");
+            }
 
             // if uploading data from html from multipart/form-data
             if (contentType.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase)) {
@@ -75,7 +81,7 @@ namespace SimpleW {
 
             // if html form, convert to json string
             if (contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)) {
-                Dictionary<string, object> kv = request.BodyForm();
+                Dictionary<string, object?> kv = request.BodyForm();
                 body = jsonEngine.Serialize(kv);
                 contentType = "application/json";
             }
@@ -116,8 +122,8 @@ namespace SimpleW {
         /// - decodes + and %xx using UTF-8
         /// </summary>
         /// <param name="request"></param>
-        public static Dictionary<string, object> BodyForm(this HttpRequest request) {
-            Dictionary<string, object> result = new(StringComparer.OrdinalIgnoreCase);
+        public static Dictionary<string, object?> BodyForm(this HttpRequest request) {
+            Dictionary<string, object?> result = new(StringComparer.OrdinalIgnoreCase);
 
             ReadOnlySequence<byte> body = request.Body;
             if (body.IsEmpty) {

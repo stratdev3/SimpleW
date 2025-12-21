@@ -109,7 +109,7 @@ namespace SimpleW {
         /// JsonEngine
         /// Can be used to parse body
         /// </summary>
-        public IJsonEngine JsonEngine { get; private set; }
+        public IJsonEngine? JsonEngine { get; private set; }
 
         /// <summary>
         /// Reset HttpRequest for reuse

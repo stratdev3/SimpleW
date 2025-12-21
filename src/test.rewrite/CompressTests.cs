@@ -177,6 +177,7 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
+        [Fact]
         public async Task Response_200_Auto_ContentShouldBeCompressedToDeflate() {
 
             // server

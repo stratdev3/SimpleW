@@ -219,7 +219,9 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
-        //[Fact]
+        /*
+        // TODO : there is a exception thrown by system.text.json deserializer cause incorrect type ("True" or "0")
+        [Fact]
         public async Task BodyMap_formurlencoded_MapPost_HelloWorld() {
 
             // server
@@ -250,6 +252,7 @@ namespace test {
             await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
+        */
 
         [Fact]
         public async Task BodyMap_Json_MapPost_HelloWorld() {

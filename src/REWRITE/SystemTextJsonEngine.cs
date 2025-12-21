@@ -14,30 +14,30 @@ namespace SimpleW {
         /// <summary>
         /// Options Builder
         /// </summary>
-        private readonly Func<string, JsonSerializerOptions> OptionsBuilder;
+        private readonly Func<JsonAction, JsonSerializerOptions?>? OptionsBuilder;
 
         /// <summary>
         /// Build
         /// </summary>
         /// <returns></returns>
-        private JsonSerializerOptions Build(string action) => OptionsBuilder == null ? null : OptionsBuilder(action);
+        private JsonSerializerOptions? Build(JsonAction action) => OptionsBuilder?.Invoke(action);
 
         #region cache
 
         /// <summary>
         /// Cache Options for Serialize method
         /// </summary>
-        private JsonSerializerOptions SerializeOptionsCache;
+        private JsonSerializerOptions? SerializeOptionsCache;
 
         /// <summary>
         /// Cache Options for Deserialize method
         /// </summary>
-        private JsonSerializerOptions DeserializeOptionsCache;
+        private JsonSerializerOptions? DeserializeOptionsCache;
 
         /// <summary>
         /// Cache Options for DeserializeAnonymous method
         /// </summary>
-        private JsonSerializerOptions DeserializeAnonymousOptionsCache;
+        private JsonSerializerOptions? DeserializeAnonymousOptionsCache;
 
         #endregion cache
 
@@ -45,11 +45,11 @@ namespace SimpleW {
         /// Constructor
         /// </summary>
         /// <param name="optionsBuilder">the JsonSerializerOptions options</param>
-        public SystemTextJsonEngine(Func<string, JsonSerializerOptions> optionsBuilder = null) {
+        public SystemTextJsonEngine(Func<JsonAction, JsonSerializerOptions?>? optionsBuilder = null) {
             OptionsBuilder = optionsBuilder;
-            SerializeOptionsCache = Build(nameof(Serialize));
-            DeserializeOptionsCache = Build(nameof(Deserialize));
-            DeserializeAnonymousOptionsCache = Build(nameof(DeserializeAnonymous));
+            SerializeOptionsCache = Build(JsonAction.Serialize);
+            DeserializeOptionsCache = Build(JsonAction.Deserialize);
+            DeserializeAnonymousOptionsCache = Build(JsonAction.DeserializeAnonymous);
         }
 
         /// <summary>
@@ -69,7 +69,11 @@ namespace SimpleW {
         /// <param name="json"></param>
         /// <returns></returns>
         public T Deserialize<T>(string json) {
-            return JsonSerializer.Deserialize<T>(json, DeserializeOptionsCache);
+            T? value = JsonSerializer.Deserialize<T>(json, DeserializeOptionsCache);
+            if (value is null) {
+                throw new JsonException($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
+            }
+            return value;
         }
 
         /// <summary>
@@ -79,7 +83,11 @@ namespace SimpleW {
         /// <param name="json"></param>
         /// <param name="model"></param>
         public T DeserializeAnonymous<T>(string json, T model) {
-            return JsonSerializer.Deserialize<T>(json, DeserializeAnonymousOptionsCache);
+            T? value = JsonSerializer.Deserialize<T>(json, DeserializeAnonymousOptionsCache);
+            if (value is null) {
+                throw new JsonException($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
+            }
+            return value;
         }
 
         /// <summary>
@@ -91,6 +99,9 @@ namespace SimpleW {
         /// <param name="includeProperties"></param>
         /// <param name="excludeProperties"></param>
         public void Populate<T>(string json, T target, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null) {
+            if (target is null) {
+                return;
+            }
             T source = Deserialize<T>(json);
             FastRecursivePropertyMapper.Copy(source, target, includeProperties?.ToList(), excludeProperties?.ToList());
         }
@@ -99,16 +110,10 @@ namespace SimpleW {
         /// System.Text.Json Recommanded Settings for SimpleW
         /// </summary>
         /// <returns></returns>
-        public static Func<string, JsonSerializerOptions> OptionsSimpleWBuilder() {
-            return (action) => {
-
-                if (action == nameof(Serialize)) {
-                    JsonSerializerOptions options = new();
-                    options.IncludeFields = true;
-                    return options;
-                }
-
-                return null;
+        public static Func<JsonAction, JsonSerializerOptions?> OptionsSimpleWBuilder() {
+            return action => action switch {
+                JsonAction.Serialize => new JsonSerializerOptions { IncludeFields = true },
+                _ => null
             };
         }
 
@@ -205,8 +210,8 @@ namespace SimpleW {
                     }
 
                     // compute includes/excludes child
-                    List<string> childIncludes = ComputeChildIncludes(propPath, include, propType);
-                    List<string> childExcludes = ComputeChildExcludes(propPath, exclude, propType);
+                    List<string>? childIncludes = ComputeChildIncludes(propPath, include, propType);
+                    List<string>? childExcludes = ComputeChildExcludes(propPath, exclude, propType);
 
                     Expression nested = BuildAssignments(
                         srcProp, tgtProp, propType,

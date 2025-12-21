@@ -15,6 +15,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Deserialize a json string into an T object instance
+        /// Contract: never returns null. Throws if JSON is "null" or cannot be deserialized to a non-null instance.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="json"></param>
@@ -23,6 +24,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Deserialize a string into an anonymous object instance
+        /// Contract: never returns null. Throws if JSON is "null" or cannot be deserialized to a non-null instance.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="json"></param>
@@ -39,6 +41,28 @@ namespace SimpleW {
         /// <param name="excludeProperties"></param>
         void Populate<T>(string json, T target, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null);
 
+    }
+
+    /// <summary>
+    /// Json Action
+    /// </summary>
+    public enum JsonAction {
+        /// <summary>
+        /// Serialize
+        /// </summary>
+        Serialize,
+        /// <summary>
+        /// Deserialize
+        /// </summary>
+        Deserialize,
+        /// <summary>
+        /// DeserializeAnonymous
+        /// </summary>
+        DeserializeAnonymous,
+        /// <summary>
+        /// Populate
+        /// </summary>
+        Populate
     }
 
 }
