@@ -238,8 +238,18 @@ namespace SimpleW {
         ///         }
         ///     }
         /// }
-        /// // instanciate test module in SimpleW
+        /// // just instanciate test module in SimpleW and that's it
         /// server.UseModule(new TestModule())
+        /// 
+        /// // for a cleaner API call, add an extension
+        /// public static class SimpleWServerTestModuleExtensions {
+        ///     public static SimpleWServer UseTestModule(this SimpleWServer server) {
+        ///         server.UseModule(new TestModule());
+        ///         return server;
+        ///     }
+        /// }
+        /// // now the module has a nice use method
+        /// server.UseTestModule();
         /// </example>
         public void UseModule(IHttpModule module) {
             ArgumentNullException.ThrowIfNull(module);
