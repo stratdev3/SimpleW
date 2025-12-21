@@ -64,7 +64,6 @@ namespace SimpleW {
         /// Start the server (not blocking)
         /// </summary>
         /// <param name="cancellationToken"></param>
-        /// <returns>'true' if the server was successfully started, 'false' if the server failed to start</returns>
         /// <example>await server.StartAsync(appLifetime.ApplicationStopping);</example>
         public Task StartAsync(CancellationToken cancellationToken = default) {
             if (IsStarted) {
