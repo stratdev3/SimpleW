@@ -2,7 +2,7 @@
 using System.Text;
 
 
-namespace SimpleW {
+namespace SimpleW.Parsers {
 
     /// <summary>
     /// HttpRequest Parser Instance

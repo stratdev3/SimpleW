@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Net;
 using System.Text;
+using SimpleW.Parsers;
 
 
 namespace SimpleW {
@@ -222,6 +223,24 @@ namespace SimpleW {
         /// </example>
         public static bool BodyMultipartStream(this HttpRequest request, Action<string, string>? onField = null, Action<MultipartFileInfo, ReadOnlySequence<byte>>? onFile = null, int maxParts = 200, long maxFileBytes = 50 * 1024 * 1024) {
             return BodyMultipartParser.BodyMultipartStream(request, onField, onFile, maxParts, maxFileBytes);
+        }
+
+        /// <summary>
+        /// Write ReadOnlySequence to a Stream
+        /// </summary>
+        public static void CopyTo(this ReadOnlySequence<byte> seq, Stream destination) {
+            foreach (var mem in seq) {
+                destination.Write(mem.Span);
+            }
+        }
+
+        /// <summary>
+        /// Write Async ReadOnlySequence to a Stream
+        /// </summary>
+        public static async Task CopyToAsync(this ReadOnlySequence<byte> seq, Stream destination, CancellationToken ct = default) {
+            foreach (var mem in seq) {
+                await destination.WriteAsync(mem, ct).ConfigureAwait(false);
+            }
         }
 
         #region helpers

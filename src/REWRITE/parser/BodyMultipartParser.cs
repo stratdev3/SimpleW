@@ -2,7 +2,7 @@
 using System.Text;
 
 
-namespace SimpleW {
+namespace SimpleW.Parsers {
 
     /// <summary>
     /// Body MultipartParser
@@ -176,24 +176,6 @@ namespace SimpleW {
             // body : a single-segment most of the time (Content-Length or chunked)
             // so we set a fast path span-based + convert offset->ReadOnlySequence slice
             return ParseBodyMultipartStream(request.Body, boundary, onField, onFile, maxParts, maxFileBytes);
-        }
-
-        /// <summary>
-        /// Write ReadOnlySequence to a Stream
-        /// </summary>
-        public static void CopyTo(this ReadOnlySequence<byte> seq, Stream destination) {
-            foreach (var mem in seq) {
-                destination.Write(mem.Span);
-            }
-        }
-
-        /// <summary>
-        /// Write Async ReadOnlySequence to a Stream
-        /// </summary>
-        public static async Task CopyToAsync(this ReadOnlySequence<byte> seq, Stream destination, CancellationToken ct = default) {
-            foreach (var mem in seq) {
-                await destination.WriteAsync(mem, ct).ConfigureAwait(false);
-            }
         }
 
         /// <summary>
