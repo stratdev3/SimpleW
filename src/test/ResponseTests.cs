@@ -17,10 +17,10 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
-                return session.Response.MakeGetResponse("Hello World !");
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Text("Hello World !");
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -32,7 +32,7 @@ namespace test {
             Check.That(content).IsEqualTo("Hello World !");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -44,7 +44,7 @@ namespace test {
             server.MapGet("/", () => {
                 return new { message = "Hello World !" };
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -56,7 +56,7 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -65,10 +65,10 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession Session) => {
-                return Session.Response.MakeNotFoundResponse("NotFound");
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.NotFound("NotFound");
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -80,7 +80,7 @@ namespace test {
             Check.That(content).IsEqualTo("NotFound");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -89,10 +89,10 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession Session) => {
-                return Session.Response.MakeInternalServerErrorResponse("Server Error");
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.InternalServerError("Server Error");
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -104,7 +104,7 @@ namespace test {
             Check.That(content).IsEqualTo("Server Error");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -113,10 +113,10 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession Session) => {
-                return Session.Response.MakeUnAuthorizedResponse("Unauthorized");
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Unauthorized("Unauthorized");
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -128,7 +128,7 @@ namespace test {
             Check.That(content).IsEqualTo("Unauthorized");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -137,10 +137,10 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession Session) => {
-                return Session.Response.MakeRedirectResponse($"http://{server.Address}:{server.Port}/");
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Redirect($"http://{server.Address}:{server.Port}/");
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -151,7 +151,7 @@ namespace test {
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -160,10 +160,10 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession Session) => {
-                return Session.Response.MakeAccessResponse();
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Access();
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -174,7 +174,7 @@ namespace test {
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -183,11 +183,11 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession Session) => {
-                Session.webuser = new WebUser() { Identity = true };
-                return Session.Response.MakeAccessResponse();
+            server.MapGet("/", (HttpSession session) => {
+                //session.webuser = new WebUser() { Identity = true };
+                return session.Response.Access(true);
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -198,7 +198,7 @@ namespace test {
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 

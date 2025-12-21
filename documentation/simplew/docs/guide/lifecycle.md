@@ -5,7 +5,7 @@ How is it working before and after server started.
 
 ## Before Server Start
 
-Each use of a component [`AddDynamicContent()`](../reference/simplewserver#adddynamiccontent), [`AddStaticContent()`](../reference/simplewserver#addstaticcontent) (...) will inspect for the looking classes or files and their location be added to the `Router`.
+Each use of a component [`AddDynamicContent()`](../reference/simplew#adddynamiccontent), [`AddStaticContent()`](../reference/simplew#addstaticcontent) (...) will inspect for the looking classes or files and their location be added to the `Router`.
 
 It's run once then everything is cached : statics files or method with compiled delegate.
 
@@ -14,7 +14,7 @@ It's run once then everything is cached : statics files or method with compiled 
 
 The client requests will throught the following process :
 
-1. `SimpleWServer` or `SimpleWServer` class handle all the connection and create a `HttpRequest`
+1. `simplew` or `simplew` class handle all the connection and create a `HttpRequest`
 2. The `HttpRequest` is passed to the `Router` which will compare leverage the corresponding modules (`Dynamic`, `Static`, `Websocket`...) according to Url and Method.
 3. The module will then find the item :
     1. for `Dynamic` module :

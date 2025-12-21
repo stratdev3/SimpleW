@@ -1,9 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0;net10.0;</TargetFrameworks>
     <OutputType>Library</OutputType>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+    <!-- temporary rename REWRITE to SIMPLEW for current dll and nuget package -->
+    <AssemblyName>SimpleW</AssemblyName>
+    <PackageId>SimpleW</PackageId>
+    
+    <!-- perfs/size -->
+    <!--
+    <PublishAot>true</PublishAot>
+    <TrimMode>full</TrimMode>
+    -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TieredCompilation>true</TieredCompilation>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
 
     <!-- nuget metadata -->
     <Authors>Christophe CHATEAU</Authors>
@@ -17,12 +30,13 @@
     <RepositoryType>git</RepositoryType>
 
     <!-- versioning -->
-    <AssemblyVersion>16.1.0</AssemblyVersion>
-    <FileVersion>16.1.0</FileVersion>
-    <Version>16.1.0</Version>
+    <AssemblyVersion>26.0.0</AssemblyVersion>
+    <FileVersion>26.0.0</FileVersion>
+    <Version>26.0.0-alpha</Version>
 
     <!-- build options -->
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks><!-- for LitJWT package-->
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <!-- for LitJWT package-->
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
@@ -38,18 +52,14 @@
     <DebugType>portable</DebugType>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
 
-  </PropertyGroup>
+    <!-- no useless ref -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <NoWarn>1591;8632</NoWarn>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <NoWarn>1591;8632</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="logo-transparent.png">
+    <None Include="logo-transparent.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>

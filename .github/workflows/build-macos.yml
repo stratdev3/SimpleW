@@ -27,11 +27,11 @@ jobs:
           dotnet restore
           dotnet build --configuration Release
 
-      - name: "Build SimpleW.Newtonsoft"
-        run: |
-          cd src/SimpleW.Newtonsoft
-          dotnet restore
-          dotnet build --configuration Release
+      #- name: "Build SimpleW.Newtonsoft"
+      #  run: |
+      #    cd src/SimpleW.Newtonsoft
+      #    dotnet restore
+      #    dotnet build --configuration Release
 
       #- name: "test"
       #  run: |

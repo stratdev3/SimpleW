@@ -32,7 +32,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
@@ -87,7 +87,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");

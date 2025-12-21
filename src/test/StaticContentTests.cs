@@ -1,10 +1,9 @@
-﻿using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
+﻿using System.IO;
+using System.Net;
 using NFluent;
 using SimpleW;
+using SimpleW.Modules;
 using Xunit;
-using static test.DynamicContentTests;
 
 
 namespace test {
@@ -22,11 +21,13 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                // options.AutoIndex = false; // default
+            });
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files");
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -37,7 +38,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -47,11 +48,13 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                // options.AutoIndex = false; // default
+            });
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files");
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -62,7 +65,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -72,12 +75,13 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files");
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.AutoIndex = true;
+            });
 
-            // enable autoindex
-            server.AutoIndex = true;
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -90,7 +94,7 @@ namespace test {
             Check.That(content).Contains("SimpleW.dll");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -100,12 +104,13 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files");
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.AutoIndex = true;
+            });
 
-            // enable autoindex
-            server.AutoIndex = true;
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -116,7 +121,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.OK);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -129,11 +134,16 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_NoCache_DefaultDocument_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "index.html"), "index");
-            server.AddStaticContent(path, "/files");
+
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                // options.DefaultDocument = "index.html"; // default
+            });
 
             // default document is index.html
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -145,7 +155,7 @@ namespace test {
             Check.That(content).IsEqualTo("index");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -158,12 +168,13 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_NoCache_DefaultDocumentMaintenance_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "maintenance.html"), "maintenance");
-            server.AddStaticContent(path, "/files");
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.DefaultDocument = "maintenance.html";
+            });
 
-            // change default document
-            server.DefaultDocument = "maintenance.html";
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -175,88 +186,7 @@ namespace test {
             Check.That(content).IsEqualTo("maintenance");
 
             // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Get_StaticContent_NoCache_Index_Filter_200() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", "SimpleW.*");
-
-            // enable autoindex
-            server.AutoIndex = true;
-
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.OK);
-            Check.That(content).Contains("Index of /files");
-            Check.That(content).Contains("SimpleW.dll");
-            Check.That(content).DoesNotContain("OpenTelemetry.dll");
-
-            // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Get_StaticContent_NoCache_Filter_File_200() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", "SimpleW.*");
-
-            // enable autoindex
-            server.AutoIndex = true;
-
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.dll");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.OK);
-
-            // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Get_StaticContent_NoCache_Filter_File_404() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", "SimpleW.*");
-
-            // enable autoindex
-            server.AutoIndex = true;
-
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/OpenTelemetry.dll");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
-
-            // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -270,11 +200,14 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                // options.AutoIndex = false; // default
+            });
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1));
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -285,7 +218,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -295,11 +228,14 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // autoindex default is false
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                // options.AutoIndex = false; // default
+            });
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1));
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -310,7 +246,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -320,12 +256,14 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1));
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
+            });
 
-            // enable autoindex
-            server.AutoIndex = true;
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -336,9 +274,11 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.OK);
             Check.That(content).Contains("Index of /files");
             Check.That(content).Contains("SimpleW.dll");
+            //Check.That(response.Headers.Contains("Last-Modified")).IsTrue();
+            //Check.That(response.Headers.Contains("Cache-Control")).IsTrue();
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -348,12 +288,14 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", timeout: TimeSpan.FromDays(1));
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
+            });
 
-            // enable autoindex
-            server.AutoIndex = true;
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -364,7 +306,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.OK);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -377,11 +319,14 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_DefaultDocument_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "index.html"), "index");
-            server.AddStaticContent(path, "/files", timeout: TimeSpan.FromDays(1));
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                //options.DefaultDocument = "index.html"; // default
+            });
 
-            // default document is index.html
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -393,7 +338,7 @@ namespace test {
             Check.That(content).IsEqualTo("index");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -406,12 +351,14 @@ namespace test {
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_DefaultDocumentMaintenance_200");
             Directory.CreateDirectory(path);
             File.WriteAllText(Path.Combine(path, "maintenance.html"), "maintenance");
-            server.AddStaticContent(path, "/files", timeout: TimeSpan.FromDays(1));
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.DefaultDocument = "maintenance.html";
+            });
 
-            // change default document
-            server.DefaultDocument = "maintenance.html";
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -423,7 +370,7 @@ namespace test {
             Check.That(content).IsEqualTo("maintenance");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -440,7 +387,7 @@ namespace test {
             // enable autoindex
             server.AutoIndex = true;
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -454,7 +401,7 @@ namespace test {
             Check.That(content).DoesNotContain("OpenTelemetry.dll");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -469,7 +416,7 @@ namespace test {
             // enable autoindex
             server.AutoIndex = true;
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -480,7 +427,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.OK);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -495,7 +442,7 @@ namespace test {
             // enable autoindex
             server.AutoIndex = true;
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -506,7 +453,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 

@@ -12,5 +12,5 @@ With just a small change, the [basic static example](./static-files) can serve H
 
 There are 2 mains changes :
 - L14 : a `context` creation pointing the certificat file which can be password protect.
-- L17 : call to the `SimpleWSServer()` class to pass the context instead of `SimpleWServer()`.
+- L17 : call to the `SimpleWSServer()` class to pass the context instead of `simplew()`.
 

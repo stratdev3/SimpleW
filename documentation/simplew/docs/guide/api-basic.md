@@ -12,7 +12,7 @@ The following minimal example can be used for rapid prototyping.
 
 :::
 
-It uses the [`MapGet`](../reference/simplewserver.md#inline-func) and [`MapPost`](../reference/simplewserver.md#inline-func) methods, which are quite the same as asp.net core.
+It uses the [`MapGet`](../reference/simplew.md#inline-func) and [`MapPost`](../reference/simplew.md#inline-func) methods, which are quite the same as asp.net core.
 
 ## Rest API Example
 

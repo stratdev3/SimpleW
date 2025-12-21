@@ -14,14 +14,14 @@ namespace test {
     public class CompressTests {
 
         [Fact]
-        public async Task Response_200() {
+        public async Task Response_200_Auto_ContentShouldNoBeCompressed_ClientNotSupport() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
+            server.MapGet("/", (HttpSession session) => {
                 return new { message = "Hello World !" };
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -30,23 +30,108 @@ namespace test {
 
             // asserts
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
             Check.That(response.Content.Headers.ContentEncoding).IsEmpty();
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
-        public async Task Response_200_gzip() {
+        public async Task Response_200_Auto_ContentShouldNoBeCompressed_ClientSupport() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
+            server.MapGet("/", (HttpSession session) => {
                 return new { message = "Hello World !" };
             });
-            server.Start();
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, gzip, deflate, br");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding).IsEmpty();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_Auto_ContentShouldBeCompressedClientNotSupport() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                string message = "Hello World";
+                for (var i = 0; i < 10; i++) {
+                    message += message;
+                }
+                return new { message };
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding).IsEmpty();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_Auto_ContentShouldBeCompressedClientSupport() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                string message = "Hello World";
+                for (var i = 0; i < 10; i++) {
+                    message += message;
+                }
+                return new { message };
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, gzip, deflate, br");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_Auto_ContentShouldBeCompressedToGzip() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                string message = "Hello World";
+                for (var i = 0; i < 10; i++) {
+                    message += message;
+                }
+                return new { message };
+            });
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -57,22 +142,25 @@ namespace test {
             // asserts
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
             Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
-            Check.That(content).IsEqualTo(NetCoreServer.HttpResponse.Compress(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { message = "Hello World !" })), "gzip"));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
-        public async Task Response_200_deflate() {
+        public async Task Response_200_Auto_ContentShouldBeCompressedToGzipPriorityDeflate() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
-                return new { message = "Hello World !" };
+            server.MapGet("/", (HttpSession session) => {
+                string message = "Hello World";
+                for (var i = 0; i < 10; i++) {
+                    message += message;
+                }
+                return new { message };
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -82,126 +170,26 @@ namespace test {
 
             // asserts
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("deflate");
-            Check.That(content).IsEqualTo(NetCoreServer.HttpResponse.Compress(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { message = "Hello World !" })), "deflate"));
+            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
-        public async Task Response_200_br() {
+        public async Task Response_200_Auto_ContentShouldBeCompressedToDeflate() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
-                return new { message = "Hello World !" };
+            server.MapGet("/", (HttpSession session) => {
+                string message = "Hello World";
+                for (var i = 0; i < 10; i++) {
+                    message += message;
+                }
+                return new { message };
             });
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, br, deflate, gzip");
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsByteArrayAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("br");
-            Check.That(content).IsEqualTo(NetCoreServer.HttpResponse.Compress(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { message = "Hello World !" })), "br"));
-
-            // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_200_unknown() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
-                return new { message = "Hello World !" };
-            });
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Accept-Encoding", "unknown");
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
-
-            // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_200_force_disable_default() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
-                return session.Response.MakeResponse(new { message = "Hello World !" });
-            });
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, gzip, deflate, br");
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
-            Check.That(response.Content.Headers.ContentEncoding).IsEmpty();
-
-            // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_200_force_disable_explicit() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
-                return session.Response.MakeResponse(new { message = "Hello World !" }, compress: null);
-            });
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, gzip, deflate, br");
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
-            Check.That(response.Content.Headers.ContentEncoding).IsEmpty();
-
-            // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_200_forced() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (ISimpleWSession session) => {
-                return session.Response.MakeResponse(new { message = "Hello World !" }, compress: new string[] { "gzip" });
-            });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -211,11 +199,118 @@ namespace test {
 
             // asserts
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
-            Check.That(content).IsEqualTo(NetCoreServer.HttpResponse.Compress(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { message = "Hello World !" })), "gzip"));
+            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("deflate");
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_Auto_ContentShouldNotBeCompressed_ClientUnkownEncoding() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                string message = "Hello World";
+                for (var i = 0; i < 10; i++) {
+                    message += message;
+                }
+                return new { message };
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "unknown");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsByteArrayAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding).IsEmpty();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_ForceNoCompression() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                string message = "Hello World";
+                for (var i = 0; i < 10; i++) {
+                    message += message;
+                }
+                return session.Response.Json(new { message }).NoCompression();
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, gzip, deflate, br");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding).IsEmpty();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_ForceGzip() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Json(new { message = "Hello World !" }).Compression(HttpResponse.ResponseCompressionMode.ForceGzip);
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, deflate, gzip, br");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsByteArrayAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_ForceDeflate() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Json(new { message = "Hello World !" }).Compression(HttpResponse.ResponseCompressionMode.ForceDeflate);
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, gzip, deflate, br");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsByteArrayAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("deflate");
+
+            // dispose
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 

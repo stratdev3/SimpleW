@@ -14,7 +14,7 @@ jobs:
   - type: CommandStep
     name: build SimpleW
     runInContainer: true
-    image: docksdev/band:8.0
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
       type: DefaultInterpreter
       commands: |
@@ -24,21 +24,9 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Newtonsoft
-    runInContainer: true
-    image: docksdev/band:8.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Newtonsoft/
-        dotnet build -c @param:build_configuration@ SimpleW.Newtonsoft.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
     name: test
     runInContainer: true
-    image: docksdev/band:8.0
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
       type: DefaultInterpreter
       commands: |
@@ -48,15 +36,9 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
-    name: publish artifact SimpleW
+    name: publish artifact
     sourcePath: src/SimpleW/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.dll'
-    condition: SUCCESSFUL
-    optional: false
-  - type: PublishArtifactStep
-    name: publish artifact SimpleW.Newtonsoft
-    sourcePath: src/SimpleW.Newtonsoft/bin/@param:build_configuration@/
-    artifacts: '*/SimpleW.Newtonsoft.dll'
     condition: SUCCESSFUL
     optional: false
   paramSpecs:
@@ -77,7 +59,7 @@ jobs:
       value: Release
   triggers:
   - type: BranchUpdateTrigger
-    paths: src/SimpleW/ src/SimpleW.Newtonsoft/ src/test/
+    paths: src/SimpleW/ src/test/
     userMatch: anyone
     paramMatrix:
     - valuesProvider:
@@ -104,36 +86,20 @@ jobs:
   - type: CommandStep
     name: build SimpleW
     runInContainer: true
-    image: docksdev/band:8.0
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW
+        TS=$(date +"%Y%m%d-%H%M")
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.csproj
         dotnet pack -c Release SimpleW.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: build SimpleW.Newtonsoft
-    runInContainer: true
-    image: docksdev/band:8.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Newtonsoft
-        dotnet pack -c Release SimpleW.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/Release/
-    artifacts: '*.*nupkg'
-    condition: SUCCESSFUL
-    optional: false
-  - type: PublishArtifactStep
-    name: publish artifact SimpleW.Newtonsoft
-    sourcePath: src/SimpleW.Newtonsoft/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -145,18 +111,6 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
-        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: deploy SimpleW.Newtonsoft to nuget.org
-    runInContainer: true
-    image: docksdev/band:8.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -198,7 +152,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CI REWRITE
+- name: CI v16
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -212,31 +166,49 @@ jobs:
   - type: CommandStep
     name: build SimpleW
     runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
+    image: docksdev/band:8.0
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/REWRITE/
-        dotnet build -c @param:build_configuration@ REWRITE.csproj
+        cd src/v16/SimpleW/
+        dotnet build -c @param:build_configuration@ SimpleW.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.Newtonsoft
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/v16/SimpleW.Newtonsoft/
+        dotnet build -c @param:build_configuration@ SimpleW.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
     name: test
     runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
+    image: docksdev/band:8.0
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/test.rewrite/
+        cd src/v16/test/
         dotnet test
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
-    name: publish artifact REWRITE
-    sourcePath: src/REWRITE/bin/@param:build_configuration@/
+    name: publish artifact SimpleW
+    sourcePath: src/v16/SimpleW/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Newtonsoft
+    sourcePath: src/v16/SimpleW.Newtonsoft/bin/@param:build_configuration@/
+    artifacts: '*/v16/SimpleW.Newtonsoft.dll'
     condition: SUCCESSFUL
     optional: false
   paramSpecs:
@@ -257,7 +229,7 @@ jobs:
       value: Release
   triggers:
   - type: BranchUpdateTrigger
-    paths: src/REWRITE/
+    paths: src/v16/SimpleW/ src/v16/SimpleW.Newtonsoft/ src/v16/test/
     userMatch: anyone
     paramMatrix:
     - valuesProvider:
@@ -270,7 +242,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD REWRITE nuget
+- name: CD v16 nuget
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -284,20 +256,36 @@ jobs:
   - type: CommandStep
     name: build SimpleW
     runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
+    image: docksdev/band:8.0
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/REWRITE
-        TS=$(date +"%Y%m%d-%H%M")
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" REWRITE.csproj
-        dotnet pack -c Release REWRITE.csproj
+        cd src/v16/SimpleW
+        dotnet pack -c Release SimpleW.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.Newtonsoft
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/v16/SimpleW.Newtonsoft
+        dotnet pack -c Release SimpleW.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW
-    sourcePath: src/REWRITE/bin/Release/
+    sourcePath: src/v16/SimpleW/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Newtonsoft
+    sourcePath: src/v16/SimpleW.Newtonsoft/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -308,13 +296,25 @@ jobs:
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/REWRITE/bin/Release
+        cd src/v16/SimpleW/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Newtonsoft to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/v16/SimpleW.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   jobDependencies:
-  - jobName: CI REWRITE
+  - jobName: CI v16
     requireSuccessful: true
     paramMatrix:
     - valuesProvider:

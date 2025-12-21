@@ -1,5 +1,4 @@
 ﻿using SimpleW;
-using SimpleW.Newtonsoft;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 

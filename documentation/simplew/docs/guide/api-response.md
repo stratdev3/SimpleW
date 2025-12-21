@@ -79,7 +79,7 @@ The following example illustrates some built-in [helpers](../reference/httprespo
 
 ## Send Raw Bytes
 
-The [`Session.SendResponseBody()`](../reference/isimplewsession.md#sendresponsebody) method is the lower level, and it basically consists of sending bytes to the client.
+The [`Session.SendAsync()`](../reference/httpsession.md#sendasync) method is the lower level, and it basically consists of sending bytes to the client.
 
 ::: code-group
 
@@ -93,7 +93,7 @@ These methods should be used carefully for your possible edge case.
 
 ## Json Engine
 
-This [`JsonEngine`](../reference/simplewserver#jsonengine) property defines the Json engine used in server and controllers to serialize, deserialize and populate objects.
+This [`JsonEngine`](../reference/simplew#jsonengine) property defines the Json engine used in server and controllers to serialize, deserialize and populate objects.
 The default engine is `System.Text.Json` initialized with recommanded options.
 
 There is an additionnal [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package which provide an alternative Json engine, the awesome [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json).
@@ -109,11 +109,5 @@ And then
 ::: code-group
 
 <<< @/snippets/json-engine.cs#snippet{13-30 csharp:line-numbers} [program.cs]
-
-:::
-
-::: tip NOTE
-
-You can create your own JsonEngine by implementing the [`IJsonEngine`](../reference/ijsonengine.md) interface.
 
 :::

@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SimpleW.Newtonsoft\SimpleW.Newtonsoft.csproj" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
   </ItemGroup>
 

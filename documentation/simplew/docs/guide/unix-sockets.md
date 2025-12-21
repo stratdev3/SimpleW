@@ -19,5 +19,5 @@ $ curl --unix-socket C:\www\test.sock http://localhost/api/test
 ```
 
 There only one change :
-- L13 : use the `SimpleWServer()` constructor with `UnixDomainSocketEndPoint` argument.
+- L13 : use the `simplew()` constructor with `UnixDomainSocketEndPoint` argument.
 

@@ -1,0 +1,83 @@
+<html>
+<head>
+    <style>
+    body {
+        font-family: sans-serif;
+        margin: 2rem;
+    }
+    #status {
+        margin-bottom: 1rem;
+        font-weight: bold;
+    }
+    #events {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        height: 300px;
+        overflow-y: auto;
+        background: #f9f9f9;
+    }
+    .event {
+        margin-bottom: 0.5rem;
+        padding: 0.3rem;
+        border-bottom: 1px dashed #ddd;
+    }
+    .error {
+        color: red;
+    }
+    </style>
+    <script>
+    let eventSource = null;
+    const statusEl = document.getElementById('status');
+    const eventsEl = document.getElementById('events');
+    const btnConnect = document.getElementById('btnConnect');
+    const btnDisconnect = document.getElementById('btnDisconnect');
+
+    function connect() {
+        if (eventSource) {
+            return;
+        }
+        statusEl.textContent = '🟢 Status : connexion en cours…';
+        eventSource = new EventSource('/api/test/sse');
+        eventSource.onopen = () => {
+            statusEl.textContent = '🟢 Status : connected';
+            btnConnect.disabled = true;
+            btnDisconnect.disabled = false;
+        };
+        eventSource.onmessage = event => {
+            const div = document.createElement('div');
+            div.className = 'event';
+            div.textContent = event.data;
+            eventsEl.appendChild(div);
+            eventsEl.scrollTop = eventsEl.scrollHeight;
+        };
+        eventSource.onerror = err => {
+            statusEl.textContent = '🔴 Status : connection error';
+            statusEl.classList.add('error');
+            console.error('SSE error:', err);
+        };
+    }
+
+    function disconnect() {
+        if (!eventSource) {
+            return;
+        }
+        eventSource.close();
+        eventSource = null;
+        statusEl.textContent = '🟡 Status : disconnected';
+        btnConnect.disabled = false;
+        btnDisconnect.disabled = true;
+    }
+
+    // buttons click
+    btnConnect.addEventListener('click', connect);
+    btnDisconnect.addEventListener('click', disconnect);
+    </script>
+</head>
+<body>
+    <h1>Client SSE NetCoreServer</h1>
+    <div id="status">🟡 Status : waiting connection…</div>
+    <button id="btnConnect">🔌 Connect</button>
+    <button id="btnDisconnect" disabled>❌ Disconnect</button>
+    <div id="events"></div>
+</body>
+</html>

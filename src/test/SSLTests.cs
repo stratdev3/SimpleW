@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -31,15 +33,27 @@ namespace test {
             Directory.CreateDirectory(Path.Combine(certificateFilePath, ".."));
             File.WriteAllBytes(certificateFilePath, Convert.FromBase64String(SslCertificateBase64));
 
+#if NET9_0_OR_GREATER
+            X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(certificateFilePath, "secret");
+#else
+            X509Certificate2 cert = new(certificateFilePath, "secret");
+#endif
+
             // create a context with certificate, support for password protection
-            var context = new NetCoreServer.SslContext(SslProtocols.Tls12, new X509Certificate2(certificateFilePath, "secret"));
+            SslContext sslContext = new(
+                SslProtocols.Tls12 | SslProtocols.Tls13,
+                cert,
+                clientCertificateRequired: false,
+                checkCertificateRevocation: false
+            );
 
             // server
-            var server = new SimpleWSServer(context, IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.UseHttps(sslContext);
             server.MapGet("/", () => {
                 return new { message = "Hello World !" };
             });
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient(httpClientHandler);
@@ -51,7 +65,7 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 

@@ -36,10 +36,10 @@ It's initialized as an empty Response instance. See the [HttpResponse](./httpres
 /// <summary>
 /// Gets the current HTTP Session
 /// </summary>
-protected ISimpleWSession Session;
+protected HttpSession Session;
 ```
 
-This property contains the current Session instance. See the [ISimpleWSession](./isimplewsession) class for uses.
+This property contains the current Session instance. See the [HttpSession](./httpsession) class for uses.
 
 
 ## OnBeforeMethod

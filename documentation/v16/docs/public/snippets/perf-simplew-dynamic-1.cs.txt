@@ -1,0 +1,30 @@
+//
+// project : https://stratdev3.github.io/SimpleW
+//
+
+using System;
+using System.Net;
+using SimpleW;
+
+namespace Sample {
+
+    class Program {
+        static void Main() {
+            Console.WriteLine("SimpleW started at http://127.0.0.1:8080/api/test/hello");
+
+            var server = new SimpleWServer(IPAddress.Any, 8080);
+            server.AddDynamicContent("/api");
+            server.Start();
+            Console.ReadKey();
+        }
+    }
+
+    [Route("/test")]
+    public class TestController : Controller {
+        [Route("GET", "/hello")]
+        public object Hello() {
+            return new { message = "Hello World !" };
+        }
+    }
+
+}

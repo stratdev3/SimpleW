@@ -2,7 +2,7 @@
 
 
 Each URL is a concatenation of :
-1. `Prefix` defined by a Component (e.g: [`AddDynamicContent()`](../reference/simplewserver#adddynamiccontent), [`AddStaticContent()`](../reference/simplewserver#addstaticcontent)).
+1. `Prefix` defined by a Component (e.g: [`AddDynamicContent()`](../reference/simplew#adddynamiccontent), [`AddStaticContent()`](../reference/simplew#addstaticcontent)).
 2. [`Route`](../reference/routeattribute#controller) attribute on Controller class (if exists).
 3. [`Route`](../reference/routeattribute#method) attribute on Method.
 
@@ -20,7 +20,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
@@ -59,7 +59,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
@@ -100,7 +100,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
@@ -146,7 +146,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
@@ -198,7 +198,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
 
             // allow regular expression in route path
             server.Router.RegExpEnabled = true;
@@ -244,7 +244,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             server.Start();
             Console.WriteLine("server started at http://localhost:2015/");
@@ -329,7 +329,7 @@ namespace Sample {
 
     class Program {
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
 
             // allow regular expression in route path
             server.Router.RegExpEnabled = true;
@@ -388,7 +388,7 @@ namespace Sample {
         static void Main() {
 
             // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
 
             // need by MaintenanceController wildcard route parameter
             server.Router.RegExpEnabled = true;
@@ -436,7 +436,7 @@ namespace Sample {
     class Program {
 
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
 
             // api v1
             server.AddDynamicContent("/api/v1");
@@ -477,7 +477,7 @@ namespace Sample {
     class Program {
 
         static void Main() {
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+            var server = new simplew(IPAddress.Any, 2015);
 
             // api v1
             server.AddDynamicContent(typeof(TestController), "/api/v1");

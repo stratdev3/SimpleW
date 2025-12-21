@@ -12,7 +12,7 @@ namespace Sample {
         static void Main() {
             Console.WriteLine("SimpleW started at http://127.0.0.1:8080/api/test/hello");
 
-            var server = new SimpleWServer(IPAddress.Any, 8080);
+            var server = new simplew(IPAddress.Any, 8080);
             server.AddDynamicContent("/api");
             server.Start();
             Console.ReadKey();

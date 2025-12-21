@@ -20,9 +20,9 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddDynamicContent(typeof(Route_DynamicMethod_200_Controller), "/api");
+            server.UseController<Route_DynamicMethod_200_Controller>("/api");
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -34,7 +34,7 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -55,9 +55,9 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddDynamicContent(typeof(Route_DynamicControllerMethod_200_Controller), "/api");
+            server.UseController<Route_DynamicControllerMethod_200_Controller>("/api");
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -69,7 +69,7 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -91,9 +91,9 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddDynamicContent(typeof(Route_DynamicControllerMethodAbsolute_Controller), "/api");
+            server.UseController<Route_DynamicControllerMethodAbsolute_Controller>("/api");
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -104,7 +104,7 @@ namespace test {
             Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -114,9 +114,9 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddDynamicContent(typeof(Route_DynamicControllerMethodAbsolute_Controller), "/api");
+            server.UseController<Route_DynamicControllerMethodAbsolute_Controller>("/api");
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -128,7 +128,7 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -150,12 +150,9 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            // need by MaintenanceController wildcard route parameter
-            server.Router.RegExpEnabled = true;
+            server.UseController<Route_Dynamic_CatchAll_Controller>("/api");
 
-            server.AddDynamicContent(typeof(Route_Dynamic_CatchAll_Controller), "/api");
-
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -167,33 +164,7 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
 
             // dispose
-            server.Stop();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Route_Dynamic_CatchAll_RegexpFalse_404() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-
-            // need by MaintenanceController wildcard route parameter
-            server.Router.RegExpEnabled = false;
-
-            server.AddDynamicContent(typeof(Route_Dynamic_CatchAll_Controller), "/api");
-
-            server.Start();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/api/helloworld");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
-
-            // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -214,9 +185,9 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddDynamicContent(typeof(OnBeforeController), "/api");
+            server.UseController<OnBeforeController>("/api");
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -228,7 +199,7 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Chris, Hello World !" }));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
@@ -258,9 +229,9 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.AddDynamicContent(typeof(SubclassController), "/api");
+            server.UseController<SubclassController>("/api");
 
-            server.Start();
+            await server.StartAsync();
 
             // client
             var client = new HttpClient();
@@ -272,11 +243,10 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Chris, Hello World !" }));
 
             // dispose
-            server.Stop();
+            await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
 
-        [Route("/test")]
         public class Subclass : Controller {
 
             protected string Name = "Chris";
