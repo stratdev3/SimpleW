@@ -70,7 +70,7 @@ namespace SimpleW {
         /// <summary>
         /// QueryString
         /// </summary>
-        public string QueryString { get; private set;  } = string.Empty;
+        public string QueryString { get; private set; } = string.Empty;
 
         /// <summary>
         /// Flag to Query parsing
