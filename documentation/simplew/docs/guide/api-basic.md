@@ -12,7 +12,7 @@ The following minimal example can be used for rapid prototyping.
 
 :::
 
-It uses the [`MapGet`](../reference/simplewserver.md#map-handler) and [`MapPost`](../reference/simplewserver.md#map-handler) methods, which are quite the same as asp.net core.
+It uses the [`MapGet`](../reference/simplewserver.md#map) and [`MapPost`](../reference/simplewserver.md#map) methods, which are quite the same as asp.net core.
 
 ## Rest API Example
 

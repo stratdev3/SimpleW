@@ -1,4 +1,4 @@
-# Getting Started 
+# Getting Started
 
 Stop talking and show me the code !
 

@@ -9,102 +9,93 @@ This class all informations of the client request.
 /// <summary>
 /// Get the HTTP request method
 /// </summary>
-string Method { get; private set }
+public string Method { get; private set; }
 ```
 
-
-## Url
+## Path
 
 ```csharp
 /// <summary>
-/// Get the HTTP request URL
+/// Get the HTTP request Path
 /// </summary>
-string Url { get; private set }
+public string Path { get; private set; }
 ```
 
+## RawTarget
+
+```csharp
+/// <summary>
+/// Raw target (path + query)
+/// </summary>
+public string RawTarget { get; private set; }
+```
 
 ## Protocol
 
 ```csharp
 /// <summary>
-/// Get the HTTP request protocol version
+/// HTTP protocol version (e.g. "HTTP/1.1")
 /// </summary>
-string Protocol { get; private set }
+public string Protocol { get; private set; }
 ```
+
+## Headers
+
+```csharp
+/// <summary>
+/// HTTP headers (case-insensitive)
+/// </summary>
+public HttpHeaders Headers { get; private set; }
+```
+
+See [`HttpHeaders`](./httpheaders.md) class for more informations
+
 
 ## Body
 
 ```csharp
 /// <summary>
-/// Get the HTTP request body as string
+/// Body (buffer only valid during the time of the underlying Handler)
 /// </summary>
-string Body { get; private set }
+public ReadOnlySequence<byte> Body { get; private set; }
 ```
 
-
-## BodyBytes
+## BodyString
 
 ```csharp
 /// <summary>
-/// Get the HTTP request body as byte array
+/// Body as String (only valid during the time of the underlying Handler)
 /// </summary>
-byte[] BodyBytes { get; private set }
+public string BodyString
 ```
 
-## BodySpan
+## QueryString
 
 ```csharp
 /// <summary>
-/// Get the HTTP request body as byte span
+/// QueryString as String (e.g: key1=value1&key2=value2)
 /// </summary>
-Span<byte> BodySpan { get; private set }
+public string QueryString { get; private set; }
 ```
 
-## BodyLength
+## Query
 
 ```csharp
 /// <summary>
-/// Get the HTTP request body length
+/// QueryString as Dictionnary
 /// </summary>
-long BodyLength { get; private set }
+public Dictionary<string, string> Query
 ```
 
-
-## Cookies
+## RouteValues
 
 ```csharp
 /// <summary>
-/// Get the HTTP request cookies count
+/// Route values extracted from matched route (ex: :id, :path*)
+/// Null when route has no parameters.
 /// </summary>
-long Cookies { get; private set }
+public Dictionary<string, string>? RouteValues { get; private set; }
 ```
-
-Used to get the cookies count and iterate through [`Cookie()`](#cookie)
-
-
-## Cookie()
-
-```csharp
-/// <summary>
-/// Get the HTTP request cookie by index
-/// </summary>
-(string, string) Cookie(int i)
-```
-
-
-## Header()
-
-```csharp
-/// <summary>
-/// Return Header Value for a specified header name for a Request
-/// </summary>
-/// <param name="name">The Header Name.</param>
-/// <returns><c>string value</c> of the header if exists in the Request; otherwise, <c>null</c>.</returns>
-public string Header(string name)
-```
-
-This method return the string content of the header by its name.
-
 
 ## BodyMap()
 
@@ -118,9 +109,8 @@ This method return the string content of the header by its name.
 /// <param name="excludeProperties">string array of properties to not update.</param>
 /// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
 /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-public bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<string> includeProperties = null, IEnumerable<string> excludeProperties = null, IJsonEngine jsonEngine = null)
+public static bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null, IJsonEngine? jsonEngine = null)
 ```
-
 
 ## BodyMapAnonymous()
 
@@ -132,29 +122,46 @@ public bool BodyMap<TModel>(this HttpRequest request, TModel model, IEnumerable<
 /// <param name="model">The Anonymous Model instance to populate.</param>
 /// <param name="jsonEngine">the json library to handle serialization/deserialization</param>
 /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-public bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel model, IJsonEngine jsonEngine = null)
+public static bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel model, IJsonEngine? jsonEngine = null)
 ```
 
-
-## BodyFile()
+## BodyMultipart()
 
 ```csharp
 /// <summary>
-/// Parses multipart/form-data and contentType given the request body (Request.InputStream)
-/// Please note the underlying input stream is not rewindable.
+/// Get MultipartFormData from an HttpRequest
 /// </summary>
-/// <returns>MultipartFormDataParser</returns>
-public MultipartFormDataParser BodyFile()
+/// <param name="request"></param>
+/// <param name="maxParts"></param>
+/// <param name="maxFileBytes"></param>
+/// <returns></returns>
+public static MultipartFormData? BodyMultipart(this HttpRequest request, int maxParts = 200, int maxFileBytes = 50 * 1024 * 1024)
 ```
 
+## BodyMultipart()
+
+```csharp
+/// <summary>
+/// Get MultipartFormDataStream from an HttpRequest
+/// </summary>
+/// <param name="request"></param>
+/// <param name="onField"></param>
+/// <param name="onFile"></param>
+/// <param name="maxParts"></param>
+/// <param name="maxFileBytes"></param>
+/// <returns></returns>
+public static bool BodyMultipartStream(this HttpRequest request, Action<string, string>? onField = null, Action<MultipartFileInfo, ReadOnlySequence<byte>>? onFile = null, int maxParts = 200, long maxFileBytes = 50 * 1024 * 1024)
+```
 
 ## BodyForm()
 
 ```csharp
 /// <summary>
-/// Parses application/x-www-form-urlencoded contentType given the request body string.
+/// Parse application/x-www-form-urlencoded request body readonlysequence byte.
+/// - supports repeated keys => List&lt;string?&gt;
+/// - trims the trailing [] convention (key[]=a&amp;key[]=b)
+/// - decodes + and %xx using UTF-8
 /// </summary>
-/// <param name="requestBody">The string request body.</param>
-/// <returns>key/value data</returns>
-public Dictionary<string, object> BodyForm(string requestBody)
+/// <param name="request"></param>
+public static Dictionary<string, object?> BodyForm(this HttpRequest request)
 ```

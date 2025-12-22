@@ -31,7 +31,7 @@ export default defineConfig({
             },
             {
                 text: 'Reference',
-                link: '/reference/simplew',
+                link: '/reference/simplewserver',
                 activeMatch: '/reference/'
             },
             //{ text: '📖✨ Features', link: '/features' },
@@ -69,8 +69,17 @@ export default defineConfig({
                 {
                     text: 'Security',
                     items: [
+                        { text: 'Json Web Token', link: '/guide/api-json-web-token' },
+                        { text: 'Cross-Origin Resource Sharing', link: '/guide/api-cors' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
                         { text: 'Unix Sockets', link: '/guide/unix-sockets' },
+                    ]
+                },
+                {
+                    text: 'Communication',
+                    items: [
+                        { text: 'Server Sent Events', link: '/guide/server-sent-events' },
+                        { text: 'Websockets', link: '/guide/websockets' },
                     ]
                 },
                 {
@@ -85,17 +94,35 @@ export default defineConfig({
                 {
                     text: 'Core',
                     items: [
-                        { text: 'Server', link: '/reference/simplew' },
+                        { text: 'SimpleWServer', link: '/reference/simplewserver' },
                     ]
                 },
                 {
                     text: 'Dynamic Content',
                     items: [
                         { text: 'Controller', link: '/reference/controller' },
+                        { text: 'HttpSession', link: '/reference/httpsession' },
                         { text: 'HttpRequest', link: '/reference/httprequest' },
                         { text: 'HttpResponse', link: '/reference/httpresponse' },
-                        { text: 'HttpSession', link: '/reference/httpsession' },
+                        { text: 'HttpHeaders', link: '/reference/httpheaders' },
                         { text: 'RouteAttribute', link: '/reference/routeattribute' },
+                    ]
+                },
+                {
+                    text: 'Modules',
+                    items: [
+                        { text: 'StaticFilesModule', link: '/reference/staticfilesmodule' },
+                        { text: 'CorsModule', link: '/reference/corsmodule' },
+                        { text: 'SseModule', link: '/reference/ssemodule' },
+                        { text: 'WebsocketModule', link: '/reference/websocketmodule' },
+                    ]
+                },
+                {
+                    text: 'Helpers',
+                    items: [
+                        { text: 'SimpleWExtension', link: '/reference/simplewextension' },
+                        { text: 'IJsonEngine', link: '/reference/ijsonengine' },
+                        { text: 'IWebUser', link: '/reference/iwebuser' },
                     ]
                 },
             ]

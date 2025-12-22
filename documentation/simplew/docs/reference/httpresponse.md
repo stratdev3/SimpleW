@@ -1,342 +1,260 @@
 # HttpResponse
 
-This class can be used to build a response which will be sent to the client.
+This class is used to build a response which will be sent to the client.
 
 As already said in the [guide](../guide/api-response#response-property), a `Response` can be returned by a `Controller` method
 and it will be sent async to the client.
+
+This class exposes a **fluent API**, which means you can chain all its methods :
+
+```csharp:line-numbers
+Response.Status(200)
+        .AddHeader("key", "value")
+        .Text("Hello World");
+```
 
 
 ## Constructor
 
 ```csharp
 /// <summary>
-/// Initialize an empty HTTP response
+/// Constructor
 /// </summary>
-public HttpResponse()
+/// <param name="session"></param>
+/// <param name="bufferPool"></param>
+public HttpResponse(HttpSession session, ArrayPool<byte> bufferPool)
 ```
 
-```csharp
-/// <summary>
-/// Initialize a new HTTP response with a given status and protocol
-/// </summary>
-/// <param name="status">HTTP status</param>
-/// <param name="protocol">Protocol version (default is "HTTP/1.1")</param>
-public HttpResponse(int status, string protocol = "HTTP/1.1")
-```
-
-```csharp
-/// <summary>
-/// Initialize a new HTTP response with a given status, status phrase and protocol
-/// </summary>
-/// <param name="status">HTTP status</param>
-/// <param name="statusPhrase">HTTP status phrase</param>
-/// <param name="protocol">Protocol version</param>
-public HttpResponse(int status, string statusPhrase, string protocol)
-```
-
-::: tip NOTE
-The way `HttpReponse` is currenlty build implies that methods must be call in a order by the data appear in the Http Response.
-1. `new HttpResponse()` or `Clear()` for existing response.
-2. [`SetHeader()`](#setheader) : optionnal
-3. [`SetCookie()`](#setcookie) : optionnal
-4. [`SetBegin()`](#setbegin) : required
-5. [`SetCORSHeaders()`](#setcorsheaders) : optionnal
-6. [`SetContentType()`](#setcontenttype) : optionnal
-7. [`SetBody()`](#setbegin) : optionnal
+::: danger
+Never instanciate your own `HttpResponse`, this is already done by [`HttpSession`](./httpsession.md#response) is a proper way ([GC](https://en.wikipedia.org/wiki/Garbage_collection_(computer_science)) friendly).
 :::
 
 
-## Clear()
+## Status
 
 ```csharp
 /// <summary>
-/// Clear the HTTP response cache
+/// Set Status
 /// </summary>
-public HttpResponse Clear()
+/// <param name="statusCode">default: 200</param>
+/// <param name="statusText">default: "OK"</param>
+/// <returns></returns>
+public HttpResponse Status(int statusCode, string? statusText = null)
 ```
 
 
-## SetHeader()
+## ContentType
 
 ```csharp
 /// <summary>
-/// Set the HTTP response header
+/// Set ContentType
 /// </summary>
-/// <param name="key">Header key</param>
-/// <param name="value">Header value</param>
-public HttpResponse SetHeader(string key, string value)
-```
-
-::: tip NOTE
-Any call to `SetHeader()` whereas the `SetBody()` as already be called will be ignore.
-This is constraint is inherited from NetCoreServer and will be remove in next release of SimpleW.
-Known issues : [1](https://github.com/chronoxor/NetCoreServer/issues/224), [2](https://github.com/chronoxor/NetCoreServer/issues/145).
-:::
-
-
-## SetCookie()
-
-```csharp
-/// <summary>
-/// Set the HTTP response cookie
-/// </summary>
-/// <param name="name">Cookie name</param>
-/// <param name="value">Cookie value</param>
-/// <param name="maxAge">Cookie age in seconds until it expires (default is 86400)</param>
-/// <param name="path">Cookie path (default is "")</param>
-/// <param name="domain">Cookie domain (default is "")</param>
-/// <param name="secure">Cookie secure flag (default is true)</param>
-/// <param name="strict">Cookie strict flag (default is true)</param>
-/// <param name="httpOnly">Cookie HTTP-only flag (default is true)</param>
-public HttpResponse SetCookie(string name, string value, int maxAge = 86400, string path = "", string domain = "", bool secure = true, bool strict = true, bool httpOnly = true)
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse ContentType(string contentType)
 ```
 
 
-## SetBegin()
+## ContextTypeFromExtension
 
 ```csharp
 /// <summary>
-/// Set the HTTP response begin with a given status, status phrase and protocol
+/// Set ContentType from a file extension (e.g: ".html")
 /// </summary>
-/// <param name="status">HTTP status</param>
-/// <param name="statusPhrase"> HTTP status phrase</param>
-/// <param name="protocol">Protocol version</param>
-public HttpResponse SetBegin(int status, string statusPhrase, string protocol)
+/// <param name="extension"></param>
+/// <returns></returns>
+public HttpResponse ContextTypeFromExtension(string extension)
 ```
 
 
-## SetCORSHeaders()
+## AddHeader
 
 ```csharp
 /// <summary>
-/// Set Header when CORS is enabled
+/// Add Header
 /// </summary>
-public void SetCORSHeaders()
+/// <param name="name"></param>
+/// <param name="value"></param>
+/// <returns></returns>
+public HttpResponse AddHeader(string name, string value)
+```
+
+
+## Body
+
+```csharp
+/// <summary>
+/// Set Body from byte[] (borrowed stable, array-backed)
+/// </summary>
+/// <param name="body"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse Body(byte[] body, string? contentType = "application/octet-stream")
 ```
 
 ```csharp
 /// <summary>
-/// Set Header to response parameter when CORS is enabled
+/// Set Body from ArraySegment (borrowed stable, array-backed, supports offset/len)
 /// </summary>
-/// <param name="response"></param>
-public static void SetCORSHeaders(HttpResponse response)
-```
-
-
-## SetContentType()
-
-```csharp
-/// <summary>
-/// Set the HTTP response content type
-/// </summary>
-/// <param name="extension">Content extension</param>
-public HttpResponse SetContentType(string extension)
-```
-
-
-## SetBody()
-
-```csharp
-/// <summary>
-/// Set the HTTP response body
-/// </summary>
-/// <param name="body">Body string content (default is "")</param>
-public HttpResponse SetBody(string body = "")
+/// <param name="body"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse Body(ArraySegment<byte> body, string? contentType = "application/octet-stream")
 ```
 
 ```csharp
 /// <summary>
-/// Set the HTTP response body
+/// Set Body from ReadOnlyMemory (borrowed stable if no owner provided)
+/// If array-backed => store as Segment immediately
+/// If not array-backed => store as Memory
 /// </summary>
-/// <param name="body">Body string content as a span of characters</param>
-public HttpResponse SetBody(ReadOnlySpan<char> body)
+/// <param name="body"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse Body(ReadOnlyMemory<byte> body, string? contentType = "application/octet-stream")
 ```
 
 ```csharp
 /// <summary>
-/// Set the HTTP response body
+/// Set Body with explicit owner (zero-copy + safe lifetime)
 /// </summary>
-/// <param name="body">Body binary content</param>
-public HttpResponse SetBody(byte[] body)
+/// <param name="body"></param>
+/// <param name="owner"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse Body(ReadOnlyMemory<byte> body, IDisposable owner, string? contentType = "application/octet-stream")
+```
+
+
+## Text
+
+```csharp
+/// <summary>
+/// Set UTF-8 text Body (owned pooled buffer)
+/// </summary>
+/// <param name="body"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse Text(string body, string contentType = "text/plain; charset=utf-8")
+```
+
+
+## Json
+
+```csharp
+/// <summary>
+/// Set JSON Body serialized into pooled buffer
+/// </summary>
+/// <typeparam name="T"></typeparam>
+/// <param name="value"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse Json<T>(T value, string contentType = "application/json; charset=utf-8")
+```
+
+
+## File
+
+```csharp
+/// <summary>
+/// Set File Body
+/// </summary>
+/// <param name="path"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+public HttpResponse File(string path, string? contentType = null)
 ```
 
 ```csharp
 /// <summary>
-/// Set the HTTP response body
+/// Set File Body from FileInfo (avoids re-stat / allows caller to pre-validate)
 /// </summary>
-/// <param name="body">Body binary content as a span of bytes</param>
-public HttpResponse SetBody(ReadOnlySpan<byte> body)
+/// <param name="fi"></param>
+/// <param name="contentType"></param>
+/// <returns></returns>
+/// <exception cref="ArgumentNullException"></exception>
+public HttpResponse File(FileInfo fi, string? contentType = null)
 ```
 
-## Helpers
 
-The following methods provide many options to customize [common response](../guide/api-response.md#helpers).
-
-### MakeResponse()
+## Compression
 
 ```csharp
 /// <summary>
-/// Make Response from string
+/// Configure compression policy for this response
 /// </summary>
-/// <param name="content">The string Content.</param>
-/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The string array of supported compress types (default null)</param>
-/// <param name="addHeaders">The dictionnary of headers to add</param>
-public HttpResponse MakeResponse(string content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null)
+/// <param name="mode"></param>
+/// <param name="minSize"></param>
+/// <param name="level"></param>
+/// <returns></returns>
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+public HttpResponse Compression(ResponseCompressionMode mode, int? minSize = null, CompressionLevel? level = null)
 ```
+
+
+## NoCompression
 
 ```csharp
 /// <summary>
-/// Make Response from byte[]
+/// Convenience: disable compression for this response
 /// </summary>
-/// <param name="content">byte[] Content.</param>
-/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The string array of supported compress types (default null)</param>
-/// <param name="addHeaders">The dictionnary of headers to add</param>
-public HttpResponse MakeResponse(byte[] content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null)
+[MethodImpl(MethodImplOptions.AggressiveInlining)]
+public HttpResponse NoCompression()
 ```
+
+
+## SendAsync
 
 ```csharp
 /// <summary>
-/// Make Response from object
-/// </summary>
-/// <param name="content">object Content.</param>
-/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The string array of supported compress types (default null)</param>
-/// <param name="addHeaders">The dictionnary of headers to add</param>
-public HttpResponse MakeResponse(object content, string contentType = "application/json; charset=UTF-8", string[] compress = null, IReadOnlyDictionary<string, string> addHeaders = null)
-```
-
-The `MakeResponse()` will create a string Response to the client.
-
-
-### MakeDownloadResponse()
-
-```csharp
-/// <summary>
-/// Make Download response
-/// </summary>
-/// <param name="content">The MemoryStream Content.</param>
-/// <param name="output_filename">name of the download file.</param>
-/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The string array of supported compress types (default null)</param>
-public HttpResponse MakeDownloadResponse(MemoryStream content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", string[] compress = null)
-```
-
-```csharp
-/// <summary>
-/// Make Download response
-/// </summary>
-/// <param name="content">The string Content.</param>
-/// <param name="output_filename">name of the download file.</param>
-/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The string array of supported compress types (default null)</param>
-public HttpResponse MakeDownloadResponse(string content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", string[] compress = null)
-```
-
-```csharp
-/// <summary>
-/// Make Download response
-/// </summary>
-/// <param name="content">The byte[] Content.</param>
-/// <param name="output_filename">name of the download file.</param>
-/// <param name="contentType">The contentType. (default is "text/plain; charset=UTF-8")</param>
-/// <param name="compress">The string array of supported compress types (default null)</param>
-public HttpResponse MakeDownloadResponse(byte[] content, string output_filename = null, string contentType = "text/plain; charset=UTF-8", string[] compress = null)
-```
-
-The `MakeDownloadResponse()` will create a binary Response forcing client to download file.
-
-
-### MakeUnAuthorizedResponse()
-
-```csharp
-/// <summary>
-/// Make UnAuthorized response
-/// </summary>
-/// <param name="content">Error content (default is "Server UnAuthorized Access")</param>
-/// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-public HttpResponse MakeUnAuthorizedResponse(string content = "Server UnAuthorized Access", string contentType = "text/plain; charset=UTF-8")
-```
-
-The `MakeUnAuthorizedResponse()` will create 401 response error code.
-
-
-### MakeForbiddenResponse()
-
-```csharp
-/// <summary>
-/// Make Forbidden response
-/// </summary>
-/// <param name="content">Error content (default is "Server Forbidden Access")</param>
-/// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-public HttpResponse MakeForbiddenResponse(string content = "Server Forbidden Access", string contentType = "text/plain; charset=UTF-8")
-```
-
-The `MakeForbiddenResponse()` will create 403 response error code.
-
-
-### MakeInternalServerErrorResponse()
-
-```csharp
-/// <summary>
-/// Make ServerInternalError response
-/// </summary>
-/// <param name="content">Error content (default is "Server Internal Error")</param>
-/// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-public HttpResponse MakeInternalServerErrorResponse(string content = "Server Internal Error", string contentType = "text/plain; charset=UTF-8")
-```
-
-The `MakeInternalServerErrorResponse()` will create 500 response error code.
-
-
-### MakeNotFoundResponse()
-
-```csharp
-/// <summary>
-/// Make NotFound response
-/// </summary>
-/// <param name="content">Error content (default is "Not Found")</param>
-/// <param name="contentType">Error content type (default is "text/plain; charset=UTF-8")</param>
-public HttpResponse MakeNotFoundResponse(string content = "Not Found", string contentType = "text/plain; charset=UTF-8")
-```
-
-The `MakeNotFoundResponse()` will create 404 response error code.
-
-
-### MakeRedirectResponse()
-
-```csharp
-/// <summary>
-/// Make Redirect Tempory Response (status code 302)
-/// </summary>
-/// <param name="location">The string location.</param>
-public HttpResponse MakeRedirectResponse(string location)
-```
-
-The `MakeRedirectResponse()` will create 302 response code to redirect client to `location`.
-
-
-### MakeServerSentEventsResponse()
-
-```csharp
-/// <summary>
-/// Response for initializing Server Sent Events
+/// Send the response now
 /// </summary>
 /// <returns></returns>
-public HttpResponse MakeServerSentEventsResponse()
+public async ValueTask SendAsync()
 ```
 
-The `MakeServerSentEventsResponse()` will create a Server Sent Event response and so, let the connection open for the client.
+This is the proper way of sending data a client in you want to do it on your own.
+But any object return by a delegate will be default serialized and send as json.
+
+See: 
 
 
-### MakeAccessResponse()
+## 
+
+```csharp
+
+```
+
+## 
+
+```csharp
+
+```
+
+
+## DefaultContentType
 
 ```csharp
 /// <summary>
-/// Make Error Access response
+/// Get Content Type from a file extension (e.g: ".html")
 /// </summary>
-public HttpResponse MakeAccessResponse()
+/// <param name="extension"></param>
+/// <returns></returns>
+public static string DefaultContentType(string extension)
 ```
 
-The `MakeAccessResponse()` will create 401 or 403 response error code depending the status or [`webuser`](./controller#webuser) property.
+## DefaultStatusText
+
+```csharp
+/// <summary>
+/// Get the Default Status Text for a status code
+/// </summary>
+/// <param name="code"></param>
+/// <returns></returns>
+public static string DefaultStatusText(int code)
+```
+
+
+## Aliases
+
+The following methods provide a more convenient way for most of the [common response](../guide/api-response.md#helpers).

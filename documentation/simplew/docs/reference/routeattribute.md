@@ -32,7 +32,7 @@ namespace Sample {
 
     class Program {
         static async Task Main() {
-            var server = new simplew(IPAddress.Any, 2015);
+            var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             await server.RunAsync();
             Console.WriteLine("server started at http://localhost:{server.Port}/");
@@ -87,7 +87,7 @@ namespace Sample {
 
     class Program {
         static async Task Main() {
-            var server = new simplew(IPAddress.Any, 2015);
+            var server = new SimpleWServer(IPAddress.Any, 2015);
             server.AddDynamicContent("/api");
             await server.RunAsync();
             Console.WriteLine("server started at http://localhost:{server.Port}/");

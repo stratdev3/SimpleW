@@ -1,10 +1,21 @@
-# Server
+# SimpleWServer
 
-The `SimpleWServer` is the main class to instanciate and manipulate the web server
+The `SimpleWServer` is the main class used to instantiate and configure the web server.
 
-## Constructors
+This class exposes a **fluent API**, which means you can chain all its methods :
 
-### HTTP
+```csharp:line-numbers
+// instanciate
+var server = new SimpleWServer(IPAddress.Any, 2015);
+// configure & run
+await server.UseHttps(sslContext)
+            .MapGet("/api/hello/world", () => {
+              return new { message = "Hello World !" };
+            })
+            .RunAsync();
+```
+
+## Constructor
 
 ```csharp
 /// <summary>
@@ -39,148 +50,92 @@ public SimpleWServer(IPEndPoint endpoint)
 public WsServer(UnixDomainSocketEndPoint endpoint)
 ```
 
-### HTTPS
-
-```csharp
-/// <summary>
-/// Initialize WebSocket server with a given IP address and port number
-/// </summary>
-/// <param name="context">SSL context</param>
-/// <param name="address">IP address</param>
-/// <param name="port">Port number</param>
-public SimpleWServerSServer(SslContext context, IPAddress address, int port)
-```
-
-```csharp
-/// <summary>
-/// Initialize WebSocket server with a given DNS endpoint
-/// </summary>
-/// <param name="context">SSL context</param>
-/// <param name="endpoint">DNS endpoint</param>
-public SimpleWServerSServer(SslContext context, DnsEndPoint endpoint)
-```
-
-```csharp
-/// <summary>
-/// Initialize WebSocket server with a given IP endpoint
-/// </summary>
-/// <param name="context">SSL context</param>
-/// <param name="endpoint">IP endpoint</param>
-public SimpleWServerSServer(SslContext context, IPEndPoint endpoint)
-```
-
-The class `SimpleWSServer` is exactly the same as `simplew` except it takes a `SslContext` as primary argument.
-This context is to use SSL Certificate.
-
-```csharp
-new SslContext(SslProtocols.Tls12, new X509Certificate2(@"certifcate.pfx", "password"));
-```
 
 ## Socket Options
 
 ```csharp
 /// <summary>
-/// Option: acceptor backlog size
+/// This option will set the maximum length of the pending connections queue.
 /// </summary>
-/// <remarks>
-/// This option will set the listening socket's backlog size
-/// </remarks>
-public int OptionAcceptorBacklog { get; set; } = 1024;
+public int OptionListenSocketBacklog { get; set; } = 1024;
 ```
 
 ```csharp
 /// <summary>
-/// Option: dual mode socket
-/// </summary>
-/// <remarks>
 /// Specifies whether the Socket is a dual-mode socket used for both IPv4 and IPv6.
 /// Will work only if socket is bound on IPv6 address.
-/// </remarks>
+/// </summary>
 public bool OptionDualMode { get; set; }
 ```
 
 ```csharp
 /// <summary>
-/// Option: keep alive
-/// </summary>
-/// <remarks>
-/// This option will setup SO_KEEPALIVE if the OS support this feature
-/// </remarks>
-public bool OptionKeepAlive { get; set; }
-```
-
-```csharp
-/// <summary>
-/// Option: TCP keep alive time
-/// </summary>
-/// <remarks>
-/// The number of seconds a TCP connection will remain alive/idle before keepalive probes are sent to the remote
-/// </remarks>
-public int OptionTcpKeepAliveTime { get; set; } = -1;
-```
-
-```csharp
-/// <summary>
-/// Option: TCP keep alive interval
-/// </summary>
-/// <remarks>
-/// The number of seconds a TCP connection will wait for a keepalive response before sending another keepalive probe
-/// </remarks>
-public int OptionTcpKeepAliveInterval { get; set; } = -1;
-```
-
-```csharp
-/// <summary>
-/// Option: TCP keep alive retry count
-/// </summary>
-/// <remarks>
-/// The number of TCP keep alive probes that will be sent before the connection is terminated
-/// </remarks>
-public int OptionTcpKeepAliveRetryCount { get; set; } = -1;
-```
-
-```csharp
-/// <summary>
-/// Option: no delay
-/// </summary>
-/// <remarks>
 /// This option will enable/disable Nagle's algorithm for TCP protocol
-/// </remarks>
+/// </summary>
 public bool OptionNoDelay { get; set; }
 ```
 
 ```csharp
 /// <summary>
-/// Option: reuse address
-/// </summary>
-/// <remarks>
 /// This option will enable/disable SO_REUSEADDR if the OS support this feature
-/// </remarks>
+/// </summary>
 public bool OptionReuseAddress { get; set; }
 ```
 
 ```csharp
 /// <summary>
-/// Option: enables a socket to be bound for exclusive access
-/// </summary>
-/// <remarks>
 /// This option will enable/disable SO_EXCLUSIVEADDRUSE if the OS support this feature
-/// </remarks>
+/// </summary>
 public bool OptionExclusiveAddressUse { get; set; }
+```
+
+```csharp
+/// <summary>
+/// This option will enable SO_REUSEPORT if the OS support this feature (linux only)
+/// </summary>
+public bool OptionReusePort { get; set; }
+```
+
+```csharp
+/// <summary>
+/// This option will run the accept socket on each machine's core
+/// </summary>
+public bool OptionRunAcceptSocketPerCore { get; set; }
+```
+
+```csharp
+/// <summary>
+/// This option will setup SO_KEEPALIVE if the OS support this feature
+/// </summary>
+public bool OptionKeepAlive { get; set; }
+```
+
+```csharp
+/// <summary>
+/// The number of seconds a TCP connection will remain alive/idle before keepalive probes are sent to the remote
+/// </summary>
+public int OptionTcpKeepAliveTime { get; set; } = -1;
+```
+
+```csharp
+/// <summary>
+/// The number of seconds a TCP connection will wait for a keepalive response before sending another keepalive probe
+/// </summary>
+public int OptionTcpKeepAliveInterval { get; set; } = -1;
+```
+
+```csharp
+/// <summary>
+/// The number of TCP keep alive probes that will be sent before the connection is terminated
+/// </summary>
+public int OptionTcpKeepAliveRetryCount { get; set; } = -1;
 ```
 
 ```csharp
 /// <summary>
 /// Option: receive buffer size
 /// </summary>
-public int OptionReceiveBufferSize { get; set; } = 8192;
-```
-
-```csharp
-/// <summary>
-/// Option: send buffer size
-/// </summary>
-public int OptionSendBufferSize { get; set; } = 8192;
+public int OptionReceiveBufferSize { get; set; } = 16 * 1024;
 ```
 
 ```csharp
@@ -192,25 +147,36 @@ public bool IsStarted { get; private set; }
 
 ```csharp
 /// <summary>
-/// Is the server accepting new clients?
+/// Is the server currently stopping?
 /// </summary>
-public bool IsAccepting { get; private set; }
+public bool IsStopping { get; private set; } = false;
 ```
 
 
 ## Control
 
 ```csharp
-void Start()
+/// <summary>
+/// Start the server (not blocking)
+/// </summary>
+/// <param name="cancellationToken"></param>
+public Task StartAsync(CancellationToken cancellationToken = default)
 ```
-
-Starts the web server in a background task in a non blocking way. Be sure to hold the main program's thread else it will exit.
 
 ```csharp
-void Stop()
+/// <summary>
+/// Run the server (blocking)
+/// </summary>
+/// <param name="cancellationToken"></param>
+public async Task RunAsync(CancellationToken cancellationToken = default)
 ```
 
-Stops the web server.
+```csharp
+/// <summary>
+/// Stop Server
+/// </summary>
+public async Task StopAsync()
+```
 
 
 ## Router
@@ -218,57 +184,187 @@ Stops the web server.
 The [`Router`](./router) property contains all routes handled by the web server.
 You can list them with `Router.Routes`.
 
-## Map Handler
 
-For a rapid prototyping, `Func` can be set inline.
+## Map
+
+For a rapid prototyping, `Delegate` can be set inline.
 
 ```csharp
 /// <summary>
-/// Add Func content for GET request
-/// Available arguments :
-///     - HttpSession session
-///     - HttpRequest request
-///     - any query string name
+/// Add handler for Method/Path
 /// </summary>
-/// <param name="url"></param>
+/// <param name="method"></param>
+/// <param name="path"></param>
 /// <param name="handler"></param>
-public void MapGet(string url, Delegate handler)
+/// <returns></returns>
+public SimpleWServer Map(string method, string path, Delegate handler)
 ```
 
 ```csharp
 /// <summary>
-/// Add Func content for POST request
-/// Available arguments :
-///     - HttpSession session
-///     - HttpRequest request
-///     - any query string name
+/// Add handler for GET request
+/// alias for Map("GET", path, handler)
 /// </summary>
-/// <param name="url"></param>
+/// <param name="path"></param>
 /// <param name="handler"></param>
-public void MapPost(string url, Delegate handler)
+public SimpleWServer MapGet(string path, Delegate handler)
 ```
 
-The following example shows how to set a delegate handler.
+```csharp
+/// <summary>
+/// Add handler for POST request
+/// alias for Map("POST", path, handler)
+/// </summary>
+/// <param name="path"></param>
+/// <param name="handler"></param>
+public SimpleWServer MapPost(string path, Delegate handler)
+```
+
+The following examples shows how to set a delegate handler.
 
 ```csharp
 // no parameter
 server.MapGet("/api/test", () => {
     return new { message = "Hello World !" };
 });
-// retrieve the underlying Session and Request object
-server.MapGet("/api/test2", (HttpSession Session) => {
-    return new { message = "Hello World 2 !" };
+// optional parameter "name" : if any query string with key "name" exists, it will map the value into name
+server.MapGet("/api/test/hello", (string? name = null) => {
+    return new { message = $"Hello {name} !" };
 });
-// retrieve the query string parameter "name" and also the Session instance
-server.MapGet("/api/test3", (HttpSession Session, string? name = null) => {
-    return new { message = $"Hello World {name} !" };
+// required parameter "name" : a query string with key "name" must exists and it will map the value into name. else 500 error
+server.MapGet("/api/test/hello", (string name) => {
+    return new { message = $"Hello {name} !" };
 });
+// required parameter "name" : it will map url path part to the value into name
+server.MapGet("/api/test/:name", (string? name = null) => {
+    return new { message = $"Hello {name} !" };
+});
+// retrieve the underlying Session object (will be inject)
+server.MapGet("/api/test/hello", (HttpSession session) => {
+    return session.SendJsonAsync(new { message = "Hello World !" });
+});
+// can mixte the special HttpSession with any others parameters
+server.MapGet("/api/test/hello", (HttpSession session, string? name = null) => {
+    return session.SendJsonAsync(new { message = $"Hello {name} !" });
+});
+// the order of parameter does not matter, only its types does
+server.MapGet("/api/test/hello", (string? name = null, HttpSession session) => {
+    return session.SendJsonAsync(new { message = $"Hello {name} !" });
+});
+// handler can be async
+server.MapGet("/api/test/hello", async (HttpSession session, string? name = null) => {
+    await Task.Delay(2_000);
+    await session.SendJsonAsync(new { message = $"Hello {name} !" });
+});
+// can mixte return anonymous object and strongly typed object
+server.MapGet("/api/test/hello", object (HttpSession session, string? name = null) => {
+    if (string.IsNullOrWhiteSpace(name)); {
+        return Session.Response.Status(404).Text("you must set a name parameter");
+    }
+    return new { message = $"Hello {name} !" };
+});
+// can return ValueTask<object>
+server.MapGet("/api/test/hello", async ValueTask<object> (HttpSession session, string? name = null) => {
+    if (string.IsNullOrWhiteSpace(name)); {
+        await Task.Delay(2_000);
+        return Session.Response.Status(404).Text("you must set a name parameter");
+    }
+    return new { message = $"Hello {name} !" };
+});
+
+
 ```
 ::: tip NOTE
 The handler can take multiple types of parameters, no order required :
   - query string parameters
-  - special properties like [`HttpSession`](./httpsession.md) and [`HttpRequest`](./httprequest.md) are automatically mapped inside the Func.
+  - route path parameters
+  - special type [`HttpSession`](./httpsession.md) can be mapped inside the delegate.
 :::
+
+
+## UseMiddleware
+
+```csharp
+/// <summary>
+/// Add a new Middleware
+/// </summary>
+/// <param name="middleware"></param>
+public void UseMiddleware(HttpMiddleware middleware)
+```
+
+When a request
+
+A middleware
+
+
+## UseModule
+
+```csharp
+/// <summary>
+/// Add a new Module
+/// </summary>
+/// <param name="module"></param>
+/// <exception cref="ArgumentNullException"></exception>
+public void UseModule(IHttpModule module)
+```
+
+
+
+## UseHandlerResult
+
+```csharp
+/// <summary>
+/// Override HandlerResult, Action to do for the non nulls returns
+/// </summary>
+/// <param name="handler"></param>
+public SimpleWServer UseHandlerResult(HttpHandlerResult handler)
+```
+
+This method change the default Handler executed when a **Result is return** from a `Map()` and a `Controller`.
+The default handler is `SendJsonResult` which will serialize the result and send it into json.
+
+Example of **Return result** :
+
+```csharp
+// example 1
+server.MapGet("/", () => {
+    // return from a Map
+    return new { message = "Hello World !" };
+});
+
+// example 2
+public class SomeController : Controller {
+    [Route("GET", "/test")]
+    public object SomePublicMethod(string name = "World") {
+        // return from a controller
+        return new { message = "Hello World !" };
+    }
+}
+```
+
+If you ever wonder why those return where automaticaly serialized and sent,
+this is because the the `UseHandlerResult()`.
+
+
+### Example
+
+If you want to do something else, you can simply override this behaviour :
+
+```csharp
+server.UseHandlerResult(async (session, result) => {
+    // wait
+    await Task.Delay(2_000);
+    // log
+    Console.WriteLine("running the handler result");
+    // send custom
+    await session.Response
+                 .AddHeader("custom", "value") // add custom header
+                 .Json(result) // serialize to json
+                 .SendAsync();
+});
+```
+
+Browse the `HttpHandlerResults` class to see some of already coded handler.
 
 
 ## Dynamic Content
@@ -277,14 +373,15 @@ The handler can take multiple types of parameters, no order required :
 
 ```csharp
 /// <summary>
-/// Add dynamic content for a controller type which inherit from Controller
+/// Register a Controller type and map all its routes
 /// </summary>
-/// <param name="controllerType">controllerType</param>
-/// <param name="path">path (default is "/")</param>
-void AddDynamicContent(Type controllerType, string path = "/")
+/// <typeparam name="TController"></typeparam>
+/// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
+/// <returns></returns>
+public SimpleWServer UseController<TController>(string? basePrefix = null) where TController : Controller
 ```
 
-This method will integrate the class in the `Router` as a REST API under the `path` endpoint.
+This method will integrate the class in the `Router` as a REST API under the `basePrefix` endpoint.
 
 
 #### Example
@@ -293,16 +390,16 @@ You have `UserController`, `DepartmentController` and `WorkController` classes
 and you want them to be served by the web server under the `/api` endpoint.
 
 ```csharp
-var server = new simplew(IPAddress.Any, 2015);
-server.AddDynamicContent(typeof(UserController), "/api");
-server.AddDynamicContent(typeof(DepartmentController), "/api");
-server.AddDynamicContent(typeof(WorkController), "/api");
+var server = new SimpleWServer(IPAddress.Any, 2015);
+server.UseController<UserController>("/api");
+server.UseController<DepartmentController>("/api");
+server.UseController<WorkController>("/api");
 ```
 
 ::: tip NOTE
 You need to add a line for each `Controller` you want to integrate. 
 This is a repetitive task and you can miss a thing. You should prefer the automatic
-`AddDynamicContent()` method to integrate all Controllers.
+`UseControllers()` method to integrate all Controllers.
 :::
 
 
@@ -310,21 +407,22 @@ This is a repetitive task and you can miss a thing. You should prefer the automa
 
 ```csharp
 /// <summary>
-/// Add dynamic content by registered all controllers which inherit from Controller
+/// Register all controllers assignable to TController found in the same assembly
 /// </summary>
-/// <param name="path">path (default is "/")</param>
-/// <param name="excludes">List of Controller to not auto load</param>
-void AddDynamicContent(string path = "/", IEnumerable<Type> excludes = null);
+/// <typeparam name="TController"></typeparam>
+/// <param name="basePrefix"></param>
+/// <param name="excludes"></param>
+public SimpleWServer UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller
 ```
 
-At runtime, this method will find all classes based on `Controller` class and integrate them in the `Router` as a REST API under the `path` endpoint.
+At runtime, this method will find all classes based on `TController` class and integrate them in the `Router` as a REST API under the `basePrefix` endpoint.
 
 
 #### Example
 
 ```csharp
-var server = new simplew(IPAddress.Any, 2015);
-server.AddDynamicContent("/api");
+var server = new SimpleWServer(IPAddress.Any, 2015);
+server.UseControllers<Controller>("/api");
 ```
 
 The parameter `excludes` can be useful if you want to exclude some Controller from being integrated.
@@ -335,8 +433,17 @@ The parameter `excludes` can be useful if you want to exclude some Controller fr
 Suppose you have a `MaintenanceController` class which must only be used when you want to make the web server in a special maintenance mode.
 
 ```csharp
-var server = new simplew(IPAddress.Any, 2015);
-server.AddDynamicContent("/api", new Type[] { typeof(MaintenanceController) });
+var server = new SimpleWServer(IPAddress.Any, 2015);
+server.UseControllers<Controller>("/api", new Type[] { typeof(MaintenanceController) });
+```
+
+#### Example
+
+Suppose you have [subclass](../guide/api-callback.md#subclass) the `Controller` class to add properties or methods of your own in a new `BaseController`. To call all your controllers based on you custome class : 
+
+```csharp
+var server = new SimpleWServer(IPAddress.Any, 2015);
+server.UseControllers<BaseController>("/api");
 ```
 
 ::: tip NOTE
@@ -359,132 +466,83 @@ void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser get
 ```
 
 
-## SSE
+## JsonEngine
+
 
 ```csharp
 /// <summary>
-/// Send data conformed to Server Sent Event to filtered SSE Sessions
+/// Get the current Json Serializer/Deserializer
 /// </summary>
-/// <param name="evt">the event name</param>
-/// <param name="data">the data</param>
-/// <param name="filter">filter the SSESessions (default: null)</param>
-void BroadcastSSESessions(string evt, string data, Expression<Func<HttpSession, bool>> filter = null)
+public IJsonEngine JsonEngine { get; private set; } = new SystemTextJsonEngine(SystemTextJsonEngine.OptionsSimpleWBuilder());
 ```
 
-To sent reponse to all active Servent Sent Events session. A `filter` is available to selected desired session.
-The `evt` and `data` parameters correspond to the format of SSE message.
+This property defines the Json engine used in server and controllers to serialize, deserialize and populate objects.
+The default engine is `System.Text.Json` initialized with recommended options.
 
-
-## WebSockets
-
-### Manual
 
 ```csharp
 /// <summary>
-/// Add WEBSOCKET controller content for a controller type which inherit from Controller
+/// Set the Json Serializer/Deserializer
 /// </summary>
-/// <param name="controllerType">controllerType</param>
-/// <param name="path">path (default is "/websocket")</param>
-void AddWebSocketContent(Type controllerType, string path = "/websocket")
-```
-
-This method will integrate the class in the `Router` as a websocket under the `path` endpoint.
-
-
-### Automatic
-
-```csharp
-/// <summary>
-/// Add WEBSOCKET controller content by registered all controllers which inherit from Controller
-/// </summary>
-/// <param name="path">path (default is "/websocket")</param>
-/// <param name="excepts">List of Controller to not auto load</param>
-void AddWebSocketContent(string path = "/websocket", IEnumerable<Type> excepts = null)
-```
-
-At runtime, this method will find all classes based on `Controller` class and integrate them in the `Router` as a websocket under the `path` endpoint.
-
-
-### MulticastText()
-
-```csharp
-/// <summary>
-/// Send Message to all active websocket clients
-/// </summary>
-/// <param name="text"></param>
+/// <param name="jsonEngine"></param>
 /// <returns></returns>
-bool MulticastText(string text)
+public SimpleWServer UseJsonEngine(IJsonEngine jsonEngine)
 ```
+
+To change the engine just provide an object which implement the [`IJsonEngine`](./ijsonengine.md) interface.
+
+
+::: tip NOTE
+You can learn how to change the [`JsonEngine`](../guide/api-response.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package.
+:::
+
+
+## SSL Certificate
 
 ```csharp
 /// <summary>
-/// Send Message to all active websocket clients
+/// Add SslContext
 /// </summary>
-/// <param name="buffer"></param>
+/// <param name="sslContext"></param>
 /// <returns></returns>
-bool MulticastText(byte[] buffer)
+public SimpleWServer UseHttps(SslContext sslContext)
 ```
 
-The `MulticastText` send messge to all active websocket clients.
+This methode takes an `SslContext` and use it to run an HTTPS server.
 
+::: code-group
 
-## CORS
-
-```csharp
-/// <summary>
-/// Setup CORS
-/// </summary>
-/// <param name="origin">Access-Control-Allow-Origin</param>
-/// <param name="headers">Access-Control-Allow-Headers</param>
-/// <param name="methods">Access-Control-Allow-Methods</param>
-/// <param name="credentials">Access-Control-Allow-Credentials</param>
-void AddCORS(string origin="*", string headers = "*", string methods = "GET,POST,OPTIONS", string credentials="true")
+```csharp [NET8]
+X509Certificate2 cert = new(@"certifcate.pfx", "password");
+new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
 ```
 
-Setup the Cross-Origin Resource Sharing policy and so, add 4 headers to every response.
-`server.AddCORS()` method should be called before any `server.AddStaticContent()`.
-
-## Static Content
-
-```csharp
-/// <summary>
-/// Add static content
-/// The timeout parameter control how long the content is cached (null or 0 mean no cache at all)
-/// When cache, there is an underlying file watcher to refresh cache on file change
-/// </summary>
-/// <param name="path">Static content path</param>
-/// <param name="prefix">Cache prefix (default is "/")</param>
-/// <param name="filter">Cache filter (default is "*.*")</param>
-/// <param name="timeout">Refresh cache timeout (0 or null mean no cache, default: null)</param>
-void AddStaticContent(string path, string prefix = "/", string filter = "*.*", TimeSpan? timeout = null)
+```csharp [NET9 or above]
+X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(@"certifcate.pfx", "password");
+new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
 ```
 
-This method expose all files in `path` in the `Router` and served by the web server under the `prefix` endpoint.
-There is a `filter` and a `timeout` to control the cache lifetime (default: 1 hour).
+:::
 
 
-```csharp
-/// <summary>
-/// File to get by default (default: "index.html")
-/// </summary>
-string DefaultDocument { get; set; } = "index.html";
-```
-
-This property change the default file in of a static content of no file has been selected.
-
-```csharp
-/// <summary>
-/// Enable AutoIndex when DefaultDocument does not exists
-/// scope : global to all AddStaticContent()
-/// </summary>
-bool AutoIndex { get; set; } = false;
-```
-
-This property enable or disable the index feature which list files of a static 
-content directory when no file has been selected and `DefaultDocument` does not exists.
+See an [example](../guide/ssl-certificate.md#example-for-local-test).
 
 
 ## Security
+
+```csharp
+/// <summary>
+/// Max size of request headers in bytes (default: 64 KB)
+/// </summary>
+public int OptionMaxRequestHeaderSize { get; set; } = 64 * 1024;
+```
+
+```csharp
+/// <summary>
+/// Max size of request body in bytes (default: 10 MB)
+/// </summary>
+public long OptionMaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
+```
 
 ```csharp
 /// <summary>

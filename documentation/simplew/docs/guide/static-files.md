@@ -2,7 +2,7 @@
 
 Not only can you serve all your static files, but SimpleW is also great at serving your JavaScript applications — whether they're built with Vue, React, or anything else.
 
-That's the goal of the `StaticFilesModule`.
+That's the goal of the [`StaticFilesModule`](../reference/staticfilesmodule.md).
 
 
 ## Basic
@@ -140,7 +140,7 @@ $ pwd
 > C:\www\my-vue-app\dist
 ```
 
-Now, we will server this directory using the `AddStaticFiles` module of SimpleW :
+Now, we will server this directory using the `StaticFilesModule` module of SimpleW :
 
 ::: code-group
 

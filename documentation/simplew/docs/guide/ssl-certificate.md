@@ -1,6 +1,6 @@
 # SSL Certificate
 
-The HTTPS protocol is supported and you can bring your own certificate in `PKCS#12` format.
+The [HTTPS](https://en.wikipedia.org/wiki/HTTPS) protocol is supported and you can bring your own certificate in `PKCS#12` format.
 
 With just a small change, the [basic static example](./static-files) can serve HTTPS.
 
@@ -10,6 +10,19 @@ With just a small change, the [basic static example](./static-files) can serve H
 
 :::
 
-There are 2 mains changes :
-- L14 : a `context` creation pointing the certificat file which can be password protect.
+::: tip NOTE
+The `clientCertificateRequired` and `checkCertificateRevocation` allows better control over the SSL Context, 
+and they are to `false` for test purpose.
+Take a look at the [UseHttps](../reference/simplewserver.md#ssl-certificate) for more information.
+:::
 
+
+## Example for local test
+
+The example bellow will use a pregerenarated certificate. Use only locally for testing, do not use in production !!
+
+::: code-group
+
+<<< @/snippets/ssl-certificate-example.cs#snippet{16-20,23,26 csharp:line-numbers} [program.cs]
+
+:::

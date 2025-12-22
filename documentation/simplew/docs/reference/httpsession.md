@@ -1,18 +1,97 @@
 # HttpSession
 
-The interface is both implemented by  `SimpleWSession` or `SimpleWSSession`.
+The `HttpSession` is class responsible of receiving and sending data to a client :
+- The received data are structured as a `HttpRequest` in the [`Request`](#request) property.
+- The sending data are structured as a `HttpResponse` in the [`Response`](#response) property.
 
 
 ## Server
 
 ```csharp
 /// <summary>
-/// Server Instance
+/// Underlying SimpleW Server
 /// </summary>
-public new Isimplew Server;
+public readonly SimpleWServer Server;
 ```
 
-This property can be used to control [`Server`](./simplew) from any `Controller` class.
+This property can be used to control [`Server`](./simplewserver.md) from any [`Controller`](./controller.md) class.
+
+## Request
+
+```csharp
+/// <summary>
+/// Last HttpRequest Parsed
+/// </summary>
+public HttpRequest Request;
+```
+
+When `HttpSession` receive data from a client, it parses its content into a [`HttpRequest`](./httprequest.md) object and set the `Request` property.
+It supports http pipelining.
+
+## Response
+
+```csharp
+/// <summary>
+/// Current HttpResponse
+/// </summary>
+public HttpResponse Response;
+```
+
+Before `HttpSession` call the Dispatcher to execute the underlying handler of the matched Route, it instanciates a new [`HttpResponse`](./httpresponse.md) object and set the `Response` property.
+
+::: tip NOTE
+You should always used the `Response` to send data to a client.
+:::
+
+## SendAsync
+
+::: warning
+The `SendAsync` methods bellow are the lower level to send data to client. They are barely aliases of `Socket.SendAsync()` with a thread-safe guard.
+You should never need to use them but instead use the `Response` property to send data to a client.
+:::
+
+```csharp
+/// <summary>
+/// SendAsync native to socket (thread safe)
+/// Lower level of sending
+/// </summary>
+/// <param name="buffer"></param>
+/// <returns></returns>
+/// <exception cref="InvalidOperationException"></exception>
+public async ValueTask SendAsync(ReadOnlyMemory<byte> buffer)
+```
+
+```csharp
+/// <summary>
+/// SendAsync to socket (thread safe)
+/// Lower level of sending
+/// </summary>
+/// <param name="segments"></param>
+/// <returns></returns>
+public async ValueTask SendAsync(ArraySegment<byte>[] segments)
+```
+
+```csharp
+/// <summary>
+/// SendAsync to socket (thread safe)
+/// Lower level of sending
+/// </summary>
+/// <param name="header"></param>
+/// <param name="body"></param>
+/// <returns></returns>
+public async ValueTask SendAsync(ArraySegment<byte> header, ArraySegment<byte> body)
+```
+
+```csharp
+/// <summary>
+/// SendAsync to socket (thread safe)
+/// Lower level of sending
+/// </summary>
+/// <param name="buffer"></param>
+/// <returns></returns>
+/// <exception cref="InvalidOperationException"></exception>
+public async ValueTask SendAsync(ArraySegment<byte> buffer)
+```
 
 
 ## jwt
@@ -35,56 +114,4 @@ public string jwt { get; set; }
 ///       property here is for logging</para>
 /// </summary>
 public IWebUser webuser { get; set; }
-```
-
-
-## SendResponseBody
-
-This is the lowest level, and it consists of sending bytes data to the client.
-
-```csharp
-/// <summary>
-/// Send the HTTP response body (synchronous)
-/// </summary>
-/// <param name="body">HTTP response body</param>
-/// <returns>Size of sent data</returns>
-public long SendResponseBody(string body);
-```
-
-```csharp
-/// <summary>
-/// Send the HTTP response body (synchronous)
-/// </summary>
-/// <param name="body">HTTP response body as a span of characters</param>
-/// <returns>Size of sent data</returns>
-public long SendResponseBody(ReadOnlySpan<char> body);
-```
-
-```csharp
-/// <summary>
-/// Send the HTTP response body (synchronous)
-/// </summary>
-/// <param name="buffer">HTTP response body buffer</param>
-/// <returns>Size of sent data</returns>
-public long SendResponseBody(byte[] buffer);
-```
-
-```csharp
-/// <summary>
-/// Send the HTTP response body (synchronous)
-/// </summary>
-/// <param name="buffer">HTTP response body buffer</param>
-/// <param name="offset">HTTP response body buffer offset</param>
-/// <param name="size">HTTP response body size</param>
-/// <returns>Size of sent data</returns>
-public long SendResponseBody(byte[] buffer, long offset, long size);
-```
-
-```csharp
-/// <summary>
-/// Send the HTTP response body (synchronous)
-/// </summary>
-/// <param name="buffer">HTTP response body buffer as a span of bytes</param>
-/// <returns>Size of sent data</returns>
-public long SendResponseBody(ReadOnlySpan<byte> buffer)
 ```
