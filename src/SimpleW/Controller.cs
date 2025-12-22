@@ -12,9 +12,14 @@ namespace SimpleW {
         public HttpSession Session { get; internal set; } = default!;
 
         /// <summary>
-        /// Gets the current HttpRequest.
+        /// Gets the current HttpRequest
         /// </summary>
         public HttpRequest Request => Session.Request;
+
+        /// <summary>
+        /// Gets the current HttpResponse
+        /// </summary>
+        public HttpResponse Response => Session.Response;
 
         /// <summary>
         /// Called before any Controller.Method()
