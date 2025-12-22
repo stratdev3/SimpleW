@@ -284,6 +284,9 @@ namespace SimpleW {
         /// server.MapGet("/api/test/hello", static (string? name = null) => {
         ///     return new { message = $"Hello {name} !" };
         /// });
+        /// server.MapGet("/api/test/:name", (string? name = null) => {
+        ///     return new { message = $"Hello {name} !" };
+        /// });
         /// server.MapGet("/api/test/hello", static (HttpSession session) => {
         ///     return session.SendJsonAsync(new { message = "Hello World !" });
         /// });
