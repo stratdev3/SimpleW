@@ -803,7 +803,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="jsonEngine"></param>
         /// <returns></returns>
-        public SimpleWServer UseJsonEngine(IJsonEngine jsonEngine) {
+        public SimpleWServer ConfigureJsonEngine(IJsonEngine jsonEngine) {
             if (IsStarted) {
                 throw new InvalidOperationException("JsonEngine must be configured before starting the server.");
             }
