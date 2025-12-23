@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace SimpleW {
 
     /// <summary>
@@ -12,6 +14,14 @@ namespace SimpleW {
         /// <param name="value"></param>
         /// <returns></returns>
         string Serialize<T>(T value);
+
+        /// <summary>
+        /// Serialize an object instance into json (write directly into a IBufferWriter)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="writer"></param>
+        /// <param name="value"></param>
+        void SerializeUtf8<T>(IBufferWriter<byte> writer, T value);
 
         /// <summary>
         /// Deserialize a json string into an T object instance

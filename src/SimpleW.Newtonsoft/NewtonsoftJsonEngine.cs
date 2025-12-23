@@ -1,7 +1,10 @@
+using System.Buffers;
 using System.Globalization;
 using System.Reflection;
+using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using SimpleW.Buffers;
 
 
 namespace SimpleW.Newtonsoft {
@@ -60,6 +63,37 @@ namespace SimpleW.Newtonsoft {
         /// <returns></returns>
         public string Serialize<T>(T value) {
             return JsonConvert.SerializeObject(value, SerializeSettingsCache);
+        }
+
+        /// <summary>
+        /// Serialize an object instance into json (write directly into a IBufferWriter)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="writer"></param>
+        /// <param name="value"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        public void SerializeUtf8<T>(IBufferWriter<byte> writer, T value) {
+            if (writer is null) {
+                throw new ArgumentNullException(nameof(writer));
+            }
+
+            // settings
+            JsonSerializerSettings settings = SerializeSettingsCache ?? new JsonSerializerSettings();
+
+            // create a JsonSerializer from settings (safe, per call)
+            JsonSerializer serializer = JsonSerializer.Create(settings);
+
+            // Bridge IBufferWriter<byte> -> Stream
+            using (BufferWriterStream bwStream = new(writer)) {
+                // UTF8 without BOM, leave stream open
+                using (StreamWriter streamWriter = new(bwStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), bufferSize: 1024, leaveOpen: true) { NewLine = "\n" }) {
+                    using (JsonTextWriter jsonWriter = new(streamWriter) { Formatting = Formatting.None, Culture = CultureInfo.InvariantCulture }) {
+                        serializer.Serialize(jsonWriter, value);
+                        jsonWriter.Flush();
+                        streamWriter.Flush(); // important: push remaining bytes
+                    }
+                }
+            }
         }
 
         /// <summary>

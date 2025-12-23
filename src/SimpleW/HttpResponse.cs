@@ -3,7 +3,6 @@ using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.Json;
 using SimpleW.Buffers;
 
 
@@ -497,10 +496,8 @@ namespace SimpleW {
 
             PooledBufferWriter writer = new(_bufferPool);
 
-            using (Utf8JsonWriter jsonWriter = new(writer, new JsonWriterOptions { SkipValidation = true, Indented = false })) {
-                JsonSerializer.Serialize(jsonWriter, value);
-                jsonWriter.Flush();
-            }
+            // use the JsonEngine defined in server/session
+            _session.JsonEngine.SerializeUtf8(writer, value);
 
             _ownedBodyWriter = writer;
             _bodyKind = BodyKind.OwnedWriter;

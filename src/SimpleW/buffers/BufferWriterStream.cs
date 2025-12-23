@@ -6,7 +6,7 @@ namespace SimpleW.Buffers {
     /// <summary>
     /// Stream wrapper writing into an IBufferWriter (no intermediate allocations).
     /// </summary>
-    internal sealed class BufferWriterStream : Stream {
+    public sealed class BufferWriterStream : Stream {
 
         /// <summary>
         /// The underlying writer

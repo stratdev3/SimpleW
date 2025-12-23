@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -60,6 +61,19 @@ namespace SimpleW {
         /// <returns></returns>
         public string Serialize<T>(T value) {
             return JsonSerializer.Serialize(value, SerializeOptionsCache);
+        }
+
+        /// <summary>
+        /// Serialize an object instance into json (write directly into a IBufferWriter)
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="writer"></param>
+        /// <param name="value"></param>
+        public void SerializeUtf8<T>(IBufferWriter<byte> writer, T value) {
+            using (Utf8JsonWriter jsonWriter = new(writer, new JsonWriterOptions { SkipValidation = true, Indented = false })) {
+                JsonSerializer.Serialize(jsonWriter, value, SerializeOptionsCache);
+                jsonWriter.Flush();
+            }
         }
 
         /// <summary>
