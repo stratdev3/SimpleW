@@ -16,6 +16,16 @@ public readonly SimpleWServer Server;
 
 This property can be used to control [`Server`](./simplewserver.md) from any [`Controller`](./controller.md) class.
 
+## JsonEngine
+
+```csharp
+/// <summary>
+/// Expose the Server.JsonEngine
+/// </summary>
+public IJsonEngine JsonEngine;
+```
+
+
 ## Request
 
 ```csharp

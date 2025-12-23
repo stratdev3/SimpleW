@@ -1,4 +1,4 @@
-# WebSockets
+# WebSockets [⚠️ need update to v26]
 
 
 The advantage of Websockets over HTTP is the two-way communication channels : server can push data to the client without it has to request (except first time to connect socket).

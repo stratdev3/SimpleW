@@ -1,4 +1,4 @@
-# CorsModule
+# CorsModule [⚠️ need update to v26]
 
 The `CorsModule` 
 

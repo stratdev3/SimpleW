@@ -1,4 +1,4 @@
-# WebsocketModule
+# WebsocketModule [⚠️ need update to v26]
 
 The `WebsocketModule` 
 

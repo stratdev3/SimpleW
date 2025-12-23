@@ -1,4 +1,4 @@
-# IWebUser
+# IWebUser [⚠️ need update to v26]
 
 The interface is both implemented by `WebUser` and `TokenWebUser`.
 It is used to set the `webuser` property in `Controller`.

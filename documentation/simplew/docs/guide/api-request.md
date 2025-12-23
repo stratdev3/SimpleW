@@ -1,4 +1,4 @@
-# Request
+# Request [⚠️ need update to v26]
 
 The [`Request`](../reference/controller#httprequest) property of [`Controller`](../reference/controller) class contains all the information (Url, Headers, Method, Protocol, Body...) about the request sent by the client.
 

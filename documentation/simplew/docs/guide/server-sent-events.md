@@ -1,4 +1,4 @@
-# Server Sent Events
+# Server Sent Events [⚠️ need update to v26]
 
 Server-Sent Events (SSE) is a server push technology enabling a client to receive automatic updates from a server via an HTTP connection.
 

@@ -1,4 +1,4 @@
-# CORS
+# CORS [⚠️ need update to v26]
 
 
 Internet Browser (Firefox, Chrome, IE...) blocks javascript requesting RestAPI from a different domain. That's why [CORS](https://developer.mozilla.org/fr/docs/Web/HTTP/CORS) was created, to define permission and sharing data.

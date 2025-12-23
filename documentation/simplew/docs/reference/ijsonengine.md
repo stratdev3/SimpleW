@@ -17,7 +17,14 @@ A `IJsonEngine` is an interface with the following method :
 /// <returns></returns>
 string Serialize<T>(T value);
 
-```csharp
+/// <summary>
+/// Serialize an object instance into json (write directly into a IBufferWriter)
+/// </summary>
+/// <typeparam name="T"></typeparam>
+/// <param name="writer"></param>
+/// <param name="value"></param>
+void SerializeUtf8<T>(IBufferWriter<byte> writer, T value);
+
 /// <summary>
 /// Deserialize a json string into an T object instance
 /// Contract: never returns null. Throws if JSON is "null" or cannot be deserialized to a non-null instance.

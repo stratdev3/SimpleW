@@ -14,6 +14,10 @@ $ dotnet add package SimpleW --version 26.0.0-alpha.20251221-2209
     <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/dt/SimpleW" alt="NuGet Downloads" /></a>
 </div>
 
+::: tip NOTE
+Follow this [guide](./migrate-from-v16) if you migrate from v16.
+:::
+
 
 ## Minimal Example
 
