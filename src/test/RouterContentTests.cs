@@ -20,7 +20,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<Route_DynamicMethod_200_Controller>("/api");
+            server.MapController<Route_DynamicMethod_200_Controller>("/api");
 
             await server.StartAsync();
 
@@ -55,7 +55,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<Route_DynamicControllerMethod_200_Controller>("/api");
+            server.MapController<Route_DynamicControllerMethod_200_Controller>("/api");
 
             await server.StartAsync();
 
@@ -91,7 +91,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<Route_DynamicControllerMethodAbsolute_Controller>("/api");
+            server.MapController<Route_DynamicControllerMethodAbsolute_Controller>("/api");
 
             await server.StartAsync();
 
@@ -114,7 +114,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<Route_DynamicControllerMethodAbsolute_Controller>("/api");
+            server.MapController<Route_DynamicControllerMethodAbsolute_Controller>("/api");
 
             await server.StartAsync();
 
@@ -150,7 +150,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<Route_Dynamic_CatchAll_Controller>("/api");
+            server.MapController<Route_Dynamic_CatchAll_Controller>("/api");
 
             await server.StartAsync();
 
@@ -185,7 +185,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<OnBeforeController>("/api");
+            server.MapController<OnBeforeController>("/api");
 
             await server.StartAsync();
 
@@ -229,7 +229,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<SubclassController>("/api");
+            server.MapController<SubclassController>("/api");
 
             await server.StartAsync();
 

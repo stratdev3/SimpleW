@@ -358,7 +358,7 @@ namespace SimpleW {
 
         #endregion map delegate
 
-        #region controllers
+        #region map controllers
 
         /// <summary>
         /// Register a Controller type and map all its routes
@@ -366,7 +366,7 @@ namespace SimpleW {
         /// <typeparam name="TController"></typeparam>
         /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
         /// <returns></returns>
-        public SimpleWServer UseController<TController>(string? basePrefix = null) where TController : Controller {
+        public SimpleWServer MapController<TController>(string? basePrefix = null) where TController : Controller {
             ControllerDelegateFactory.RegisterController(typeof(TController), Router, basePrefix);
             return this;
         }
@@ -380,13 +380,13 @@ namespace SimpleW {
         /// <returns></returns>
         /// <example>
         /// <code>
-        /// server.UseControllers&lt;Controller&gt;(
+        /// server.MapControllers&lt;Controller&gt;(
         ///     "/api",
         ///     new[] { typeof(MaintenanceController) }
         /// );
         /// </code>
         /// </example>
-        public SimpleWServer UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
+        public SimpleWServer MapControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
             Type baseType = typeof(TController);
             HashSet<Type> excluded = new(excludes ?? Enumerable.Empty<Type>());
 
@@ -407,7 +407,7 @@ namespace SimpleW {
             return this;
         }
 
-        #endregion controllers
+        #endregion map controllers
 
         #region network
 

@@ -42,7 +42,7 @@ namespace example.rewrite {
 #if NET9_0_OR_GREATER
                 X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(certificateFilePath, "secret");
 #else
-                X509Certificate2 cert = new(@"C:\Users\SimpleW\ssl\domain.pfx", "password");
+                X509Certificate2 cert = new(certificateFilePath, "password");
 #endif
                 SslContext sslContext = new(
                     SslProtocols.Tls12 | SslProtocols.Tls13,
@@ -54,9 +54,26 @@ namespace example.rewrite {
             }
 #pragma warning restore CS0162 // Code inaccessible détecté
 
-            //server.MapGet("/api/test/hello", (string? name = null) => {
-            //    return new { message = $"{name}, Hello World !" };
+            //server.MapGet("/", () => {
+            //    return server.Router.Routes;
             //});
+            // use middleware as firewall/authenticate
+            //server.UseMiddleware(static (session, next) => {
+            //    // check if the user is authorized ?
+            //    if (session.Request.Path.StartsWith("/api/secret", StringComparison.Ordinal)) {
+            //        if (!session.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != "secret") {
+            //            // stop the pipeline here by sending a 401
+            //            return session.Response.Unauthorized("You're authorized in this area").SendAsync();
+            //        }
+            //    }
+            //    // continue the pipeline
+            //    return next();
+            //});
+
+
+            server.MapGet("/api/test/hello", (string? name = null) => {
+                return new { message = $"{name}, Hello World !" };
+            });
             //server.MapGet("/api/test/hello", static (HttpSession session, string? name = null) => {
             //    return session.Response.Json(new { message = $"{name} Hello World !" }).SendAsync();
             //});
@@ -74,10 +91,11 @@ namespace example.rewrite {
             //    AutoIndex = true
             //});
 
-            server.UseStaticFilesModule(options => {
-                options.Path = @"C:\www\spa\refresh\";
-                options.Prefix = "/";
-            });
+            //server.UseStaticFilesModule(options => {
+            //    options.Path = @"C:\www\spa\refresh\";
+            //    options.Prefix = "/";
+            //    options.CacheTimeout = TimeSpan.FromDays(1);
+            //});
 
             //server.UseModule(
             //    new WebsocketModule(
@@ -132,8 +150,8 @@ namespace example.rewrite {
             //    )
             //);
 
-            //server.UseControllers<Controller>("/api");
-            server.UseController<Post_DynamicContent_HelloWorld_Controller>("/api");
+            //server.MapControllers<Controller>("/api");
+            //server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
 
             server.OptionReuseAddress = true;
             server.OptionNoDelay = true;

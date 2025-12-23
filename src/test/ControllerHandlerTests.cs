@@ -20,7 +20,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController< Get_DynamicContent_NoParameter_HelloWorld_Controller>("/api");
+            server.MapController< Get_DynamicContent_NoParameter_HelloWorld_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -54,7 +54,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Get_DynamicContent_Qs_ParameterName_HelloWorld_Controller>("/api");
+            server.MapController<Get_DynamicContent_Qs_ParameterName_HelloWorld_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -76,7 +76,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Get_DynamicContent_Qs_ParameterName_HelloWorld_Controller>("/api");
+            server.MapController<Get_DynamicContent_Qs_ParameterName_HelloWorld_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -109,7 +109,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Get_DynamicContent_Qs_ParameterNameOptional_Controller>("/api");
+            server.MapController<Get_DynamicContent_Qs_ParameterNameOptional_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -131,7 +131,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Get_DynamicContent_Qs_ParameterNameOptional_Controller>("/api");
+            server.MapController<Get_DynamicContent_Qs_ParameterNameOptional_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -153,7 +153,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Get_DynamicContent_Qs_ParameterNameOptional_Controller>("/api");
+            server.MapController<Get_DynamicContent_Qs_ParameterNameOptional_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -188,7 +188,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<Get_DynamicContent_Path_ParameterName_HelloWorld_Controller>("/api");
+            server.MapController<Get_DynamicContent_Path_ParameterName_HelloWorld_Controller>("/api");
 
             await server.StartAsync();
 
@@ -212,7 +212,7 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
-            server.UseController<Get_DynamicContent_Path_ParameterName_HelloWorld_Controller>("/api");
+            server.MapController<Get_DynamicContent_Path_ParameterName_HelloWorld_Controller>("/api");
 
             await server.StartAsync();
 
@@ -246,7 +246,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Post_DynamicContent_HelloWorld_Controller>("/api");
+            server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -272,7 +272,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Post_DynamicContent_HelloWorld_Controller>("/api");
+            server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -303,7 +303,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Post_DynamicContent_HelloWorld_Controller>("/api");
+            server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
             await server.StartAsync();
 
             // client
@@ -333,7 +333,7 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseController<Post_DynamicContent_HelloWorld_Controller>("/api");
+            server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
             await server.StartAsync();
 
             // client
