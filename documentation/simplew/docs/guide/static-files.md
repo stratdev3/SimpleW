@@ -53,10 +53,10 @@ The following example enable cache for 1 day :
 ```csharp:line-numbers
 // serve statics files
 server.UseStaticFilesModule(options => {
-options.Path = @"C:\www\";                      // serve your files located here
-options.Prefix = "/";                           // to "/" endpoint
-options.CacheFilter = "*.csv";                  // cache only csv files
-options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
+    options.Path = @"C:\www\";                      // serve your files located here
+    options.Prefix = "/";                           // to "/" endpoint
+    options.CacheFilter = "*.csv";                  // cache only csv files
+    options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
 });
 ```
 

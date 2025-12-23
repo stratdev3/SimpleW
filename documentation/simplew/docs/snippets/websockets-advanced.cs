@@ -16,7 +16,6 @@ namespace Sample {
             await server.RunAsync();
             Console.WriteLine("http server started at http://localhost:{server.Port}/");
             Console.WriteLine("websocket server started at ws://localhost:{server.Port}/websocket");
-            Console.ReadKey();
 
         }
     }

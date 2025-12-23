@@ -20,10 +20,9 @@ namespace Sample {
             // enable telemetry
             server.EnableTelemetry = true;
 
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
 
         static TracerProvider openTelemetryObserver(string source) {

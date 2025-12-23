@@ -11,12 +11,12 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // 1. set Newtonsoft as the json engine
-            server.JsonEngine = new NewtonsoftJsonEngine();
+            server.UseJsonEngine(new NewtonsoftJsonEngine());
 
             // or
 
             // 2. set Newtonsoft as the json engine with custom settings
-            server.JsonEngine = new NewtonsoftJsonEngine(
+            server.UseJsonEngine(new NewtonsoftJsonEngine(
                 (action) => {
                     Newtonsoft.Json.JsonSerializerSettings settings = new();
 
@@ -27,10 +27,10 @@ namespace Sample {
 
                     return settings;
                 }
-            );
+            ));
 
             // find all Controllers classes and serve on the "/api" endpoint
-            server.AddDynamicContent("/api");
+            server.UseControllers<Controller>("/api");
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
 
@@ -47,7 +47,7 @@ namespace Sample {
         public object SomePublicMethod() {
 
             // the Request property contains all data (Url, Headers...) from the client Request
-            var url = Request.Url;
+            var url = Request.RawUrl;
 
             // the return will be serialized to json and sent as response to client
             return new {

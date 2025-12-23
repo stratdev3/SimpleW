@@ -21,22 +21,21 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     public class TestController : Controller {
 
-        // call on GET http://localhost:{server.Port}/api/test/index
+        // call on GET http://localhost:2015/api/test/index
         [Route("GET", "/test/index")]
         public object Index() {
             return "test index page";
         }
 
-        // call POST http://localhost:{server.Port}/api/test/create
+        // call POST http://localhost:2015/api/test/create
         [Route("POST", "/test/create")]
         public object Create() {
             return "test create success";
@@ -60,23 +59,22 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     [Route("/test")]
     public class TestController : Controller {
 
-        // call on GET http://localhost:{server.Port}/api/test/index
+        // call on GET http://localhost:2015/api/test/index
         [Route("GET", "/index")]
         public object Index() {
             return "test index page";
         }
 
-        // call POST http://localhost:{server.Port}/api/test/create
+        // call POST http://localhost:2015/api/test/create
         [Route("POST", "/create")]
         public object Create() {
             return "test create success";
@@ -101,29 +99,28 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     [Route("test/")]
     public class TestController : Controller {
 
-        // test with http://localhost:{server.Port}/api/test/index
+        // test with http://localhost:2015/api/test/index
         [Route("GET", "/index")]
         public object Index() {
             return "test index page";
         }
 
-        // test with http://localhost:{server.Port}/home
+        // test with http://localhost:2015/home
         [Route("GET", "/home", isAbsolutePath: true)]
         public object Home() {
             return "home page";
         }
 
-        // test with POST http://localhost:{server.Port}/api/test/create
+        // test with POST http://localhost:2015/api/test/create
         [Route("POST", "/create")]
         public object Create() {
             return "test create success";
@@ -147,31 +144,30 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     [Route("test/")]
     public class TestController : Controller {
 
-        // test with http://localhost:{server.Port}/api/test/index
+        // test with http://localhost:2015/api/test/index
         [Route("GET", "/index")]
         public object Index() {
             return "test index page";
         }
 
-        // test with POST http://localhost:{server.Port}/api/test/create
+        // test with POST http://localhost:2015/api/test/create
         [Route("POST", "/create")]
         public object Create() {
             return "test create success";
         }
 
-        // test with POST http://localhost:{server.Port}/api/test/delete
+        // test with POST http://localhost:2015/api/test/delete
         // or
-        // test with POST http://localhost:{server.Port}/api/test/remove
+        // test with POST http://localhost:2015/api/test/remove
         [Route("POST", "/delete")]
         [Route("POST", "/remove")]
         public object Delete() {
@@ -203,19 +199,18 @@ namespace Sample {
             // allow regular expression in route path
             server.Router.RegExpEnabled = true;
 
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     [Route("/test")]
     public class TestController : Controller {
 
-        // http://localhost:{server.Port}/api/test/index
+        // http://localhost:2015/api/test/index
         // or
-        // http://localhost:{server.Port}/api/test/indexes
+        // http://localhost:2015/api/test/indexes
         [Route("GET", "/(index|indexes)")]
         public object Index() {
             return "test index page";
@@ -245,17 +240,16 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     public class TestController : Controller {
 
-        // test with http://localhost:{server.Port}/api/hello
-        // test with http://localhost:{server.Port}/api/hello?name=stratdev
+        // test with http://localhost:2015/api/hello
+        // test with http://localhost:2015/api/hello?name=stratdev
         //
         // parameter "name" has default value "world" 
         // so the query string "name" is not mandatory
@@ -264,8 +258,8 @@ namespace Sample {
             return $"Hello {name} !";
         }
 
-        // test with http://localhost:{server.Port}/api/hi?name=stratdev
-        // test with http://localhost:{server.Port}/api/hi
+        // test with http://localhost:2015/api/hi?name=stratdev
+        // test with http://localhost:2015/api/hi
         //
         // parameter "name" has no default value
         // so the query string "name" is required
@@ -275,7 +269,7 @@ namespace Sample {
             return $"Hi {name} !";
         }
 
-        // test with http://localhost:{server.Port}/api/bye?name=stratdev&exit=0
+        // test with http://localhost:2015/api/bye?name=stratdev&exit=0
         //
         // it does not matter if there are others query strings 
         // than the one declared in the method
@@ -284,7 +278,7 @@ namespace Sample {
             return $"Bye {name} !";
         }
 
-        // test with http://localhost:{server.Port}/api/debug?a=bbbb&c=dddd
+        // test with http://localhost:2015/api/debug?a=bbbb&c=dddd
         [Route("GET", "/debug")]
         public object Debug() {
             try {
@@ -334,25 +328,24 @@ namespace Sample {
             // allow regular expression in route path
             server.Router.RegExpEnabled = true;
 
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     [Route("/test")]
     public class TestController : Controller {
 
-        // test with http://localhost:{server.Port}/api/test/user/stratdev
+        // test with http://localhost:2015/api/test/user/stratdev
         [Route("GET", "/user/{login}")]
         public object User(string login) {
             return $"Hello {login}";
         }
 
-        // test with http://localhost:{server.Port}/api/test/user/stratdev/2023
+        // test with http://localhost:2015/api/test/user/stratdev/2023
         // but
-        // test with http://localhost:{server.Port}/api/test/user/stratdev/xx will
+        // test with http://localhost:2015/api/test/user/stratdev/xx will
         // return a http code 500 as the "xx" cast to integer
         // will throw an exception
         [Route("GET", "/user/{login}/{year}")]
@@ -393,7 +386,7 @@ namespace Sample {
             // need by MaintenanceController wildcard route parameter
             server.Router.RegExpEnabled = true;
             // add the dedidacted controller
-            server.AddDynamicContent(typeof(MaintenanceController), "/api");
+            server.UseControllers<Controller>(typeof(MaintenanceController), "/api");
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
@@ -434,11 +427,10 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // api v1
-            server.AddDynamicContent("/api/v1");
+            server.UseControllers<Controller>("/api/v1");
 
-            await server.RunAsync();
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
@@ -475,14 +467,13 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // api v1
-            server.AddDynamicContent(typeof(TestController), "/api/v1");
+            server.UseControllers<Controller>(typeof(TestController), "/api/v1");
 
             // api v2
-            server.AddDynamicContent(typeof(Test2Controller), "/api/v2");
+            server.UseControllers<Controller>(typeof(Test2Controller), "/api/v2");
 
-            await server.RunAsync();
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 

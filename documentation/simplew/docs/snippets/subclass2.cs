@@ -9,11 +9,10 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // exclude BaseController as a regular Controller
-            server.AddDynamicContent("/api", new Type[] { typeof(BaseController) });
+            server.UseControllers<Controller>("/api", new Type[] { typeof(BaseController) });
 
-            await server.RunAsync();
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 

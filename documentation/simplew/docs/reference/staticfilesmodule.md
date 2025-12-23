@@ -1,41 +1,76 @@
 # StaticFilesModule
 
 
-The `StaticFilesModule` 
+The `StaticFilesModule` serve static files and expose some options to adjust its behaviour and performances.
+
+
+## Definition
 
 ```csharp
 /// <summary>
-/// Add static content
-/// The timeout parameter control how long the content is cached (null or 0 mean no cache at all)
-/// When cache, there is an underlying file watcher to refresh cache on file change
+/// Use Static Files Module
 /// </summary>
-/// <param name="path">Static content path</param>
-/// <param name="prefix">Cache prefix (default is "/")</param>
-/// <param name="filter">Cache filter (default is "*.*")</param>
-/// <param name="timeout">Refresh cache timeout (0 or null mean no cache, default: null)</param>
-void AddStaticContent(string path, string prefix = "/", string filter = "*.*", TimeSpan? timeout = null)
+/// <param name="server"></param>
+/// <param name="configure"></param>
+/// <returns></returns>
+/// <exception cref="ArgumentException"></exception>
+public static SimpleWServer UseStaticFilesModule(this SimpleWServer server, Action<StaticFilesOptions>? configure = null)
 ```
 
-This method expose all files in `path` in the `Router` and served by the web server under the `prefix` endpoint.
-There is a `filter` and a `timeout` to control the cache lifetime (default: 1 hour).
-
+The options are the followings
 
 ```csharp
 /// <summary>
-/// File to get by default (default: "index.html")
+/// Path of the directory to Server
 /// </summary>
-string DefaultDocument { get; set; } = "index.html";
+public string Path { get; set; }
 ```
-
-This property change the default file in of a static content of no file has been selected.
 
 ```csharp
 /// <summary>
-/// Enable AutoIndex when DefaultDocument does not exists
-/// scope : global to all AddStaticContent()
+/// Url Prefix to call this module
 /// </summary>
-bool AutoIndex { get; set; } = false;
+public string Prefix { get; set; } = "/";
 ```
 
-This property enable or disable the index feature which list files of a static 
-content directory when no file has been selected and `DefaultDocument` does not exists.
+```csharp
+/// <summary>
+/// Cache file filter
+/// </summary>
+public string CacheFilter { get; set; } = "*";
+```
+
+```csharp
+/// <summary>
+/// Cache timeout
+/// </summary>
+public TimeSpan? CacheTimeout { get; set; }
+```
+
+```csharp
+/// <summary>
+/// If true, serves a minimal directory listing when no default document exists.
+/// </summary>
+public bool AutoIndex { get; set; } = false;
+```
+
+```csharp
+/// <summary>
+/// Default document for directory requests
+/// </summary>
+public string DefaultDocument { get; set; } = "index.html";
+```
+
+## Example
+
+```csharp:line-numbers
+// serve statics files
+server.UseStaticFilesModule(options => {
+    options.Path = @"C:\www\";                      // serve your files located here
+    options.Prefix = "/";                           // to "/" endpoint
+    options.CacheFilter = "*.csv";                  // cache only csv files
+    options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
+});
+```
+
+See more [examples](../guide/static-files.md).

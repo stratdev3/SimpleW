@@ -10,7 +10,7 @@ You can use the [`Request.Body`](../reference/httprequest#body) property to retr
 Frontend send POST data
 
 ```bash
-curl -X POST "http://localhost:{server.Port}/api/user/save" -d 'data in the body'
+curl -X POST "http://localhost:2015/api/user/save" -d 'data in the body'
 ```
 
 Backend receive
@@ -25,10 +25,9 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
@@ -59,7 +58,7 @@ You can use the [`BodyMap()`](../reference/httprequest#bodymap) helper method fo
 Frontend send POST json data
 
 ```bash
-curl -X POST "http://localhost:{server.Port}/api/user/save" \
+curl -X POST "http://localhost:2015/api/user/save" \
      -H "Content-Type: application/json" \
      -d '{
             id: "c037a13c-5e77-11ec-b466-e33ffd960c3a",
@@ -81,10 +80,9 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
@@ -135,7 +133,7 @@ You can use the [`BodyMap()`](../reference/httprequest#bodymap) method for readi
 Frontend send POST json data
 
 ```bash
-curl -X POST "http://localhost:{server.Port}/api/user/save" \
+curl -X POST "http://localhost:2015/api/user/save" \
      -H "Content-Type: application/x-www-form-urlencoded" \
      -d 'id=c037a13c-5e77-11ec-b466-e33ffd960c3a&name=test&creation=2021-12-21T15%3A06%3A58&enabled=true'
 ```
@@ -152,10 +150,9 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
@@ -208,7 +205,7 @@ Frontend send a file POST
 
 ```bash
 echo "hello server !" > message.txt
-curl -F "file=@message.txt" "http://localhost:{server.Port}/api/user/upload"
+curl -F "file=@message.txt" "http://localhost:2015/api/user/upload"
 ```
 
 Backend receive
@@ -223,10 +220,9 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 

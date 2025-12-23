@@ -16,7 +16,7 @@ namespace Sample {
 
             // use the StaticFilesModule
             server.UseStaticFilesModule(options => {
-                options.Path = @"C:\www\spa\";                  // serve your files located here
+                options.Path = @"C:\www\";                      // serve your files located here
                 options.Prefix = "/";                           // to "/" endpoint
                 options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory

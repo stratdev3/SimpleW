@@ -187,7 +187,6 @@ public HttpResponse File(FileInfo fi, string? contentType = null)
 /// <param name="minSize"></param>
 /// <param name="level"></param>
 /// <returns></returns>
-[MethodImpl(MethodImplOptions.AggressiveInlining)]
 public HttpResponse Compression(ResponseCompressionMode mode, int? minSize = null, CompressionLevel? level = null)
 ```
 
@@ -198,7 +197,6 @@ public HttpResponse Compression(ResponseCompressionMode mode, int? minSize = nul
 /// <summary>
 /// Convenience: disable compression for this response
 /// </summary>
-[MethodImpl(MethodImplOptions.AggressiveInlining)]
 public HttpResponse NoCompression()
 ```
 
@@ -214,22 +212,6 @@ public async ValueTask SendAsync()
 ```
 
 This is the proper way of sending data a client in you want to do it on your own.
-But any object return by a delegate will be default serialized and send as json.
-
-See: 
-
-
-## 
-
-```csharp
-
-```
-
-## 
-
-```csharp
-
-```
 
 
 ## DefaultContentType
@@ -254,7 +236,96 @@ public static string DefaultContentType(string extension)
 public static string DefaultStatusText(int code)
 ```
 
+## Cookies
+
+```csharp
+/// <summary>
+/// Set a Cookie
+/// So tell client to create a cookie on its side
+/// </summary>
+/// <param name="name"></param>
+/// <param name="value"></param>
+/// <param name="options"></param>
+/// <returns></returns>
+public HttpResponse SetCookie(string name, string value, in CookieOptions options = default)
+```
+
+```csharp
+/// <summary>
+/// Delete a Cookie
+/// So tell client to delete the cookie on its side
+/// </summary>
+/// <param name="name"></param>
+/// <param name="path"></param>
+/// <param name="domain"></param>
+/// <returns></returns>
+public HttpResponse DeleteCookie(string name, string? path = "/", string? domain = null)
+```
+
+```csharp
+/// <summary>
+/// Clear all Cookies
+/// clear cookies here, so no cookie will be written in the response
+/// </summary>
+/// <returns></returns>
+public HttpResponse ClearCookies()
+```
+
 
 ## Aliases
 
-The following methods provide a more convenient way for most of the [common response](../guide/api-response.md#helpers).
+The following methods provide a convenient way for the [common response](../guide/api-response.md#helpers).
+
+```csharp
+/// <summary>
+/// Not Found 404
+/// </summary>
+/// <param name="body"></param>
+/// <returns></returns>
+public HttpResponse NotFound(string? body = null)
+```
+
+```csharp
+/// <summary>
+/// Internal Server Error 500
+/// </summary>
+/// <param name="body"></param>
+/// <returns></returns>
+public HttpResponse InternalServerError(string? body = null)
+```
+
+```csharp
+/// <summary>
+/// Redirect 302
+/// </summary>
+/// <param name="url"></param>
+/// <returns></returns>
+public HttpResponse Redirect(string url)
+```
+
+```csharp
+/// <summary>
+/// Unauthorized 401
+/// </summary>
+/// <param name="body"></param>
+/// <returns></returns>
+public HttpResponse Unauthorized(string? body = null)
+```
+
+```csharp
+/// <summary>
+/// Forbidden 403
+/// </summary>
+/// <param name="body"></param>
+/// <returns></returns>
+public HttpResponse Forbidden(string? body = null)
+```
+
+```csharp
+/// <summary>
+/// Access 401/403
+/// </summary>
+/// <param name="isWebuser"></param>
+/// <returns></returns>
+public HttpResponse Access(bool isWebuser = false)
+```

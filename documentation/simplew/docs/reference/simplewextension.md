@@ -1,6 +1,6 @@
 # SimpleWExtension
 
-The `SimpleWExtension` static class bring many useful helpers.
+The `SimpleWExtension` static class provide several useful helpers.
 
 
 ## JsonMap()

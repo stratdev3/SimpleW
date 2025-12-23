@@ -33,16 +33,15 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     public class TestController : Controller {
 
-        // http://localhost:{server.Port}/api/test/index
+        // http://localhost:2015/api/test/index
         [Route("GET", "test/index")]
         public List<string> Index() {
             return new List<string>() {
@@ -88,17 +87,16 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
-            await server.RunAsync();
+            server.UseControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 
     [Route("test/")]
     public class TestController : Controller {
 
-        // http://localhost:{server.Port}/api/test/index
+        // http://localhost:2015/api/test/index
         [Route("GET", "/index")]
         public List<string> Index() {
             return new List<string>() {
@@ -106,7 +104,7 @@ namespace Sample {
             };
         }
 
-        // http://localhost:{server.Port}/api/test/about
+        // http://localhost:2015/api/test/about
         [Route("GET", "/about")]
         public object About() {
             return "about page";

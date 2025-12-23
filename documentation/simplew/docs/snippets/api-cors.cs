@@ -16,11 +16,10 @@ namespace Sample {
                 "true"              // Access-Control-Allow-Credentials
             );
 
-            server.AddDynamicContent("/api");
+            server.UseControllers<Controller>("/api");
 
-            await server.RunAsync();
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 

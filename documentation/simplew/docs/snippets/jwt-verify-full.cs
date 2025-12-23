@@ -7,14 +7,13 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.AddDynamicContent("/api");
+            server.UseControllers<Controller>("/api");
 
             // set secret in order BaseController to verify jwt from request
             BaseController.JWT_SECRET = "secret";
 
-            await server.RunAsync();
             Console.WriteLine("server started at http://localhost:{server.Port}/");
-            Console.ReadKey();
+            await server.RunAsync();
         }
     }
 

@@ -19,7 +19,7 @@ The following example illustrates the `object` return type :
 
 :::
 
-A request to `http://localhost:{server.Port}/api/test` will result in :
+A request to `http://localhost:2015/api/test` will result in :
 
 ```json
 {

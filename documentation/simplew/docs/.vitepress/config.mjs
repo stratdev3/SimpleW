@@ -57,12 +57,20 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'Serve API',
+                    text: 'Framework',
                     items: [
                         { text: 'Basic', link: '/guide/api-basic' },
                         { text: 'Routing', link: '/guide/api-routing' },
                         { text: 'Response', link: '/guide/api-response' },
                         { text: 'Request', link: '/guide/api-request' },
+                    ]
+                },
+                {
+                    text: 'Extend',
+                    items: [
+                        { text: 'Result Handler', link: '/guide/handlerresult' },
+                        { text: 'Middleware', link: '/guide/middleware' },
+                        { text: 'Module', link: '/guide/module' },
                         { text: 'Callback', link: '/guide/api-callback' },
                     ]
                 },
@@ -72,7 +80,6 @@ export default defineConfig({
                         { text: 'Json Web Token', link: '/guide/api-json-web-token' },
                         { text: 'Cross-Origin Resource Sharing', link: '/guide/api-cors' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
-                        { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                     ]
                 },
                 {
@@ -86,6 +93,7 @@ export default defineConfig({
                     text: 'Others',
                     items: [
                         { text: 'Static Files', link: '/guide/static-files' },
+                        { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                     ]
                 },
             ],
@@ -95,17 +103,18 @@ export default defineConfig({
                     text: 'Core',
                     items: [
                         { text: 'SimpleWServer', link: '/reference/simplewserver' },
-                    ]
-                },
-                {
-                    text: 'Dynamic Content',
-                    items: [
-                        { text: 'Controller', link: '/reference/controller' },
                         { text: 'HttpSession', link: '/reference/httpsession' },
                         { text: 'HttpRequest', link: '/reference/httprequest' },
                         { text: 'HttpResponse', link: '/reference/httpresponse' },
                         { text: 'HttpHeaders', link: '/reference/httpheaders' },
+                    ]
+                },
+                {
+                    text: 'Routing',
+                    items: [
+                        { text: 'Router', link: '/reference/router' },
                         { text: 'RouteAttribute', link: '/reference/routeattribute' },
+                        { text: 'Controller', link: '/reference/controller' },
                     ]
                 },
                 {
@@ -122,6 +131,8 @@ export default defineConfig({
                     items: [
                         { text: 'SimpleWExtension', link: '/reference/simplewextension' },
                         { text: 'IJsonEngine', link: '/reference/ijsonengine' },
+                        { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
+                        { text: 'IHttpModule', link: '/reference/ihttpmodule' },
                         { text: 'IWebUser', link: '/reference/iwebuser' },
                     ]
                 },

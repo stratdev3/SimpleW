@@ -282,6 +282,19 @@ The handler can take multiple types of parameters, no order required :
 :::
 
 
+## UseHandlerResult
+
+```csharp
+/// <summary>
+/// Override HandlerResult, Action to do for the non nulls returns
+/// </summary>
+/// <param name="handler"></param>
+public SimpleWServer UseHandlerResult(HttpHandlerResult handler)
+```
+
+See more [example](../guide/handlerresult.md).
+
+
 ## UseMiddleware
 
 ```csharp
@@ -292,10 +305,7 @@ The handler can take multiple types of parameters, no order required :
 public void UseMiddleware(HttpMiddleware middleware)
 ```
 
-When a request
-
-A middleware
-
+See more [example](../guide/middleware.md).
 
 ## UseModule
 
@@ -308,66 +318,10 @@ A middleware
 public void UseModule(IHttpModule module)
 ```
 
+See more [example](../guide/module.md).
 
 
-## UseHandlerResult
-
-```csharp
-/// <summary>
-/// Override HandlerResult, Action to do for the non nulls returns
-/// </summary>
-/// <param name="handler"></param>
-public SimpleWServer UseHandlerResult(HttpHandlerResult handler)
-```
-
-This method change the default Handler executed when a **Result is return** from a `Map()` and a `Controller`.
-The default handler is `SendJsonResult` which will serialize the result and send it into json.
-
-Example of **Return result** :
-
-```csharp
-// example 1
-server.MapGet("/", () => {
-    // return from a Map
-    return new { message = "Hello World !" };
-});
-
-// example 2
-public class SomeController : Controller {
-    [Route("GET", "/test")]
-    public object SomePublicMethod(string name = "World") {
-        // return from a controller
-        return new { message = "Hello World !" };
-    }
-}
-```
-
-If you ever wonder why those return where automaticaly serialized and sent,
-this is because the the `UseHandlerResult()`.
-
-
-### Example
-
-If you want to do something else, you can simply override this behaviour :
-
-```csharp
-server.UseHandlerResult(async (session, result) => {
-    // wait
-    await Task.Delay(2_000);
-    // log
-    Console.WriteLine("running the handler result");
-    // send custom
-    await session.Response
-                 .AddHeader("custom", "value") // add custom header
-                 .Json(result) // serialize to json
-                 .SendAsync();
-});
-```
-
-Browse the `HttpHandlerResults` class to see some of already coded handler.
-
-
-## Dynamic Content
+## Controllers
 
 ### Manual
 

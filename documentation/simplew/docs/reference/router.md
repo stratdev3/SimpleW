@@ -1,18 +1,6 @@
 # Router
 
-The primary goal of the `Router` is to call component depending on [`Method`](./httprequest#method) and [`Url`](./httprequest#url).
-
-
-## RegExpEnabled
-
-```csharp
-/// <summary>
-/// Enable Regular Expression for Route.Path
-/// Consider RegExpEnabled to be slower
-/// scope : global to all AddDynamicContent()
-/// </summary>
-public bool RegExpEnabled { get; set; } = false;
-```
+The primary goal of the `Router` is to execute `delegate` depending on [`Method`](./httprequest#method) and [`Url`](./httprequest#url).
 
 
 ## Routes

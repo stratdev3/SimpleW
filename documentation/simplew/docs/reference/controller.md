@@ -2,7 +2,7 @@
 
 The `Controller` is the base class for REST API controllers
 
-It contains many properties and methods. The following one are the most used.
+It contains several properties and methods. The following one are the most used.
 
 
 ## Session
