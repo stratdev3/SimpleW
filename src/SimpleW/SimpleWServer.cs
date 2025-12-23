@@ -257,6 +257,32 @@ namespace SimpleW {
 
         #endregion middleware and module
 
+        #region handler result
+
+        /// <summary>
+        /// Override HandlerResult, Action to do for the non nulls returns
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <example>
+        /// // example1 : log and sent
+        /// server.ConfigureHandlerResult((session, result) => {
+        ///     Console.WriteLine("result will be serialized and sent as response");
+        ///     return session.SendJsonAsync(result);
+        /// });
+        /// // exemple2: do something async and sent response
+        /// server.ConfigureHandlerResult(async (session, result) => {
+        ///     Console.WriteLine("wait 2sec then result will be serialized and sent as response");
+        ///     await Task.Delay(2_000);
+        ///     await session.SendJsonAsync(result);
+        /// });
+        /// </example>
+        public SimpleWServer ConfigureHandlerResult(HttpHandlerResult handler) {
+            Router.HandlerResult = handler;
+            return this;
+        }
+
+        #endregion handler result
+
         #region map delegate
 
         /// <summary>
@@ -331,28 +357,6 @@ namespace SimpleW {
         /// <param name="handler"></param>
         public SimpleWServer MapPost(string path, Delegate handler) {
             Router.MapPost(path, handler);
-            return this;
-        }
-
-        /// <summary>
-        /// Override HandlerResult, Action to do for the non nulls returns
-        /// </summary>
-        /// <param name="handler"></param>
-        /// <example>
-        /// // example1 : log and sent
-        /// server.UseHandlerResult((session, result) => {
-        ///     Console.WriteLine("result will be serialized and sent as response");
-        ///     return session.SendJsonAsync(result);
-        /// });
-        /// // exemple2: do something async and sent response
-        /// server.UseHandlerResult(async (session, result) => {
-        ///     Console.WriteLine("wait 2sec then result will be serialized and sent as response");
-        ///     await Task.Delay(2_000);
-        ///     await session.SendJsonAsync(result);
-        /// });
-        /// </example>
-        public SimpleWServer UseHandlerResult(HttpHandlerResult handler) {
-            Router.HandlerResult = handler;
             return this;
         }
 
