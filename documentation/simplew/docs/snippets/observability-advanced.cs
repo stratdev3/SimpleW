@@ -20,7 +20,7 @@ namespace Sample {
             // enable telemetry
             server.EnableTelemetry = true;
 
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }

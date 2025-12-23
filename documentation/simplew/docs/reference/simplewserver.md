@@ -332,7 +332,7 @@ See more [example](../guide/module.md).
 /// <typeparam name="TController"></typeparam>
 /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
 /// <returns></returns>
-public SimpleWServer UseController<TController>(string? basePrefix = null) where TController : Controller
+public SimpleWServer MapController<TController>(string? basePrefix = null) where TController : Controller
 ```
 
 This method will integrate the class in the `Router` as a REST API under the `basePrefix` endpoint.
@@ -345,15 +345,15 @@ and you want them to be served by the web server under the `/api` endpoint.
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
-server.UseController<UserController>("/api");
-server.UseController<DepartmentController>("/api");
-server.UseController<WorkController>("/api");
+server.MapController<UserController>("/api");
+server.MapController<DepartmentController>("/api");
+server.MapController<WorkController>("/api");
 ```
 
 ::: tip NOTE
 You need to add a line for each `Controller` you want to integrate. 
 This is a repetitive task and you can miss a thing. You should prefer the automatic
-`UseControllers()` method to integrate all Controllers.
+`MapControllers()` method to integrate all Controllers.
 :::
 
 
@@ -366,7 +366,7 @@ This is a repetitive task and you can miss a thing. You should prefer the automa
 /// <typeparam name="TController"></typeparam>
 /// <param name="basePrefix"></param>
 /// <param name="excludes"></param>
-public SimpleWServer UseControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller
+public SimpleWServer MapControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller
 ```
 
 At runtime, this method will find all classes based on `TController` class and integrate them in the `Router` as a REST API under the `basePrefix` endpoint.
@@ -376,7 +376,7 @@ At runtime, this method will find all classes based on `TController` class and i
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
-server.UseControllers<Controller>("/api");
+server.MapControllers<Controller>("/api");
 ```
 
 The parameter `excludes` can be useful if you want to exclude some Controller from being integrated.
@@ -388,7 +388,7 @@ Suppose you have a `MaintenanceController` class which must only be used when yo
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
-server.UseControllers<Controller>("/api", new Type[] { typeof(MaintenanceController) });
+server.MapControllers<Controller>("/api", new Type[] { typeof(MaintenanceController) });
 ```
 
 #### Example
@@ -397,7 +397,7 @@ Suppose you have [subclass](../guide/api-callback.md#subclass) the `Controller` 
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
-server.UseControllers<BaseController>("/api");
+server.MapControllers<BaseController>("/api");
 ```
 
 ::: tip NOTE

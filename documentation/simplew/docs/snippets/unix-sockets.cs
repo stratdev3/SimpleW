@@ -13,7 +13,7 @@ namespace Sample {
             var server = new SimpleWServer(new UnixDomainSocketEndPoint(unixSocketPath));
 
             // find all Controllers classes and serve on the "/api" endpoint
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
 
             Console.WriteLine(@"server available on : unix:C:\www\server.sock");
 

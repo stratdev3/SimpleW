@@ -10,7 +10,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // find all classes based on Controller class, and serve on the "/api" endpoint
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
 

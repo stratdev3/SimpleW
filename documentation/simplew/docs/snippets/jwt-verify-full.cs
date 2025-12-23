@@ -7,7 +7,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
 
             // set secret in order BaseController to verify jwt from request
             BaseController.JWT_SECRET = "secret";

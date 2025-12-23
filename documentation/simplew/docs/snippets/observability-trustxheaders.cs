@@ -23,7 +23,7 @@ namespace Sample {
             // allow X Headers
             server.TrustXHeaders = true;
 
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }

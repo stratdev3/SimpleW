@@ -15,7 +15,7 @@ namespace Sample {
             server.AddStaticContent(@"C:\www\client", "/", timeout: TimeSpan.FromDays(1));
 
             // find all Controllers classes and serve on the "/api" endpoint
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
 
             await server.RunAsync();
             Console.WriteLine("http server started at http://localhost:{server.Port}/");

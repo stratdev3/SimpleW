@@ -9,7 +9,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // exclude BaseController as a regular Controller
-            server.UseControllers<Controller>("/api", new Type[] { typeof(BaseController) });
+            server.MapControllers<Controller>("/api", new Type[] { typeof(BaseController) });
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();

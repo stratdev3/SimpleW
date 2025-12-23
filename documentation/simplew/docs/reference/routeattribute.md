@@ -33,7 +33,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -87,7 +87,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }

@@ -6,7 +6,7 @@ Server-Sent Events (SSE) is a server push technology enabling a client to receiv
 
 This example illustrates how SimpleW can be used to :
 1. serve an index.html static file which contains javascript code to connect to server sent events
-2. serve a sse endpoint with `server.UseControllers<Controller>()`
+2. serve a sse endpoint with `server.MapControllers<Controller>()`
 3. response to all clients
 
 <br />

@@ -21,7 +21,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -59,7 +59,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -99,7 +99,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -144,7 +144,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -199,7 +199,7 @@ namespace Sample {
             // allow regular expression in route path
             server.Router.RegExpEnabled = true;
 
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -240,7 +240,7 @@ namespace Sample {
     class Program {
         static async Task Main() {
             var server = new SimpleWServer(IPAddress.Any, 2015);
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -328,7 +328,7 @@ namespace Sample {
             // allow regular expression in route path
             server.Router.RegExpEnabled = true;
 
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
         }
@@ -386,7 +386,7 @@ namespace Sample {
             // need by MaintenanceController wildcard route parameter
             server.Router.RegExpEnabled = true;
             // add the dedidacted controller
-            server.UseControllers<Controller>(typeof(MaintenanceController), "/api");
+            server.MapControllers<Controller>(typeof(MaintenanceController), "/api");
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
@@ -427,7 +427,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // api v1
-            server.UseControllers<Controller>("/api/v1");
+            server.MapControllers<Controller>("/api/v1");
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
@@ -467,10 +467,10 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // api v1
-            server.UseControllers<Controller>(typeof(TestController), "/api/v1");
+            server.MapControllers<Controller>(typeof(TestController), "/api/v1");
 
             // api v2
-            server.UseControllers<Controller>(typeof(Test2Controller), "/api/v2");
+            server.MapControllers<Controller>(typeof(Test2Controller), "/api/v2");
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();

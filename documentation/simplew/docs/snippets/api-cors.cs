@@ -16,7 +16,7 @@ namespace Sample {
                 "true"              // Access-Control-Allow-Credentials
             );
 
-            server.UseControllers<Controller>("/api");
+            server.MapControllers<Controller>("/api");
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
             await server.RunAsync();
