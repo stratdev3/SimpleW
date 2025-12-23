@@ -23,6 +23,11 @@ namespace SimpleW {
         public readonly SimpleWServer Server;
 
         /// <summary>
+        /// Expose the Server.JsonEngine
+        /// </summary>
+        public IJsonEngine JsonEngine => Server.JsonEngine;
+
+        /// <summary>
         /// Socket from SocketAsyncEventArgs
         /// </summary>
         private readonly Socket _socket;
