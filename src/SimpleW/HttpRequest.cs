@@ -68,7 +68,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// QueryString
+        /// QueryString as String (e.g: key1=value1&amp;key2=value2)
         /// </summary>
         public string QueryString { get; private set; } = string.Empty;
 
@@ -83,7 +83,7 @@ namespace SimpleW {
         private Dictionary<string, string>? _query;
 
         /// <summary>
-        /// QueryString Dictionnary
+        /// QueryString as Dictionnary
         /// </summary>
         public Dictionary<string, string> Query {
             get {
