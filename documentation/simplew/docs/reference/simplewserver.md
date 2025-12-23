@@ -440,7 +440,7 @@ The default engine is `System.Text.Json` initialized with recommended options.
 /// </summary>
 /// <param name="jsonEngine"></param>
 /// <returns></returns>
-public SimpleWServer UseJsonEngine(IJsonEngine jsonEngine)
+public SimpleWServer ConfigureJsonEngine(IJsonEngine jsonEngine)
 ```
 
 To change the engine just provide an object which implement the [`IJsonEngine`](./ijsonengine.md) interface.
