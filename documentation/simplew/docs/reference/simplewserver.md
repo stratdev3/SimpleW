@@ -282,14 +282,14 @@ The handler can take multiple types of parameters, no order required :
 :::
 
 
-## UseHandlerResult
+## ConfigureHandlerResult
 
 ```csharp
 /// <summary>
 /// Override HandlerResult, Action to do for the non nulls returns
 /// </summary>
 /// <param name="handler"></param>
-public SimpleWServer UseHandlerResult(HttpHandlerResult handler)
+public SimpleWServer ConfigureHandlerResult(HttpHandlerResult handler)
 ```
 
 See more [example](../guide/handlerresult.md).

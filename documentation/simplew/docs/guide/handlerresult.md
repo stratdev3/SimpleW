@@ -23,7 +23,7 @@ public class SomeController : Controller {
 ```
 
 If you ever wonder why those return where automaticaly serialized and sent,
-this is because the the `UseHandlerResult()`.
+this is because the the `ConfigureHandlerResult()`.
 
 
 ### Example
@@ -31,7 +31,7 @@ this is because the the `UseHandlerResult()`.
 If you want to do something else, you can simply override this behaviour :
 
 ```csharp
-server.UseHandlerResult(async (session, result) => {
+server.ConfigureHandlerResult(async (session, result) => {
     // wait
     await Task.Delay(2_000);
     // log
