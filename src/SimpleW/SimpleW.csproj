@@ -5,10 +5,6 @@
     <OutputType>Library</OutputType>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 
-    <!-- temporary rename REWRITE to SIMPLEW for current dll and nuget package -->
-    <AssemblyName>SimpleW</AssemblyName>
-    <PackageId>SimpleW</PackageId>
-    
     <!-- perfs/size -->
     <!--
     <PublishAot>true</PublishAot>
@@ -35,8 +31,6 @@
     <Version>26.0.0-alpha</Version>
 
     <!-- build options -->
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <!-- for LitJWT package-->
     <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
