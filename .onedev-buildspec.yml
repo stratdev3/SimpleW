@@ -24,6 +24,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Newtonsoft
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Newtonsoft/
+        dotnet build -c @param:build_configuration@ SimpleW.Newtonsoft.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: test
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -97,9 +109,29 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: build SimpleW.Newtonsoft
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Newtonsoft
+        TS=$(date +"%Y%m%d-%H%M")
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Newtonsoft.csproj
+        dotnet pack -c Release SimpleW.Newtonsoft.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Newtonsoft
+    sourcePath: src/SimpleW.Newtonsoft/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -111,6 +143,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Newtonsoft to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
