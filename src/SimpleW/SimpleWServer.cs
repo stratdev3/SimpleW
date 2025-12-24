@@ -478,16 +478,16 @@ namespace SimpleW {
             _listenSocket = CreateSocket();
 
             // option: reuse address
-            _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, Options.OptionReuseAddress);
+            _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, Options.ReuseAddress);
             // option: exclusive address use
-            _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, Options.OptionExclusiveAddressUse);
+            _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, Options.ExclusiveAddressUse);
             // option: reuse port
-            if (Options.OptionReusePort) {
+            if (Options.ReusePort) {
                 _listenSocket.EnableReusePort();
             }
             // option: dual mode (this option must be applied before listening)
             if (EndPoint.AddressFamily == AddressFamily.InterNetworkV6) {
-                _listenSocket.DualMode = Options.OptionDualMode;
+                _listenSocket.DualMode = Options.DualMode;
             }
 
             // bind socket to endpoint
@@ -495,9 +495,9 @@ namespace SimpleW {
             // refresh the endpoint property based on the actual endpoint created
             EndPoint = _listenSocket.LocalEndPoint!;
             // start listen to the socket with the given accepting backlog size
-            _listenSocket.Listen(Options.OptionListenSocketBacklog);
+            _listenSocket.Listen(Options.ListenBacklog);
 
-            int maxParalleListenSocketEventArgs = Options.OptionRunAcceptSocketPerCore ? Environment.ProcessorCount : 1;
+            int maxParalleListenSocketEventArgs = Options.AcceptPerCore ? Environment.ProcessorCount : 1;
             for (int i = 0; i < maxParalleListenSocketEventArgs; i++) {
                 // SocketAsyncEventArgs
                 SocketAsyncEventArgs listenSocketEventArgs = new();
@@ -659,7 +659,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="session"></param>
         public void MarkSession(HttpSession session) {
-            if (Options.OptionSessionTimeout == TimeSpan.MinValue) {
+            if (Options.SessionTimeout == TimeSpan.MinValue) {
                 return;
             }
             session.MarkActivity();
@@ -676,14 +676,14 @@ namespace SimpleW {
         /// Start Session Timeout Timer
         /// </summary>
         private void StartSessionTimeoutTimer() {
-            if (Options.OptionSessionTimeout == TimeSpan.MinValue) {
+            if (Options.SessionTimeout == TimeSpan.MinValue) {
                 return;
             }
             if (_sessionTimeoutTimer != null) {
                 return;
             }
 
-            double seconds = Math.Min(5, Options.OptionSessionTimeout.TotalSeconds / 2);
+            double seconds = Math.Min(5, Options.SessionTimeout.TotalSeconds / 2);
             TimeSpan period = TimeSpan.FromSeconds(seconds);
             _sessionTimeoutTimer = new Timer(CheckSessionTimeout, null, period, period);
         }
@@ -699,7 +699,7 @@ namespace SimpleW {
 
             try {
                 long now = Environment.TickCount64;
-                long timeoutMs = (long)Options.OptionSessionTimeout.TotalMilliseconds;
+                long timeoutMs = (long)Options.SessionTimeout.TotalMilliseconds;
 
                 foreach (var kvp in Sessions) {
                     HttpSession? session = kvp.Value;
@@ -752,12 +752,12 @@ namespace SimpleW {
         /// <summary>
         /// Max size of request headers in bytes (default: 64 KB)
         /// </summary>
-        public int OptionMaxRequestHeaderSize { get; set; } = 64 * 1024;
+        public int MaxRequestHeaderSize { get; set; } = 64 * 1024;
 
         /// <summary>
         /// Max size of request body in bytes (default: 10 MB)
         /// </summary>
-        public long OptionMaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
+        public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 
         #endregion security
 
@@ -766,63 +766,63 @@ namespace SimpleW {
         /// <summary>
         /// This option will set the maximum length of the pending connections queue.
         /// </summary>
-        public int OptionListenSocketBacklog { get; set; } = 1024;
+        public int ListenBacklog { get; set; } = 1024;
 
         /// <summary>
         /// Specifies whether the Socket is a dual-mode socket used for both IPv4 and IPv6.
         /// Will work only if socket is bound on IPv6 address.
         /// </summary>
-        public bool OptionDualMode { get; set; }
+        public bool DualMode { get; set; }
 
         /// <summary>
         /// This option will enable/disable Nagle's algorithm for TCP protocol
         /// </summary>
-        public bool OptionNoDelay { get; set; }
+        public bool TcpNoDelay { get; set; }
 
         /// <summary>
         /// This option will enable/disable SO_REUSEADDR if the OS support this feature
         /// </summary>
-        public bool OptionReuseAddress { get; set; }
+        public bool ReuseAddress { get; set; }
 
         /// <summary>
         /// This option will enable/disable SO_EXCLUSIVEADDRUSE if the OS support this feature
         /// </summary>
-        public bool OptionExclusiveAddressUse { get; set; }
+        public bool ExclusiveAddressUse { get; set; }
 
         /// <summary>
         /// This option will enable SO_REUSEPORT if the OS support this feature (linux only)
         /// </summary>
-        public bool OptionReusePort { get; set; }
+        public bool ReusePort { get; set; }
 
         /// <summary>
         /// This option will run the accept socket on each machine's core
         /// </summary>
-        public bool OptionRunAcceptSocketPerCore { get; set; }
+        public bool AcceptPerCore { get; set; }
 
         /// <summary>
         /// This option will setup SO_KEEPALIVE if the OS support this feature
         /// </summary>
-        public bool OptionKeepAlive { get; set; }
+        public bool TcpKeepAlive { get; set; }
 
         /// <summary>
         /// The number of seconds a TCP connection will remain alive/idle before keepalive probes are sent to the remote
         /// </summary>
-        public int OptionTcpKeepAliveTime { get; set; } = -1;
+        public int TcpKeepAliveTime { get; set; } = -1;
 
         /// <summary>
         /// The number of seconds a TCP connection will wait for a keepalive response before sending another keepalive probe
         /// </summary>
-        public int OptionTcpKeepAliveInterval { get; set; } = -1;
+        public int TcpKeepAliveInterval { get; set; } = -1;
 
         /// <summary>
         /// The number of TCP keep alive probes that will be sent before the connection is terminated
         /// </summary>
-        public int OptionTcpKeepAliveRetryCount { get; set; } = -1;
+        public int TcpKeepAliveRetryCount { get; set; } = -1;
 
         /// <summary>
         /// Option: receive buffer size
         /// </summary>
-        public int OptionReceiveBufferSize { get; set; } = 16 * 1024;
+        public int ReceiveBufferSize { get; set; } = 16 * 1024;
 
         #endregion socket
 
@@ -832,7 +832,7 @@ namespace SimpleW {
         /// Idle timeout (if no data received during timeout, then close connection)
         /// Set TimeSpan.MinValue to disable.
         /// </summary>
-        public TimeSpan OptionSessionTimeout { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan SessionTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
         #endregion session
 
@@ -844,29 +844,29 @@ namespace SimpleW {
         public SimpleWSServerOptions ValidateAndNormalize() {
 
             // basic ranges
-            if (OptionMaxRequestHeaderSize <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(OptionMaxRequestHeaderSize), "Must be > 0.");
+            if (MaxRequestHeaderSize <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(MaxRequestHeaderSize), "Must be > 0.");
             }
-            if (OptionMaxRequestBodySize <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(OptionMaxRequestBodySize), "Must be > 0.");
+            if (MaxRequestBodySize <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(MaxRequestBodySize), "Must be > 0.");
             }
-            if (OptionListenSocketBacklog <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(OptionListenSocketBacklog), "Must be > 0.");
+            if (ListenBacklog <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(ListenBacklog), "Must be > 0.");
             }
-            if (OptionReceiveBufferSize <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(OptionReceiveBufferSize), "Must be > 0.");
+            if (ReceiveBufferSize <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(ReceiveBufferSize), "Must be > 0.");
             }
 
             // sanity checks
-            if (OptionReuseAddress && OptionExclusiveAddressUse) {
-                throw new ArgumentException($"{nameof(OptionReuseAddress)} and {nameof(OptionExclusiveAddressUse)} are mutually exclusive.");
+            if (ReuseAddress && ExclusiveAddressUse) {
+                throw new ArgumentException($"{nameof(ReuseAddress)} and {nameof(ExclusiveAddressUse)} are mutually exclusive.");
             }
-            if (OptionReusePort) {
+            if (ReusePort) {
                 if (!OperatingSystem.IsLinux()) {
-                    throw new PlatformNotSupportedException($"{nameof(OptionReusePort)} is only supported on Linux.");
+                    throw new PlatformNotSupportedException($"{nameof(ReusePort)} is only supported on Linux.");
                 }
-                if (!OptionRunAcceptSocketPerCore) {
-                    throw new ArgumentException($"{nameof(OptionReusePort)} is only useful on Linux when {nameof(OptionRunAcceptSocketPerCore)} is enabled.");
+                if (!AcceptPerCore) {
+                    throw new ArgumentException($"{nameof(ReusePort)} is only useful on Linux when {nameof(AcceptPerCore)} is enabled.");
                 }
             }
 
@@ -874,8 +874,8 @@ namespace SimpleW {
             // (keep your existing convention)
             // - MinValue => disabled (do not change)
             // - Negative other than MinValue => not allowed
-            if (OptionSessionTimeout != TimeSpan.MinValue && OptionSessionTimeout < TimeSpan.Zero) {
-                throw new ArgumentOutOfRangeException(nameof(OptionSessionTimeout), "Must be >= 0 or TimeSpan.MinValue to disable.");
+            if (SessionTimeout != TimeSpan.MinValue && SessionTimeout < TimeSpan.Zero) {
+                throw new ArgumentOutOfRangeException(nameof(SessionTimeout), "Must be >= 0 or TimeSpan.MinValue to disable.");
             }
 
             return this;
