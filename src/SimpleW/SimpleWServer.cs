@@ -71,6 +71,13 @@ namespace SimpleW {
         /// </summary>
         /// <param name="configure"></param>
         /// <returns></returns>
+        /// <example>
+        /// server.Configure(options => {
+        ///     options.ReuseAddress = true;
+        ///     options.TcpNoDelay = true;
+        ///     options.TcpKeepAlive = true;
+        /// });
+        /// </example>
         public SimpleWServer Configure(Action<SimpleWSServerOptions> configure) {
             ArgumentNullException.ThrowIfNull(configure);
 
