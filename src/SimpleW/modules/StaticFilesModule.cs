@@ -107,8 +107,15 @@ namespace SimpleW.Modules {
                 set { EnsureNotFrozen(); _unknownContentTypeAsOctetStream = value; }
             }
 
-            internal void Freeze() => _frozen = true;
+            /// <summary>
+            /// Properties cannot be changed
+            /// </summary>
+            public void Freeze() => _frozen = true;
 
+            /// <summary>
+            /// Check
+            /// </summary>
+            /// <exception cref="InvalidOperationException"></exception>
             private void EnsureNotFrozen() {
                 if (_frozen) {
                     throw new InvalidOperationException("StaticFilesOptions is frozen and cannot be modified.");
@@ -131,6 +138,8 @@ namespace SimpleW.Modules {
                 if (string.IsNullOrWhiteSpace(CacheFilter)) {
                     throw new ArgumentException("StaticFilesOptions.Filter must not be null or empty.", nameof(CacheFilter));
                 }
+
+                Freeze();
 
                 return new StaticFilesOptions() {
                     Path = System.IO.Path.GetFullPath(Path),
