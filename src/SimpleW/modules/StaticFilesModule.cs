@@ -1,5 +1,4 @@
-﻿using System.Buffers;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Text;
@@ -40,117 +39,68 @@ namespace SimpleW.Modules {
         /// StaticFilesOptions
         /// </summary>
         public sealed class StaticFilesOptions {
-            private bool _frozen;
-
-            private string _path = string.Empty;
-            private string _prefix = "/";
-            private string _cacheFilter = "*";
-            private TimeSpan? _cacheTimeout;
-
-            private bool _autoIndex = false;
-            private string _defaultDocument = "index.html";
-            private bool _unknownContentTypeAsOctetStream = true;
 
             /// <summary>
             /// Path of the directory to Server
             /// </summary>
-            public string Path {
-                get => _path;
-                set { EnsureNotFrozen(); _path = value ?? string.Empty; }
-            }
+            public string Path { get; set; } = string.Empty;
 
             /// <summary>
             /// Url Prefix to call this module
             /// </summary>
-            public string Prefix {
-                get => _prefix;
-                set { EnsureNotFrozen(); _prefix = value ?? "/"; }
-            }
+            public string Prefix { get; set; } = "/";
 
             /// <summary>
             /// Cache file filter
             /// </summary>
-            public string CacheFilter {
-                get => _cacheFilter;
-                set { EnsureNotFrozen(); _cacheFilter = value ?? "*"; }
-            }
+            public string CacheFilter { get; set; } = "*";
 
             /// <summary>
             /// Cache timeout
             /// </summary>
-            public TimeSpan? CacheTimeout {
-                get => _cacheTimeout;
-                set { EnsureNotFrozen(); _cacheTimeout = value; }
-            }
+            public TimeSpan? CacheTimeout { get; set; }
 
             /// <summary>
             /// If true, serves a minimal directory listing when no default document exists.
             /// </summary>
-            public bool AutoIndex {
-                get => _autoIndex;
-                set { EnsureNotFrozen(); _autoIndex = value; }
-            }
+            public bool AutoIndex { get; set; } = false;
 
             /// <summary>
             /// Default document for directory requests
             /// </summary>
-            public string DefaultDocument {
-                get => _defaultDocument;
-                set { EnsureNotFrozen(); _defaultDocument = string.IsNullOrWhiteSpace(value) ? "index.html" : value; }
-            }
+            public string DefaultDocument { get; set; } = "index.html";
 
             /// <summary>
             /// If true, unknown extensions default to application/octet-stream (otherwise text/plain).
             /// </summary>
-            public bool UnknownContentTypeAsOctetStream {
-                get => _unknownContentTypeAsOctetStream;
-                set { EnsureNotFrozen(); _unknownContentTypeAsOctetStream = value; }
-            }
+            public bool UnknownContentTypeAsOctetStream { get; set; } = true;
 
             /// <summary>
-            /// Properties cannot be changed
-            /// </summary>
-            public void Freeze() => _frozen = true;
-
-            /// <summary>
-            /// Check
-            /// </summary>
-            /// <exception cref="InvalidOperationException"></exception>
-            private void EnsureNotFrozen() {
-                if (_frozen) {
-                    throw new InvalidOperationException("StaticFilesOptions is frozen and cannot be modified.");
-                }
-            }
-
-            /// <summary>
-            /// Check Properties and return a new clone object
+            /// Check Properties and return
+            /// TODO : need to check for symlink/junction
             /// </summary>
             /// <returns></returns>
             /// <exception cref="ArgumentException"></exception>
-            public StaticFilesOptions CheckClone() {
+            public StaticFilesOptions ValidateAndNormalize() {
 
                 if (string.IsNullOrWhiteSpace(Path)) {
-                    throw new ArgumentException("StaticFilesOptions.Path must not be null or empty.", nameof(Path));
+                    throw new ArgumentException($"{nameof(StaticFilesOptions)}.{nameof(Path)} must not be null or empty.", nameof(Path));
                 }
                 if (string.IsNullOrWhiteSpace(Prefix)) {
-                    throw new ArgumentException("StaticFilesOptions.Prefix must not be null or empty.", nameof(Prefix));
+                    throw new ArgumentException($"{nameof(StaticFilesOptions)}.{nameof(Prefix)} must not be null or empty.", nameof(Prefix));
                 }
                 if (string.IsNullOrWhiteSpace(CacheFilter)) {
-                    throw new ArgumentException("StaticFilesOptions.Filter must not be null or empty.", nameof(CacheFilter));
+                    throw new ArgumentException($"{nameof(StaticFilesOptions)}.{nameof(CacheFilter)} must not be null or empty.", nameof(CacheFilter));
+                }
+                if (string.IsNullOrWhiteSpace(DefaultDocument)) {
+                    throw new ArgumentException($"{nameof(StaticFilesOptions)}.{nameof(DefaultDocument)} must not be null or empty.", nameof(DefaultDocument));
                 }
 
-                Freeze();
+                Path = StaticFilesModule.NormalizePath(Path);
+                Prefix = StaticFilesModule.NormalizePrefix(Prefix);
+                CacheTimeout = (CacheTimeout.HasValue && CacheTimeout.Value > TimeSpan.Zero) ? CacheTimeout : null;
 
-                return new StaticFilesOptions() {
-                    Path = System.IO.Path.GetFullPath(Path),
-                    Prefix = StaticFilesModule.NormalizePrefix(Prefix),
-                    CacheFilter = CacheFilter,
-                    CacheTimeout = (CacheTimeout.HasValue && CacheTimeout.Value > TimeSpan.Zero) ? CacheTimeout : null,
-
-                    AutoIndex = AutoIndex,
-                    DefaultDocument = DefaultDocument,
-                    UnknownContentTypeAsOctetStream = UnknownContentTypeAsOctetStream
-                };
+                return this;
             }
 
         }
@@ -187,7 +137,7 @@ namespace SimpleW.Modules {
             /// </summary>
             /// <param name="options"></param>
             public StaticFilesModule(StaticFilesOptions options) {
-                _options = options.CheckClone() ?? throw new ArgumentNullException(nameof(options));
+                _options = options.ValidateAndNormalize() ?? throw new ArgumentNullException(nameof(options));
             }
 
             /// <summary>
@@ -312,7 +262,8 @@ namespace SimpleW.Modules {
                 string combinedFull = Path.GetFullPath(combined);
 
                 // anti traversal
-                if (!combinedFull.StartsWith(_options.Path, StringComparison.Ordinal)) {
+                StringComparison comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+                if (!combinedFull.StartsWith(_options.Path, comparison)) {
                     return false;
                 }
 
@@ -334,6 +285,19 @@ namespace SimpleW.Modules {
                     prefix = prefix.TrimEnd('/');
                 }
                 return prefix;
+            }
+
+            /// <summary>
+            /// normalize path, GetFullPath and add trailing slash to avoid path traversal
+            /// </summary>
+            /// <param name="path"></param>
+            /// <returns></returns>
+            public static string NormalizePath(string path) {
+                path = Path.GetFullPath(path);
+                if (!path.EndsWith(Path.DirectorySeparatorChar) && !path.EndsWith(Path.AltDirectorySeparatorChar)) {
+                    path += Path.DirectorySeparatorChar;
+                }
+                return path;
             }
 
             #endregion path resolution and security
