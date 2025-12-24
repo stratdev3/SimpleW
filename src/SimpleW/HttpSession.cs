@@ -108,11 +108,11 @@ namespace SimpleW {
             _bufferPool = bufferPool;
             _router = router;
 
-            _recvBuffer = _bufferPool.Rent(server.OptionReceiveBufferSize);
-            _parseBuffer = _bufferPool.Rent(server.OptionReceiveBufferSize);
+            _recvBuffer = _bufferPool.Rent(server.Options.OptionReceiveBufferSize);
+            _parseBuffer = _bufferPool.Rent(server.Options.OptionReceiveBufferSize);
             _parseBufferCount = 0;
 
-            _parser = new HttpRequestParser(server.OptionMaxRequestHeaderSize, server.OptionMaxRequestBodySize);
+            _parser = new HttpRequestParser(server.Options.OptionMaxRequestHeaderSize, server.Options.OptionMaxRequestBodySize);
             _request = new HttpRequest();
             _request.ParserSetJsonEngine(server.JsonEngine);
 
@@ -145,19 +145,19 @@ namespace SimpleW {
             // enable=true, seconds>0 : wait flush buffer for X second, abort and send RST
             _socket.LingerState = new LingerOption(enable: false, seconds: 0);
 
-            if (Server.OptionKeepAlive) {
+            if (Server.Options.OptionKeepAlive) {
                 _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             }
-            if (Server.OptionTcpKeepAliveTime >= 0) {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, Server.OptionTcpKeepAliveTime);
+            if (Server.Options.OptionTcpKeepAliveTime >= 0) {
+                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, Server.Options.OptionTcpKeepAliveTime);
             }
-            if (Server.OptionTcpKeepAliveInterval >= 0) {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, Server.OptionTcpKeepAliveInterval);
+            if (Server.Options.OptionTcpKeepAliveInterval >= 0) {
+                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, Server.Options.OptionTcpKeepAliveInterval);
             }
-            if (Server.OptionTcpKeepAliveRetryCount >= 0) {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, Server.OptionTcpKeepAliveRetryCount);
+            if (Server.Options.OptionTcpKeepAliveRetryCount >= 0) {
+                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, Server.Options.OptionTcpKeepAliveRetryCount);
             }
-            if (Server.OptionNoDelay) {
+            if (Server.Options.OptionNoDelay) {
                 _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
             }
 
