@@ -97,6 +97,24 @@ public Dictionary<string, string> Query
 public Dictionary<string, string>? RouteValues { get; private set; }
 ```
 
+## MaxRequestHeaderSize
+
+```csharp
+/// <summary>
+/// Max size of request headers in bytes
+/// </summary>
+public readonly int MaxRequestHeaderSize;
+```
+
+## MaxRequestBodySize
+
+```csharp
+/// <summary>
+/// Max size of request body in bytes
+/// </summary>
+public readonly long MaxRequestBodySize;
+```
+
 ## BodyMap()
 
 ```csharp
