@@ -30,8 +30,7 @@ namespace SimpleW.Modules {
             StaticFilesOptions options = new();
             configure?.Invoke(options);
 
-            StaticFilesModule module = new(options);
-            server.UseModule(module);
+            server.UseModule(new StaticFilesModule(options));
             return server;
         }
 
