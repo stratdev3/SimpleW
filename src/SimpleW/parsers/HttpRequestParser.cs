@@ -24,7 +24,14 @@ namespace SimpleW.Parsers {
 
         #endregion
 
+        /// <summary>
+        /// MaxHeaderSize
+        /// </summary>
         private readonly int _maxHeaderSize;
+
+        /// <summary>
+        /// MaxBodySize
+        /// </summary>
         private readonly long _maxBodySize;
 
         /// <summary>

@@ -109,7 +109,29 @@ namespace SimpleW {
         /// JsonEngine
         /// Can be used to parse body
         /// </summary>
-        public IJsonEngine? JsonEngine { get; private set; }
+        public readonly IJsonEngine JsonEngine;
+
+        /// <summary>
+        /// Max size of request headers in bytes
+        /// </summary>
+        public readonly int MaxRequestHeaderSize;
+
+        /// <summary>
+        /// Max size of request body in bytes
+        /// </summary>
+        public readonly long MaxRequestBodySize;
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="jsonEngine"></param>
+        /// <param name="maxRequestHeaderSize"></param>
+        /// <param name="maxRequestBodySize"></param>
+        public HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize) {
+            JsonEngine = jsonEngine;
+            MaxRequestHeaderSize = maxRequestHeaderSize;
+            MaxRequestBodySize = maxRequestBodySize;
+        }
 
         /// <summary>
         /// Reset HttpRequest for reuse
@@ -210,13 +232,6 @@ namespace SimpleW {
         /// <param name="rv"></param>
         public void ParserSetRouteValues(Dictionary<string, string>? rv) {
             RouteValues = rv;
-        }
-        /// <summary>
-        /// Set JsonEngine
-        /// </summary>
-        /// <param name="jsonEngine"></param>
-        public void ParserSetJsonEngine(IJsonEngine jsonEngine) {
-            JsonEngine = jsonEngine;
         }
 
         #endregion helpers
