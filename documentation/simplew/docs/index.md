@@ -35,4 +35,14 @@ features:
     - icon: 🔬
       title: Observability
       details: Integrated OpenTelemetry with logging and tracing. Easier to monitor, debug, and analyze requests.
+
+carousel:
+  - src: /logo-min.webp
+  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-lightweight-by-design-min.jpg
+  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-complexity-is-not-a-feature-min.jpg
+  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-frameworks-should-not-be-cages-min.jpg
+  #- src: /simplewbot/simplew-lightweight-by-design-min.jpg
+  #- src: /simplewbot/simplew-complexity-is-not-a-feature-min.jpg
+  #- src: /simplewbot/simplew-frameworks-should-not-be-cages-min.jpg
+
 ---

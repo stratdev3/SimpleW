@@ -23,6 +23,19 @@ The example bellow will use a pregerenarated certificate. Use only locally for t
 
 ::: code-group
 
-<<< @/snippets/ssl-certificate-example.cs#snippet{16-20,23,26 csharp:line-numbers} [program.cs]
+<<< @/snippets/ssl-certificate-example.cs#snippet{16-19,23,25 csharp:line-numbers} [program.cs]
+
+:::
+
+
+## Mutual Authentication
+
+The server can also require the client to have a proper SSL Certificate.
+
+Just add some check in the `SslContext`
+
+::: code-group
+
+<<< @/snippets/ssl-certificate-client-authentication.cs#snippet{5-12 csharp:line-numbers} [program.cs]
 
 :::

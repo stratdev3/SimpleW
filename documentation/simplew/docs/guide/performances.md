@@ -49,7 +49,7 @@ The bombardier command is run three times, then keep the best result.
 :::
 
 
-## Performances boost
+## Performance boosts
 
 Severals options should be enabled to get the best performances :
 
@@ -67,6 +67,11 @@ server.Configure(options => {
 });
 ```
 
-The more middleware you have, the more it will take time to traverse the full pipeline. Be careful on what you are doing with the middleware.
+## Performance killers
 
+At the opposite, some things will reduce the performances.
+
+- Middleware : each request/response will take time to traverse the full pipeline. Middleware are an essential feature of any webserver but you have to be extra careful on what you are doing with the middleware.
+- Console.WriteLine() : DO NOT use it in production !!
+- Trying to parse data in the HttpRequest on your own : use the [`HttpRequest`](../reference/httprequest.md) properties and methods. If something is missing, open a new issue.
 

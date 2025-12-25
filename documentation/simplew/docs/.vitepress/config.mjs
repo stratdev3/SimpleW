@@ -129,6 +129,7 @@ export default defineConfig({
                 {
                     text: 'Helpers',
                     items: [
+                        { text: 'SimpleWServerOptions', link: '/reference/SimpleWServerOptions' },
                         { text: 'SimpleWExtension', link: '/reference/simplewextension' },
                         { text: 'IJsonEngine', link: '/reference/ijsonengine' },
                         { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
