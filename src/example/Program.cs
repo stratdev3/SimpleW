@@ -91,6 +91,8 @@ namespace example.rewrite {
             //    AutoIndex = true
             //});
 
+            //server.UseStaticFilesModule(toto);
+
             //server.UseStaticFilesModule(options => {
             //    options.Path = @"C:\www\spa\refresh\";
             //    options.Prefix = "/";
@@ -153,13 +155,13 @@ namespace example.rewrite {
             //server.MapControllers<Controller>("/api");
             //server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
 
-            server.OptionReuseAddress = true;
-            server.OptionNoDelay = true;
-            server.OptionKeepAlive = true;
-            //server.OptionSessionTimeout = TimeSpan.MinValue;
-            //server.OptionRunAcceptSocketPerCore = true;
-            //server.OptionReceiveStrategy = SimpleW.ReceivedStrategy.ReceiveLoopBuffer;
-            //server.OptionMaxRequestBodySize = 100 * 1024 * 1024;
+            server.Configure(options => {
+                options.ReuseAddress = true;
+                options.TcpNoDelay = true;
+                options.TcpKeepAlive = true;
+                //options.AcceptPerCore = true;
+                //options.ReusePort = true;
+            });
 
             // start non blocking background server
             CancellationTokenSource cts = new();
@@ -272,7 +274,7 @@ namespace example.rewrite {
                     });
                 },
                 maxParts: 200,
-                maxFileBytes: Session.Server.OptionMaxRequestBodySize
+                maxFileBytes: Session.Request.MaxRequestBodySize
             );
 
             if (!ok) {
