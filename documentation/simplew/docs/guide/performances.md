@@ -47,3 +47,26 @@ Evaluate request on a single text file `message.txt` which contains `hello world
 ::: tip NOTE
 The bombardier command is run three times, then keep the best result.
 :::
+
+
+## Performances boost
+
+Severals options should be enabled to get the best performances :
+
+```csharp:line-numbers
+var server = new SimpleWServer(IPAddress.Any, 2015);
+server.Configure(options => {
+    // these sockets options always boots performances
+    options.TcpNoDelay = true;
+    options.ReuseAddress = true;
+    options.TcpKeepAlive = true;
+
+    // to test
+    options.AcceptPerCore = true;
+    options.ReusePort = true; // linux only
+});
+```
+
+The more middleware you have, the more it will take time to traverse the full pipeline. Be careful on what you are doing with the middleware.
+
+
