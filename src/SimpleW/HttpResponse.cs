@@ -484,6 +484,28 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Set UTF-8 html Body (owned pooled buffer)
+        /// </summary>
+        /// <param name="body"></param>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
+        public HttpResponse Html(string body, string contentType = "text/html; charset=utf-8") {
+            DisposeBody();
+            _contentType = contentType;
+
+            int maxBytes = Utf8NoBom.GetMaxByteCount(body.Length);
+            byte[] buf = _bufferPool.Rent(maxBytes);
+            int len = Utf8NoBom.GetBytes(body.AsSpan(), buf.AsSpan());
+
+            _bodyKind = BodyKind.OwnedBuffer;
+            _bodyArray = buf;
+            _bodyOffset = 0;
+            _bodyLength = len;
+
+            return this;
+        }
+
+        /// <summary>
         /// Set JSON Body serialized into pooled buffer
         /// </summary>
         /// <typeparam name="T"></typeparam>
