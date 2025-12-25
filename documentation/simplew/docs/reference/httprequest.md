@@ -156,7 +156,7 @@ public static bool BodyMapAnonymous<TModel>(this HttpRequest request, ref TModel
 public static MultipartFormData? BodyMultipart(this HttpRequest request, int maxParts = 200, int maxFileBytes = 50 * 1024 * 1024)
 ```
 
-## BodyMultipart()
+## BodyMultipartStream()
 
 ```csharp
 /// <summary>

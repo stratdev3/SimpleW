@@ -68,10 +68,11 @@ export default defineConfig({
                 {
                     text: 'Extend',
                     items: [
-                        { text: 'Result Handler', link: '/guide/handlerresult' },
                         { text: 'Middleware', link: '/guide/middleware' },
                         { text: 'Module', link: '/guide/module' },
                         { text: 'Callback', link: '/guide/api-callback' },
+                        { text: 'Result Handler', link: '/guide/handlerresult' },
+                        { text: 'Json Engine', link: '/guide/jsonengine' },
                     ]
                 },
                 {

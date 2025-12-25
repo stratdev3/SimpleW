@@ -11,12 +11,12 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // 1. set Newtonsoft as the json engine
-            server.SimpleWServer(new NewtonsoftJsonEngine());
+            server.ConfigureJsonEngine(new NewtonsoftJsonEngine());
 
             // or
 
             // 2. set Newtonsoft as the json engine with custom settings
-            server.SimpleWServer(new NewtonsoftJsonEngine(
+            server.ConfigureJsonEngine(new NewtonsoftJsonEngine(
                 (action) => {
                     Newtonsoft.Json.JsonSerializerSettings settings = new();
 

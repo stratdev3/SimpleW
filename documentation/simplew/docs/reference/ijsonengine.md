@@ -52,3 +52,5 @@ T DeserializeAnonymous<T>(string json, T model);
 /// <param name="excludeProperties"></param>
 void Populate<T>(string json, T target, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null);
 ```
+
+See more [examples](../guide/jsonengine.md).
