@@ -2,7 +2,7 @@
 
 The [HTTPS](https://en.wikipedia.org/wiki/HTTPS) protocol is supported and you can bring your own certificate in `PKCS#12` format.
 
-With just a small change, the [basic static example](./static-files) can serve HTTPS.
+With just a small change, the [basic static example](./staticfilesmodule.md) can serve HTTPS.
 
 ::: code-group
 

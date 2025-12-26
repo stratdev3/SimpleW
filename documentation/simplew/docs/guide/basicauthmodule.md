@@ -10,7 +10,7 @@ times the module is configured.
 
 ## How It Works
 
-Each call to [`SimpleWServer.UseBasicAuthModule()`](../reference/basicauthmodule.md.md) **adds or updates a rule** for a given URL
+Each call to [`SimpleWServer.UseBasicAuthModule()`](../reference/basicauthmodule.md) **adds or updates a rule** for a given URL
 prefix.
 
 Internally:

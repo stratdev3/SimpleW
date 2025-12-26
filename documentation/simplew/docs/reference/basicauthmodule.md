@@ -64,4 +64,4 @@ server.UseBasicAuthModule(options => {
 });
 ```
 
-See more [examples](../guide/basicauthmodule.md.md).
+See more [examples](../guide/basicauthmodule.md).
