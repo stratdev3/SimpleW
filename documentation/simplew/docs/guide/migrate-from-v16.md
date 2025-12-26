@@ -2,12 +2,12 @@
 
 ## Core
 
-- `SimpleWSServer.Start()` has been replace by `SimpleWSServer.StartAsync()` or `SimpleWSServer.RunAsync()` depending on the blocking context you want.
-- `SimpleWSServer.Stop()` has been replace by `SimpleWSServer.StopAsync()`
-- `SimpleWSServer` class no longer exists. Use [`SimpleWServer.UseHttps()`](./ssl-certificate.md) to setup ssl certificate.
-- `SimpleWSServer.AddDynamicContent()` has been replaced by `SimpleWSServer.MapControllers()` and `SimpleWSServer.MapController()`.
-- `SimpleWSServer.AddStaticContent()` has been replaced by `SimpleWSServer.UseStaticFilesModule()`.
-- `NetCoreServerExtension` class has been renamed `SimpleWExtension`.
+- `SimpleWSServer.Start()` => `SimpleWSServer.StartAsync()` or `SimpleWSServer.RunAsync()` depending on the blocking context you want.
+- `SimpleWSServer.Stop()` => `SimpleWSServer.StopAsync()`
+- `SimpleWSServer` => [`SimpleWServer.UseHttps()`](./ssl-certificate.md) to setup ssl certificate.
+- `SimpleWSServer.AddDynamicContent()` => `SimpleWSServer.MapControllers()` and `SimpleWSServer.MapController()`.
+- `SimpleWSServer.AddStaticContent()` => `SimpleWSServer.UseStaticFilesModule()`.
+- `NetCoreServerExtension` => `SimpleWExtension`.
 
 ## Removed
 

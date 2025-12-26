@@ -1,21 +1,22 @@
-# Response [⚠️ need update to v26]
+# Response
 
-There are multiple ways to return data to the client :
-1. By **[default](#default)**, the return of method is serialized and automatically sent to the client.
-2. However, you can also manipulate the [response](#response-property) property for fine-grained control.
-3. You want to [send raw bytes](#send-raw-bytes), that's possible too.
+There are three ways to send data to the client :
+
+1. **Return** : the default fast path, any handler return is serialized and sent.
+2. **Response** : fined-grained control with a high level object you can manipulate.
+3. **Raw Bytes** : you entirely own the bytes to send.
 
 
-## Default
+## Return
 
-By default, the return of the method will be serialized to json using the [`JsonEngine`](#json-engine).
-It will also use compression _(gzip, br...)_ dependings on the encoding types supported by the client.
+The return of any handler is serialized to json and sent.
+This is the simplest and fastest way to send a response as SimpleW take care of everything for you.
 
 The following example illustrates the `object` return type :
 
 ::: code-group
 
-<<< @/snippets/response-default-object.cs#snippet{csharp:line-numbers} [program.cs]
+<<< @/snippets/response-default-object.cs#snippet{20-25 csharp:line-numbers} [program.cs]
 
 :::
 
@@ -37,7 +38,7 @@ The following example illustrates different return types :
 
 ::: code-group
 
-<<< @/snippets/response-default-any.cs#snippet{csharp:line-numbers} [program.cs]
+<<< @/snippets/response-default-any.cs#snippet{28-31,38,48-52 csharp:line-numbers} [program.cs]
 
 :::
 
@@ -47,15 +48,16 @@ Most of the time, `object` is enough and will be passed to a `IJsonEngine.Serial
 :::
 
 
-## Response Property
+## Response
 
-The `Response` property allows a fine-grained control over the data sent to the client.
+The `Response` object allows a fine-grained control over the data sent to the client.
+`Response` is a property of both `HttpSession` and `Controller`.
 
 The following example illustrates how a custom response can be forged easily :
 
 ::: code-group
 
-<<< @/snippets/response-response.cs#snippet{csharp:line-numbers} [program.cs]
+<<< @/snippets/response-response.cs#snippet{13-21,36-38,43-44,49-50,55 csharp:line-numbers} [program.cs]
 
 :::
 
@@ -64,29 +66,30 @@ See the [HttpResponse](../reference/httpresponse.md) for details of its methods.
 :::
 
 
-### Helpers
+### Common Response
 
 Even though it’s easy to build a custom response, it’s also possible to reduce the amount of code for common responses.
 
-The following example illustrates some built-in [helpers](../reference/httpresponse#helpers).
+The following example illustrates some built-in [response](../reference/httpresponse#aliases).
 
 ::: code-group
 
-<<< @/snippets/response-response-helpers.cs#snippet{csharp:line-numbers} [program.cs]
+<<< @/snippets/response-common.cs#snippet{27,40,53,59 csharp:line-numbers} [program.cs]
 
 :::
 
 
 ## Send Raw Bytes
 
-The [`Session.SendAsync()`](../reference/httpsession.md#sendasync) method is the lower level, and it basically consists of sending bytes to the client.
+::: warning
+The [`Session.SendAsync()`](../reference/httpsession.md#sendasync) method bellow is the lowest level to send data to client. They are barely aliases of `Socket.SendAsync()` with a thread-safe guard.
+You should never need to use them and should not use because it breaks the middleware pipeline and other handler.
+:::
+
+
 
 ::: code-group
 
-<<< @/snippets/response-sendresponseasync.cs#snippet{csharp:line-numbers} [program.cs]
+<<< @/snippets/response-session-sendasync.cs#snippet{20 csharp:line-numbers} [program.cs]
 
-:::
-
-::: tip NOTE
-These methods should be used carefully for your possible edge case.
 :::

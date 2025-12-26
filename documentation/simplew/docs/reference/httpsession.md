@@ -56,7 +56,7 @@ You should always used the `Response` to send data to a client.
 ## SendAsync
 
 ::: warning
-The `SendAsync` methods bellow are the lower level to send data to client. They are barely aliases of `Socket.SendAsync()` with a thread-safe guard.
+The `SendAsync` methods bellow are the lowest level to send data to client. They are barely aliases of `Socket.SendAsync()` with a thread-safe guard.
 You should never need to use them but instead use the `Response` property to send data to a client.
 :::
 
