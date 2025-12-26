@@ -29,6 +29,7 @@ namespace test {
 
             // asserts
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("text/plain");
             Check.That(content).IsEqualTo("Hello World !");
 
             // dispose
@@ -41,8 +42,8 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", () => {
-                return new { message = "Hello World !" };
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Json(new { message = "Hello World !" });
             });
             await server.StartAsync();
 
@@ -53,7 +54,58 @@ namespace test {
 
             // asserts
             Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/json");
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_HelloWorld_Html() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Html("<h1>Hello World !</h1>");
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("text/html");
+            Check.That(content).IsEqualTo("<h1>Hello World !</h1>");
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Response_200_RemoveBody() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Html("<h1>Hello World !</h1>").RemoveBody();
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("text/html");
+            Check.That(content).IsEmpty();
 
             // dispose
             await server.StopAsync();
