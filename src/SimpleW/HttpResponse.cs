@@ -649,8 +649,7 @@ namespace SimpleW {
             bool canCompressBody = bodyLength > 0
                                    && _bodyKind != BodyKind.File
                                    && !_customContentLength.HasValue
-                                   && _statusCode != 204
-                                   && _statusCode != 304
+                                   && (_statusCode != 204 && _statusCode != 304)
                                    && !HasHeaderIgnoreCase("Content-Encoding")
                                    && IsCompressibleContentType(_contentType);
 
@@ -694,10 +693,11 @@ namespace SimpleW {
 
                 // Content-Length
                 long finalBodyLength = (negotiated != NegotiatedEncoding.None && compressedWriter != null) ? compressedWriter.Length : bodyLength;
-                if (_customContentLength.HasValue && _bodyKind != BodyKind.None) {
-                    if (_customContentLength.Value != finalBodyLength) {
-                        throw new InvalidOperationException($"Custom Header Content-Length ({_customContentLength.Value}) does not match actual body length ({finalBodyLength}).");
-                    }
+                if (_customContentLength.HasValue && _customContentLength.Value != finalBodyLength) {
+                    throw new InvalidOperationException($"Custom Header Content-Length ({_customContentLength.Value}) does not match actual body length ({finalBodyLength}).");
+                }
+                if (_statusCode is 204 or 304 && finalBodyLength > 0) {
+                    throw new InvalidOperationException($"204 and 304 must not have body.");
                 }
                 WriteBytes(headerWriter, H_CL);
                 WriteLongAscii(headerWriter, _customContentLength ?? finalBodyLength);
