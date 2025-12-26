@@ -254,16 +254,16 @@ namespace SimpleW {
         ///  - HttpRouter Dispatch
         /// </summary>
         public async Task ProcessAsync() {
-            if (IsTransportOwned) {
-                return;
-            }
 
             //
             // MAIN PROCESS LOOP
             //
             while (true) {
-                int bytesRead;
+                if (IsTransportOwned) {
+                    return;
+                }
 
+                int bytesRead;
                 try {
                     if (IsSsl) {
                         bytesRead = await _sslStream!.ReadAsync(_recvBuffer, 0, _recvBuffer.Length).ConfigureAwait(false);
@@ -291,6 +291,10 @@ namespace SimpleW {
                     return;
                 }
 
+                if (IsTransportOwned) {
+                    return;
+                }
+
                 if (bytesRead == 0) {
                     // remote closed
                     return;
@@ -309,6 +313,10 @@ namespace SimpleW {
 
                     // parse HttpRequest (http pipelining support)
                     while (true) {
+                        if (IsTransportOwned) {
+                            return;
+                        }
+
                         int consumed = _parser.TryReadHttpRequest(_parseBuffer, offset, _parseBufferCount - offset, _request);
                         if (consumed == 0) {
                             // if nothing consumed, we need/wait for more data
@@ -324,8 +332,16 @@ namespace SimpleW {
                             // should close connection
                             CloseAfterResponse = ShouldCloseConnection(_request);
 
+                            if (IsTransportOwned) {
+                                return;
+                            }
+
                             // router and dispatch
                             await _router.DispatchAsync(this).ConfigureAwait(false);
+
+                            if (IsTransportOwned) {
+                                return;
+                            }
 
                             // if so, then close connection
                             if (CloseAfterResponse) {
