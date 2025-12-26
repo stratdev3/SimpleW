@@ -107,6 +107,11 @@ namespace SimpleW {
         private PooledBufferWriter? _ownedBodyWriter;
 
         /// <summary>
+        /// suppress content length
+        /// </summary>
+        private bool _suppressContentLength;
+
+        /// <summary>
         /// optional owner for lifetime-managed body
         /// </summary>
         private IDisposable? _bodyOwner;
@@ -591,6 +596,27 @@ namespace SimpleW {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HttpResponse NoCompression() => Compression(ResponseCompressionMode.Disabled);
 
+        /// <summary>
+        /// Remove Body
+        /// </summary>
+        /// <returns></returns>
+        public HttpResponse RemoveBody() {
+            DisposeBody();
+            _customContentLength = null;
+            _suppressContentLength = false;
+            return this;
+        }
+
+        /// <summary>
+        /// No header Content-Length
+        /// </summary>
+        /// <returns></returns>
+        public HttpResponse NoContentLength() {
+            _customContentLength = null;
+            _suppressContentLength = true;
+            return this;
+        }
+
         //
         // SEND
         //
@@ -699,9 +725,11 @@ namespace SimpleW {
                 if (_statusCode is 204 or 304 && finalBodyLength > 0) {
                     throw new InvalidOperationException($"204 and 304 must not have body.");
                 }
-                WriteBytes(headerWriter, H_CL);
-                WriteLongAscii(headerWriter, _customContentLength ?? finalBodyLength);
-                WriteCRLF(headerWriter);
+                if (!_suppressContentLength) {
+                    WriteBytes(headerWriter, H_CL);
+                    WriteLongAscii(headerWriter, _customContentLength ?? finalBodyLength);
+                    WriteCRLF(headerWriter);
+                }
 
                 // Content-Type (only if set)
                 if (!string.IsNullOrEmpty(_contentType)) {
@@ -1129,6 +1157,7 @@ namespace SimpleW {
 
             _headerCount = 0;
             _customContentLength = null;
+            _suppressContentLength = false;
 
             _compressionMode = ResponseCompressionMode.Auto;
             _compressionMinSize = 512;
