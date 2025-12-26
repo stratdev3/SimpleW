@@ -70,6 +70,16 @@ namespace example.rewrite {
             //    return next();
             //});
 
+            // server.UseBasicAuthModule(o => {
+            //     o.Prefix = "/api/test/hello";
+            //     o.Realm = "Admin";
+            //     o.Users = new[] { new BasicAuthModuleExtension.BasicAuthOptions.BasicUser("chef", "pwd") };
+            // })
+            // .UseBasicAuthModule(o => {
+            //     o.Prefix = "/metrics";
+            //     o.Realm = "Metrics";
+            //     o.CredentialValidator = (u, p) => u == "prom" && p == "scrape";
+            // });
 
             server.MapGet("/api/test/hello", (string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
@@ -248,15 +258,17 @@ namespace example.rewrite {
 
             bool ok = Request.BodyMultipartStream(
                 onField: (k, v) => {
-                    if (string.Equals(k, "title", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(k, "title", StringComparison.OrdinalIgnoreCase)) {
                         title = v;
+                    }
                 },
                 onFile: (info, content) => {
                     // filename vient du client => sanitize + fallback
                     string originalName = info.FileName ?? "";
                     string safeName = Path.GetFileName(originalName);
-                    if (string.IsNullOrWhiteSpace(safeName))
+                    if (string.IsNullOrWhiteSpace(safeName)) {
                         safeName = "upload.bin";
+                    }
 
                     // évite les collisions: ajoute un suffixe
                     string finalName = $"{Path.GetFileNameWithoutExtension(safeName)}_{Guid.NewGuid():N}{Path.GetExtension(safeName)}";
@@ -308,9 +320,14 @@ namespace example.rewrite {
         }
 
         [Route("POST", "/raw")]
-        public object Raw() {
-            return Session.Response.Text(Session.Request.BodyString);
+        public ValueTask Raw() {
+            var data = new byte[10];
+            return Session.SendAsync(data);
+            //return Session.Response.Text(Session.Request.BodyString);
         }
+
+
+
 
         [Route("POST", "/file")]
         public object File() {
