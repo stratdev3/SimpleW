@@ -7,7 +7,7 @@ To set CORS policy, use the [`SimpleWServer.UseCorsModule()`](../reference/corsm
 
 ::: code-group
 
-<<< @/snippets/api-cors.cs#snippet{csharp:line-numbers} [program.cs]
+<<< @/snippets/corsmodule.cs#snippet{csharp:line-numbers} [program.cs]
 
 :::
 

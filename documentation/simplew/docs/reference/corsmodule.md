@@ -97,4 +97,4 @@ server.UseCorsModule(options => {
 });
 ```
 
-See more [examples](../guide/api-cors.md.md).
+See more [examples](../guide/corsmodule.md).

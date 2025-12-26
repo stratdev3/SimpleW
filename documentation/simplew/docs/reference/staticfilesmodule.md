@@ -73,4 +73,4 @@ server.UseStaticFilesModule(options => {
 });
 ```
 
-See more [examples](../guide/static-files.md).
+See more [examples](../guide/staticfilesmodule.md).

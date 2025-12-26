@@ -79,8 +79,9 @@ export default defineConfig({
                     text: 'Security',
                     items: [
                         { text: 'Json Web Token', link: '/guide/api-json-web-token' },
-                        { text: 'Cross-Origin Resource Sharing', link: '/guide/api-cors' },
+                        { text: 'Cross-Origin Resource Sharing', link: '/guide/corsmodule' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
+                        { text: 'Basic Auth', link: '/guide/basicauthmodule' },
                     ]
                 },
                 {
@@ -93,7 +94,7 @@ export default defineConfig({
                 {
                     text: 'Others',
                     items: [
-                        { text: 'Static Files', link: '/guide/static-files' },
+                        { text: 'Static Files', link: '/guide/staticfilesmodule' },
                         { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                     ]
                 },
