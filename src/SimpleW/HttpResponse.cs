@@ -55,9 +55,9 @@ namespace SimpleW {
         private int _headerCount;
 
         /// <summary>
-        /// True if user added a Content-Length via AddHeader (so we must not auto-write it)
+        /// If user added a Content-Length via AddHeader (so we must not auto-write it)
         /// </summary>
-        private bool _hasCustomContentLength;
+        private long? _customContentLength;
 
         /// <summary>
         /// Current compression mode (default: Auto)
@@ -125,6 +125,7 @@ namespace SimpleW {
 
             _headers = new HeaderEntry[8];
             _headerCount = 0;
+            _customContentLength = null;
 
             _bodyKind = BodyKind.None;
             _bodyMemory = ReadOnlyMemory<byte>.Empty;
@@ -346,7 +347,11 @@ namespace SimpleW {
         /// <returns></returns>
         public HttpResponse AddHeader(string name, string value) {
             if (string.Equals(name, "Content-Length", StringComparison.OrdinalIgnoreCase)) {
-                _hasCustomContentLength = true;
+                if (!long.TryParse(value, out long cl) || cl < 0) {
+                    throw new InvalidOperationException($"Invalid Custom Header Content-Length {value}.");
+                }
+                _customContentLength = cl;
+                return this;
             }
             if (_headerCount == _headers.Length) {
                 Array.Resize(ref _headers, _headers.Length * 2);
@@ -643,7 +648,7 @@ namespace SimpleW {
 
             bool canCompressBody = bodyLength > 0
                                    && _bodyKind != BodyKind.File
-                                   && !_hasCustomContentLength
+                                   && !_customContentLength.HasValue
                                    && _statusCode != 204
                                    && _statusCode != 304
                                    && !HasHeaderIgnoreCase("Content-Encoding")
@@ -689,11 +694,14 @@ namespace SimpleW {
 
                 // Content-Length
                 long finalBodyLength = (negotiated != NegotiatedEncoding.None && compressedWriter != null) ? compressedWriter.Length : bodyLength;
-                if (!_hasCustomContentLength && !_suppressContentLength) {
-                    WriteBytes(headerWriter, H_CL);
-                    WriteLongAscii(headerWriter, finalBodyLength);
-                    WriteCRLF(headerWriter);
+                if (_customContentLength.HasValue && _bodyKind != BodyKind.None) {
+                    if (_customContentLength.Value != finalBodyLength) {
+                        throw new InvalidOperationException($"Custom Header Content-Length ({_customContentLength.Value}) does not match actual body length ({finalBodyLength}).");
+                    }
                 }
+                WriteBytes(headerWriter, H_CL);
+                WriteLongAscii(headerWriter, _customContentLength ?? finalBodyLength);
+                WriteCRLF(headerWriter);
 
                 // Content-Type (only if set)
                 if (!string.IsNullOrEmpty(_contentType)) {
@@ -1120,7 +1128,7 @@ namespace SimpleW {
             _contentType = null;
 
             _headerCount = 0;
-            _hasCustomContentLength = false;
+            _customContentLength = null;
 
             _compressionMode = ResponseCompressionMode.Auto;
             _compressionMinSize = 512;
