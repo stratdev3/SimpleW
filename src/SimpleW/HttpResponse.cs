@@ -602,8 +602,7 @@ namespace SimpleW {
 
             // reserve (depending on body kind): body length or a ReadOnlyMemory 
             ReadOnlyMemory<byte> bodyMem = ReadOnlyMemory<byte>.Empty;
-            int bodyLength = 0;
-            long bodyLengthLong = 0;
+            long bodyLength = 0;
 
             switch (_bodyKind) {
                 case BodyKind.None:
@@ -632,7 +631,7 @@ namespace SimpleW {
                     break;
 
                 case BodyKind.File:
-                    bodyLengthLong = _fileLength;
+                    bodyLength = _fileLength;
                     // bodyMem reste vide, on stream après
                     break;
             }
@@ -689,15 +688,10 @@ namespace SimpleW {
                 WriteCRLF(headerWriter);
 
                 // Content-Length
-                int finalBodyLength = (negotiated != NegotiatedEncoding.None && compressedWriter != null) ? compressedWriter.Length : bodyLength;
-                if (!_hasCustomContentLength) {
+                long finalBodyLength = (negotiated != NegotiatedEncoding.None && compressedWriter != null) ? compressedWriter.Length : bodyLength;
+                if (!_hasCustomContentLength && !_suppressContentLength) {
                     WriteBytes(headerWriter, H_CL);
-                    if (_bodyKind == BodyKind.File) {
-                        WriteLongAscii(headerWriter, bodyLengthLong);
-                    }
-                    else {
-                        WriteIntAscii(headerWriter, finalBodyLength);
-                    }
+                    WriteLongAscii(headerWriter, finalBodyLength);
                     WriteCRLF(headerWriter);
                 }
 
