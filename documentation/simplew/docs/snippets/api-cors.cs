@@ -9,12 +9,13 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // set CORS policy
-            server.AddCORS(
-                "*",                // Access-Control-Allow-Origin
-                "*",                // Access-Control-Allow-Headers
-                "GET,POST,OPTIONS", // Access-Control-Allow-Methods
-                "true"              // Access-Control-Allow-Credentials
-            );
+            server.UseCorsModule(o => {
+                o.Prefix = "/api";
+                o.AllowedOrigins = new[] { "http://localhost:2015" };
+                o.AllowCredentials = true;
+                o.AllowedMethods = "GET, POST, OPTIONS";
+                o.MaxAgeSeconds = 600;
+            });
 
             server.MapControllers<Controller>("/api");
 

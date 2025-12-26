@@ -2,12 +2,13 @@
 
 ## Core
 
-- `SimpleWSServer.Start()` => `SimpleWSServer.StartAsync()` or `SimpleWSServer.RunAsync()` depending on the blocking context you want.
-- `SimpleWSServer.Stop()` => `SimpleWSServer.StopAsync()`
+- `SimpleWServer.Start()` => `SimpleWServer.StartAsync()` or `SimpleWServer.RunAsync()` depending on the blocking context you want.
+- `SimpleWServer.Stop()` => `SimpleWServer.StopAsync()`
 - `SimpleWSServer` => [`SimpleWServer.UseHttps()`](./ssl-certificate.md) to setup ssl certificate.
-- `SimpleWSServer.AddDynamicContent()` => `SimpleWSServer.MapControllers()` and `SimpleWSServer.MapController()`.
-- `SimpleWSServer.AddStaticContent()` => `SimpleWSServer.UseStaticFilesModule()`.
+- `SimpleWServer.AddDynamicContent()` => `SimpleWServer.MapControllers()` and `SimpleWServer.MapController()`.
+- `SimpleWServer.AddStaticContent()` => `SimpleWServer.UseStaticFilesModule()`.
 - `NetCoreServerExtension` => `SimpleWExtension`.
+- `SimpleWServer.AddCORS()` => `SimpleWServer.UseCorsModule()`
 
 ## Removed
 

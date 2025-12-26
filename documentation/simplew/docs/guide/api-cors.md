@@ -1,9 +1,9 @@
-# CORS [⚠️ need update to v26]
+# CORS
 
 
 Internet Browser (Firefox, Chrome, IE...) blocks javascript requesting RestAPI from a different domain. That's why [CORS](https://developer.mozilla.org/fr/docs/Web/HTTP/CORS) was created, to define permission and sharing data.
 
-To set CORS policy, use the [`server.AddCORS()`](../reference/simplewserver#cors) method :
+To set CORS policy, use the [`SimpleWServer.UseCorsModule()`](../reference/corsmodule.md) method :
 
 ::: code-group
 
@@ -11,7 +11,3 @@ To set CORS policy, use the [`server.AddCORS()`](../reference/simplewserver#cors
 
 :::
 
-
-::: tip NOTE
-`server.AddCORS()` method should be called before any `server.AddStaticContent()`.
-:::
