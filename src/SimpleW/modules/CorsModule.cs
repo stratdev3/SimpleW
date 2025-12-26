@@ -167,7 +167,7 @@
 
                 // Preflight?
                 // Typical preflight: OPTIONS + Access-Control-Request-Method
-                if (session.Request.Method.Equals("OPTIONS", StringComparison.OrdinalIgnoreCase)
+                if (session.Request.Method == "OPTIONS"
                     && session.Request.Headers.TryGetValue("Access-Control-Request-Method", out var reqMethod)
                     && !string.IsNullOrWhiteSpace(reqMethod)
                 ) {
