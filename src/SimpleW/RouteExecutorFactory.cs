@@ -8,7 +8,7 @@ namespace SimpleW {
     /// <summary>
     /// DelegateExecutorFactory
     /// </summary>
-    public static class DelegateExecutorFactory {
+    internal static class DelegateExecutorFactory {
 
         /// <summary>
         /// Create a HttpRouteExecutor from a Delegate
@@ -691,7 +691,7 @@ namespace SimpleW {
     /// <summary>
     /// ControllerDelegateFactory
     /// </summary>
-    public static class ControllerDelegateFactory {
+    internal static class ControllerDelegateFactory {
 
         /// <summary>
         /// Register a Controller type and map all its routes
