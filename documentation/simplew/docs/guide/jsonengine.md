@@ -1,25 +1,93 @@
 # Json Engine
 
-This [`JsonEngine`](../reference/simplewserver#jsonengine) property defines the Json engine used in server and controllers to serialize, deserialize and populate objects.
-The default engine is `System.Text.Json` initialized with recommanded options.
+The Json Engine defines how SimpleW serializes, deserializes, and populates objects when handling HTTP requests and responses.
 
-There is an additionnal [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package which provide an alternative Json engine, the awesome [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json).
+It is exposed through the [`JsonEngine`](../reference/simplewserver#jsonengine) property and is used consistently by :
+- Handlers returning objects
+- HttpResponse.Json(...)
+- Request.BodyMap(...)
+- Model population and deserialization helpers
 
-To change the Json Engine for Newtonsoft
+Conceptually :
+
+> The Json Engine is the single source of truth for JSON behavior in SimpleW.
+
+
+## Default Json Engine
+
+By default, SimpleW uses `System.Text.Json`, configured with recommended, performance-oriented options.
+
+This default engine provides :
+- High performance
+- Low allocations
+- Native integration with .NET
+- Sensible defaults for most APIs
+
+For the majority of use cases, no configuration is required.
+
+
+## Using Newtonsoft.Json
+
+Some projects require features or behaviors that are specific to [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) (custom converters, advanced polymorphism, legacy compatibility, etc.).
+
+For this reason, SimpleW provides an official alternative engine via the [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) package.
+
+#### Installation
 
 ```sh
 $ dotnet add package SimpleW.Newtonsoft
 ```
 
-And then
 
-::: code-group
+## Configuring the Json Engine
 
-<<< @/snippets/json-engine.cs#snippet{13-30 csharp:line-numbers} [program.cs]
+### Basic Configuration
 
-:::
-::: tip NOTE
+To replace the default engine with Newtonsoft.Json :
 
-You can create your own JsonEngine by implementing the [`IJsonEngine`](../reference/ijsonengine.md) interface.
+```csharp
+server.ConfigureJsonEngine(new NewtonsoftJsonEngine());
+```
 
-:::
+This applies globally to :
+- The server
+- All controllers
+- All handlers
+
+### Custom Newtonsoft Settings
+
+You can also customize the `JsonSerializerSettings` used by Newtonsoft.Json.
+
+```csharp
+server.ConfigureJsonEngine(new NewtonsoftJsonEngine(
+    (action) => {
+        Newtonsoft.Json.JsonSerializerSettings settings = new();
+
+        // you can customize settings dependings the IJsonEngine method called
+        if (action == JsonAction.Serialize) {
+            settings.Formatting = Newtonsoft.Json.Formatting.Indented;
+        }
+
+        return settings;
+    }
+));
+```
+
+This allows fine-grained control depending on the operation being performed (e.g. serialization vs deserialization).
+
+
+## Writing Your Own Json Engine
+
+If neither `System.Text.Json` nor `Newtonsoft.Json` fits your needs, you can implement your own engine.
+
+Simply implement the [`IJsonEngine`](../reference/ijsonengine.md) interface and register it :
+
+```csharp
+server.ConfigureJsonEngine(new MyCustomJsonEngine());
+```
+
+This makes it possible to :
+- Plug in a custom serializer
+- Wrap an existing JSON library
+- Apply project-specific conventions
+

@@ -2,7 +2,7 @@
 
 This class is used to build a response which will be sent to the client.
 
-As already said in the [guide](../guide/api-response#response-property), a `Response` can be returned by a `Controller` method
+As already said in the [guide](../guide/response#response-property), a `Response` can be returned by a `Controller` method
 and it will be sent async to the client.
 
 This class exposes a **fluent API**, which means you can chain all its methods :
@@ -274,7 +274,7 @@ public HttpResponse ClearCookies()
 
 ## Aliases
 
-The following methods provide a convenient way for the [common response](../guide/api-response.md#helpers).
+The following methods provide a convenient way for the [common response](../guide/response.md#helpers).
 
 ```csharp
 /// <summary>

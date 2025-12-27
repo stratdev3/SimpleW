@@ -1,6 +1,6 @@
 # Performances
 
-Performance is a **built-in feature** !
+Performance is a **built-in feature**, not an optional optimization.
 
 Thanks to its [architecture](./what-is-simplew#architecture), SimpleW can handle the [10K connections problem](https://en.wikipedia.org/wiki/C10k_problem).
 
@@ -49,29 +49,59 @@ The bombardier command is run three times, then keep the best result.
 :::
 
 
-## Performance boosts
+## Performance-Oriented Configuration
 
-Severals options should be enabled to get the best performances :
+To get the best performance, enable the following options :
 
 ```csharp:line-numbers
 var server = new SimpleWServer(IPAddress.Any, 2015);
 server.Configure(options => {
-    // these sockets options always boots performances
+    // Always beneficial socket options
     options.TcpNoDelay = true;
     options.ReuseAddress = true;
     options.TcpKeepAlive = true;
 
-    // to test
+    // Advanced tuning (platform dependent)
     options.AcceptPerCore = true;
     options.ReusePort = true; // linux only
 });
 ```
 
-## Performance killers
+These options improve :
+- Connection acceptance scalability
+- Latency under load
+- CPU core utilization
 
-At the opposite, some things will reduce the performances.
+## Common Performance Killers
 
-- Middleware : each request/response will take time to traverse the full pipeline. Middleware are an essential feature of any webserver but you have to be extra careful on what you are doing with the middleware.
-- Console.WriteLine() : DO NOT use it in production !!
-- Trying to parse data in the HttpRequest on your own : use the [`HttpRequest`](../reference/httprequest.md) properties and methods. If something is missing, open a new issue.
+Even a fast server can be made slow by misuse.
 
+### Excessive Middleware
+
+- Middleware runs on every request
+- Each middleware adds overhead
+- Complex middleware stacks multiply cost
+
+Use middleware only for true cross-cutting concerns.
+
+### Manual Request Parsing
+
+Do **not** parse raw request data yourself.
+- Use [`HttpRequest`](../reference/httprequest.md) helpers
+- They are optimized and allocation-aware
+- Custom parsing often introduces bugs and hidden costs
+
+If something is missing, open an issue instead of reimplementing it.
+
+### Console Output
+
+```csharp
+Console.WriteLine(...);
+```
+
+This is **extremely slow** under load.
+- Introduces global locks
+- Destroys throughput
+- Skews benchmarks
+
+Never use it in production hot paths.

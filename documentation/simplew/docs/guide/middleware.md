@@ -31,27 +31,54 @@ If `next()` is not called, the pipeline stops and the response is considered han
 
 This middleware measures the execution time of a request and logs basic request information.
 
-::: code-group
-
-<<< @/snippets/middleware-logging.cs#snippet{18-30 csharp:line-numbers} [program.cs]
-
-:::
-
+```csharp
+// use middleware for logging
+server.UseMiddleware(static async (session, next) => {
+    // start a timer
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    try {
+        await next(); // continue the pipeline (and so send the response)
+    }
+    finally {
+        // back from pipeline (the response has been sent)
+        sw.Stop();
+        Console.WriteLine($"[{DateTime.UtcNow:O}] {session.Request.Method} {session.Request.Path} in {sw.ElapsedMilliseconds} ms");
+    }
+});
+```
 
 Notes :
 - `await next()` ensures the request continues through the pipeline.
 - The finally block guarantees logging even if an exception occurs downstream.
 
+
 ### Example: Simple Firewall / Authentication
 
-::: code-group
+```csharp
+// minimal api
+server.MapGet("/", () => {
+    return new { message = "Hello World !" };
+});
+server.MapGet("/api/test", () => {
+    return new { message = "authenticated" };
+});
 
-<<< @/snippets/middleware-firewall.cs#snippet{21-32 csharp:line-numbers} [program.cs]
-
-:::
+// use middleware as firewall/authenticate
+server.UseMiddleware(static (session, next) => {
+    // check if the user is authorized ?
+    if (session.Request.Path.StartsWith("/api", StringComparison.Ordinal)) {
+        if (!session.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != "secret") {
+            // stop the pipeline here by sending a 401
+            return session.Unauthorized("You're authorized in this area");
+        }
+    }
+    // continue the pipeline
+    return next();
+});
+```
 
 Behavior :
-- Requests targeting http://localhost:2015/api/test require a valid X-Api-Key header.
+- Requests targeting "/api/test" require a valid X-Api-Key header.
 - Unauthorized requests are immediately rejected with a 401 Unauthorized response.
 - Authorized requests continue through the middleware pipeline.
 

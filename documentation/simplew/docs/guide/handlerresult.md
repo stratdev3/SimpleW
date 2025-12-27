@@ -1,77 +1,139 @@
 # Handler Result
 
-Lets start with this basic example.
+When a [`handler`](./handler.md) returns a non-null value, SimpleW needs to decide **what to do** with that value.
 
-A `handler` which **return an object** is defined to the route "/api/test".
-If you open http://localhost:2015/api/test, you will see that the object has been serialized and sent to json.
+This responsibility is handled by a single, explicit mechanism: `HandlerResult`.
 
-```csharp:line-numbers
-// listen to all IPs port 2015
+Conceptually :
+
+> HandlerResult defines how handler return values are transformed into an HTTP response.
+
+
+## The Default Behavior
+
+Consider this minimal example :
+
+```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
 
-// minimal api
 server.MapGet("/api/test", () => {
     return new { message = "Hello World !" };
 });
 
-// start a blocking background server
 await server.RunAsync();
 ```
 
-**Do you ever wonder how that behavior was setup ?** So with the HandlerResult !
+When you open http://localhost:2015/api/test, the returned object is :
+-  Serialized as JSON
+- Written to the response body
+- Sent to the client
 
-## Default HandlerResult
+No explicit response handling code is required.
+This behavior is not magic — it is defined by the **default** `HandlerResult`.
 
-If you look at the source code you will see something like that :
 
-```csharp:line-numbers
-/// <summary>
-/// Action to do on the non null Result of any handler (Delegate).
-/// </summary>
-public HttpHandlerResult HandlerResult { get; set; } = HttpHandlerResults.SendJsonResult;
+## What Is a HandlerResult ?
 
-/// <summary>
-/// Examples of HttpHandlerResult
-/// </summary>
-public static class HttpHandlerResults {
+A `HandlerResult` is a delegate with the following signature :
 
-    /// <summary>
-    /// Send Result as Json
-    /// </summary>
-    public static readonly HttpHandlerResult SendJsonResult = (session, result) => {
-        if (result is HttpResponse response) {
-            // must be sure the response return result is the one of the current session !
-            if (!ReferenceEquals(response, session.Response)) {
-                throw new InvalidOperationException("Returned HttpResponse is not session.Response");
-            }
-            return response.SendAsync();
-        }
-        // fallback
-        return session.Response.Json(result).SendAsync();
-    };
-
-}
-
+```csharp
+ValueTask HttpHandlerResult(HttpSession session, object result)
 ```
 
-The `HandlerResult` is defined by `HttpHandlerResults.SendJsonResult` which obviously serialize the result and send data to client.
-You can browse the `HttpHandlerResults` class, you will some others `HandlerResults`.
+It receives :
+- The current HttpSession
+- The value returned by the handler
+
+Its job is to **turn that value into an HTTP response**.
 
 
-## Configure HandlerResult
+## Default HandlerResult Implementation
 
-You can use the [`SimpleWServer.ConfigureHandlerResult()`](../reference/simplewserver.md#configurehandlerresult) to define how you want to do of the result of handler.
+By default, SimpleW uses `HttpHandlerResults.SendJsonResult`:
+
+```csharp
+public HttpHandlerResult HandlerResult { get; set; } = HttpHandlerResults.SendJsonResult;
+```
+
+Simplified behavior :
+- If the result is an HttpResponse, it is sent directly
+- Otherwise, the result is serialized as JSON and sent
+
+This explains why returning :
+
+```csharp
+return new { message = "Hello" };
+```
+
+"just works".
+
+### Safety Check
+
+The default implementation also validates that a returned `HttpResponse` belongs to the current session.
+This prevents subtle bugs caused by mixing responses across sessions.
+
+## Why HandlerResult Exists
+
+`HandlerResult` provides a **single global interception point for handler outputs**.
+
+This allows you to :
+- Centralize response formatting
+- Add logging or metrics
+- Delay responses
+- Apply cross-cutting response logic
+
+All without modifying individual handlers.
+
+## Custom HandlerResult
+
+You can override the default behavior using [`SimpleWServer.ConfigureHandlerResult()`](../reference/simplewserver.md#configurehandlerresult) :
 
 ```csharp
 server.ConfigureHandlerResult(async (session, result) => {
-    // wait 2sec
-    await Task.Delay(2_000);
-    // log (do not console.writline to production it's a performance killer)
-    Console.WriteLine("running the handler result");
-    // send custom
+    // simulate async work
+    await Task.Delay(2000);
+
+    // custom logic
+    Console.WriteLine("HandlerResult executed");
+
     await session.Response
-                 .AddHeader("custom", "value") // add custom header
-                 .Json(result) // serialize to json
+                 .AddHeader("custom", "value")
+                 .Json(result)
                  .SendAsync();
 });
 ```
+
+This custom `HandlerResult` will be executed for every non-null handler return value.
+
+## Interaction with Handlers
+
+Important rules :
+- If a handler returns `null`, `HandlerResult` is not invoked
+- If a handler sends the response itself, it should return `null`
+- If a handler returns a value, `HandlerResult` becomes responsible for sending the response
+
+### Mental Model
+
+> Handlers produce values. HandlerResult decides how those values leave the server.
+
+
+## HandlerResult vs Middleware
+
+Although both can affect responses, their roles differ :
+
+| Mechanism	        |   Scope                   |   Purpose                         |
+|-------------------|---------------------------|-----------------------------------|
+| Middleware	    |   Before / after handler  |   Cross-cutting request logic     |
+| HandlerResult	    |   After handler           |   Output processing               |
+
+Use `HandlerResult` for response-level policies, not request filtering.
+
+
+## Common Use Cases
+
+Typical reasons to customize `HandlerResult` :
+- Enforcing a unified API envelope
+- Adding global response headers
+- Logging serialized responses
+- Measuring serialization or send time
+

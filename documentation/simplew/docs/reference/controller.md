@@ -1,4 +1,4 @@
-# Controller [⚠️ need update to v26]
+# Controller
 
 The `Controller` is the base class for REST API controllers
 
@@ -44,7 +44,7 @@ It's initialized as an empty Response instance. See the [HttpResponse](./httpres
 
 ## OnBeforeMethod
 
-This [callback](../guide/api-callback#onbeforemethod) is defined as
+This [callback](../guide/callback#onbeforemethod) is defined as
 
 ```csharp
 /// <summary>
@@ -52,45 +52,3 @@ This [callback](../guide/api-callback#onbeforemethod) is defined as
 /// </summary>
 public virtual void OnBeforeMethod() { }
 ```
-
-
-## GetToken()
-
-```csharp
-/// <summary>
-/// Get the JWT by order :
-///     1. Session.jwt (websocket only)
-///     2. Request url querystring "jwt" (api only)
-///     3. Request http header "Authorization: bearer " (api only)
-/// </summary>
-public string GetJwt()
-```
-
-The `GetJwt()` is used to retrieved the raw string token by looking possible location.
-
-
-## webuser
-
-```csharp
-/// <summary>
-/// Get Current IWebUser
-/// </summary>
-protected IWebUser webuser { get; }
-```
-
-When using the integrated JWT authentification, this property is the current user implementing the `IWebUser` interface.
-
-
-## AddSSESession()
-
-```csharp
-/// <summary>
-/// Flag the current Session as SSE Session
-/// and add it to the server SSESessions
-/// Alias for Session.AddSSESession();
-/// </summary>
-void AddSSESession()
-```
-
-This method flag the current `HttpSession` as a Server Sent Events session and add it the list of `SSESessions`.
-By doing so, the server will be able to BroadCastSSEMessage()
