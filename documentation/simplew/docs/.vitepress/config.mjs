@@ -59,10 +59,10 @@ export default defineConfig({
                 {
                     text: 'Framework',
                     items: [
-                        { text: 'Basic', link: '/guide/api-basic' },
-                        { text: 'Routing', link: '/guide/api-routing' },
-                        { text: 'Response', link: '/guide/api-response' },
-                        { text: 'Request', link: '/guide/api-request' },
+                        { text: 'Handler', link: '/guide/handler' },
+                        { text: 'Routing', link: '/guide/routing' },
+                        { text: 'Response', link: '/guide/response' },
+                        { text: 'Request', link: '/guide/request' },
                     ]
                 },
                 {
@@ -70,7 +70,7 @@ export default defineConfig({
                     items: [
                         { text: 'Middleware', link: '/guide/middleware' },
                         { text: 'Module', link: '/guide/module' },
-                        { text: 'Callback', link: '/guide/api-callback' },
+                        { text: 'Callback', link: '/guide/callback' },
                         { text: 'Result Handler', link: '/guide/handlerresult' },
                         { text: 'Json Engine', link: '/guide/jsonengine' },
                     ]

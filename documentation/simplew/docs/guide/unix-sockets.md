@@ -3,7 +3,7 @@
 [Unix Domain Socket](https://en.wikipedia.org/wiki/Unix_domain_socket) (UDS) can also be used as an entrypoint for the server.
 They are supported on : **Linux**, **MacOS**, **Android**... and even **Windows** !
 
-With just a small change, the [basic api example](./api-basic) can also be served over a Unix socket.
+With just a small change, the [basic api example](./getting-started.md#minimal-example) can also be served over a Unix socket.
 
 ::: code-group
 

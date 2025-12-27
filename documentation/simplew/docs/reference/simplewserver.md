@@ -109,7 +109,7 @@ You can list them with `Router.Routes`.
 
 ## Map
 
-For a rapid prototyping, `Delegate` can be set inline.
+For a rapid prototyping, [`handler`](../guide/handler.md) can be set inline.
 
 ```csharp
 /// <summary>
@@ -315,7 +315,7 @@ server.MapControllers<Controller>("/api", new Type[] { typeof(MaintenanceControl
 
 #### Example
 
-Suppose you have [subclass](../guide/api-callback.md#subclass) the `Controller` class to add properties or methods of your own in a new `BaseController`. To call all your controllers based on you custome class : 
+Suppose you have [subclass](../guide/callback.md#subclass) the `Controller` class to add properties or methods of your own in a new `BaseController`. To call all your controllers based on you custome class : 
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -326,20 +326,6 @@ server.MapControllers<BaseController>("/api");
 The search for `Controller` based class occurs only once at **runtime using reflection**.<br />
 However, `Router` use **compiled delegate**, close to hard-coded method calls, to execute code on each request.
 :::
-
-
-### SetToken()
-
-```csharp
-/// <summary>
-/// Set Token settings (passphrase and issuer).
-/// a delegate can be defined to redress webuser called by Controller.JwtToWebUser().
-/// </summary>
-/// <param name="tokenPassphrase">The String token secret passphrase (min 17 chars).</param>
-/// <param name="issuer">The String issuer.</param>
-/// <param name="getWebUserCallback">The DelegateSetTokenWebUser getWebUserCallback</param>
-void SetToken(string tokenPassphrase, string issuer, DelegateSetTokenWebUser getWebUserCallback = null)
-```
 
 
 ## JsonEngine
@@ -369,7 +355,7 @@ To change the engine just provide an object which implement the [`IJsonEngine`](
 
 
 ::: tip NOTE
-You can learn how to change the [`JsonEngine`](../guide/api-response.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package.
+You can learn how to change the [`JsonEngine`](../guide/response.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package.
 :::
 
 

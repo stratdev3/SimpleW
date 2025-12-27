@@ -9,19 +9,10 @@ namespace Sample {
         // use the Route attribute to target a public method
         [Route("GET", "/test")]
         public object SomePublicMethod(string name = "World") {
-            // Query param passed in through function params
-
-            // the Request property contains all data (Url, Headers...) from the client Request
-            var url = Request.RawUrl;
-
             // the return will be serialized to json and sent as response to client
             return new {
-                message = Message()
+                message = $"Hello {name} !"
             };
-        }
-
-        private string Message(string name) {
-            return $"Hello {name} !";
         }
 
     }
