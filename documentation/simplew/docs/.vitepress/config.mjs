@@ -3,12 +3,12 @@ import { defineConfig } from 'vitepress'
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
     appearance: 'dark',
-    base: '/SimpleW/v26/',
+    base: '/v26/',
     title: 'SimpleW',
     titleTemplate: 'SimpleW',
     description: "SimpleW is a Web server library in .NET Core. Designed for Simplicity. Built for Speed. Packed with Power.",
     head: [
-        ['link', { rel: 'icon', href: '/SimpleW/v26/favicon.ico' }],
+        ['link', { rel: 'icon', href: '/v26/favicon.ico' }],
         // analytics
         ['script', { async: '', src: 'https://cloud.umami.is/script.js', 'data-website-id': '6cb0147f-6faa-4c64-ba68-6bd607980ea5' } ],
         // og
@@ -16,8 +16,8 @@ export default defineConfig({
         ['meta', { property: 'og:title', content: 'SimpleW | Web Server Library .NET Core' }],
         ['meta', { property: 'og:description', content: 'Built on top of native sockets. Minimal overhead, instant startup, ideal for microservices, embedded apps, and high-performance workloads' }],
         ['meta', { property: 'og:type', content: 'website' }],
-        ['meta', { property: 'og:url', content: 'https://stratdev3.github.io/SimpleW/v26' }],
-        ['meta', { property: 'og:image', content: 'https://stratdev3.github.io/SimpleW/v26/simplew-og.png' }],
+        ['meta', { property: 'og:url', content: 'https://simplew.net' }],
+        ['meta', { property: 'og:image', content: 'https://simplew.net/simplew-og.png' }],
     ],
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
@@ -38,7 +38,7 @@ export default defineConfig({
             {
                 text: 'v26.0-alpha',
                 items: [
-                    { text: 'v16.1.0', link: 'https://stratdev3.github.io/SimpleW/' },
+                    { text: 'v16.1.0', link: 'https://simplew.net/' },
                     { text: 'Changelog', link: 'https://github.com/stratdev3/SimpleW/blob/master/release.md' },
                 ]
             },
@@ -150,7 +150,7 @@ export default defineConfig({
 
         footer: {
             message: 'Released under the MIT License.',
-            copyright: 'Copyright © 2021-present StratDev'
+            copyright: 'Copyright © 2021-present Christophe CHATEAU'
         },
 
         search: {
@@ -162,7 +162,7 @@ export default defineConfig({
         externalLinkIcon: true
     },
     sitemap: {
-        hostname: 'https://stratdev3.github.io'
+        hostname: 'https://simplew.net'
     },
     ignoreDeadLinks: [
         // ignore all localhost links
