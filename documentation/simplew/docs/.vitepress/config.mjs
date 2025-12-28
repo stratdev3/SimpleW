@@ -145,6 +145,7 @@ export default defineConfig({
 
         socialLinks: [
             { icon: 'github', link: 'https://github.com/stratdev3/SimpleW' },
+            { icon: 'discord', link: 'https://discord.gg/mDNRjyV8Ak' },
             //{ icon: 'nuget', link: 'https://www.nuget.org/packages/SimpleW' },
         ],
 
