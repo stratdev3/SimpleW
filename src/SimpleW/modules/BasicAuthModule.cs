@@ -97,7 +97,7 @@ namespace SimpleW.Modules {
                     throw new ArgumentException($"{nameof(BasicAuthOptions)}.{nameof(Prefix)} must not be null or empty.", nameof(Prefix));
                 }
 
-                Prefix = NormalizePrefix(Prefix);
+                Prefix = SimpleWExtension.NormalizePrefix(Prefix);
 
                 Realm = (Realm ?? string.Empty).Trim();
                 if (Realm.Length == 0) {
@@ -302,28 +302,6 @@ namespace SimpleW.Modules {
                     ArrayPool<byte>.Shared.Return(b64Bytes);
                 }
             }
-        }
-
-        /// <summary>
-        /// NormalizePrefix
-        /// </summary>
-        /// <param name="prefix"></param>
-        /// <returns></returns>
-        internal static string NormalizePrefix(string prefix) {
-            prefix = prefix.Trim();
-            if (prefix.Length == 0) {
-                return "/";
-            }
-            if (!prefix.StartsWith("/")) {
-                prefix = "/" + prefix;
-            }
-            if (prefix.Length > 1 && prefix.EndsWith("/")) {
-                prefix = prefix.TrimEnd('/');
-                if (prefix.Length == 0) {
-                    prefix = "/";
-                }
-            }
-            return prefix;
         }
 
         #region registry / ruleset

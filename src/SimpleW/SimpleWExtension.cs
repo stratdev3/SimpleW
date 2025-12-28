@@ -391,6 +391,25 @@ namespace SimpleW {
             return -1;
         }
 
+        /// <summary>
+        /// normalize prefix to "/xxx" (no trailing slash unless it's "/")
+        /// </summary>
+        /// <param name="prefix"></param>
+        /// <returns></returns>
+        public static string NormalizePrefix(string prefix) {
+            prefix = prefix.Trim();
+            if (prefix.Length == 0) {
+                return "/";
+            }
+            if (!prefix.StartsWith("/")) {
+                prefix = "/" + prefix;
+            }
+            if (prefix.Length > 1 && prefix.EndsWith('/')) {
+                prefix = prefix.TrimEnd('/');
+            }
+            return prefix;
+        }
+
         #endregion helpers
 
     }

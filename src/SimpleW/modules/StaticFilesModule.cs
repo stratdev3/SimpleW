@@ -96,7 +96,7 @@ namespace SimpleW.Modules {
                 }
 
                 Path = StaticFilesModule.NormalizePath(Path);
-                Prefix = StaticFilesModule.NormalizePrefix(Prefix);
+                Prefix = SimpleWExtension.NormalizePrefix(Prefix);
                 CacheTimeout = (CacheTimeout.HasValue && CacheTimeout.Value > TimeSpan.Zero) ? CacheTimeout : null;
 
                 return this;
@@ -268,22 +268,6 @@ namespace SimpleW.Modules {
 
                 fullPath = combinedFull;
                 return true;
-            }
-
-            /// <summary>
-            /// normalize prefix to "/xxx" (no trailing slash unless it's "/")
-            /// </summary>
-            /// <param name="prefix"></param>
-            /// <returns></returns>
-            public static string NormalizePrefix(string prefix) {
-                prefix = prefix.Trim();
-                if (!prefix.StartsWith('/')) {
-                    prefix = "/" + prefix;
-                }
-                if (prefix.Length > 1 && prefix.EndsWith('/')) {
-                    prefix = prefix.TrimEnd('/');
-                }
-                return prefix;
             }
 
             /// <summary>
@@ -483,7 +467,7 @@ namespace SimpleW.Modules {
                 sb.Append("</h1><hr /><pre>");
 
                 // parent link
-                string reqPath = NormalizePrefix(request.Path);
+                string reqPath = SimpleWExtension.NormalizePrefix(request.Path);
                 bool isAtModuleRoot = (_options.Prefix == "/" && reqPath == "/")
                                       || (_options.Prefix != "/" && string.Equals(reqPath, _options.Prefix, StringComparison.Ordinal));
                 if (!isAtModuleRoot) {

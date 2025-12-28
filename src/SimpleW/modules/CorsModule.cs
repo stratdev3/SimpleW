@@ -92,7 +92,7 @@
                     throw new ArgumentException($"{nameof(CorsOptions)}.{nameof(Prefix)} must not be null or empty.", nameof(Prefix));
                 }
 
-                Prefix = CorsModule.NormalizePrefix(Prefix);
+                Prefix = SimpleWExtension.NormalizePrefix(Prefix);
 
                 // normalize origins (trim, remove empties)
                 AllowedOrigins = (AllowedOrigins ?? Array.Empty<string>())
@@ -260,27 +260,6 @@
                 return _allowedOrigins.Contains(origin);
             }
 
-            /// <summary>
-            /// NormalizePrefix
-            /// </summary>
-            /// <param name="prefix"></param>
-            /// <returns></returns>
-            internal static string NormalizePrefix(string prefix) {
-                prefix = prefix.Trim();
-                if (prefix.Length == 0) {
-                    return "/";
-                }
-                if (!prefix.StartsWith("/")) {
-                    prefix = "/" + prefix;
-                }
-                if (prefix.Length > 1 && prefix.EndsWith("/")) {
-                    prefix = prefix.TrimEnd('/');
-                    if (prefix.Length == 0) {
-                        prefix = "/";
-                    }
-                }
-                return prefix;
-            }
         }
     }
 
