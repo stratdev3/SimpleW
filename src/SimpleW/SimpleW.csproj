@@ -19,7 +19,7 @@
     <PackageTags>http api websocket sse server webserver restapi mvc https ssl tls rest</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>SimpleW is Web server Library for .NET Core. Powerfully Simple. Blazingly Fast.</Description>
-    <PackageProjectUrl>https://stratdev3.github.io/SimpleW</PackageProjectUrl>
+    <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/Stratdev3/SimpleW</RepositoryUrl>
