@@ -122,6 +122,11 @@ namespace SimpleW {
         public readonly long MaxRequestBodySize;
 
         /// <summary>
+        /// Matched route template for openTelemetry
+        /// </summary>
+        public string? RouteTemplate { get; private set; }
+
+        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="jsonEngine"></param>
@@ -150,6 +155,7 @@ namespace SimpleW {
             _query?.Clear();
 
             RouteValues = null;
+            RouteTemplate = null;
         }
 
         #region buffer
@@ -232,6 +238,12 @@ namespace SimpleW {
         /// <param name="rv"></param>
         public void ParserSetRouteValues(Dictionary<string, string>? rv) {
             RouteValues = rv;
+        }
+        /// <summary>
+        /// Set RouteTemplate
+        /// </summary>
+        public void ParserSetRouteTemplate(string? template) {
+            RouteTemplate = template;
         }
 
         #endregion helpers

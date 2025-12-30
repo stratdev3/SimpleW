@@ -225,10 +225,12 @@
 
             // fallback
             if (_fallback != null) {
+                session.Request.ParserSetRouteTemplate("fallback");
                 return ExecutePipelineAsync(session, _fallback);
             }
 
             // at last, return a 404
+            session.Request.ParserSetRouteTemplate("not_found");
             return ExecutePipelineAsync(
                 session,
                 DelegateExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync())
@@ -254,6 +256,7 @@
 
             // GET / POST exact
             if (dict is not null && dict.TryGetValue(session.Request.Path, out route)) {
+                session.Request.ParserSetRouteTemplate(route.Attribute.Path);
                 task = ExecutePipelineAsync(session, route.Executor);
                 return true;
             }
@@ -263,6 +266,7 @@
                 && _others.TryGetValue(session.Request.Method, out Dictionary<string, Route>? otherDict)
                 && otherDict.TryGetValue(session.Request.Path, out route)
             ) {
+                session.Request.ParserSetRouteTemplate(route.Attribute.Path);
                 task = ExecutePipelineAsync(session, route.Executor);
                 return true;
             }
@@ -315,6 +319,7 @@
             }
 
             session.Request.ParserSetRouteValues(bestValues);
+            session.Request.ParserSetRouteTemplate(best.Route.Attribute.Path);
             task = ExecutePipelineAsync(session, best.Route.Executor);
             return true;
         }
