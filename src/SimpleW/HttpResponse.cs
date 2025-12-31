@@ -14,6 +14,8 @@ namespace SimpleW {
     /// </summary>
     public sealed class HttpResponse {
 
+        #region internal properties
+
         /// <summary>
         /// The Session
         /// </summary>
@@ -116,6 +118,8 @@ namespace SimpleW {
         /// </summary>
         private IDisposable? _bodyOwner;
 
+        #endregion internal properties
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -144,6 +148,8 @@ namespace SimpleW {
 
             _sent = false;
         }
+
+        #region manipulate (high level methods)
 
         /// <summary>
         /// Status
@@ -834,7 +840,9 @@ namespace SimpleW {
             }
         }
 
-        #region alias
+        #endregion manipulate (high level methods)
+
+        #region alias common response
 
         /// <summary>
         /// Not Found 404
@@ -916,7 +924,7 @@ namespace SimpleW {
             return Unauthorized();
         }
 
-        #endregion alias
+        #endregion alias common response
 
         #region cookies
 
