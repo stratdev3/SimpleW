@@ -120,6 +120,25 @@ namespace SimpleW {
 
         #endregion internal properties
 
+        #region exposed properties
+
+        /// <summary>
+        /// Return StatusCode
+        /// </summary>
+        public int StatusCode => _statusCode;
+
+        /// <summary>
+        /// Total Bytes Sent
+        /// </summary>
+        public long BytesSent { get; set; }
+
+        /// <summary>
+        /// Return true if response has been sent
+        /// </summary>
+        public bool Sent => _sent;
+
+        #endregion exposed properties
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -1176,6 +1195,7 @@ namespace SimpleW {
             _cookieCount = 0;
 
             _sent = false;
+            BytesSent = 0;
         }
 
         /// <summary>

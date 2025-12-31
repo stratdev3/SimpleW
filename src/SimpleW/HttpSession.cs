@@ -428,9 +428,11 @@ namespace SimpleW {
                 }
                 if (_sslStream is not null) {
                     await _sslStream.WriteAsync(buffer).ConfigureAwait(false);
+                    _response.BytesSent += buffer.Length;
                 }
                 else {
-                    await _socket.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                    int bytesSent = await _socket.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                    _response.BytesSent += bytesSent;
                 }
             }
             catch (ObjectDisposedException) {
@@ -460,10 +462,12 @@ namespace SimpleW {
                             continue;
                         }
                         await _sslStream.WriteAsync(seg.Array, seg.Offset, seg.Count).ConfigureAwait(false);
+                        _response.BytesSent += seg.Count;
                     }
                 }
                 else {
-                    await _socket.SendAsync(segments, SocketFlags.None).ConfigureAwait(false);
+                    int bytesSent = await _socket.SendAsync(segments, SocketFlags.None).ConfigureAwait(false);
+                    _response.BytesSent += bytesSent;
                 }
             }
             catch (ObjectDisposedException) {
@@ -491,15 +495,18 @@ namespace SimpleW {
                     // HTTPS : write each segment to sslStream
                     if (header.Array is not null && header.Count > 0) {
                         await _sslStream.WriteAsync(header.Array, header.Offset, header.Count).ConfigureAwait(false);
+                        _response.BytesSent += header.Count;
                     }
                     if (body.Array is not null && body.Count > 0) {
                         await _sslStream.WriteAsync(body.Array, body.Offset, body.Count).ConfigureAwait(false);
+                        _response.BytesSent += body.Count;
                     }
                 }
                 else {
                     _sendSegments2[0] = header;
                     _sendSegments2[1] = body;
-                    await _socket.SendAsync(_sendSegments2, SocketFlags.None).ConfigureAwait(false);
+                    int bytesSent = await _socket.SendAsync(_sendSegments2, SocketFlags.None).ConfigureAwait(false);
+                    _response.BytesSent += bytesSent;
                 }
             }
             catch (ObjectDisposedException) {
@@ -525,9 +532,11 @@ namespace SimpleW {
                 }
                 if (_sslStream is not null) {
                     await _sslStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
+                    _response.BytesSent += buffer.Count;
                 }
                 else {
-                    await _socket.SendAsync(buffer.AsMemory(), SocketFlags.None).ConfigureAwait(false);
+                    int bytesSent = await _socket.SendAsync(buffer.AsMemory(), SocketFlags.None).ConfigureAwait(false);
+                    _response.BytesSent += bytesSent;
                 }
             }
             catch (ObjectDisposedException) {
