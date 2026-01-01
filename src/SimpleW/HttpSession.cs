@@ -366,7 +366,7 @@ namespace SimpleW {
                     return;
                 }
                 catch (Exception ex) {
-                    Console.WriteLine($"[HTTP] Error while processing {_request?.Method} {_request?.Path} for host '{_request?.Headers.Host ?? "<no-host>"}': {ex}");
+                    CloseAfterResponse = true;
                     await _response.Status(500).Text("Internal Server Error").SendAsync().ConfigureAwait(false);
                     return;
                 }
