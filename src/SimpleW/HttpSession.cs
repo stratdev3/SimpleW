@@ -564,8 +564,8 @@ namespace SimpleW {
 
             try {
                 if (_socket.Connected) {
-                        _socket.Shutdown(SocketShutdown.Both);
-                    }
+                    _socket.Shutdown(SocketShutdown.Both);
+                }
             }
             catch { }
 
