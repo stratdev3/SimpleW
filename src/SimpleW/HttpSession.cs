@@ -353,13 +353,7 @@ namespace SimpleW {
                     }
 
                     // compress buffer
-                    if (offset > 0) {
-                        int remaining = _parseBufferCount - offset;
-                        if (remaining > 0) {
-                            Buffer.BlockCopy(_parseBuffer, offset, _parseBuffer, 0, remaining);
-                        }
-                        _parseBufferCount = remaining;
-                    }
+                    CompressParseBuffer(offset);
                 }
                 catch (HttpRequestTooLargeException) {
                     CloseAfterResponse = true;
@@ -384,6 +378,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool ShouldCloseConnection(HttpRequest request) {
 
             // HTTP/1.1 : keep-alive by default, except when "Connection: close"
@@ -600,6 +595,7 @@ namespace SimpleW {
         /// Enlarge Parse Buffer if needed
         /// </summary>
         /// <param name="additionalBytes">number of bytes to add</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureParseBufferCapacity(int additionalBytes) {
             int required = _parseBufferCount + additionalBytes;
             if (_parseBuffer.Length >= required) {
@@ -615,6 +611,23 @@ namespace SimpleW {
             Buffer.BlockCopy(_parseBuffer, 0, newBuffer, 0, _parseBufferCount);
             _bufferPool.Return(_parseBuffer);
             _parseBuffer = newBuffer;
+        }
+
+        /// <summary>
+        /// CompressParseBuffer
+        /// </summary>
+        /// <param name="offset"></param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CompressParseBuffer(int offset) {
+            if (offset <= 0) {
+                return;
+            }
+
+            int remaining = _parseBufferCount - offset;
+            if (remaining > 0) {
+                Buffer.BlockCopy(_parseBuffer, offset, _parseBuffer, 0, remaining);
+            }
+            _parseBufferCount = remaining;
         }
 
         /// <summary>
