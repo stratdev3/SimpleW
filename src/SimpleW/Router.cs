@@ -225,12 +225,12 @@
 
             // fallback
             if (_fallback != null) {
-                session.Request.ParserSetRouteTemplate("fallback");
+                session.Request.ParserSetRouteTemplate(":fallback");
                 return ExecutePipelineAsync(session, _fallback);
             }
 
             // at last, return a 404
-            session.Request.ParserSetRouteTemplate("not_found");
+            session.Request.ParserSetRouteTemplate(":notfound");
             return ExecutePipelineAsync(
                 session,
                 DelegateExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync())
