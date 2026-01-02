@@ -648,6 +648,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Send the response now
+        /// Guard included : only one SendAsync per Response !
         /// </summary>
         /// <returns></returns>
         public async ValueTask SendAsync() {
@@ -851,6 +852,7 @@ namespace SimpleW {
                     await _session.SendAsync(headerSeg).ConfigureAwait(false);
                     await _session.SendAsync(bodyMem).ConfigureAwait(false);
                 }
+                _session.NotifyResponseSent();
             }
             finally {
                 compressedWriter?.Dispose();

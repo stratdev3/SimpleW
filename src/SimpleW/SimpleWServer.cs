@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using SimpleW.Modules;
+using SimpleW.Observability;
 
 
 namespace SimpleW {
@@ -746,6 +747,36 @@ namespace SimpleW {
         }
 
         #endregion json engine
+
+        #region telemetry
+
+        /// <summary>
+        /// Status of Telemetry
+        /// </summary>
+        public bool IsTelemetryEnabled => Telemetry.Enabled;
+
+        /// <summary>
+        /// Enable Telemetry
+        /// </summary>
+        /// <param name="telemetryHandler"></param>
+        /// <returns></returns>
+        public SimpleWServer ConfigureTelemetry(TelemetryHandler? telemetryHandler) {
+            Telemetry.Enable();
+            Telemetry.TelemetryHandler = telemetryHandler;
+            return this;
+        }
+
+        /// <summary>
+        /// Disable Telemetry
+        /// </summary>
+        /// <returns></returns>
+        public SimpleWServer DisableTelemetry() {
+            Telemetry.Disable();
+            return this;
+        }
+
+
+        #endregion telemetry
 
     }
 

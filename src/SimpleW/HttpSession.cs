@@ -1,6 +1,9 @@
 ﻿using System.Buffers;
+using System.Diagnostics;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using SimpleW.Observability;
 using SimpleW.Parsers;
 
 
@@ -307,6 +310,12 @@ namespace SimpleW {
                 // reset idle timer
                 Server.MarkSession(this);
 
+                // first byte timing: start request watch when we receive data for a new request
+                if (Telemetry.Enabled && !_requestTimingStarted) {
+                    _requestStartWatch = Telemetry.GetWatch();
+                    _requestTimingStarted = true;
+                }
+
                 // byte operations
                 EnsureParseBufferCapacity(bytesRead);
                 Buffer.BlockCopy(_recvBuffer, 0, _parseBuffer, _parseBufferCount, bytesRead);
@@ -329,15 +338,26 @@ namespace SimpleW {
 
                         offset += consumed;
 
+                        // PER-REQUEST SCOPE
                         try {
                             // reset response
                             _response.Reset();
+
+                            if (Telemetry.Enabled && !_requestTimingStarted) {
+                                _requestStartWatch = Telemetry.GetWatch();
+                                _requestTimingStarted = true;
+                            }
 
                             // should close connection
                             CloseAfterResponse = ShouldCloseConnection(_request);
 
                             if (IsTransportOwned) {
                                 return;
+                            }
+
+                            if (Telemetry.Enabled) {
+                                _responseStartWatch = Telemetry.GetWatch();
+                                _currentActivity = Telemetry.StartActivity(this);
                             }
 
                             // router and dispatch
@@ -353,6 +373,16 @@ namespace SimpleW {
                             }
                         }
                         finally {
+                            if (Telemetry.Enabled && _currentActivity != null) {
+                                Telemetry.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
+                                // if no response was sent, it's can be an issue
+                                if (!_response.Sent) {
+                                    Telemetry.UpdateActivityAddNoResponse(_currentActivity, this);
+                                }
+                                // we must close telemetry here in this flow !! closing into NotifyResponseSent() will leak memory !!
+                                CloseAndResetTelemetryWatches();
+                            }
+
                             _request.ReturnPooledBodyBuffer();
                         }
                     }
@@ -360,19 +390,16 @@ namespace SimpleW {
                     // compress buffer
                     CompressParseBuffer(offset);
                 }
-                catch (HttpRequestTooLargeException) {
-                    CloseAfterResponse = true;
-                    await _response.Status(413).Text("Payload Too Large").SendAsync().ConfigureAwait(false);
+                catch (HttpRequestTooLargeException ex) {
+                    await UpdateActivityOnExceptionAsync(ex, 413, "Payload Too Large", "HTTP parse");
                     return;
                 }
-                catch (HttpBadRequestException) {
-                    CloseAfterResponse = true;
-                    await _response.Status(400).Text("Bad Request").SendAsync().ConfigureAwait(false);
+                catch (HttpBadRequestException ex) {
+                    await UpdateActivityOnExceptionAsync(ex, 400, "Bad Request", "HTTP parse");
                     return;
                 }
                 catch (Exception ex) {
-                    CloseAfterResponse = true;
-                    await _response.Status(500).Text("Internal Server Error").SendAsync().ConfigureAwait(false);
+                    await UpdateActivityOnExceptionAsync(ex, 500, "Internal Server Error", "HTTP process");
                     return;
                 }
             }
@@ -417,6 +444,7 @@ namespace SimpleW {
         /// <summary>
         /// SendAsync native to socket (thread safe)
         /// Lower level of sending
+        /// You should call NotifyResponseSent() once you finished sending reponse
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
@@ -447,6 +475,7 @@ namespace SimpleW {
         /// <summary>
         /// SendAsync to socket (thread safe)
         /// Lower level of sending
+        /// You should call NotifyResponseSent() once you finished sending reponse
         /// </summary>
         /// <param name="segments"></param>
         /// <returns></returns>
@@ -482,6 +511,7 @@ namespace SimpleW {
         /// <summary>
         /// SendAsync to socket (thread safe)
         /// Lower level of sending
+        /// You should call NotifyResponseSent() once you finished sending reponse
         /// </summary>
         /// <param name="header"></param>
         /// <param name="body"></param>
@@ -521,6 +551,7 @@ namespace SimpleW {
         /// <summary>
         /// SendAsync to socket (thread safe)
         /// Lower level of sending
+        /// You should call NotifyResponseSent() once you finished sending reponse
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
@@ -658,6 +689,87 @@ namespace SimpleW {
         }
 
         #endregion helper
+
+        #region telemetry
+
+        /// <summary>
+        /// Request start: first byte received for the current request
+        /// </summary>
+        private long _requestStartWatch;
+
+        /// <summary>
+        /// Response start: just before dispatch (boundary between request and response)
+        /// </summary>
+        private long _responseStartWatch;
+
+        /// <summary>
+        /// True if we already started timing for the current request (we saw first bytes)
+        /// </summary>
+        private bool _requestTimingStarted;
+
+        /// <summary>
+        /// Close and Reset telemetry
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CloseAndResetTelemetryWatches() {
+            Telemetry.StopActivity(_currentActivity);
+            _currentActivity = null;
+
+            _requestStartWatch = 0;
+            _responseStartWatch = 0;
+            _requestTimingStarted = false;
+        }
+
+        /// <summary>
+        /// Current Activity
+        /// </summary>
+        private Activity? _currentActivity;
+
+        /// <summary>
+        /// UpdateActivityOnExceptionAsync
+        /// </summary>
+        /// <param name="ex"></param>
+        /// <param name="statusCode"></param>
+        /// <param name="statusText"></param>
+        /// <param name="displayName"></param>
+        /// <returns></returns>
+        private async ValueTask UpdateActivityOnExceptionAsync(Exception ex, int statusCode, string statusText, string displayName) {
+            CloseAfterResponse = true;
+            if (Telemetry.Enabled) {
+                if (!_requestTimingStarted) {
+                    _requestStartWatch = Telemetry.GetWatch();
+                    _requestTimingStarted = true;
+                }
+                _responseStartWatch = Telemetry.GetWatch();
+                _currentActivity ??= Telemetry.StartActivity(this, displayName, (statusCode >= 500));
+                Telemetry.UpdateActivityAddException(_currentActivity, ex);
+                Telemetry.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
+                await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
+                CloseAndResetTelemetryWatches();
+            }
+            else {
+                await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Notify Response Sent
+        /// </summary>
+        public void NotifyResponseSent() {
+            if (!Telemetry.Enabled) {
+                return;
+            }
+            if (_currentActivity == null) {
+                return;
+            }
+            if (_responseStartWatch == 0) {
+                return;
+            }
+            Telemetry.UpdateActivityAddResponse(_currentActivity, this);
+            Telemetry.AddResponseMetrics(this, Telemetry.ElapsedMs(_responseStartWatch, Telemetry.GetWatch()));
+        }
+
+        #endregion telemetry
 
     }
 
