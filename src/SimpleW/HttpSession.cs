@@ -87,6 +87,11 @@ namespace SimpleW {
         private readonly HttpResponse _response;
 
         /// <summary>
+        /// Expose the underlying Socket
+        /// </summary>
+        public Socket Socket => _socket;
+
+        /// <summary>
         /// Exposes the underlying transport as a Stream (NetworkStream or SslStream)
         /// NOTE: caller must NOT dispose this stream (it would close the socket)
         /// </summary>
@@ -165,9 +170,9 @@ namespace SimpleW {
         #region ssl
 
         /// <summary>
-        /// Flag true if current Session is Http
+        /// Flag true if current Session is Https
         /// </summary>
-        private bool IsSsl => _sslStream != null;
+        public bool IsSsl => _sslStream != null;
 
         /// <summary>
         /// SslStream
