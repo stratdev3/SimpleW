@@ -11,6 +11,8 @@ namespace SimpleW {
     /// </summary>
     public static class SimpleWExtension {
 
+        #region body
+
         /// <summary>
         /// Update the model with data from POST
         /// </summary>
@@ -90,27 +92,6 @@ namespace SimpleW {
                 // deserialize AnonymousType
                 model = jsonEngine.DeserializeAnonymous(body, model);
             }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Update the model with data from POST
-        /// </summary>
-        /// <param name="json">The json string.</param>
-        /// <param name="model">The Model instance to populate.</param>
-        /// <param name="jsonEngine">the json library to handle serialization/deserialization (default: JsonEngine)</param>
-        /// <param name="includeProperties">string array of properties to update the model. if null update all.</param>
-        /// <param name="excludeProperties">string array of properties to not update.</param>
-        /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
-        public static bool JsonMap<TModel>(string json, TModel model, IJsonEngine jsonEngine, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null) {
-
-            if (string.IsNullOrWhiteSpace(json)) {
-                return false;
-            }
-
-            // deserialize and populate
-            jsonEngine.Populate(json, model, includeProperties, excludeProperties);
 
             return true;
         }
@@ -249,7 +230,30 @@ namespace SimpleW {
             }
         }
 
+        #endregion body
+
         #region helpers
+
+        /// <summary>
+        /// Update the model with data from POST
+        /// </summary>
+        /// <param name="json">The json string.</param>
+        /// <param name="model">The Model instance to populate.</param>
+        /// <param name="jsonEngine">the json library to handle serialization/deserialization (default: JsonEngine)</param>
+        /// <param name="includeProperties">string array of properties to update the model. if null update all.</param>
+        /// <param name="excludeProperties">string array of properties to not update.</param>
+        /// <returns><c>true</c> if operation success; otherwise, <c>false</c>.</returns>
+        public static bool JsonMap<TModel>(string json, TModel model, IJsonEngine jsonEngine, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null) {
+
+            if (string.IsNullOrWhiteSpace(json)) {
+                return false;
+            }
+
+            // deserialize and populate
+            jsonEngine.Populate(json, model, includeProperties, excludeProperties);
+
+            return true;
+        }
 
         /// <summary>
         /// Alias for Utf8 encoding
@@ -414,6 +418,8 @@ namespace SimpleW {
 
     }
 
+    #region multiparts
+
     /// <summary>
     /// Multipart FormData
     /// </summary>
@@ -438,5 +444,7 @@ namespace SimpleW {
     /// <param name="ContentType"></param>
     /// <param name="Length"></param>
     public sealed record MultipartFileInfo(string FieldName, string FileName, string? ContentType, long Length);
+
+    #endregion multiparts
 
 }
