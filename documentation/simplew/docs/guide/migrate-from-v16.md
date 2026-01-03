@@ -14,3 +14,4 @@
 
 - All the statistics properties from `SimpleWServer` class (`ConnectedSessions`, `BytesPending`, `BytesSent`, `BytesReceived`) has been removed. They may be appears is a future release but not now.
 - `SimpleWServer.OptionSendBufferSize` property no longer exists;
+- `SimpleWServer.TrustXHeaders` property no longer exists (see [`SimpleWServer.ConfigureTelemetry()`](./observability.md) on how to add custom telemetry tags);

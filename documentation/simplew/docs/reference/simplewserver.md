@@ -100,6 +100,20 @@ public async Task RunAsync(CancellationToken cancellationToken = default)
 public async Task StopAsync()
 ```
 
+```csharp
+/// <summary>
+/// Is the server started?
+/// </summary>
+public bool IsStarted { get; private set; }
+```
+
+```csharp
+/// <summary>
+/// Is the server currently stopping?
+/// </summary>
+public bool IsStopping { get; private set; } = false;
+```
+
 
 ## Router
 
@@ -387,3 +401,32 @@ new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
 :::
 
 See an [example](../guide/ssl-certificate.md#example-for-local-test).
+
+## Telemetry
+
+
+```csharp
+/// <summary>
+/// Status of Telemetry
+/// </summary>
+public bool IsTelemetryEnabled
+```
+
+```csharp
+/// <summary>
+/// Enable Telemetry
+/// </summary>
+/// <param name="telemetryHandler"></param>
+/// <returns></returns>
+public SimpleWServer ConfigureTelemetry(TelemetryHandler? telemetryHandler)
+```
+
+```csharp
+/// <summary>
+/// Disable Telemetry
+/// </summary>
+/// <returns></returns>
+public SimpleWServer DisableTelemetry()
+```
+
+See an [example](../guide/observability.md).

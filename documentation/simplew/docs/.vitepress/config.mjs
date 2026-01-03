@@ -96,6 +96,7 @@ export default defineConfig({
                     items: [
                         { text: 'Static Files', link: '/guide/staticfilesmodule' },
                         { text: 'Unix Sockets', link: '/guide/unix-sockets' },
+                        { text: 'Observability', link: '/guide/observability' },
                     ]
                 },
             ],
@@ -131,7 +132,7 @@ export default defineConfig({
                 {
                     text: 'Helpers',
                     items: [
-                        { text: 'SimpleWServerOptions', link: '/reference/SimpleWServerOptions' },
+                        { text: 'SimpleWServerOptions', link: '/reference/simplewserveroptions' },
                         { text: 'SimpleWExtension', link: '/reference/simplewextension' },
                         { text: 'IJsonEngine', link: '/reference/ijsonengine' },
                         { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },

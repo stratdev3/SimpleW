@@ -3,6 +3,8 @@
 The `SimpleWServerOptions` allows you to pass configuration options to the main `SimpleWServer` class.
 
 
+## Socket options
+
 ```csharp
 /// <summary>
 /// This option will set the maximum length of the pending connections queue.
@@ -88,19 +90,7 @@ public int TcpKeepAliveRetryCount { get; set; } = -1;
 public int ReceiveBufferSize { get; set; } = 16 * 1024;
 ```
 
-```csharp
-/// <summary>
-/// Is the server started?
-/// </summary>
-public bool IsStarted { get; private set; }
-```
-
-```csharp
-/// <summary>
-/// Is the server currently stopping?
-/// </summary>
-public bool IsStopping { get; private set; } = false;
-```
+## Session options
 
 ```csharp
 /// <summary>
@@ -108,4 +98,22 @@ public bool IsStopping { get; private set; } = false;
 /// Set TimeSpan.MinValue to disable.
 /// </summary>
 public TimeSpan SessionTimeout { get; set; } = TimeSpan.FromSeconds(30);
+```
+
+
+## Security options
+
+
+```csharp
+/// <summary>
+/// Max size of request headers in bytes (default: 64 KB)
+/// </summary>
+public int MaxRequestHeaderSize { get; set; } = 64 * 1024;
+```
+
+```csharp
+/// <summary>
+/// Max size of request body in bytes (default: 10 MB)
+/// </summary>
+public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 ```
