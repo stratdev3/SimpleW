@@ -1,9 +1,17 @@
-﻿using System.Net;
+﻿using System;
+using System.Diagnostics;
+using System.Net;
 using System.Net.WebSockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
+using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using SimpleW;
 using SimpleW.Modules;
 
@@ -81,7 +89,7 @@ namespace example.rewrite {
             //     o.CredentialValidator = (u, p) => u == "prom" && p == "scrape";
             // });
 
-            server.MapGet("/api/test/hello", (string? name = null) => {
+            server.MapGet("/api/test/hello", (HttpSession session, string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
             });
             //server.MapGet("/api/test/hello", static (HttpSession session, string? name = null) => {
@@ -173,6 +181,12 @@ namespace example.rewrite {
                 //options.ReusePort = true;
             });
 
+            //server.UseTelemetry();
+            server.ConfigureTelemetry((activity, session) => {
+                //activity.SetTag("toto", "tutu");
+            });
+            openTelemetryObserver("SimpleW");
+
             // start non blocking background server
             CancellationTokenSource cts = new();
             Console.CancelKeyPress += (_, e) => {
@@ -204,6 +218,57 @@ namespace example.rewrite {
             Console.WriteLine("server stopped");
         }
 
+        private static TracerProvider? _tracerProvider;
+        private static MeterProvider? _meterProvider;
+
+        public static void openTelemetryObserver(string source) {
+            _tracerProvider = Sdk.CreateTracerProviderBuilder()
+                                 .AddSource(source)
+                                 //.SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(0.01)))
+                                 .AddProcessor(new LogProcessor()) // custom log processor
+                                 .AddOtlpExporter((options) => {
+                                     options.Endpoint = new Uri("https://api.uptrace.dev/v1/traces");
+                                     options.Headers = "uptrace-dsn=https://CqLctwdpOwM0Ayv64cKzVg@api.uptrace.dev?grpc=4317";
+                                     options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                                 })
+                                 .SetResourceBuilder(ResourceBuilder.CreateEmpty().AddService(serviceName: "Sample", serviceVersion: "26"))
+                                 .Build();
+
+            _meterProvider = Sdk.CreateMeterProviderBuilder()
+                            //.AddMeter("*") // all meters
+                            .AddMeter(source) // only my meters
+                            .SetResourceBuilder(ResourceBuilder.CreateEmpty().AddService(serviceName: "Sample", serviceVersion: "26"))
+                            .AddOtlpExporter((exporterOptions, metricReaderOptions) => {
+                                exporterOptions.Endpoint = new Uri("https://api.uptrace.dev/v1/metrics");
+                                exporterOptions.Headers = "uptrace-dsn=https://CqLctwdpOwM0Ayv64cKzVg@api.uptrace.dev?grpc=4317";
+                                exporterOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
+                                metricReaderOptions.TemporalityPreference = MetricReaderTemporalityPreference.Delta;
+                                //metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000;
+                            })
+//#if DEBUG
+//                          .AddConsoleExporter((consoleExporterOptions, metricReaderOptions) => {
+//                              metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = ExportIntervalMilliseconds;
+//                          })
+//#endif
+                            .Build();
+        }
+
+    }
+
+    class LogProcessor : BaseProcessor<Activity> {
+        // write log to console
+        public override void OnEnd(Activity activity) {
+            // WARNING : use for local debug only not production
+            Console.WriteLine(
+                 $"{activity.GetTagItem("http.request.method")} " +
+                 $"\"{activity.GetTagItem("url.path")}" +
+                 $"{(!string.IsNullOrWhiteSpace(activity.GetTagItem("url.query")?.ToString()) ? "?"+activity.GetTagItem("url.query") : "")}" +
+                 $"\" " +
+                 $"{activity.GetTagItem("http.response.status_code")} " +
+                 $"{(int)activity.Duration.TotalMilliseconds}ms "
+            );
+
+        }
     }
 
     [Route("/test")]
