@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text;
 using SimpleW.Parsers;
+using SimpleW.Security;
 
 
 namespace SimpleW {
@@ -10,6 +11,21 @@ namespace SimpleW {
     /// SimpleW Extension helpers methods
     /// </summary>
     public static class SimpleWExtension {
+
+        #region jwt
+
+        /// <summary>
+        /// CreateJwt
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="standard"></param>
+        /// <param name="customClaims"></param>
+        /// <returns></returns>
+        public static string CreateJwt(this HttpSession session, JwtTokenPayload standard, IReadOnlyDictionary<string, object?> customClaims) {
+            return Jwt.EncodeHs256(session.JsonEngine, standard, customClaims, session.Server.Options.JwtOptions!.Key);
+        }
+
+        #endregion jwt
 
         #region body
 

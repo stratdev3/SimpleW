@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Text;
 using SimpleW.Parsers;
+using SimpleW.Security;
 
 
 namespace SimpleW {
@@ -157,6 +158,55 @@ namespace SimpleW {
         /// </summary>
         private readonly JwtResolver JwtResolver;
 
+        /// <summary>
+        /// JwtOptions
+        /// </summary>
+        public readonly JwtOptions? JwtOptions;
+
+        /// <summary>
+        /// _jwtToken already initialized ?
+        /// </summary>
+        private bool _jwtTokenInitialized;
+
+        /// <summary>
+        /// Store the JwtToken value
+        /// </summary>
+        private JwtToken? _jwtToken;
+
+        /// <summary>
+        /// JwtToken
+        /// </summary>
+        public JwtToken? JwtToken {
+            get {
+                if (!_jwtTokenInitialized) {
+                    _jwtTokenInitialized = true;
+                    if (string.IsNullOrWhiteSpace(Jwt)) {
+                        JwtError = Security.JwtError.InvalidBase64;
+                    }
+                    else if (JwtOptions == null) {
+                        JwtError = Security.JwtError.InvalidJsonOptions;
+                    }
+                    else if (!Security.Jwt.TryDecodeAndValidate(JsonEngine, Jwt, JwtOptions, out JwtToken? jwtToken, out JwtError err)) {
+                        JwtError = err;
+                    }
+                    else {
+                        _jwtToken = jwtToken;
+                    }
+                }
+                return _jwtToken;
+            } 
+            set {
+                _jwtTokenInitialized = true;
+                _jwtToken = value;
+                JwtError = Security.JwtError.None;
+            }
+        }
+
+        /// <summary>
+        /// JwtError
+        /// </summary>
+        public JwtError? JwtError { get; internal set; } = Security.JwtError.None;
+
         #endregion jwt
 
         /// <summary>
@@ -166,11 +216,13 @@ namespace SimpleW {
         /// <param name="maxRequestHeaderSize"></param>
         /// <param name="maxRequestBodySize"></param>
         /// <param name="jwtResolver"></param>
-        public HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver) {
+        /// <param name="jwtOptions"></param>
+        internal HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions) {
             JsonEngine = jsonEngine;
             MaxRequestHeaderSize = maxRequestHeaderSize;
             MaxRequestBodySize = maxRequestBodySize;
             JwtResolver = jwtResolver;
+            JwtOptions = jwtOptions;
         }
 
         /// <summary>
@@ -194,6 +246,9 @@ namespace SimpleW {
 
             _jwtInitialized = false;
             _jwt = null;
+            _jwtTokenInitialized = false;
+            _jwtToken = null;
+            JwtError = Security.JwtError.None;
         }
 
         #region buffer

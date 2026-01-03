@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using SimpleW.Modules;
 using SimpleW.Observability;
+using SimpleW.Security;
 
 
 namespace SimpleW {
@@ -826,6 +827,11 @@ namespace SimpleW {
         /// Max size of request body in bytes (default: 10 MB)
         /// </summary>
         public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
+
+        /// <summary>
+        /// JwtOptions
+        /// </summary>
+        public JwtOptions? JwtOptions { get; set; }
 
         #endregion security
 
