@@ -126,16 +126,51 @@ namespace SimpleW {
         /// </summary>
         public string? RouteTemplate { get; private set; }
 
+        #region jwt
+
+        /// <summary>
+        /// _jwt already initialized ?
+        /// </summary>
+        private bool _jwtInitialized;
+
+        /// <summary>
+        /// Store the jwt value
+        /// </summary>
+        private string? _jwt;
+
+        /// <summary>
+        /// Jwt (raw string)
+        /// </summary>
+        public string? Jwt {
+            get {
+                if (_jwtInitialized) {
+                    return _jwt;
+                }
+                _jwtInitialized = true;
+                _jwt = JwtResolver(this);
+                return _jwt;
+            }
+        }
+
+        /// <summary>
+        /// JwtResolver
+        /// </summary>
+        private readonly JwtResolver JwtResolver;
+
+        #endregion jwt
+
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="jsonEngine"></param>
         /// <param name="maxRequestHeaderSize"></param>
         /// <param name="maxRequestBodySize"></param>
-        public HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize) {
+        /// <param name="jwtResolver"></param>
+        public HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver) {
             JsonEngine = jsonEngine;
             MaxRequestHeaderSize = maxRequestHeaderSize;
             MaxRequestBodySize = maxRequestBodySize;
+            JwtResolver = jwtResolver;
         }
 
         /// <summary>
@@ -156,6 +191,9 @@ namespace SimpleW {
 
             RouteValues = null;
             RouteTemplate = null;
+
+            _jwtInitialized = false;
+            _jwt = null;
         }
 
         #region buffer
@@ -249,6 +287,13 @@ namespace SimpleW {
         #endregion helpers
 
     }
+
+    /// <summary>
+    /// JwtResolver
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public delegate string? JwtResolver(HttpRequest request);
 
     /// <summary>
     /// HttpHeaders

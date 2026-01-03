@@ -778,6 +778,36 @@ namespace SimpleW {
 
         #endregion telemetry
 
+        #region jwt
+
+        /// <summary>
+        /// Get the JwtResolver
+        /// </summary>
+        public JwtResolver JwtResolver { get; private set; } = (request) => {
+            // 1. Request url querystring "jwt" (api only)
+            if (request.Query.TryGetValue("jwt", out string? qs_jwt) && !string.IsNullOrWhiteSpace(qs_jwt)) {
+                return qs_jwt;
+            }
+
+            // 2. Request http header "Authorization: bearer " (api only)
+            if (string.IsNullOrWhiteSpace(request.Headers.Authorization) || !request.Headers.Authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
+                return null;
+            }
+            return request.Headers.Authorization["Bearer ".Length..];
+        };
+
+        /// <summary>
+        /// Configure the JwtResolver
+        /// </summary>
+        /// <param name="jwtResolver"></param>
+        /// <returns></returns>
+        public SimpleWServer ConfigureJwtResolver(JwtResolver jwtResolver) {
+            JwtResolver = jwtResolver;
+            return this;
+        }
+
+        #endregion jwt
+
     }
 
     /// <summary>
