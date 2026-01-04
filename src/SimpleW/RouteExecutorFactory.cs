@@ -39,12 +39,12 @@ namespace SimpleW {
             // TryGetValue(string, out string)
             Type queryType = queryProp.Type;
             MethodInfo? queryTryGetValueMethod = queryType.GetMethod(
-                "TryGetValue",
-                BindingFlags.Public | BindingFlags.Instance,
-                binder: null,
-                types: new[] { typeof(string), typeof(string).MakeByRefType() },
-                modifiers: null
-            );
+                                                     "TryGetValue",
+                                                     BindingFlags.Public | BindingFlags.Instance,
+                                                     binder: null,
+                                                     types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                                                     modifiers: null
+                                                 );
 
             // session.Request.RouteValues
             MemberExpression routeValuesProp = Expression.Property(requestProp, nameof(HttpRequest.RouteValues));
@@ -52,12 +52,12 @@ namespace SimpleW {
             // TryGetValue(string, out string)
             Type routeValuesType = routeValuesProp.Type;
             MethodInfo? routeTryGetValueMethod = typeof(Dictionary<string, string>).GetMethod(
-                "TryGetValue",
-                BindingFlags.Public | BindingFlags.Instance,
-                binder: null,
-                types: new[] { typeof(string), typeof(string).MakeByRefType() },
-                modifiers: null
-            );
+                                                     "TryGetValue",
+                                                     BindingFlags.Public | BindingFlags.Instance,
+                                                     binder: null,
+                                                     types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                                                     modifiers: null
+                                                 );
 
             //
             // Build handler arguments
@@ -113,12 +113,12 @@ namespace SimpleW {
                     Expression assignDefault = p.HasDefaultValue
                                                     ? Expression.Assign(paramVar, defaultExpr)
                                                     : Expression.Throw(
-                                                        Expression.New(
-                                                            typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
-                                                                                                             Expression.Constant($"Missing required parameter '{p.Name}'")
-                                                        ),
-                                                        p.ParameterType
-                                                    );
+                                                          Expression.New(
+                                                              typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
+                                                                                                               Expression.Constant($"Missing required parameter '{p.Name}'")
+                                                          ),
+                                                          p.ParameterType
+                                                      );
 
                     //
                     // RouteValues
@@ -126,54 +126,53 @@ namespace SimpleW {
 
                     // routeValues != null
                     Expression routeNotNull = Expression.NotEqual(
-                        routeValuesProp,
-                        Expression.Constant(null, routeValuesType)
-                    );
+                                                  routeValuesProp,
+                                                  Expression.Constant(null, routeValuesType)
+                                              );
 
                     // routeValues.TryGetValue("name", out rawVar)
                     Expression routeTryGet = (routeTryGetValueMethod is null)
                                                 ? Expression.Constant(false)
                                                 : Expression.Call(
-                                                    Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
-                                                    routeTryGetValueMethod,
-                                                    Expression.Constant(p.Name, typeof(string)),
-                                                    rawVar
-                                                );
+                                                      Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
+                                                      routeTryGetValueMethod,
+                                                      Expression.Constant(p.Name, typeof(string)),
+                                                      rawVar
+                                                  );
 
                     // if (routeValues != null && routeTryGet) param = converted else ... (fallback query)
                     Expression routeBranch = Expression.IfThenElse(
-                        Expression.AndAlso(routeNotNull, routeTryGet),
-                        assignConverted,
-                        Expression.Empty()
-                    );
+                                                 Expression.AndAlso(routeNotNull, routeTryGet),
+                                                 assignConverted,
+                                                 Expression.Empty()
+                                             );
 
                     //
                     // QueryString
                     //
                     Expression queryBranch;
 
-                    
                     if (queryTryGetValueMethod != null) {
 
                         // query != null
                         Expression queryNotNull = Expression.NotEqual(
-                            queryProp,
-                            Expression.Constant(null, queryType)
-                        );
+                                                      queryProp,
+                                                      Expression.Constant(null, queryType)
+                                                  );
 
                         // query.TryGetValue("name", out rawVar)
                         Expression queryTryGet = Expression.Call(
-                            queryProp,
-                            queryTryGetValueMethod,
-                            Expression.Constant(p.Name, typeof(string)),
-                            rawVar
-                        );
+                                                     queryProp,
+                                                     queryTryGetValueMethod,
+                                                     Expression.Constant(p.Name, typeof(string)),
+                                                     rawVar
+                                                 );
 
                         Expression queryAssign = Expression.IfThenElse(
-                            Expression.AndAlso(queryNotNull, queryTryGet),
-                            assignConverted,
-                            assignDefault
-                        );
+                                                     Expression.AndAlso(queryNotNull, queryTryGet),
+                                                     assignConverted,
+                                                     assignDefault
+                                                 );
 
                         queryBranch = queryAssign;
                     }
@@ -191,22 +190,22 @@ namespace SimpleW {
                     Expression setMatchedTrue = Expression.Assign(matchedRouteVar, Expression.Constant(true));
 
                     Expression routeTryBlock = Expression.IfThenElse(
-                        Expression.AndAlso(routeNotNull, routeTryGet),
-                        Expression.Block(setMatchedTrue, assignConverted),
-                        Expression.Empty()
-                    );
+                                                   Expression.AndAlso(routeNotNull, routeTryGet),
+                                                   Expression.Block(setMatchedTrue, assignConverted),
+                                                   Expression.Empty()
+                                               );
 
                     Expression finalAssign = Expression.IfThenElse(
-                        matchedRouteVar,
-                        Expression.Empty(), // already assigned
-                        queryBranch
-                    );
+                                                 matchedRouteVar,
+                                                 Expression.Empty(), // already assigned
+                                                 queryBranch
+                                             );
 
                     assignExpr = Expression.Block(
-                        setMatchedFalse,
-                        routeTryBlock,
-                        finalAssign
-                    );
+                                     setMatchedFalse,
+                                     routeTryBlock,
+                                     finalAssign
+                                 );
                 }
                 else {
                     // no name, then default value
@@ -218,7 +217,7 @@ namespace SimpleW {
             }
 
             //
-            // Call the handler
+            // call the handler
             //
             Expression call;
 
@@ -249,10 +248,10 @@ namespace SimpleW {
                 }
 
                 call = Expression.Call(
-                    Expression.Convert(instanceExpr, method.DeclaringType),
-                    method,
-                    callArgs
-                );
+                           Expression.Convert(instanceExpr, method.DeclaringType),
+                           method,
+                           callArgs
+                       );
             }
 
             //
@@ -276,11 +275,11 @@ namespace SimpleW {
                                                     ? Expression.Convert(call, typeof(object))
                                                     : Expression.TypeAs(call, typeof(object));
                     returnExpr = Expression.Call(
-                        invokeResultMethod,
-                        sessionParam,
-                        handlerResultParam,
-                        resultAsObject
-                    );
+                                     invokeResultMethod,
+                                     sessionParam,
+                                     handlerResultParam,
+                                     resultAsObject
+                                 );
                     break;
                 }
 
@@ -297,11 +296,11 @@ namespace SimpleW {
                     MethodInfo fromTaskWithResultGeneric = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
                                                                                           .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
-                        fromTaskWithResultGeneric,
-                        call,
-                        sessionParam,
-                        handlerResultParam
-                    );
+                                     fromTaskWithResultGeneric,
+                                     call,
+                                     sessionParam,
+                                     handlerResultParam
+                                 );
                     break;
                 }
 
@@ -318,11 +317,11 @@ namespace SimpleW {
                     MethodInfo fromValueTaskWithResultGeneric = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
                                                                                                .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
-                        fromValueTaskWithResultGeneric,
-                        call,
-                        sessionParam,
-                        handlerResultParam
-                    );
+                                     fromValueTaskWithResultGeneric,
+                                     call,
+                                     sessionParam,
+                                     handlerResultParam
+                                 );
                     break;
                 }
 
@@ -334,10 +333,10 @@ namespace SimpleW {
             body.Add(returnExpr);
             BlockExpression block = Expression.Block(variables, body);
             Expression<HttpRouteExecutor>? lambda = Expression.Lambda<HttpRouteExecutor>(
-                block,
-                sessionParam,
-                handlerResultParam
-            );
+                                                        block,
+                                                        sessionParam,
+                                                        handlerResultParam
+                                                    );
 
             return lambda.Compile();
         }
@@ -385,7 +384,7 @@ namespace SimpleW {
                 }
             }
 
-            // tout le reste = sync avec résultat
+            // sync with result
             return HandlerReturnKind.SyncResult;
         }
 
@@ -824,23 +823,30 @@ namespace SimpleW {
             MethodInfo onBeforeMethodInfo = typeof(Controller).GetMethod(nameof(Controller.OnBeforeMethod), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
             MethodCallExpression callOnBefore = Expression.Call(controllerVar, onBeforeMethodInfo);
 
-            // Build method arguments (routeValues -> query -> default)
+            //
+            // Build handler arguments
+            // For each arguments, return a value that can be
+            //     1. session if parameter is HttpSesssion (special case)
+            //     2. value of the Request RouteValues String if exists (mapping by name)
+            //     3. value of the Request Query String if exists (mapping by name)
+            //     4. default value of the parameter
+            //
+
             List<ParameterExpression> variables = new() { controllerVar };
+            Expression[] argExpressions = new Expression[methodParams.Length];
             List<Expression> body = new() {
                 assignController,
                 assignSession,
                 callOnBefore
             };
 
-            // call controller.Method(param1, param2, ...)
-            Expression[] callArgs = new Expression[methodParams.Length];
             for (int i = 0; i < methodParams.Length; i++) {
 
                 ParameterInfo p = methodParams[i];
 
                 // 1.) HttpSession type is a special parameter
                 if (p.ParameterType == typeof(HttpSession)) {
-                    callArgs[i] = sessionParam;
+                    argExpressions[i] = sessionParam;
                     continue;
                 }
 
@@ -856,12 +862,14 @@ namespace SimpleW {
                 object? defaultObj = DelegateExecutorFactory.GetDefaultValueForParameter(p);
                 Expression defaultExpr;
                 if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
+                    // non nullable value type without default -> default(T)
                     defaultExpr = Expression.Default(p.ParameterType);
                 }
                 else {
                     defaultExpr = Expression.Constant(defaultObj, p.ParameterType);
                 }
 
+                // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
                 MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
                                                 .GetMethod(nameof(DelegateExecutorFactory.ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
                                                 .MakeGenericMethod(p.ParameterType);
@@ -925,16 +933,18 @@ namespace SimpleW {
                                 );
                 }
                 else {
-                    // unnamed parameter, then default value
+                    // no name, then default value
                     assignExpr = assignDefault;
                 }
 
                 body.Add(assignExpr);
-                callArgs[i] = paramVar;
+                argExpressions[i] = paramVar;
             }
 
+            //
             // call controller.Method(...)
-            MethodCallExpression call = Expression.Call(controllerVar, method, callArgs);
+            //
+            MethodCallExpression call = Expression.Call(controllerVar, method, argExpressions);
 
             // append call as last expression
             body.Add(call);
