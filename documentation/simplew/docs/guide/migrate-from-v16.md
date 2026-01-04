@@ -1,5 +1,6 @@
 # Migration guide from SimpleW v16
 
+
 ## Core
 
 - `SimpleWServer.Start()` => `SimpleWServer.StartAsync()` or `SimpleWServer.RunAsync()` depending on the blocking context you want.
@@ -9,6 +10,17 @@
 - `SimpleWServer.AddStaticContent()` => `SimpleWServer.UseStaticFilesModule()`.
 - `NetCoreServerExtension` => `SimpleWExtension`.
 - `SimpleWServer.AddCORS()` => `SimpleWServer.UseCorsModule()`
+- `SimpleWServer.EnableTelemetry` => `SimpleWServer.ConfigureTelemetry()`
+
+
+## Response
+- `Response.Make*Response()` => `Response.*()` (e.g: Response.MakeAccessResponse() => Response.Access() )
+
+
+## Controller
+
+- `webuser` => `WebUser`
+
 
 ## Removed
 
