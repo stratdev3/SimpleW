@@ -377,6 +377,20 @@ namespace SimpleW.Security {
         }
 
         /// <summary>
+        /// Create
+        /// </summary>
+        /// <param name="expire">should be utc</param>
+        /// <param name="issuer"></param>
+        /// <returns></returns>
+        public static JwtTokenPayload Create(DateTime expire, string issuer = "") {
+            return new JwtTokenPayload() {
+                iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                exp = new DateTimeOffset(expire).ToUnixTimeSeconds(),
+                iss = issuer,
+            };
+        }
+
+        /// <summary>
         /// Convert To Dictionary
         /// </summary>
         /// <returns></returns>
