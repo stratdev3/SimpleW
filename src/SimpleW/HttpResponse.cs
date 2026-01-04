@@ -936,9 +936,8 @@ namespace SimpleW {
         /// <summary>
         /// Access 401/403
         /// </summary>
-        /// <param name="isWebuser"></param>
         /// <returns></returns>
-        public HttpResponse Access(bool isWebuser = false) {
+        public HttpResponse Access() {
             if (!_session.Request.User?.Identity ?? true) {
                 return Unauthorized();
             }
