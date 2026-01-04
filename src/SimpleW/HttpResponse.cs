@@ -944,6 +944,16 @@ namespace SimpleW {
             return Forbidden();
         }
 
+        /// <summary>
+        /// Attachment
+        /// </summary>
+        /// <returns></returns>
+        public HttpResponse Attachment(string outputFilename) {
+            AddHeader("Content-Disposition", $"attachment;filename={outputFilename}");
+            ContextTypeFromExtension(outputFilename);
+            return this;
+        }
+
         #endregion alias common response
 
         #region cookies
