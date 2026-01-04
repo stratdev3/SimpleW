@@ -761,7 +761,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="telemetryHandler"></param>
         /// <returns></returns>
-        public SimpleWServer ConfigureTelemetry(TelemetryHandler? telemetryHandler) {
+        public SimpleWServer ConfigureTelemetry(TelemetryHandler? telemetryHandler = null) {
             Telemetry.Enable();
             Telemetry.TelemetryHandler = telemetryHandler;
             return this;
