@@ -809,6 +809,37 @@ namespace SimpleW {
 
         #endregion jwt
 
+        #region webuser
+
+        /// <summary>
+        /// Get the WebUserResolver
+        /// </summary>
+        internal WebUserResolver WebUserResolver { get; private set; } = (request) => {
+            if (request.JwtToken == null) {
+                return new WebUser();
+            }
+            try {
+                TokenWebUser twu = request.JsonEngine.Deserialize<TokenWebUser>(request.JwtToken.RawPayload);
+                twu.Token = request.Jwt;
+                return twu;
+            }
+            catch {
+                return new WebUser();
+            }
+        };
+
+        /// <summary>
+        /// Configure the WebUserResolver
+        /// </summary>
+        /// <param name="webUserResolver"></param>
+        /// <returns></returns>
+        public SimpleWServer ConfigureWebUserResolver(WebUserResolver webUserResolver) {
+            WebUserResolver = webUserResolver;
+            return this;
+        }
+
+        #endregion webuser
+
     }
 
     /// <summary>
