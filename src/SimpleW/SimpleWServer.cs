@@ -814,19 +814,7 @@ namespace SimpleW {
         /// <summary>
         /// Get the WebUserResolver
         /// </summary>
-        internal WebUserResolver WebUserResolver { get; private set; } = (request) => {
-            if (request.JwtToken == null) {
-                return new WebUser();
-            }
-            try {
-                TokenWebUser twu = request.JsonEngine.Deserialize<TokenWebUser>(request.JwtToken.RawPayload);
-                twu.Token = request.Jwt;
-                return twu;
-            }
-            catch {
-                return new WebUser();
-            }
-        };
+        internal WebUserResolver WebUserResolver { get; private set; } = WebUserResolvers.TokenWebUser;
 
         /// <summary>
         /// Configure the WebUserResolver

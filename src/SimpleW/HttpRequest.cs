@@ -406,6 +406,30 @@ namespace SimpleW {
     public delegate IWebUser WebUserResolver(HttpRequest request);
 
     /// <summary>
+    /// Examples of WebUserResolver
+    /// </summary>
+    public static class WebUserResolvers {
+
+        /// <summary>
+        /// TokenWebUser as IWebUser
+        /// </summary>
+        public static readonly WebUserResolver TokenWebUser = (request) => {
+            if (request.JwtToken == null) {
+                return new WebUser();
+            }
+            try {
+                TokenWebUser twu = request.JsonEngine.Deserialize<TokenWebUser>(request.JwtToken.RawPayload);
+                twu.Token = request.Jwt;
+                return twu;
+            }
+            catch {
+                return new WebUser();
+            }
+        };
+
+    }
+
+    /// <summary>
     /// HttpHeaders
     ///     1. most common
     ///     2. fallback list
