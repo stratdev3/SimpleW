@@ -749,7 +749,7 @@ namespace SimpleW {
                 }
                 _responseStartWatch = Telemetry.GetWatch();
                 _currentActivity ??= Telemetry.StartActivity(this, displayName, (statusCode >= 500));
-                Telemetry.UpdateActivityAddException(_currentActivity, ex);
+                Telemetry.UpdateActivityAddException(_currentActivity, ex, Server.Options.IncludeStackTraceInTelemetry);
                 Telemetry.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
                 await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
                 CloseAndResetTelemetryWatches();

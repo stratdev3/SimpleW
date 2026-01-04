@@ -106,8 +106,9 @@ namespace SimpleW.Observability {
         /// </summary>
         /// <param name="activity"></param>
         /// <param name="ex"></param>
+        /// <param name="includeStackTrace"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UpdateActivityAddException(Activity? activity, Exception ex) {
+        public static void UpdateActivityAddException(Activity? activity, Exception ex, bool includeStackTrace = false) {
             if (activity == null) {
                 return;
             }
@@ -116,9 +117,9 @@ namespace SimpleW.Observability {
 
             ActivityTagsCollection tags = new();
             tags.Add("exception.type", ex.GetType().FullName);
-#if DEBUG
-            tags.Add("exception.stacktrace", ex.ToString());
-#endif
+            if (includeStackTrace) {
+                tags.Add("exception.stacktrace", ex.ToString());
+            }
             activity.AddEvent(new ActivityEvent(ex.Message, default, tags));
         }
 

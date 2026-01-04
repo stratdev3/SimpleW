@@ -848,6 +848,11 @@ namespace SimpleW {
         public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 
         /// <summary>
+        /// Include StackTrace in Telemetry
+        /// </summary>
+        public bool IncludeStackTraceInTelemetry { get; set; } = false;
+
+        /// <summary>
         /// JwtOptions
         /// </summary>
         public JwtOptions? JwtOptions { get; set; }
