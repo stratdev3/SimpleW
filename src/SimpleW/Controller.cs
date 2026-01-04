@@ -22,6 +22,11 @@ namespace SimpleW {
         public HttpResponse Response => Session.Response;
 
         /// <summary>
+        /// Gets the current WebUser
+        /// </summary>
+        public IWebUser Webuser => Session.Request.WebUser;
+
+        /// <summary>
         /// Called before any Controller.Method()
         /// </summary>
         public virtual void OnBeforeMethod() { }

@@ -209,6 +209,48 @@ namespace SimpleW {
 
         #endregion jwt
 
+        #region webuser
+
+        /// <summary>
+        /// _webUser already initialized ?
+        /// </summary>
+        private bool _webUserInitialized;
+
+        /// <summary>
+        /// cache for webuser property
+        /// </summary>
+        private IWebUser _webUser = new WebUser();
+
+        /// <summary>
+        /// WebUserResolver
+        /// </summary>
+        private readonly WebUserResolver? _webUserResolver;
+
+        /// <summary>
+        /// WebUser (lazy) resolved from the current request.
+        /// Can be overridden by :
+        ///     - setting it (e.g: in a middleware)
+        ///     OR
+        ///     - override the SimpleWServer.ConfigureWebUserResolver()
+        /// </summary>
+        public IWebUser WebUser {
+            get {
+                if (!_webUserInitialized) {
+                    _webUserInitialized = true;
+                    if (_webUserResolver != null) {
+                        _webUser = _webUserResolver(this);
+                    }
+                }
+                return _webUser;
+            }
+            set {
+                _webUserInitialized = true;
+                _webUser = value;
+            }
+        }
+
+        #endregion webuser
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -217,12 +259,14 @@ namespace SimpleW {
         /// <param name="maxRequestBodySize"></param>
         /// <param name="jwtResolver"></param>
         /// <param name="jwtOptions"></param>
-        internal HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions) {
+        /// <param name="webUserResolver"></param>
+        internal HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions, WebUserResolver? webUserResolver) {
             JsonEngine = jsonEngine;
             MaxRequestHeaderSize = maxRequestHeaderSize;
             MaxRequestBodySize = maxRequestBodySize;
             JwtResolver = jwtResolver;
             JwtOptions = jwtOptions;
+            _webUserResolver = webUserResolver;
         }
 
         /// <summary>
@@ -246,9 +290,13 @@ namespace SimpleW {
 
             _jwtInitialized = false;
             _jwt = null;
+
             _jwtTokenInitialized = false;
             _jwtToken = null;
             JwtError = Security.JwtError.None;
+
+            _webUserInitialized = false;
+            _webUser = new WebUser();
         }
 
         #region buffer
@@ -349,6 +397,13 @@ namespace SimpleW {
     /// <param name="request"></param>
     /// <returns></returns>
     public delegate string? JwtResolver(HttpRequest request);
+
+    /// <summary>
+    /// WebUserResolver
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
+    public delegate IWebUser WebUserResolver(HttpRequest request);
 
     /// <summary>
     /// HttpHeaders
