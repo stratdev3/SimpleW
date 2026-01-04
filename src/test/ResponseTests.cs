@@ -236,8 +236,8 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
             server.MapGet("/", (HttpSession session) => {
-                //session.webuser = new WebUser() { Identity = true };
-                return session.Response.Access(true);
+                session.Request.WebUser = new WebUser() { Identity = true };
+                return session.Response.Access();
             });
             await server.StartAsync();
 

@@ -939,10 +939,10 @@ namespace SimpleW {
         /// <param name="isWebuser"></param>
         /// <returns></returns>
         public HttpResponse Access(bool isWebuser = false) {
-            if (isWebuser) {
-                return Forbidden();
+            if (!_session.Request.WebUser?.Identity ?? true) {
+                return Unauthorized();
             }
-            return Unauthorized();
+            return Forbidden();
         }
 
         #endregion alias common response
