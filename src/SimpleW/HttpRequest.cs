@@ -209,47 +209,47 @@ namespace SimpleW {
 
         #endregion jwt
 
-        #region webuser
+        #region user
 
         /// <summary>
-        /// _webUser already initialized ?
+        /// _user already initialized ?
         /// </summary>
-        private bool _webUserInitialized;
+        private bool _userInitialized;
 
         /// <summary>
         /// cache for webuser property
         /// </summary>
-        private IWebUser _webUser = new WebUser();
+        private IWebUser _user = new WebUser();
 
         /// <summary>
         /// WebUserResolver
         /// </summary>
-        private readonly WebUserResolver? _webUserResolver;
+        private readonly WebUserResolver? _userResolver;
 
         /// <summary>
-        /// WebUser (lazy) resolved from the current request.
+        /// User (lazy) resolved from the current request.
         /// Can be overridden by :
         ///     - setting it (e.g: in a middleware)
         ///     OR
-        ///     - override the SimpleWServer.ConfigureWebUserResolver()
+        ///     - override the SimpleWServer.ConfigureUserResolver()
         /// </summary>
-        public IWebUser WebUser {
+        public IWebUser User {
             get {
-                if (!_webUserInitialized) {
-                    _webUserInitialized = true;
-                    if (_webUserResolver != null) {
-                        _webUser = _webUserResolver(this);
+                if (!_userInitialized) {
+                    _userInitialized = true;
+                    if (_userResolver != null) {
+                        _user = _userResolver(this);
                     }
                 }
-                return _webUser;
+                return _user;
             }
             set {
-                _webUserInitialized = true;
-                _webUser = value;
+                _userInitialized = true;
+                _user = value;
             }
         }
 
-        #endregion webuser
+        #endregion user
 
         /// <summary>
         /// Constructor
@@ -259,14 +259,14 @@ namespace SimpleW {
         /// <param name="maxRequestBodySize"></param>
         /// <param name="jwtResolver"></param>
         /// <param name="jwtOptions"></param>
-        /// <param name="webUserResolver"></param>
-        internal HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions, WebUserResolver? webUserResolver) {
+        /// <param name="userResolver"></param>
+        internal HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions, WebUserResolver? userResolver) {
             JsonEngine = jsonEngine;
             MaxRequestHeaderSize = maxRequestHeaderSize;
             MaxRequestBodySize = maxRequestBodySize;
             JwtResolver = jwtResolver;
             JwtOptions = jwtOptions;
-            _webUserResolver = webUserResolver;
+            _userResolver = userResolver;
         }
 
         /// <summary>
@@ -295,8 +295,8 @@ namespace SimpleW {
             _jwtToken = null;
             JwtError = Security.JwtError.None;
 
-            _webUserInitialized = false;
-            _webUser = new WebUser();
+            _userInitialized = false;
+            _user = new WebUser();
         }
 
         #region buffer

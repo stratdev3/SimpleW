@@ -809,24 +809,24 @@ namespace SimpleW {
 
         #endregion jwt
 
-        #region webuser
+        #region user
 
         /// <summary>
-        /// Get the WebUserResolver
+        /// Get the UserResolver
         /// </summary>
-        internal WebUserResolver WebUserResolver { get; private set; } = WebUserResolvers.TokenWebUser;
+        internal WebUserResolver UserResolver { get; private set; } = WebUserResolvers.TokenWebUser;
 
         /// <summary>
-        /// Configure the WebUserResolver
+        /// Configure the UserResolver
         /// </summary>
-        /// <param name="webUserResolver"></param>
+        /// <param name="userResolver"></param>
         /// <returns></returns>
-        public SimpleWServer ConfigureWebUserResolver(WebUserResolver webUserResolver) {
-            WebUserResolver = webUserResolver;
+        public SimpleWServer ConfigureUserResolver(WebUserResolver userResolver) {
+            UserResolver = userResolver;
             return this;
         }
 
-        #endregion webuser
+        #endregion user
 
     }
 

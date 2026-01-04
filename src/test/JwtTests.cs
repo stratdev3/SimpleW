@@ -115,7 +115,7 @@ namespace test {
             };
             string jwt = Jwt.EncodeHs256(server.JsonEngine, JwtTokenPayload.Create(TimeSpan.FromMinutes(15)), webuser.ToDict(), secret);
 
-            server.ConfigureWebUserResolver((request) => {
+            server.ConfigureUserResolver((request) => {
                 if (request.JwtToken == null) {
                     return new WebUser();
                 }
@@ -128,7 +128,7 @@ namespace test {
                 }
             });
             server.MapGet("/", (HttpSession session) => {
-                return session.Request.WebUser;
+                return session.Request.User;
             });
             await server.StartAsync();
 

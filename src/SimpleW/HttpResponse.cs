@@ -939,7 +939,7 @@ namespace SimpleW {
         /// <param name="isWebuser"></param>
         /// <returns></returns>
         public HttpResponse Access(bool isWebuser = false) {
-            if (!_session.Request.WebUser?.Identity ?? true) {
+            if (!_session.Request.User?.Identity ?? true) {
                 return Unauthorized();
             }
             return Forbidden();

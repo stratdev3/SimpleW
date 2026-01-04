@@ -22,9 +22,9 @@ namespace SimpleW {
         public HttpResponse Response => Session.Response;
 
         /// <summary>
-        /// Gets the current WebUser
+        /// Gets the current User
         /// </summary>
-        public IWebUser Webuser => Session.Request.WebUser;
+        public IWebUser User => Session.Request.User;
 
         /// <summary>
         /// Called before any Controller.Method()
