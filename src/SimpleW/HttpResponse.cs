@@ -291,80 +291,104 @@ namespace SimpleW {
         /// <returns></returns>
         public static string DefaultContentType(string extension) => extension switch {
 
+            // web
+            ".css" => "text/css",
             ".html" => "text/html",
             ".htm" => "text/html",
-            ".css" => "text/css",
             ".js" => "text/javascript",
+            ".mjs" => "text/javascript",
             ".vue" => "text/html",
-            ".xml" => "text/xml",
             ".wasm" => "application/wasm",
+            ".xml" => "application/xml",
 
             // Application content types
             ".atom" => "application/atom+xml",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ".fastsoap" => "application/fastsoap",
             ".gzip" => "application/gzip",
             ".json" => "application/json",
             ".map" => "application/json",
+            ".odt" => "application/vnd.oasis.opendocument.text",
             ".pdf" => "application/pdf",
+            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             ".ps" => "application/postscript",
             ".soap" => "application/soap+xml",
             ".sql" => "application/sql",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ".xslt" => "application/xslt+xml",
-            ".zip" => "application/zip",
             ".zlib" => "application/zlib",
+
+            // Archive content types
+            ".7z" => "application/x-7z-compressed",
+            ".rar" => "application/vnd.rar",
+            ".tar" => "application/x-tar",
+            ".zip" => "application/zip",
 
             // Audio content types
             ".aac" => "audio/aac",
             ".ac3" => "audio/ac3",
+            ".flac" => "audio/flac",
             ".mp3" => "audio/mpeg",
             ".ogg" => "audio/ogg",
+            ".wav" => "audio/wav",
 
             // Font content types
+            ".otf" => "font/otf",
+            ".ttf" => "font/ttf",
             ".woff" => "font/woff",
             ".woff2" => "font/woff2",
-            ".ttf" => "font/ttf",
 
             // Image content types
-            ".webp" => "image/webp",
             ".bmp" => "image/bmp",
             ".emf" => "image/emf",
             ".gif" => "image/gif",
-            ".jpg" => "image/jpeg",
+            ".ico" => "image/x-icon",
             ".jpeg" => "image/jpeg",
+            ".jpg" => "image/jpeg",
             ".jpm" => "image/jpm",
             ".jpx" => "image/jpx",
             ".jrx" => "image/jrx",
             ".png" => "image/png",
             ".svg" => "image/svg+xml",
             ".tiff" => "image/tiff",
+            ".webp" => "image/webp",
             ".wmf" => "image/wmf",
-            ".ico" => "image/x-icon",
 
             // Message content types
             ".http" => "message/http",
             ".s-http" => "message/s-http",
 
             // Model content types
+            ".gltf" => "model/gltf+json",
             ".mesh" => "model/mesh",
+            ".obj" => "model/obj",
             ".vrml" => "model/vrml",
 
             // Text content types
             ".csv" => "text/csv",
-            ".txt" => "text/plain",
+            ".log" => "text/plain",
+            ".markdown" => "text/markdown",
+            ".md" => "text/markdown",
             ".plain" => "text/plain",
             ".richtext" => "text/richtext",
             ".rtf" => "text/rtf",
             ".rtx" => "text/rtx",
             ".sgml" => "text/sgml",
             ".strings" => "text/strings",
+            ".txt" => "text/plain",
             ".url" => "text/uri-list",
+            ".yaml" => "text/yaml",
+            ".yml" => "text/yaml",
 
             // Video content types
             ".H264" => "video/H264",
             ".H265" => "video/H265",
+            ".avi" => "video/x-msvideo",
+            ".mkv" => "video/x-matroska",
             ".mp4" => "video/mp4",
             ".mpeg" => "video/mpeg",
             ".raw" => "video/raw",
+            ".webm" => "video/webm",
 
             _ => "application/octet-stream"
         };
