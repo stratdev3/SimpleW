@@ -339,6 +339,7 @@ namespace SimpleW {
                         offset += consumed;
 
                         // PER-REQUEST SCOPE
+                        bool hasCatched = false;
                         try {
                             // reset response
                             _response.Reset();
@@ -372,15 +373,21 @@ namespace SimpleW {
                                 return;
                             }
                         }
+                        catch {
+                            hasCatched = true;
+                            throw;
+                        }
                         finally {
                             if (Telemetry.Enabled && _currentActivity != null) {
                                 Telemetry.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
-                                // if no response was sent, it's can be an issue
-                                if (!_response.Sent) {
-                                    Telemetry.UpdateActivityAddNoResponse(_currentActivity, this);
+                                if (!hasCatched) {
+                                    // if no response was sent, it's can be an issue
+                                    if (!_response.Sent) {
+                                        Telemetry.UpdateActivityAddNoResponse(_currentActivity, this);
+                                    }
+                                    // we must close telemetry here in this flow !! closing into NotifyResponseSent() will leak memory !!
+                                    CloseAndResetTelemetryWatches();
                                 }
-                                // we must close telemetry here in this flow !! closing into NotifyResponseSent() will leak memory !!
-                                CloseAndResetTelemetryWatches();
                             }
 
                             _request.ReturnPooledBodyBuffer();
