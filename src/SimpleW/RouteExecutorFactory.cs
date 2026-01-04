@@ -34,7 +34,7 @@ namespace SimpleW {
             MemberExpression? requestProp = Expression.Property(sessionParam, nameof(HttpSession.Request));
 
             // session.Request.Query
-            MemberExpression? queryProp = Expression.Property(requestProp, "Query");
+            MemberExpression? queryProp = Expression.Property(requestProp, nameof(HttpRequest.Query));
 
             // TryGetValue(string, out string)
             Type queryType = queryProp.Type;
