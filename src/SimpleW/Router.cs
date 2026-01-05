@@ -120,20 +120,28 @@
         #region Map Method Path Delegate
 
         /// <summary>
+        /// Map Method/Path to a HttpRouteExecutor
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="path"></param>
+        /// <param name="executor"></param>
+        public void Map(string method, string path, HttpRouteExecutor executor) {
+            ArgumentNullException.ThrowIfNull(method);
+            ArgumentNullException.ThrowIfNull(path);
+
+            Route route = new(new RouteAttribute(method, path), executor);
+
+            AddRouteInternal(route);
+        }
+
+        /// <summary>
         /// Map Method/Path to a Delegate
         /// </summary>
         /// <param name="method"></param>
         /// <param name="path"></param>
         /// <param name="handler"></param>
         public void Map(string method, string path, Delegate handler) {
-            ArgumentNullException.ThrowIfNull(method);
-            ArgumentNullException.ThrowIfNull(path);
-            ArgumentNullException.ThrowIfNull(handler);
-
-            HttpRouteExecutor executor = DelegateExecutorFactory.Create(handler);
-            Route route = new(new RouteAttribute(method, path), executor);
-
-            AddRouteInternal(route);
+            Map(method, path, DelegateExecutorFactory.Create(handler));
         }
 
         /// <summary>

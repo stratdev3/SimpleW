@@ -722,7 +722,7 @@ namespace SimpleW {
                 }
 
                 foreach (RouteAttribute attr in methodRoutes.Where(a => !string.IsNullOrWhiteSpace(a.Method) && a.Method != "*")) {
-                    Delegate handlerDelegate = Create(controllerType, method);
+                    HttpRouteExecutor handlerDelegate = Create(controllerType, method);
                     string fullPath = BuildFullPath(basePrefix ?? string.Empty, controllerPrefix, attr);
                     router.Map(attr.Method, fullPath, handlerDelegate);
                 }
@@ -766,61 +766,68 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Create a Delegate from a ControllerType
+        /// Create a HttpRouteExecutor from a ControllerType
+        /// Note : this slow reflection code is only called once
+        ///        to create an Expression Tree of the call to ControllerType
         /// </summary>
         /// <param name="controllerType"></param>
         /// <param name="method"></param>
         /// <returns></returns>
-        private static Delegate Create(Type controllerType, MethodInfo method) {
+        public static HttpRouteExecutor Create(Type controllerType, MethodInfo method) {
+            ArgumentNullException.ThrowIfNull(controllerType);
+            ArgumentNullException.ThrowIfNull(method);
 
-            // get parameter info
-            ParameterInfo[] methodParams = method.GetParameters();
+            // get parameters info (only called once)
+            ParameterInfo[] parameters = method.GetParameters();
+            HandlerReturnKind kind = GetReturnKind(method.ReturnType);
 
-            // lambda parameters (session only)
+            // lambda parameters (session + handlerResult)
             ParameterExpression sessionParam = Expression.Parameter(typeof(HttpSession), "session");
+            ParameterExpression handlerResultParam = Expression.Parameter(typeof(HttpHandlerResult), "handlerResult");
 
             // session.Request
             MemberExpression requestProp = Expression.Property(sessionParam, nameof(HttpSession.Request));
 
             // session.Request.Query
             MemberExpression queryProp = Expression.Property(requestProp, nameof(HttpRequest.Query));
-
-            // TryGetValue(string, out string)
-            MethodInfo? queryTryGetValueMethod = queryProp.Type.GetMethod(
-                "TryGetValue",
-                BindingFlags.Public | BindingFlags.Instance,
-                binder: null,
-                types: new[] { typeof(string), typeof(string).MakeByRefType() },
-                modifiers: null
-            );
+            Type queryType = queryProp.Type;
+            MethodInfo? queryTryGetValueMethod = queryType.GetMethod(
+                                                     "TryGetValue",
+                                                     BindingFlags.Public | BindingFlags.Instance,
+                                                     binder: null,
+                                                     types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                                                     modifiers: null
+                                                 );
 
             // session.Request.RouteValues
             MemberExpression routeValuesProp = Expression.Property(requestProp, nameof(HttpRequest.RouteValues));
 
             // TryGetValue(string, out string)
+            Type routeValuesType = routeValuesProp.Type;
             MethodInfo? routeTryGetValueMethod = typeof(Dictionary<string, string>).GetMethod(
-                "TryGetValue",
-                BindingFlags.Public | BindingFlags.Instance,
-                binder: null,
-                types: new[] { typeof(string), typeof(string).MakeByRefType() },
-                modifiers: null
-            );
+                                                     "TryGetValue",
+                                                     BindingFlags.Public | BindingFlags.Instance,
+                                                     binder: null,
+                                                     types: new[] { typeof(string), typeof(string).MakeByRefType() },
+                                                     modifiers: null
+                                                 );
 
-            // declare var controller
+            // controller local
             ParameterExpression controllerVar = Expression.Variable(controllerType, "controller");
 
             // controller = new ControllerType()
             NewExpression newController = Expression.New(controllerType);
-
-            // assign controller
             BinaryExpression assignController = Expression.Assign(controllerVar, newController);
 
             // controller.Session = session
-            MemberExpression sessionProp = Expression.Property(controllerVar, nameof(Controller.Session));
-            BinaryExpression assignSession = Expression.Assign(sessionProp, sessionParam);
+            MemberExpression controllerSessionProp = Expression.Property(controllerVar, nameof(Controller.Session));
+            BinaryExpression assignSession = Expression.Assign(controllerSessionProp, sessionParam);
 
             // controller.OnBeforeMethod()
-            MethodInfo onBeforeMethodInfo = typeof(Controller).GetMethod(nameof(Controller.OnBeforeMethod), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
+            MethodInfo onBeforeMethodInfo = typeof(Controller).GetMethod(
+                                                nameof(Controller.OnBeforeMethod),
+                                                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
+                                            )!;
             MethodCallExpression callOnBefore = Expression.Call(controllerVar, onBeforeMethodInfo);
 
             //
@@ -833,36 +840,40 @@ namespace SimpleW {
             //
 
             List<ParameterExpression> variables = new() { controllerVar };
-            Expression[] argExpressions = new Expression[methodParams.Length];
-            List<Expression> body = new() {
+            List<Expression> argExpressions = new(parameters.Length);
+            List<Expression> body = new()
+            {
                 assignController,
                 assignSession,
                 callOnBefore
             };
 
-            for (int i = 0; i < methodParams.Length; i++) {
-
-                ParameterInfo p = methodParams[i];
+            foreach (ParameterInfo p in parameters) {
 
                 // 1.) HttpSession type is a special parameter
                 if (p.ParameterType == typeof(HttpSession)) {
-                    argExpressions[i] = sessionParam;
+                    argExpressions.Add(sessionParam);
                     continue;
                 }
 
-                // local var for final param
-                ParameterExpression paramVar = Expression.Variable(p.ParameterType, string.IsNullOrEmpty(p.Name) ? $"arg{i}" : p.Name!);
+                if (string.IsNullOrWhiteSpace(p.Name)) {
+                    throw new InvalidOperationException($"Missing parameter name for {controllerType.FullName}.{method.Name}.");
+                }
+
+                string paramName = p.Name!;
+
+                // final param local
+                ParameterExpression paramVar = Expression.Variable(p.ParameterType, paramName);
                 variables.Add(paramVar);
 
-                // local var for raw string
-                ParameterExpression rawVar = Expression.Variable(typeof(string), (string.IsNullOrEmpty(p.Name) ? $"arg{i}" : p.Name!) + "_raw");
+                // raw string local
+                ParameterExpression rawVar = Expression.Variable(typeof(string), paramName + "_raw");
                 variables.Add(rawVar);
 
-                // "default value" value expression for the param
+                // "default value" expression for the param
                 object? defaultObj = DelegateExecutorFactory.GetDefaultValueForParameter(p);
                 Expression defaultExpr;
                 if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
-                    // non nullable value type without default -> default(T)
                     defaultExpr = Expression.Default(p.ParameterType);
                 }
                 else {
@@ -870,105 +881,228 @@ namespace SimpleW {
                 }
 
                 // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
-                MethodInfo convertGeneric = typeof(DelegateExecutorFactory)
-                                                .GetMethod(nameof(DelegateExecutorFactory.ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
-                                                .MakeGenericMethod(p.ParameterType);
+                MethodInfo convertGeneric = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.ConvertFromStringOrDefault),
+                                                                                      BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
+                                                                           .MakeGenericMethod(p.ParameterType);
 
                 Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
-
                 Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
-                Expression assignDefault = p.HasDefaultValue
-                                                ? Expression.Assign(paramVar, defaultExpr)
-                                                : Expression.Throw(
-                                                    Expression.New(
-                                                        typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
-                                                                                                         Expression.Constant($"Missing required parameter '{p.Name}'")
-                                                    ),
-                                                    p.ParameterType
-                                                );
 
-                Expression assignExpr;
-                if (!string.IsNullOrEmpty(p.Name)) {
-
-                    // routeValues != null
-                    Expression routeNotNull = Expression.NotEqual(
-                        routeValuesProp,
-                        Expression.Constant(null, routeValuesProp.Type)
-                    );
-
-                    // routeValues.TryGetValue("name", out rawVar)
-                    Expression routeTryGet = (routeTryGetValueMethod is null)
-                                                ? Expression.Constant(false)
-                                                : Expression.Call(
-                                                    Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
-                                                    routeTryGetValueMethod,
-                                                    Expression.Constant(p.Name!, typeof(string)),
-                                                    rawVar
-                                                );
-
-                    // query != null (Query is non-null but keep safe)
-                    Expression queryNotNull = Expression.NotEqual(
-                                                  queryProp,
-                                                  Expression.Constant(null, queryProp.Type)
-                                              );
-
-                    // query.TryGetValue("name", out rawVar)
-                    Expression queryTryGet = (queryTryGetValueMethod is null)
-                                                ? Expression.Constant(false)
-                                                : Expression.Call(
-                                                    queryProp,
-                                                    queryTryGetValueMethod,
-                                                    Expression.Constant(p.Name!, typeof(string)),
-                                                    rawVar
-                                                );
-
-                    assignExpr = Expression.IfThenElse(
-                                    Expression.AndAlso(routeNotNull, routeTryGet),
-                                    assignConverted,
-                                    Expression.IfThenElse(
-                                        Expression.AndAlso(queryNotNull, queryTryGet),
-                                        assignConverted,
-                                        assignDefault
-                                    )
-                                );
+                // if missing and has no default => throw
+                Expression assignDefault;
+                if (p.HasDefaultValue) {
+                    assignDefault = Expression.Assign(paramVar, defaultExpr);
                 }
                 else {
-                    // no name, then default value
-                    assignExpr = assignDefault;
+                    assignDefault = Expression.Throw(
+                        Expression.New(
+                            typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
+                            Expression.Constant($"Missing required parameter '{paramName}'")
+                        ),
+                        p.ParameterType
+                    );
                 }
 
+                // matchedRoute bool
+                ParameterExpression matchedRouteVar = Expression.Variable(typeof(bool), paramName + "_matchedRoute");
+                variables.Add(matchedRouteVar);
+
+                Expression setMatchedFalse = Expression.Assign(matchedRouteVar, Expression.Constant(false));
+                Expression setMatchedTrue = Expression.Assign(matchedRouteVar, Expression.Constant(true));
+
+                // RouteValues
+                Expression routeNotNull = Expression.NotEqual(routeValuesProp, Expression.Constant(null, routeValuesType));
+
+                Expression routeTryGet;
+                if (routeTryGetValueMethod is null) {
+                    routeTryGet = Expression.Constant(false);
+                }
+                else {
+                    routeTryGet = Expression.Call(
+                        Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
+                        routeTryGetValueMethod,
+                        Expression.Constant(paramName, typeof(string)),
+                        rawVar
+                    );
+                }
+
+                Expression routeTryBlock = Expression.IfThenElse(
+                    Expression.AndAlso(routeNotNull, routeTryGet),
+                    Expression.Block(setMatchedTrue, assignConverted),
+                    Expression.Empty()
+                );
+
+                // Query
+                Expression queryBranch;
+                if (queryTryGetValueMethod is null) {
+                    queryBranch = assignDefault;
+                }
+                else {
+                    Expression queryNotNull = Expression.NotEqual(queryProp, Expression.Constant(null, queryType));
+
+                    Expression queryTryGet = Expression.Call(
+                                                 queryProp,
+                                                 queryTryGetValueMethod,
+                                                 Expression.Constant(paramName, typeof(string)),
+                                                 rawVar
+                                             );
+
+                    queryBranch = Expression.IfThenElse(
+                                      Expression.AndAlso(queryNotNull, queryTryGet),
+                                      assignConverted,
+                                      assignDefault
+                                  );
+                }
+
+                // if route matched => keep, else => queryBranch
+                Expression finalAssign = Expression.IfThenElse(
+                                             matchedRouteVar,
+                                             Expression.Empty(),
+                                             queryBranch
+                                         );
+
+                Expression assignExpr = Expression.Block(
+                                            setMatchedFalse,
+                                            routeTryBlock,
+                                            finalAssign
+                                        );
+
                 body.Add(assignExpr);
-                argExpressions[i] = paramVar;
+                argExpressions.Add(paramVar);
             }
 
             //
             // call controller.Method(...)
             //
-            MethodCallExpression call = Expression.Call(controllerVar, method, argExpressions);
+            Expression callExpr = Expression.Call(controllerVar, method, argExpressions);
 
-            // append call as last expression
-            body.Add(call);
+            //
+            // Convert handle depending on return type
+            //
+            Expression returnExpr;
 
-            // build block
-            Expression block = Expression.Block(variables, body);
+            switch (kind) {
+                case HandlerReturnKind.Void: {
+                    // -> Completed()
+                    MethodInfo completedMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.Completed), BindingFlags.Public | BindingFlags.Static)!;
+                    body.Add(callExpr);
+                    returnExpr = Expression.Call(completedMethod);
+                    break;
+                }
 
-            // delegate type: (HttpSession) to returnType
-            Type delegateType;
-            if (method.ReturnType == typeof(void)) {
-                delegateType = typeof(Action<HttpSession>);
+                case HandlerReturnKind.SyncResult: {
+                    // result -> object -> RouteExecutorHelpers.InvokeHandlerResult(session, handlerResult, (object)result)
+                    MethodInfo invokeResultMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.InvokeHandlerResult), BindingFlags.Public | BindingFlags.Static)!;
+                    Expression resultAsObject = method.ReturnType.IsValueType
+                                                    ? Expression.Convert(callExpr, typeof(object))
+                                                    : Expression.TypeAs(callExpr, typeof(object));
+                    returnExpr = Expression.Call(
+                                     invokeResultMethod,
+                                     sessionParam,
+                                     handlerResultParam,
+                                     resultAsObject
+                                 );
+                    break;
+                }
+
+                case HandlerReturnKind.TaskNoResult: {
+                    // Task -> RouteExecutorHelpers.FromTask(task)
+                    MethodInfo fromTaskMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromTask), BindingFlags.Public | BindingFlags.Static)!;
+                    returnExpr = Expression.Call(fromTaskMethod, callExpr);
+                    break;
+                }
+
+                case HandlerReturnKind.TaskWithResult: {
+                    // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, handlerResult)
+                    Type[] args = method.ReturnType.GetGenericArguments();
+                    MethodInfo fromTaskWithResultGeneric = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)
+                                                                                         !.MakeGenericMethod(args[0]);
+                    returnExpr = Expression.Call(
+                                     fromTaskWithResultGeneric,
+                                     callExpr,
+                                     sessionParam,
+                                     handlerResultParam
+                                 );
+                    break;
+                }
+
+                case HandlerReturnKind.ValueTaskNoResult: {
+                    // ValueTask -> RouteExecutorHelpers.FromValueTask(vt)
+                    MethodInfo fromValueTaskMethod = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromValueTask), BindingFlags.Public | BindingFlags.Static)!;
+                    returnExpr = Expression.Call(fromValueTaskMethod, callExpr);
+                    break;
+                }
+
+                case HandlerReturnKind.ValueTaskWithResult: {
+                    // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, handlerResult)
+                    Type[] args = method.ReturnType.GetGenericArguments();
+                    MethodInfo fromValueTaskWithResultGeneric = typeof(DelegateExecutorFactory).GetMethod(nameof(DelegateExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)
+                                                                                              !.MakeGenericMethod(args[0]);
+                    returnExpr = Expression.Call(
+                                     fromValueTaskWithResultGeneric,
+                                     callExpr,
+                                     sessionParam,
+                                     handlerResultParam
+                                 );
+                    break;
+                }
+
+                default:
+                    throw new NotSupportedException($"Unsupported handler return type: {method.ReturnType.FullName}");
             }
-            else {
-                delegateType = typeof(Func<,>).MakeGenericType(typeof(HttpSession), method.ReturnType);
-            }
 
-            LambdaExpression lambda = Expression.Lambda(
-                delegateType,
-                block,
-                sessionParam
-            );
+            // final expression
+            body.Add(returnExpr);
+            BlockExpression block = Expression.Block(variables, body);
+            Expression<HttpRouteExecutor> lambda = Expression.Lambda<HttpRouteExecutor>(
+                                                       block,
+                                                       sessionParam,
+                                                       handlerResultParam
+                                                   );
 
             return lambda.Compile();
         }
+
+        #region return
+
+        private enum HandlerReturnKind {
+            Void,
+            SyncResult,
+            TaskNoResult,
+            TaskWithResult,
+            ValueTaskNoResult,
+            ValueTaskWithResult
+        }
+
+        private static HandlerReturnKind GetReturnKind(Type returnType) {
+
+            if (returnType == typeof(void)) {
+                return HandlerReturnKind.Void;
+            }
+
+            if (returnType == typeof(Task)) {
+                return HandlerReturnKind.TaskNoResult;
+            }
+
+            if (returnType == typeof(ValueTask)) {
+                return HandlerReturnKind.ValueTaskNoResult;
+            }
+
+            if (returnType.IsGenericType) {
+                Type genericDef = returnType.GetGenericTypeDefinition();
+                if (genericDef == typeof(Task<>)) {
+                    return HandlerReturnKind.TaskWithResult;
+                }
+                if (genericDef == typeof(ValueTask<>)) {
+                    return HandlerReturnKind.ValueTaskWithResult;
+                }
+            }
+
+            // sync with result
+            return HandlerReturnKind.SyncResult;
+        }
+
+        #endregion return
 
     }
 
