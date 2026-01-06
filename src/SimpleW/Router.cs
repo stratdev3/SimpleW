@@ -141,7 +141,7 @@
         /// <param name="path"></param>
         /// <param name="handler"></param>
         public void Map(string method, string path, Delegate handler) {
-            Map(method, path, DelegateExecutorFactory.Create(handler));
+            Map(method, path, RouteExecutorFactory.Create(handler));
         }
 
         /// <summary>
@@ -241,7 +241,7 @@
             session.Request.ParserSetRouteTemplate(":notfound");
             return ExecutePipelineAsync(
                 session,
-                DelegateExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync())
+                RouteExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync())
             );
         }
 
@@ -343,7 +343,7 @@
         /// <param name="handler"></param>
         public void MapFallback(Delegate handler) {
             ArgumentNullException.ThrowIfNull(handler);
-            _fallback = DelegateExecutorFactory.Create(handler);
+            _fallback = RouteExecutorFactory.Create(handler);
         }
 
         #region RouteMatcher

@@ -390,7 +390,7 @@ namespace SimpleW {
         /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
         /// <returns></returns>
         public SimpleWServer MapController<TController>(string? basePrefix = null) where TController : Controller {
-            ControllerDelegateFactory.RegisterController(typeof(TController), Router, basePrefix);
+            RouteExecutorFactory.RegisterController(typeof(TController), Router, basePrefix);
             return this;
         }
 
@@ -424,7 +424,7 @@ namespace SimpleW {
                                                                      && typeof(Controller).IsAssignableFrom(t)
                                                                      && !excluded.Contains(t))
             ) {
-                ControllerDelegateFactory.RegisterController(type, Router, basePrefix);
+                RouteExecutorFactory.RegisterController(type, Router, basePrefix);
             }
 
             return this;
