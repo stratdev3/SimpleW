@@ -757,13 +757,27 @@ namespace SimpleW {
         public bool IsTelemetryEnabled => Telemetry.Enabled;
 
         /// <summary>
+        /// Configure Telemetry
+        /// </summary>
+        /// <param name="configure"></param>
+        /// <example>
+        /// server.ConfigureTelemetry(options => {
+        ///     options.IncludeStackTrace = true;
+        /// });
+        /// </example>
+        /// <returns></returns>
+        public SimpleWServer ConfigureTelemetry(Action<TelemetryOptions> configure) {
+            ArgumentNullException.ThrowIfNull(configure);
+            configure(Telemetry.Options);
+            return this;
+        }
+
+        /// <summary>
         /// Enable Telemetry
         /// </summary>
-        /// <param name="telemetryHandler"></param>
         /// <returns></returns>
-        public SimpleWServer ConfigureTelemetry(TelemetryHandler? telemetryHandler = null) {
+        public SimpleWServer EnableTelemetry() {
             Telemetry.Enable();
-            Telemetry.TelemetryHandler = telemetryHandler;
             return this;
         }
 
@@ -846,11 +860,6 @@ namespace SimpleW {
         /// Max size of request body in bytes (default: 10 MB)
         /// </summary>
         public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
-
-        /// <summary>
-        /// Include StackTrace in Telemetry
-        /// </summary>
-        public bool IncludeStackTraceInTelemetry { get; set; } = false;
 
         /// <summary>
         /// JwtOptions

@@ -8,13 +8,6 @@ using System.Runtime.CompilerServices;
 namespace SimpleW.Observability {
 
     /// <summary>
-    /// Telemetry Handler
-    /// </summary>
-    /// <param name="activity">non null activity</param>
-    /// <param name="session">full featured session</param>
-    public delegate void TelemetryHandler(Activity activity, HttpSession session);
-
-    /// <summary>
     /// Telemetry
     /// </summary>
     internal static class Telemetry {
@@ -35,9 +28,9 @@ namespace SimpleW.Observability {
         public static void Disable() => Enabled = false;
 
         /// <summary>
-        /// TelemetryHandler
+        /// Options
         /// </summary>
-        public static TelemetryHandler? TelemetryHandler { get; set; }
+        internal static TelemetryOptions Options { get; set; } = new();
 
         #region traces
 
@@ -106,10 +99,9 @@ namespace SimpleW.Observability {
         /// </summary>
         /// <param name="activity"></param>
         /// <param name="ex"></param>
-        /// <param name="includeStackTrace"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UpdateActivityAddException(Activity? activity, Exception ex, bool includeStackTrace = false) {
-            if (activity == null) {
+        public static void UpdateActivityAddException(Activity? activity, Exception ex) {
+            if (activity == null || !Options.RecordException) {
                 return;
             }
 
@@ -117,7 +109,7 @@ namespace SimpleW.Observability {
 
             ActivityTagsCollection tags = new();
             tags.Add("exception.type", ex.GetType().FullName);
-            if (includeStackTrace) {
+            if (Options.IncludeStackTrace) {
                 tags.Add("exception.stacktrace", ex.ToString());
             }
             activity.AddEvent(new ActivityEvent(ex.Message, default, tags));
@@ -168,7 +160,7 @@ namespace SimpleW.Observability {
             activity.SetTag("http.response.status_code", session.Response.StatusCode);
             activity.SetTag("http.response.size", session.Response.BytesSent);
 
-            TelemetryHandler?.Invoke(activity, session);
+            Options.EnrichWithHttpSession?.Invoke(activity, session);
         }
 
 
@@ -273,6 +265,35 @@ namespace SimpleW.Observability {
         }
 
         #endregion helpers
+
+    }
+
+    /// <summary>
+    /// Telemetry Handler
+    /// </summary>
+    /// <param name="activity">non null activity</param>
+    /// <param name="session">full featured session</param>
+    public delegate void TelemetryHandler(Activity activity, HttpSession session);
+
+    /// <summary>
+    /// Telemetry Options
+    /// </summary>
+    public sealed class TelemetryOptions {
+
+        /// <summary>
+        /// Record Exception
+        /// </summary>
+        public bool RecordException { get; set; } = true;
+
+        /// <summary>
+        /// Include StackTrace
+        /// </summary>
+        public bool IncludeStackTrace { get; set; } = false;
+
+        /// <summary>
+        /// TelemetryHandler
+        /// </summary>
+        public TelemetryHandler? EnrichWithHttpSession { get; set; } = null;
 
     }
 
