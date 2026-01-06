@@ -68,9 +68,9 @@ namespace SimpleW {
             //     4. default value of the parameter
             //
 
-            List<ParameterExpression> variables = new();
-            List<Expression> argExpressions = new();
-            List<Expression> body = new();
+            List<ParameterExpression> variables = [];
+            List<Expression> argExpressions = new(parameters.Length);
+            List<Expression> body = [];
 
             foreach (ParameterInfo p in parameters) {
 
@@ -81,11 +81,11 @@ namespace SimpleW {
                 }
 
                 // local var for final param
-                ParameterExpression paramVar = Expression.Variable(p.ParameterType, p.Name ?? "arg");
+                ParameterExpression paramVar = Expression.Variable(p.ParameterType, p.Name!);
                 variables.Add(paramVar);
 
                 // local var for raw string
-                ParameterExpression rawVar = Expression.Variable(typeof(string), (p.Name ?? "arg") + "_raw");
+                ParameterExpression rawVar = Expression.Variable(typeof(string), p.Name! + "_raw");
                 variables.Add(rawVar);
 
                 // "default value" expression for the param
@@ -103,9 +103,8 @@ namespace SimpleW {
                 if (!string.IsNullOrEmpty(p.Name)) {
 
                     // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
-                    MethodInfo convertGeneric = typeof(RouteExecutorFactory)
-                                                    .GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
-                                                    .MakeGenericMethod(p.ParameterType);
+                    MethodInfo convertGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
+                                                                            .MakeGenericMethod(p.ParameterType);
 
                     Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
 
@@ -125,10 +124,7 @@ namespace SimpleW {
                     //
 
                     // routeValues != null
-                    Expression routeNotNull = Expression.NotEqual(
-                                                  routeValuesProp,
-                                                  Expression.Constant(null, routeValuesType)
-                                              );
+                    Expression routeNotNull = Expression.NotEqual(routeValuesProp, Expression.Constant(null, routeValuesType));
 
                     // routeValues.TryGetValue("name", out rawVar)
                     Expression routeTryGet = (routeTryGetValueMethod is null)
@@ -139,46 +135,6 @@ namespace SimpleW {
                                                       Expression.Constant(p.Name, typeof(string)),
                                                       rawVar
                                                   );
-
-                    // if (routeValues != null && routeTryGet) param = converted else ... (fallback query)
-                    Expression routeBranch = Expression.IfThenElse(
-                                                 Expression.AndAlso(routeNotNull, routeTryGet),
-                                                 assignConverted,
-                                                 Expression.Empty()
-                                             );
-
-                    //
-                    // QueryString
-                    //
-                    Expression queryBranch;
-
-                    if (queryTryGetValueMethod != null) {
-
-                        // query != null
-                        Expression queryNotNull = Expression.NotEqual(
-                                                      queryProp,
-                                                      Expression.Constant(null, queryType)
-                                                  );
-
-                        // query.TryGetValue("name", out rawVar)
-                        Expression queryTryGet = Expression.Call(
-                                                     queryProp,
-                                                     queryTryGetValueMethod,
-                                                     Expression.Constant(p.Name, typeof(string)),
-                                                     rawVar
-                                                 );
-
-                        Expression queryAssign = Expression.IfThenElse(
-                                                     Expression.AndAlso(queryNotNull, queryTryGet),
-                                                     assignConverted,
-                                                     assignDefault
-                                                 );
-
-                        queryBranch = queryAssign;
-                    }
-                    else {
-                        queryBranch = assignDefault;
-                    }
 
                     // Compose: try route; if route matched we must NOT overwrite with query.
                     // So: if route matched => assignConverted else => queryBranch
@@ -195,17 +151,37 @@ namespace SimpleW {
                                                    Expression.Empty()
                                                );
 
-                    Expression finalAssign = Expression.IfThenElse(
-                                                 matchedRouteVar,
-                                                 Expression.Empty(), // already assigned
-                                                 queryBranch
-                                             );
+                    //
+                    // QueryString
+                    //
+                    Expression queryBranch;
 
-                    assignExpr = Expression.Block(
-                                     setMatchedFalse,
-                                     routeTryBlock,
-                                     finalAssign
-                                 );
+                    if (queryTryGetValueMethod != null) {
+
+                        // query != null
+                        Expression queryNotNull = Expression.NotEqual(queryProp, Expression.Constant(null, queryType));
+
+                        // query.TryGetValue("name", out rawVar)
+                        Expression queryTryGet = Expression.Call(
+                                                     queryProp,
+                                                     queryTryGetValueMethod,
+                                                     Expression.Constant(p.Name, typeof(string)),
+                                                     rawVar
+                                                 );
+
+                        queryBranch = Expression.IfThenElse(
+                                          Expression.AndAlso(queryNotNull, queryTryGet),
+                                          assignConverted,
+                                          assignDefault
+                                      );
+                    }
+                    else {
+                        queryBranch = assignDefault;
+                    }
+
+                    // if route matched => keep, else => queryBranch
+                    Expression finalAssign = Expression.IfThenElse(matchedRouteVar, Expression.Empty(), queryBranch);
+                    assignExpr = Expression.Block(setMatchedFalse, routeTryBlock, finalAssign);
                 }
                 else {
                     // no name, then default value
@@ -294,7 +270,7 @@ namespace SimpleW {
                     // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, handlerResult)
                     Type[] args = method.ReturnType.GetGenericArguments();
                     MethodInfo fromTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
-                                                                                          .MakeGenericMethod(args[0]);
+                                                                                       .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
                                      fromTaskWithResultGeneric,
                                      call,
@@ -315,7 +291,7 @@ namespace SimpleW {
                     // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, handlerResult)
                     Type[] args = method.ReturnType.GetGenericArguments();
                     MethodInfo fromValueTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
-                                                                                               .MakeGenericMethod(args[0]);
+                                                                                            .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
                                      fromValueTaskWithResultGeneric,
                                      call,
@@ -415,14 +391,9 @@ namespace SimpleW {
             //     4. default value of the parameter
             //
 
-            List<ParameterExpression> variables = new() { controllerVar };
+            List<ParameterExpression> variables = [ controllerVar ];
             List<Expression> argExpressions = new(parameters.Length);
-            List<Expression> body = new()
-            {
-                assignController,
-                assignSession,
-                callOnBefore
-            };
+            List<Expression> body = [ assignController, assignSession, callOnBefore ];
 
             foreach (ParameterInfo p in parameters) {
 
@@ -432,22 +403,16 @@ namespace SimpleW {
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(p.Name)) {
-                    throw new InvalidOperationException($"Missing parameter name for {controllerType.FullName}.{method.Name}.");
-                }
-
-                string paramName = p.Name!;
-
-                // final param local
-                ParameterExpression paramVar = Expression.Variable(p.ParameterType, paramName);
+                // local var for final param
+                ParameterExpression paramVar = Expression.Variable(p.ParameterType, p.Name!);
                 variables.Add(paramVar);
 
-                // raw string local
-                ParameterExpression rawVar = Expression.Variable(typeof(string), paramName + "_raw");
+                // local var for raw string
+                ParameterExpression rawVar = Expression.Variable(typeof(string), p.Name! + "_raw");
                 variables.Add(rawVar);
 
                 // "default value" expression for the param
-                object? defaultObj = RouteExecutorFactory.GetDefaultValueForParameter(p);
+                object? defaultObj = GetDefaultValueForParameter(p);
                 Expression defaultExpr;
                 if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
                     defaultExpr = Expression.Default(p.ParameterType);
@@ -456,92 +421,94 @@ namespace SimpleW {
                     defaultExpr = Expression.Constant(defaultObj, p.ParameterType);
                 }
 
-                // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
-                MethodInfo convertGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.ConvertFromStringOrDefault),
-                                                                                      BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
-                                                                           .MakeGenericMethod(p.ParameterType);
+                Expression assignExpr;
+                if (!string.IsNullOrEmpty(p.Name)) {
 
-                Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
-                Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
+                    // ConvertFromStringOrDefault<T>(rawVar, defaultExpr)
+                    MethodInfo convertGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(ConvertFromStringOrDefault), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)!
+                                                                            .MakeGenericMethod(p.ParameterType);
 
-                // if missing and has no default => throw
-                Expression assignDefault;
-                if (p.HasDefaultValue) {
-                    assignDefault = Expression.Assign(paramVar, defaultExpr);
+                    Expression convertedExpr = Expression.Call(convertGeneric, rawVar, defaultExpr);
+
+                    Expression assignConverted = Expression.Assign(paramVar, convertedExpr);
+                    Expression assignDefault = p.HasDefaultValue
+                                                    ? Expression.Assign(paramVar, defaultExpr)
+                                                    : Expression.Throw(
+                                                          Expression.New(
+                                                              typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
+                                                                                                               Expression.Constant($"Missing required parameter '{p.Name}'")
+                                                          ),
+                                                          p.ParameterType
+                                                      );
+
+                    //
+                    // RouteValues
+                    //
+
+                    // routeValues != null
+                    Expression routeNotNull = Expression.NotEqual(routeValuesProp, Expression.Constant(null, routeValuesType));
+
+                    // routeValues.TryGetValue("name", out rawVar)
+                    Expression routeTryGet = (routeTryGetValueMethod is null)
+                                                ? Expression.Constant(false)
+                                                : Expression.Call(
+                                                      Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
+                                                      routeTryGetValueMethod,
+                                                      Expression.Constant(p.Name, typeof(string)),
+                                                      rawVar
+                                                  );
+
+                    // Compose: try route; if route matched we must NOT overwrite with query.
+                    // So: if route matched => assignConverted else => queryBranch
+                    // To do that cleanly: make a bool local "matchedRoute".
+                    ParameterExpression matchedRouteVar = Expression.Variable(typeof(bool), p.Name + "_matchedRoute");
+                    variables.Add(matchedRouteVar);
+
+                    Expression setMatchedFalse = Expression.Assign(matchedRouteVar, Expression.Constant(false));
+                    Expression setMatchedTrue = Expression.Assign(matchedRouteVar, Expression.Constant(true));
+
+                    Expression routeTryBlock = Expression.IfThenElse(
+                                                   Expression.AndAlso(routeNotNull, routeTryGet),
+                                                   Expression.Block(setMatchedTrue, assignConverted),
+                                                   Expression.Empty()
+                                               );
+
+                    //
+                    // QueryString
+                    //
+                    Expression queryBranch;
+
+                    if (queryTryGetValueMethod != null) {
+
+                        // query != null
+                        Expression queryNotNull = Expression.NotEqual(queryProp, Expression.Constant(null, queryType));
+
+                        // query.TryGetValue("name", out rawVar)
+                        Expression queryTryGet = Expression.Call(
+                                                     queryProp,
+                                                     queryTryGetValueMethod,
+                                                     Expression.Constant(p.Name, typeof(string)),
+                                                     rawVar
+                                                 );
+
+                        queryBranch = Expression.IfThenElse(
+                                          Expression.AndAlso(queryNotNull, queryTryGet),
+                                          assignConverted,
+                                          assignDefault
+                                      );
+                    }
+                    else {
+                        queryBranch = assignDefault;
+                    }
+
+                    // if route matched => keep, else => queryBranch
+                    Expression finalAssign = Expression.IfThenElse(matchedRouteVar, Expression.Empty(), queryBranch);
+                    assignExpr = Expression.Block(setMatchedFalse, routeTryBlock, finalAssign);
                 }
                 else {
-                    assignDefault = Expression.Throw(
-                        Expression.New(
-                            typeof(InvalidOperationException).GetConstructor(new[] { typeof(string) })!,
-                            Expression.Constant($"Missing required parameter '{paramName}'")
-                        ),
-                        p.ParameterType
-                    );
+                    // no name, then default value
+                    assignExpr = Expression.Assign(paramVar, defaultExpr);
                 }
-
-                // matchedRoute bool
-                ParameterExpression matchedRouteVar = Expression.Variable(typeof(bool), paramName + "_matchedRoute");
-                variables.Add(matchedRouteVar);
-
-                Expression setMatchedFalse = Expression.Assign(matchedRouteVar, Expression.Constant(false));
-                Expression setMatchedTrue = Expression.Assign(matchedRouteVar, Expression.Constant(true));
-
-                // RouteValues
-                Expression routeNotNull = Expression.NotEqual(routeValuesProp, Expression.Constant(null, routeValuesType));
-
-                Expression routeTryGet;
-                if (routeTryGetValueMethod is null) {
-                    routeTryGet = Expression.Constant(false);
-                }
-                else {
-                    routeTryGet = Expression.Call(
-                        Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
-                        routeTryGetValueMethod,
-                        Expression.Constant(paramName, typeof(string)),
-                        rawVar
-                    );
-                }
-
-                Expression routeTryBlock = Expression.IfThenElse(
-                    Expression.AndAlso(routeNotNull, routeTryGet),
-                    Expression.Block(setMatchedTrue, assignConverted),
-                    Expression.Empty()
-                );
-
-                // Query
-                Expression queryBranch;
-                if (queryTryGetValueMethod is null) {
-                    queryBranch = assignDefault;
-                }
-                else {
-                    Expression queryNotNull = Expression.NotEqual(queryProp, Expression.Constant(null, queryType));
-
-                    Expression queryTryGet = Expression.Call(
-                                                 queryProp,
-                                                 queryTryGetValueMethod,
-                                                 Expression.Constant(paramName, typeof(string)),
-                                                 rawVar
-                                             );
-
-                    queryBranch = Expression.IfThenElse(
-                                      Expression.AndAlso(queryNotNull, queryTryGet),
-                                      assignConverted,
-                                      assignDefault
-                                  );
-                }
-
-                // if route matched => keep, else => queryBranch
-                Expression finalAssign = Expression.IfThenElse(
-                                             matchedRouteVar,
-                                             Expression.Empty(),
-                                             queryBranch
-                                         );
-
-                Expression assignExpr = Expression.Block(
-                                            setMatchedFalse,
-                                            routeTryBlock,
-                                            finalAssign
-                                        );
 
                 body.Add(assignExpr);
                 argExpressions.Add(paramVar);
@@ -591,8 +558,8 @@ namespace SimpleW {
                 case HandlerReturnKind.TaskWithResult: {
                     // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, handlerResult)
                     Type[] args = method.ReturnType.GetGenericArguments();
-                    MethodInfo fromTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)
-                                                                                         !.MakeGenericMethod(args[0]);
+                    MethodInfo fromTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
+                                                                                       .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
                                      fromTaskWithResultGeneric,
                                      callExpr,
@@ -612,8 +579,8 @@ namespace SimpleW {
                 case HandlerReturnKind.ValueTaskWithResult: {
                     // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, handlerResult)
                     Type[] args = method.ReturnType.GetGenericArguments();
-                    MethodInfo fromValueTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)
-                                                                                              !.MakeGenericMethod(args[0]);
+                    MethodInfo fromValueTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
+                                                                                            .MakeGenericMethod(args[0]);
                     returnExpr = Expression.Call(
                                      fromValueTaskWithResultGeneric,
                                      callExpr,
