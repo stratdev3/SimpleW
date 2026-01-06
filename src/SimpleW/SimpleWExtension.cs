@@ -25,6 +25,18 @@ namespace SimpleW {
             return Jwt.EncodeHs256(session.JsonEngine, standard, customClaims, session.Server.Options.JwtOptions!.Key);
         }
 
+        /// <summary>
+        /// ValidateJwt
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="token"></param>
+        /// <param name="jwt"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
+        public static bool ValidateJwt(this HttpSession session, string token, out JwtToken? jwt, out JwtError error) {
+            return Jwt.TryDecodeAndValidate(session.JsonEngine, token, session.Server.Options.JwtOptions!, out jwt, out error);
+        }
+
         #endregion jwt
 
         #region body
