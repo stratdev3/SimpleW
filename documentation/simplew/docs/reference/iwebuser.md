@@ -94,12 +94,12 @@ bool IsInRoles(string roles);
 ```
 
 
-## Dump
+## Clone
 
 ```csharp
 /// <summary>
-/// User to Return user properties
+/// Clone current user
 /// </summary>
 /// <returns>object</returns>
-IWebUser Dump();
+IWebUser Clone();
 ```

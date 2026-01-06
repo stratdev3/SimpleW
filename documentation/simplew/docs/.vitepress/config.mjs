@@ -138,6 +138,7 @@ export default defineConfig({
                         { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
                         { text: 'IHttpModule', link: '/reference/ihttpmodule' },
                         { text: 'IWebUser', link: '/reference/iwebuser' },
+                        { text: 'TelemetryOptions', link: '/reference/telemetryoptions' },
                     ]
                 },
             ]

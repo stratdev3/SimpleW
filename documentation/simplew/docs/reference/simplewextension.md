@@ -3,6 +3,35 @@
 The `SimpleWExtension` static class provide several useful helpers.
 
 
+## CreateJwt
+
+```csharp
+/// <summary>
+/// CreateJwt
+/// </summary>
+/// <param name="session"></param>
+/// <param name="standard"></param>
+/// <param name="customClaims"></param>
+/// <returns></returns>
+public static string CreateJwt(this HttpSession session, JwtTokenPayload standard, IReadOnlyDictionary<string, object?> customClaims)
+```
+
+
+## ValidateJwt
+
+```csharp
+/// <summary>
+/// ValidateJwt
+/// </summary>
+/// <param name="session"></param>
+/// <param name="token"></param>
+/// <param name="jwt"></param>
+/// <param name="error"></param>
+/// <returns></returns>
+public static bool ValidateJwt(this HttpSession session, string token, out JwtToken? jwt, out JwtError error)
+```
+
+
 ## JsonMap()
 
 ```csharp

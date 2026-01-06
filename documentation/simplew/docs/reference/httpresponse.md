@@ -325,7 +325,14 @@ public HttpResponse Forbidden(string? body = null)
 /// <summary>
 /// Access 401/403
 /// </summary>
-/// <param name="isWebuser"></param>
 /// <returns></returns>
-public HttpResponse Access(bool isWebuser = false)
+public HttpResponse Access()
+```
+
+```csharp
+/// <summary>
+/// Attachment
+/// </summary>
+/// <returns></returns>
+public HttpResponse Attachment(string outputFilename)
 ```

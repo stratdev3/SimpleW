@@ -61,7 +61,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // enable telemetry
-            server.ConfigureTelemetry();
+            server.EnableTelemetry();
 
             server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
@@ -111,7 +111,7 @@ namespace Sample {
 ```
 
 The above example shows how to :
-- [`ConfigureTelemetry `](../reference/simplewserver#telemetry)
+- [`EnableTelemetry `](../reference/simplewserver#telemetry)
 - subscribe to all SimpleW `Event` with `openTelemetryObserver()`
 - log each request to console with `LogProcessor` (do not use for production).
 
@@ -158,7 +158,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // enable telemetry
-            server.EnableTelemetry = true;
+            server.EnableTelemetry();
 
             server.MapControllers<Controller>("/api");
             Console.WriteLine("server started at http://localhost:{server.Port}/");
@@ -205,6 +205,12 @@ namespace Sample {
 
 That’s it. Every HTTP request handled by SimpleW is now fully traced.
 
+::: tip NOTE
+
+Use `OtlpExportProtocol.HttpProtobuf` with .NET OpenTelemetry Exporter because the Grpc version is buggy.
+
+:::
+
 
 ### A screenshot of Uptrace Traces & Logs
 
@@ -232,16 +238,19 @@ You can do this using [`SimpleWServer.ConfigureTelemetry()`](../reference/simple
 ### Example : Trusting Reverse Proxy Headers
 
 ```csharp:line-numbers
-// enable telemetry
-server.ConfigureTelemetry((activity, session) => {
-    // override client.address with the X-Real-IP header (set by a trusted reverse proxy)
-    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) {
-        activity.SetTag("client.address", xRealIp);
-    }
-    // override host with the X-Forwarded-Host header (set by a trusted reverse proxy)
-    if (session.Request.Headers.TryGetValue("X-Forwarded-Host", out string? host) {
-        activity.SetTag("url.host", host);
-    }
+// configure telemetry
+server.ConfigureTelemetry(options => {
+    options.IncludeStackTrace = true;
+    options.EnrichWithHttpSession = (activity, session) => {
+        // override client.address with the X-Real-IP header (set by a trusted reverse proxy)
+        if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) {
+            activity.SetTag("client.address", xRealIp);
+        }
+        // override host with the X-Forwarded-Host header (set by a trusted reverse proxy)
+        if (session.Request.Headers.TryGetValue("X-Forwarded-Host", out string? host) {
+            activity.SetTag("url.host", host);
+        }
+    };
 });
 ```
 

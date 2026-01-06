@@ -402,8 +402,48 @@ new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
 
 See an [example](../guide/ssl-certificate.md#example-for-local-test).
 
-## Telemetry
 
+## Jwt
+
+```csharp
+/// <summary>
+/// Get the JwtResolver
+/// </summary>
+public JwtResolver JwtResolver
+```
+
+```csharp
+/// <summary>
+/// Configure the JwtResolver
+/// </summary>
+/// <param name="jwtResolver"></param>
+/// <returns></returns>
+public SimpleWServer ConfigureJwtResolver(JwtResolver jwtResolver)
+```
+
+
+## User
+
+```csharp
+/// <summary>
+/// Get the UserResolver
+/// </summary>
+internal WebUserResolver UserResolver { get; private set; } = WebUserResolvers.TokenWebUser;
+```
+
+This property defines the User Resolver used in handler. The default user resolver is TokenWebUser.
+
+```csharp
+/// <summary>
+/// Configure the UserResolver
+/// </summary>
+/// <param name="userResolver"></param>
+/// <returns></returns>
+public SimpleWServer ConfigureUserResolver(WebUserResolver userResolver)
+```
+
+
+## Telemetry
 
 ```csharp
 /// <summary>
@@ -416,9 +456,11 @@ public bool IsTelemetryEnabled
 /// <summary>
 /// Enable Telemetry
 /// </summary>
-/// <param name="telemetryHandler"></param>
 /// <returns></returns>
-public SimpleWServer ConfigureTelemetry(TelemetryHandler? telemetryHandler)
+public SimpleWServer EnableTelemetry() {
+    Telemetry.Enable();
+    return this;
+}
 ```
 
 ```csharp
@@ -429,4 +471,24 @@ public SimpleWServer ConfigureTelemetry(TelemetryHandler? telemetryHandler)
 public SimpleWServer DisableTelemetry()
 ```
 
-See an [example](../guide/observability.md).
+```csharp
+/// <summary>
+/// Configure Telemetry
+/// </summary>
+/// <param name="configure"></param>
+/// <returns></returns>
+public SimpleWServer ConfigureTelemetry(Action<TelemetryOptions> configure)
+```
+
+Example :
+
+```csharp
+server.ConfigureTelemetry(options => {
+    options.IncludeStackTrace = true;
+});
+```
+
+See [`TelemetryOptions`](./telemetryoptions.md) for more information on all options.
+
+
+See an more [complete example](../guide/observability.md).
