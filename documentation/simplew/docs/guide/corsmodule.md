@@ -30,12 +30,12 @@ To configure a CORS policy, use [`SimpleWServer.UseCorsModule()`](../reference/c
 
 ```csharp
 // set CORS policy
-server.UseCorsModule(o => {
-    o.Prefix = "/api";
-    o.AllowedOrigins = new[] { "http://localhost:2015" };
-    o.AllowCredentials = true;
-    o.AllowedMethods = "GET, POST, OPTIONS";
-    o.MaxAgeSeconds = 600;
+server.UseCorsModule(options => {
+    options.Prefix = "/api";
+    options.AllowedOrigins = new[] { "http://localhost:2015" };
+    options.AllowCredentials = true;
+    options.AllowedMethods = "GET, POST, OPTIONS";
+    options.MaxAgeSeconds = 600;
 });
 ```
 

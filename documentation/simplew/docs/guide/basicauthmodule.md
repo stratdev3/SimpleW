@@ -23,11 +23,44 @@ Internally:
 
 ## Basic Usage
 
-::: code-group
+```csharp
+using System;
+using System.Net;
+using SimpleW;
+using SimpleW.Modules;
 
-<<< @/snippets/basicauthmodule.cs#snippet{csharp:line-numbers} [program.cs]
+namespace Sample {
+    class Program {
 
-:::
+        static async Task Main() {
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            server.MapGet('/api/test/hello', () => {
+                return new { message = "Hello World !" };
+            });
+
+            // set basic auth module
+            server.UseBasicAuthModule(options => {
+                options.Prefix = "/api/test";
+                options.Realm = "Admin";
+                options.Users = new[] { new BasicAuthModuleExtension.BasicAuthOptions.BasicUser("chris", "secret") };
+            })
+            // set another basic auth module
+            .UseBasicAuthModule(options => {
+                options.Prefix = "/metrics";
+                options.Realm = "Metrics";
+                options.CredentialValidator = (user, password) => user == "prom" && password == "scrape";
+            });
+
+            server.MapControllers<Controller>("/api");
+
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            await server.RunAsync();
+        }
+    }
+
+}
+```
 
 ::: warning
 - You should never expose BasicAuth over plain HTTP, but above HTTPS !
