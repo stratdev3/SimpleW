@@ -8,12 +8,12 @@ using Xunit;
 namespace test {
 
     /// <summary>
-    /// Tests for response
+    /// Tests for response status code
     /// </summary>
-    public class ResponseTests {
+    public class ResponseStatusCodeTests {
 
         [Fact]
-        public async Task Response_200_HelloWorld_Raw() {
+        public async Task Response_StatusCode_200() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
@@ -38,82 +38,7 @@ namespace test {
         }
 
         [Fact]
-        public async Task Response_200_HelloWorld_Json() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (HttpSession session) => {
-                return session.Response.Json(new { message = "Hello World !" });
-            });
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/json");
-            Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_200_HelloWorld_Html() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (HttpSession session) => {
-                return session.Response.Html("<h1>Hello World !</h1>");
-            });
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("text/html");
-            Check.That(content).IsEqualTo("<h1>Hello World !</h1>");
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_200_RemoveBody() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (HttpSession session) => {
-                return session.Response.Html("<h1>Hello World !</h1>").RemoveBody();
-            });
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-            Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("text/html");
-            Check.That(content).IsEmpty();
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_404_NotFound() {
+        public async Task Response_StatusCode_404() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
@@ -137,7 +62,7 @@ namespace test {
         }
 
         [Fact]
-        public async Task Response_500_ServerError() {
+        public async Task Response_StatusCode_500() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
@@ -161,7 +86,7 @@ namespace test {
         }
 
         [Fact]
-        public async Task Response_401_Unauthorized() {
+        public async Task Response_StatusCode_401() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
@@ -185,7 +110,7 @@ namespace test {
         }
 
         [Fact]
-        public async Task Response_302_Redirect() {
+        public async Task Response_StatusCode_302() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
@@ -208,7 +133,7 @@ namespace test {
         }
 
         [Fact]
-        public async Task Response_401_Access() {
+        public async Task Response_StatusCode_401_Access() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
@@ -231,7 +156,7 @@ namespace test {
         }
 
         [Fact]
-        public async Task Response_403_Access() {
+        public async Task Response_StatusCode_403_Access() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
