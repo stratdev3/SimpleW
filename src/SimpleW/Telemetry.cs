@@ -76,6 +76,12 @@ namespace SimpleW.Observability {
 
                     activity.SetTag("client.address", (session.Socket?.RemoteEndPoint as IPEndPoint)?.Address.ToString());
                     activity.SetTag("user_agent.original", session.Request.Headers.UserAgent);
+
+                    string? login = session.Request?.User?.Login;
+                    if (login != null) {
+                        activity.SetTag("user.id", session.Request?.User?.Id);
+                        activity.SetTag("user.login", session.Request?.User?.Login);
+                    }
                 }
             }
 
@@ -128,6 +134,7 @@ namespace SimpleW.Observability {
 
             activity.DisplayName = $"{session.Request.Method} {session.Request.RouteTemplate}";
             activity.SetTag("http.route", session.Request.RouteTemplate);
+            activity.SetTag("http.target", session.Request.Path);
 
             activity.SetStatus(ActivityStatusCode.Error, "Response Not Sent");
 
