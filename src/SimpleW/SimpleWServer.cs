@@ -816,6 +816,11 @@ namespace SimpleW {
         /// </summary>
         /// <param name="jwtResolver"></param>
         /// <returns></returns>
+        /// <example>
+        /// server.ConfigureJwtResolver(request => {
+        ///     options.IncludeStackTrace = true;
+        /// });
+        /// </example>
         public SimpleWServer ConfigureJwtResolver(JwtResolver jwtResolver) {
             JwtResolver = jwtResolver;
             return this;
