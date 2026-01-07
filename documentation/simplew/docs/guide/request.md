@@ -392,3 +392,77 @@ public class UserController : Controller {
 ### Mental Model
 
 > Multipart streaming gives you full control without loading files into memory.
+
+
+## Jwt encoded string
+
+[`Request.Jwt`](../reference/httprequest.md#jwt) returns the jwt encoded a string.
+
+```csharp
+var server = new SimpleWServer(IPAddress.Any, 2015);
+server.MapGet("/api/test/hello", object (HttpSession session) => {
+    return $"the token is {session.Request.Jwt}";
+});
+Console.WriteLine("server started at http://localhost:{server.Port}/");
+await server.RunAsync();
+```
+
+### Example
+
+A classic Bearer Authorisation Header sent by client
+
+```sh
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" \
+     "http://localhost:2015/api/test/token"
+```
+
+A Token sent by client as a jwt query string
+
+```sh
+curl "http://localhost:2015/api/test/token?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+```
+
+It looks on the following locations :
+- in the url under the `jwt` query string
+- in the header `Authorization: bearer`
+
+
+### Why different ways for passing jwt ?
+
+Passing jwt in the `Header` __should always__ be the preferred method.
+
+But sometimes, header cannot be modified by client and passing jwt in the url is the only way. Example : internet browser trying to render image from `<img src= />` without javascript.
+
+In this case, try to forge a specific JWT with role based access limited to the target ressource only and a very short period expiration (see how to [forge jwt](./jsonwebtoken.md#highest-level)).
+
+
+### Override Jwt
+
+You can provide your own implementation to retrieve the jwt using [`SimpleWServer.ConfigureJwtResolver()`](../reference/simplewserver.md#configurejwtresolver)
+
+Example
+
+```csharp
+server.ConfigureJwtResolver(request => {
+
+    // 1. Request url querystring "token"
+    if (request.Query.TryGetValue("token", out string? qs_token) && !string.IsNullOrWhiteSpace(qs_token)) {
+        return qs_token;
+    }
+
+    // 2. Request http header "X-TOKEN"
+    if (request.Headers.TryGetValue("X-TOKEN", out string? h_token) && !string.IsNullOrWhiteSpace(h_token) {
+        return h_token;
+    }
+
+    return null;
+});
+```
+
+
+## User
+
+[`Request.User`](../reference/httprequest.md#user) returns the [`IWebUser`](../reference/iwebuser.md) decoded from the jwt string.
+
+See [Json Web Token](../guide/jsonwebtoken.md) for more informations.
+

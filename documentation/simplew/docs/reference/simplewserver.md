@@ -403,7 +403,7 @@ new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
 See an [example](../guide/ssl-certificate.md#example-for-local-test).
 
 
-## Jwt
+## ConfigureJwtResolver
 
 ```csharp
 /// <summary>
@@ -422,7 +422,7 @@ public SimpleWServer ConfigureJwtResolver(JwtResolver jwtResolver)
 ```
 
 
-## User
+## ConfigureUserResolver
 
 ```csharp
 /// <summary>

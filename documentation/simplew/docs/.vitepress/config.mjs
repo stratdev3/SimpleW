@@ -78,7 +78,7 @@ export default defineConfig({
                 {
                     text: 'Security',
                     items: [
-                        { text: 'Json Web Token', link: '/guide/api-json-web-token' },
+                        { text: 'Json Web Token', link: '/guide/jsonwebtoken' },
                         { text: 'Cross-Origin Resource Sharing', link: '/guide/corsmodule' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
                         { text: 'Basic Auth', link: '/guide/basicauthmodule' },

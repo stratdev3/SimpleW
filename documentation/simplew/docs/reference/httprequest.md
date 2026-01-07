@@ -183,3 +183,43 @@ public static bool BodyMultipartStream(this HttpRequest request, Action<string, 
 /// <param name="request"></param>
 public static Dictionary<string, object?> BodyForm(this HttpRequest request)
 ```
+
+## Jwt
+
+```csharp
+/// <summary>
+/// Jwt (raw string)
+/// </summary>
+public string? Jwt
+```
+
+## JwtToken
+
+```csharp
+/// <summary>
+/// JwtToken
+/// </summary>
+public JwtToken? JwtToken
+```
+
+## JwtError
+
+```csharp
+/// <summary>
+/// JwtError
+/// </summary>
+public JwtError? JwtError
+```
+
+## User
+
+```csharp
+/// <summary>
+/// User (lazy) resolved from the current request.
+/// Can be overridden by :
+///     - setting it (e.g: in a middleware)
+///     OR
+///     - override the SimpleWServer.ConfigureUserResolver()
+/// </summary>
+public IWebUser User
+```
