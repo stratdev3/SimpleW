@@ -420,8 +420,8 @@ namespace SimpleW {
                                                          })
                                                          .Where(t => t != null
                                                                      && !t.IsAbstract
+                                                                     && t != baseType
                                                                      && baseType.IsAssignableFrom(t)
-                                                                     && typeof(Controller).IsAssignableFrom(t)
                                                                      && !excluded.Contains(t))
             ) {
                 RouteExecutorFactory.RegisterController(type, Router, basePrefix);
