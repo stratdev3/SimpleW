@@ -294,11 +294,10 @@ namespace SimpleW.Modules {
                        .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
                        .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache");
 
-                if (contentType != null) {
-                    session.Response.AddHeader("Content-Type", contentType);
-                }
-
                 if (session.Request.Method == "HEAD" || len == 0) {
+                    if (contentType != null) {
+                        session.Response.AddHeader("Content-Type", contentType);
+                    }
                     await session.Response
                                  .AddHeader("Content-Length", len.ToString())
                                  .SendAsync()
@@ -306,7 +305,7 @@ namespace SimpleW.Modules {
                 }
                 else {
                     await session.Response
-                                 .Body(body)
+                                 .Body(body, contentType)
                                  .SendAsync()
                                  .ConfigureAwait(false);
                 }
