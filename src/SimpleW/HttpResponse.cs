@@ -407,6 +407,10 @@ namespace SimpleW {
                 _customContentLength = cl;
                 return this;
             }
+            if (string.Equals(name, "Content-Type", StringComparison.OrdinalIgnoreCase)) {
+                _contentType = value;
+                return this;
+            }
             if (_headerCount == _headers.Length) {
                 Array.Resize(ref _headers, _headers.Length * 2);
             }
