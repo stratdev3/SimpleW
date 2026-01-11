@@ -75,6 +75,11 @@ namespace SimpleW.Modules {
             public bool UnknownContentTypeAsOctetStream { get; set; } = true;
 
             /// <summary>
+            /// Add a wildcard to Prefix
+            /// </summary>
+            public string PrefixWildCard => Prefix == "/" ? Prefix + "*" : Prefix + "/*";
+
+            /// <summary>
             /// Check Properties and return
             /// TODO : need to check for symlink/junction
             /// </summary>
@@ -154,8 +159,8 @@ namespace SimpleW.Modules {
                 }
 
                 // map GET + HEAD
-                server.MapGet(_options.Prefix + "/*", (HttpSession session) => HandlerAsync(session));
-                server.Map("HEAD", _options.Prefix + "/*", (HttpSession session) => HandlerAsync(session));
+                server.MapGet(_options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
+                server.Map("HEAD", _options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
             }
 
             /// <summary>
