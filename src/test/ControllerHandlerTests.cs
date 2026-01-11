@@ -265,39 +265,6 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
-        /*
-        // TODO : there is a exception thrown by system.text.json deserializer cause incorrect type ("True" or "0")
-        [Fact]
-        public async Task BodyMap_formurlencoded_DynamicContent_HelloWorld() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var user = new Post_DynamicContent_HelloWorld_Controller.User() { Id = Guid.NewGuid(), Name = "Chris", Counter = 0, CreatedAt = DateTime.Now, Enabled = true };
-            var payload = new FormUrlEncodedContent(new[]{
-                new KeyValuePair<string, string>("Id", user.Id.ToString()),
-                new KeyValuePair<string, string>("Name", user.Name),
-                new KeyValuePair<string, string>("Counter", user.Counter.ToString()),
-                new KeyValuePair<string, string>("CreatedAt", user.CreatedAt.ToString("o")),
-                new KeyValuePair<string, string>("Enabled", user.Enabled.ToString())
-            });
-            var response = await client.PostAsync($"http://{server.Address}:{server.Port}/api/test/hello", payload);
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.OK);
-            Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = $"{user.Name}, Hello World ! It's {user.CreatedAt.ToLongDateString()}" }));
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-        */
-
         [Fact]
         public async Task BodyMap_Json_DynamicContent_HelloWorld() {
 
