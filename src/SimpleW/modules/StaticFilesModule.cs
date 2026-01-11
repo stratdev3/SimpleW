@@ -236,8 +236,6 @@ namespace SimpleW.Modules {
                 _dirIndexCache.Clear();
             }
 
-            #region path resolution and security
-
             /// <summary>
             /// TryResolvePath
             /// </summary>
@@ -278,22 +276,41 @@ namespace SimpleW.Modules {
                 return true;
             }
 
+            #region response
+
             /// <summary>
-            /// normalize path, GetFullPath and add trailing slash to avoid path traversal
+            /// Send a 200
             /// </summary>
-            /// <param name="path"></param>
+            /// <param name="session"></param>
+            /// <param name="contentType"></param>
+            /// <param name="body"></param>
+            /// <param name="lastModifiedUtc"></param>
+            /// <param name="cacheSeconds"></param>
             /// <returns></returns>
-            public static string NormalizePath(string path) {
-                path = Path.GetFullPath(path);
-                if (!path.EndsWith(Path.DirectorySeparatorChar) && !path.EndsWith(Path.AltDirectorySeparatorChar)) {
-                    path += Path.DirectorySeparatorChar;
+            private async ValueTask SendBytesAsync(HttpSession session, string? contentType, ReadOnlyMemory<byte> body, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
+                long len = body.Length;
+
+                session.Response
+                       .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                       .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache");
+
+                if (contentType != null) {
+                    session.Response.AddHeader("Content-Type", contentType);
                 }
-                return path;
+
+                if (session.Request.Method == "HEAD" || len == 0) {
+                    await session.Response
+                                 .AddHeader("Content-Length", len.ToString())
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
+                else {
+                    await session.Response
+                                 .Body(body)
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
             }
-
-            #endregion path resolution and security
-
-            #region serving
 
             /// <summary>
             /// ServeFileAsync
@@ -424,14 +441,14 @@ namespace SimpleW.Modules {
                 long length = fi.Length;
 
                 session.Response
-                       .AddHeader("Content-Type", contentType)
-                       .AddHeader("Content-Length", length.ToString())
                        .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
                        .AddHeader("Cache-Control", "no-cache");
 
                 // headers only
                 if (session.Request.Method == "HEAD") {
                     await session.Response
+                                 .AddHeader("Content-Type", contentType)
+                                 .AddHeader("Content-Length", length.ToString())
                                  .SendAsync()
                                  .ConfigureAwait(false);
                 }
@@ -539,22 +556,6 @@ namespace SimpleW.Modules {
                 ).ConfigureAwait(false);
             }
 
-            private static string EnsureTrailingSlash(string p) => p.EndsWith('/') ? p : p + "/";
-
-            private static string JoinUrl(string basePath, string segment) {
-                if (string.IsNullOrEmpty(basePath)) {
-                    return "/" + segment;
-                }
-                if (!basePath.EndsWith('/')) {
-                    basePath += "/";
-                }
-                return basePath + Uri.EscapeDataString(segment);
-            }
-
-            #endregion serving
-
-            #region response
-
             /// <summary>
             /// Send a 404
             /// </summary>
@@ -590,59 +591,11 @@ namespace SimpleW.Modules {
             private async ValueTask SendNotModifiedAsync(HttpSession session, DateTimeOffset lastModifiedUtc) {
                 await session.Response
                              .Status(304)
-                             .AddHeader("Content-Length", "0")
                              .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
                              .AddHeader("Cache-Control", "no-cache")
+                             .RemoveBody()
                              .SendAsync()
                              .ConfigureAwait(false);
-            }
-
-            /// <summary>
-            /// Send a 200
-            /// </summary>
-            /// <param name="session"></param>
-            /// <param name="contentType"></param>
-            /// <param name="body"></param>
-            /// <param name="lastModifiedUtc"></param>
-            /// <param name="cacheSeconds"></param>
-            /// <returns></returns>
-            private async ValueTask SendBytesAsync(HttpSession session, string? contentType, ReadOnlyMemory<byte> body, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
-                long len = body.Length;
-
-                session.Response
-                       .AddHeader("Content-Length", len.ToString())
-                       .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
-                       .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache");
-
-                if (contentType != null) {
-                    session.Response.AddHeader("Content-Type", contentType);
-                }
-
-                if (session.Request.Method == "HEAD" || len == 0) {
-                    await session.Response
-                             .SendAsync()
-                             .ConfigureAwait(false);
-                }
-                else {
-                    await session.Response
-                                 .Body(body)
-                                 .SendAsync()
-                                 .ConfigureAwait(false);
-                }
-            }
-
-            private static bool TryGetIfModifiedSince(HttpRequest request, out DateTimeOffset imsUtc) {
-                imsUtc = default;
-                if (!request.Headers.TryGetValue("If-Modified-Since", out var v) || string.IsNullOrWhiteSpace(v)) {
-                    return false;
-                }
-
-                // RFC1123 generally
-                if (DateTimeOffset.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dto)) {
-                    imsUtc = dto;
-                    return true;
-                }
-                return false;
             }
 
             #endregion response
@@ -754,6 +707,64 @@ namespace SimpleW.Modules {
 
             #endregion watcher and cache invalidation
 
+            #region helpers
+
+            /// <summary>
+            /// normalize path, GetFullPath and add trailing slash to avoid path traversal
+            /// </summary>
+            /// <param name="path"></param>
+            /// <returns></returns>
+            public static string NormalizePath(string path) {
+                path = Path.GetFullPath(path);
+                if (!path.EndsWith(Path.DirectorySeparatorChar) && !path.EndsWith(Path.AltDirectorySeparatorChar)) {
+                    path += Path.DirectorySeparatorChar;
+                }
+                return path;
+            }
+
+            /// <summary>
+            /// TryGetIfModifiedSince
+            /// </summary>
+            /// <param name="request"></param>
+            /// <param name="imsUtc"></param>
+            /// <returns></returns>
+            private static bool TryGetIfModifiedSince(HttpRequest request, out DateTimeOffset imsUtc) {
+                imsUtc = default;
+                if (!request.Headers.TryGetValue("If-Modified-Since", out var v) || string.IsNullOrWhiteSpace(v)) {
+                    return false;
+                }
+
+                // RFC1123 generally
+                if (DateTimeOffset.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var dto)) {
+                    imsUtc = dto;
+                    return true;
+                }
+                return false;
+            }
+
+            /// <summary>
+            /// EnsureTrailingSlash
+            /// </summary>
+            /// <param name="p"></param>
+            /// <returns></returns>
+            private static string EnsureTrailingSlash(string p) => p.EndsWith('/') ? p : p + "/";
+
+            /// <summary>
+            /// JoinUrl
+            /// </summary>
+            /// <param name="basePath"></param>
+            /// <param name="segment"></param>
+            /// <returns></returns>
+            private static string JoinUrl(string basePath, string segment) {
+                if (string.IsNullOrEmpty(basePath)) {
+                    return "/" + segment;
+                }
+                if (!basePath.EndsWith('/')) {
+                    basePath += "/";
+                }
+                return basePath + Uri.EscapeDataString(segment);
+            }
+
             /// <summary>
             /// HtmlEncode
             /// </summary>
@@ -765,6 +776,8 @@ namespace SimpleW.Modules {
                 }
                 return WebUtility.HtmlEncode(s);
             }
+
+            #endregion helpers
 
         }
 
