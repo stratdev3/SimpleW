@@ -70,11 +70,6 @@ namespace SimpleW.Modules {
             public string DefaultDocument { get; set; } = "index.html";
 
             /// <summary>
-            /// If true, unknown extensions default to application/octet-stream (otherwise text/plain).
-            /// </summary>
-            public bool UnknownContentTypeAsOctetStream { get; set; } = true;
-
-            /// <summary>
             /// Add a wildcard to Prefix
             /// </summary>
             public string PrefixWildCard => Prefix == "/" ? Prefix + "*" : Prefix + "/*";
@@ -254,7 +249,12 @@ namespace SimpleW.Modules {
                 string relativePath = pathOnly.Length == _options.Prefix.Length ? "" : pathOnly[_options.Prefix.Length..];
 
                 // URL decode (safe)
-                relativePath = Uri.UnescapeDataString(relativePath);
+                try {
+                    relativePath = Uri.UnescapeDataString(relativePath);
+                }
+                catch (UriFormatException) {
+                    return false;
+                }
 
                 // normalize slashes
                 relativePath = relativePath.Replace('\\', '/');
