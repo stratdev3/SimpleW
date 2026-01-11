@@ -233,7 +233,7 @@ namespace test {
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
             server.MapGet("/api/test/hello/:name", (string name) => {
-                return new { message = "Chris, Hello World !" };
+                return new { message = $"{name}, Hello World !" };
             });
 
             await server.StartAsync();
@@ -259,7 +259,7 @@ namespace test {
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
             server.MapGet("/api/test/hello/:name", (string name) => {
-                return new { message = "Chris, Hello World !" };
+                return new { message = $"{name}, Hello World !" };
             });
 
             await server.StartAsync();
@@ -703,7 +703,7 @@ namespace test {
         public class Router_MapController_RoutePamaterName_200_Controller : Controller {
             [Route("GET", "/hello/:name")]
             public object Hello(string name) {
-                return new { message = "Chris, Hello World !" };
+                return new { message = $"{name}, Hello World !" };
             }
         }
 
@@ -731,7 +731,7 @@ namespace test {
         public class Router_MapController_RoutePamaterName_404_Controller : Controller {
             [Route("GET", "/hello/:name")]
             public object Hello(string name) {
-                return new { message = "Chris, Hello World !" };
+                return new { message = $"{name}, Hello World !" };
             }
         }
 
