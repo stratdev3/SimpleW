@@ -60,6 +60,24 @@ namespace SimpleW.Modules {
             public TimeSpan? CacheTimeout { get; set; }
 
             /// <summary>
+            /// Maximum size (in bytes) of a single file allowed to be stored in memory cache.
+            /// Null means unlimited. (default 4MiB)
+            /// </summary>
+            public long? MaxCachedFileBytes { get; set; } = 4 * 1024 * 1024;
+
+            /// <summary>
+            /// Maximum total size (in bytes) of the in-memory file cache.
+            /// Null means unlimited. (default: 256 MiB)
+            /// </summary>
+            public long? MaxCacheTotalBytes { get; set; } = 256 * 1024 * 1024;
+
+            /// <summary>
+            /// Maximum number of entries in the in-memory file cache.
+            /// Null means unlimited. (default: 10_000)
+            /// </summary>
+            public int? MaxCacheEntries { get; set; } = 10_000;
+
+            /// <summary>
             /// If true, serves a minimal directory listing when no default document exists.
             /// </summary>
             public bool AutoIndex { get; set; } = false;
@@ -98,6 +116,9 @@ namespace SimpleW.Modules {
                 Path = StaticFilesModule.NormalizePath(Path);
                 Prefix = SimpleWExtension.NormalizePrefix(Prefix);
                 CacheTimeout = (CacheTimeout.HasValue && CacheTimeout.Value > TimeSpan.Zero) ? CacheTimeout : null;
+                MaxCachedFileBytes = (MaxCachedFileBytes.HasValue && MaxCachedFileBytes.Value > 0) ? MaxCachedFileBytes : null;
+                MaxCacheTotalBytes = (MaxCacheTotalBytes.HasValue && MaxCacheTotalBytes.Value > 0) ? MaxCacheTotalBytes : null;
+                MaxCacheEntries = (MaxCacheEntries.HasValue && MaxCacheEntries.Value > 0) ? MaxCacheEntries : null;
 
                 return this;
             }
@@ -123,6 +144,16 @@ namespace SimpleW.Modules {
             /// Cache of file when cache is enabled
             /// </summary>
             private readonly ConcurrentDictionary<string, CacheEntry> _cache = new(StringComparer.Ordinal);
+
+            /// <summary>
+            /// Current total bytes held by the file cache.
+            /// </summary>
+            private long _cacheBytes;
+
+            /// <summary>
+            /// Lock used to update _cacheBytes
+            /// </summary>
+            private readonly object _cacheEvictionLock = new();
 
             /// <summary>
             /// Cache HTML of auto-index (dir full path)
@@ -376,13 +407,7 @@ namespace SimpleW.Modules {
                     }
 
                     // 3) fill cache
-                    _cache[filePath] = new CacheEntry(
-                        data,
-                        len,
-                        contentType,
-                        lastModified,
-                        DateTimeOffset.UtcNow + _options.CacheTimeout.Value
-                    );
+                    TryCacheFile(filePath, data, len, contentType, lastModified);
 
                     // 304 after load
                     if (TryGetIfModifiedSince(request, out var ims2) && ims2 >= lastModified) {
@@ -620,7 +645,7 @@ namespace SimpleW.Modules {
                     _watcher.Created += OnFsChanged;
                     _watcher.Deleted += OnFsChanged;
                     _watcher.Renamed += OnFsRenamed;
-                    _watcher.Error += (_, __) => { _cache.Clear(); _dirIndexCache.Clear(); };
+                    _watcher.Error += OnWatcherError;
 
                     _watcher.EnableRaisingEvents = true;
                 }
@@ -639,7 +664,12 @@ namespace SimpleW.Modules {
                 if (string.IsNullOrWhiteSpace(e.FullPath)) {
                     return;
                 }
-                _cache.TryRemove(e.FullPath, out _);
+
+                if (_cache.TryRemove(e.FullPath, out var removed)) {
+                    lock (_cacheEvictionLock) {
+                        _cacheBytes -= removed.Length;
+                    }
+                }
 
                 // invalidate directory index cache for the parent directory
                 string? parent = Path.GetDirectoryName(e.FullPath);
@@ -655,21 +685,41 @@ namespace SimpleW.Modules {
             /// <param name="e"></param>
             private void OnFsRenamed(object sender, RenamedEventArgs e) {
                 if (!string.IsNullOrWhiteSpace(e.OldFullPath)) {
-                    _cache.TryRemove(e.OldFullPath, out _);
+                    if (_cache.TryRemove(e.OldFullPath, out var oldRemoved)) {
+                        lock (_cacheEvictionLock) {
+                            _cacheBytes -= oldRemoved.Length;
+                        }
+                    }
 
                     string? oldParent = Path.GetDirectoryName(e.OldFullPath);
                     if (!string.IsNullOrEmpty(oldParent)) {
                         _dirIndexCache.TryRemove(oldParent, out _);
                     }
                 }
-                if (!string.IsNullOrWhiteSpace(e.FullPath)) {
-                    _cache.TryRemove(e.FullPath, out _);
 
+                if (!string.IsNullOrWhiteSpace(e.FullPath)) {
+                    if (_cache.TryRemove(e.FullPath, out var newRemoved)) {
+                        lock (_cacheEvictionLock) {
+                            _cacheBytes -= newRemoved.Length;
+                        }
+                    }
                     string? newParent = Path.GetDirectoryName(e.FullPath);
                     if (!string.IsNullOrEmpty(newParent)) {
                         _dirIndexCache.TryRemove(newParent, out _);
                     }
                 }
+            }
+
+            /// <summary>
+            /// On Watcher Error
+            /// </summary>
+            /// <param name="sender"></param>
+            /// <param name="e"></param>
+            /// <exception cref="NotImplementedException"></exception>
+            private void OnWatcherError(object sender, ErrorEventArgs e) {
+                _cache.Clear();
+                _dirIndexCache.Clear();
+                lock (_cacheEvictionLock) { _cacheBytes = 0; }
             }
 
             /// <summary>
@@ -709,6 +759,116 @@ namespace SimpleW.Modules {
                     path += Path.DirectorySeparatorChar;
                 }
                 return path;
+            }
+
+            /// <summary>
+            /// Try to cache an entry while enforcing cache limits (max file size / max total size / max entries).
+            /// Best-effort eviction (expired first, then arbitrary) to make room.
+            /// </summary>
+            private bool TryCacheFile(string filePath, byte[] data, int len, string contentType, DateTimeOffset lastModifiedUtc) {
+
+                // enforce MaxCachedFileBytes
+                if (_options.MaxCachedFileBytes.HasValue && len > _options.MaxCachedFileBytes.Value) {
+                    return false;
+                }
+                // if a single item is larger than total limit, never cache it
+                if (_options.MaxCacheTotalBytes.HasValue && len > _options.MaxCacheTotalBytes.Value) {
+                    return false;
+                }
+
+                DateTimeOffset expires = DateTimeOffset.UtcNow + _options.CacheTimeout!.Value;
+
+                lock (_cacheEvictionLock) {
+
+                    EvictExpiredLocked();
+
+                    // enforce MaxCacheEntries
+                    if (_options.MaxCacheEntries.HasValue) {
+                        while (_cache.Count >= _options.MaxCacheEntries.Value) {
+                            if (!EvictOneLocked(exceptKey: filePath))
+                                return false;
+                        }
+                    }
+
+                    // enforce MaxCacheTotalBytes before adding cache
+                    if (_options.MaxCacheTotalBytes.HasValue) {
+                        while (_cacheBytes + len > _options.MaxCacheTotalBytes.Value) {
+                            if (!EvictOneLocked(exceptKey: filePath)) {
+                                return false;
+                            }
+                        }
+                    }
+
+                    _cache.AddOrUpdate(
+                        filePath,
+                        addValueFactory: _ => {
+                            _cacheBytes += len;
+                            return new CacheEntry(data, len, contentType, lastModifiedUtc, expires);
+                        },
+                        updateValueFactory: (_, old) => {
+                            _cacheBytes += (len - old.Length);
+                            return new CacheEntry(data, len, contentType, lastModifiedUtc, expires);
+                        }
+                    );
+
+                    // enforce MaxCacheTotalBytes after added cache
+                    if (_options.MaxCacheTotalBytes.HasValue) {
+                        while (_cacheBytes > _options.MaxCacheTotalBytes.Value) {
+                            if (!EvictOneLocked(exceptKey: filePath)) {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                return true;
+            }
+
+            /// <summary>
+            /// EvictExpiredLocked
+            /// </summary>
+            private void EvictExpiredLocked() {
+                foreach (var kv in _cache) {
+                    if (kv.Value.IsExpired) {
+                        if (_cache.TryRemove(kv.Key, out var removed)) {
+                            _cacheBytes -= removed.Length;
+                        }
+                    }
+                }
+            }
+
+            /// <summary>
+            /// EvictOneLocked
+            /// </summary>
+            /// <param name="exceptKey"></param>
+            /// <returns></returns>
+            private bool EvictOneLocked(string? exceptKey) {
+
+                // expired entries first
+                foreach (var kv in _cache) {
+                    if (kv.Key == exceptKey) {
+                        continue;
+                    }
+                    if (kv.Value.IsExpired) {
+                        if (_cache.TryRemove(kv.Key, out var removed)) {
+                            _cacheBytes -= removed.Length;
+                            return true;
+                        }
+                    }
+                }
+
+                // else evict an arbitrary entry (best-effort)
+                foreach (var kv in _cache) {
+                    if (kv.Key == exceptKey) {
+                        continue;
+                    }
+                    if (_cache.TryRemove(kv.Key, out var removed)) {
+                        _cacheBytes -= removed.Length;
+                        return true;
+                    }
+                }
+
+                return false;
             }
 
             /// <summary>
