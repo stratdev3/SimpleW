@@ -141,9 +141,14 @@ namespace SimpleW.Modules {
             private FileSystemWatcher? _watcher;
 
             /// <summary>
+            /// PathComparer
+            /// </summary>
+            private static readonly StringComparer PathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
+            /// <summary>
             /// Cache of file when cache is enabled
             /// </summary>
-            private readonly ConcurrentDictionary<string, CacheEntry> _cache = new(StringComparer.Ordinal);
+            private readonly ConcurrentDictionary<string, CacheEntry> _cache = new(PathComparer);
 
             /// <summary>
             /// Current total bytes held by the file cache.
@@ -158,7 +163,7 @@ namespace SimpleW.Modules {
             /// <summary>
             /// Cache HTML of auto-index (dir full path)
             /// </summary>
-            private readonly ConcurrentDictionary<string, DirIndexCacheEntry> _dirIndexCache = new(StringComparer.Ordinal);
+            private readonly ConcurrentDictionary<string, DirIndexCacheEntry> _dirIndexCache = new(PathComparer);
 
             /// <summary>
             /// Add static content
