@@ -680,13 +680,7 @@ namespace SimpleW.Modules {
             /// <param name="ContentType"></param>
             /// <param name="LastModifiedUtc"></param>
             /// <param name="ExpiresUtc"></param>
-            private readonly record struct CacheEntry(
-                byte[] Data,
-                int Length,
-                string ContentType,
-                DateTimeOffset LastModifiedUtc,
-                DateTimeOffset ExpiresUtc
-            ) {
+            private readonly record struct CacheEntry(byte[] Data, int Length, string ContentType, DateTimeOffset LastModifiedUtc, DateTimeOffset ExpiresUtc) {
                 public bool IsExpired => DateTimeOffset.UtcNow >= ExpiresUtc;
             }
 
@@ -696,11 +690,7 @@ namespace SimpleW.Modules {
             /// <param name="Html"></param>
             /// <param name="Length"></param>
             /// <param name="ExpiresUtc"></param>
-            private readonly record struct DirIndexCacheEntry(
-                byte[] Html,
-                int Length,
-                DateTimeOffset ExpiresUtc
-            ) {
+            private readonly record struct DirIndexCacheEntry(byte[] Html, int Length, DateTimeOffset ExpiresUtc) {
                 public bool IsExpired => DateTimeOffset.UtcNow >= ExpiresUtc;
             }
 
