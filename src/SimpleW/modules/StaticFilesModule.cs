@@ -211,24 +211,6 @@ namespace SimpleW.Modules {
                     return;
                 }
 
-                // if cache is ON and we already cached an auto-index for this directory
-                if (_options.CacheTimeout.HasValue && _options.AutoIndex) {
-                    if (_dirIndexCache.TryGetValue(fullPath, out var dirCached) && !dirCached.IsExpired) {
-                        // ServeAutoIndexAsync will immediately hit the cache and return.
-                        await ServeAutoIndexAsync(session, request, fullPath).ConfigureAwait(false);
-                        return;
-                    }
-                }
-
-                // fast path if URL ends with "/" (directory intent) and we have a cached
-                if (_options.CacheTimeout.HasValue && _options.AutoIndex && endsWithSlash) {
-                    if (_dirIndexCache.TryGetValue(fullPath, out var cachedDir) && !cachedDir.IsExpired) {
-                        // ServeAutoIndexAsync will hit the cache and return immediately.
-                        await ServeAutoIndexAsync(session, request, fullPath).ConfigureAwait(false);
-                        return;
-                    }
-                }
-
                 // directory ?
                 if (Directory.Exists(fullPath)) {
                     string defaultFile = Path.Combine(fullPath, _options.DefaultDocument);
@@ -265,6 +247,7 @@ namespace SimpleW.Modules {
                 _watcher = null;
                 _cache.Clear();
                 _dirIndexCache.Clear();
+                lock (_cacheEvictionLock) { _cacheBytes = 0; }
             }
 
             /// <summary>
@@ -356,38 +339,38 @@ namespace SimpleW.Modules {
             /// <returns></returns>
             private async ValueTask ServeFileAsync(HttpSession session, HttpRequest request, string filePath) {
 
-                // Cache ON (server from cache first, fallback disk on miss)
+                // Cache ON (serve from cache first, fallback disk on miss)
                 if (_options.CacheTimeout.HasValue) {
+
+                    int cacheSeconds = (int)_options.CacheTimeout.Value.TotalSeconds;
 
                     // 1) cache hit
                     if (_cache.TryGetValue(filePath, out var entry) && !entry.IsExpired) {
 
-                        // 304 based on cache metadata
-                        if (TryGetIfModifiedSince(request, out DateTimeOffset ims) && ims >= entry.LastModifiedUtc) {
-                            await SendNotModifiedAsync(session, entry.LastModifiedUtc).ConfigureAwait(false);
+                        string etag = ComputeWeakETag(entry.Length, entry.LastModifiedUtc);
+
+                        // 304 ?
+                        if (ShouldReturnNotModified(request, etag, entry.LastModifiedUtc)) {
+                            await SendNotModifiedAsync(session, entry.LastModifiedUtc, etag, cacheSeconds).ConfigureAwait(false);
                             return;
                         }
+
+                        // 200
+                        session.Response.AddHeader("ETag", etag);
 
                         await SendBytesAsync(
                             session,
                             contentType: entry.ContentType,
                             body: entry.Data.AsMemory(0, entry.Length),
                             lastModifiedUtc: entry.LastModifiedUtc,
-                            cacheSeconds: (int)_options.CacheTimeout.Value.TotalSeconds
+                            cacheSeconds: cacheSeconds
                         ).ConfigureAwait(false);
+
                         return;
                     }
 
                     // 2) cache miss => fallback disk (verify exists + load)
-                    FileInfo fi;
-                    try {
-                        fi = new FileInfo(filePath);
-                    }
-                    catch {
-                        await SendNotFoundAsync(session).ConfigureAwait(false);
-                        return;
-                    }
-
+                    FileInfo fi = new(filePath);
                     if (!fi.Exists) {
                         await SendNotFoundAsync(session).ConfigureAwait(false);
                         return;
@@ -395,18 +378,32 @@ namespace SimpleW.Modules {
 
                     DateTimeOffset lastModified = fi.LastWriteTimeUtc;
                     string contentType = HttpResponse.DefaultContentType(fi.Extension);
+                    string etag2 = ComputeWeakETag(fi.Length, lastModified);
 
+                    // 304?
+                    if (ShouldReturnNotModified(request, etag2, lastModified)) {
+                        await SendNotModifiedAsync(session, lastModified, etag2, cacheSeconds).ConfigureAwait(false);
+                        return;
+                    }
+
+                    if (_options.MaxCachedFileBytes.HasValue && fi.Length > _options.MaxCachedFileBytes.Value) {
+                        // validators
+                        // 304?
+                        // sinon stream direct (sans cache mémoire)
+                        session.Response.AddHeader("ETag", etag2);
+                        await SendFileStreamAsync(session, fi, contentType, lastModified, cacheSeconds).ConfigureAwait(false);
+                        return;
+                    }
+
+                    // read file into memory
                     byte[] data;
                     int len;
                     try {
-                        data = File.ReadAllBytes(fi.FullName);
+                        data = await File.ReadAllBytesAsync(filePath).ConfigureAwait(false);
                         len = data.Length;
                     }
-                    catch (UnauthorizedAccessException) {
-                        await SendForbiddenAsync(session).ConfigureAwait(false);
-                        return;
-                    }
                     catch {
+                        // if file disappears / access denied / etc.
                         await SendNotFoundAsync(session).ConfigureAwait(false);
                         return;
                     }
@@ -414,48 +411,41 @@ namespace SimpleW.Modules {
                     // 3) fill cache
                     TryCacheFile(filePath, data, len, contentType, lastModified);
 
-                    // 304 after load
-                    if (TryGetIfModifiedSince(request, out var ims2) && ims2 >= lastModified) {
-                        await SendNotModifiedAsync(session, lastModified).ConfigureAwait(false);
-                        return;
-                    }
+                    // 4) send
+                    session.Response.AddHeader("ETag", etag2);
 
-                    // 4) serve
                     await SendBytesAsync(
                         session,
                         contentType: contentType,
                         body: data.AsMemory(0, len),
                         lastModifiedUtc: lastModified,
-                        cacheSeconds: (int)_options.CacheTimeout.Value.TotalSeconds
+                        cacheSeconds: cacheSeconds
                     ).ConfigureAwait(false);
 
                     return;
                 }
 
                 // Cache OFF (stream from disk)
-                FileInfo fi2;
-                try {
-                    fi2 = new FileInfo(filePath);
-                }
-                catch {
-                    await SendNotFoundAsync(session).ConfigureAwait(false);
-                    return;
-                }
-
+                FileInfo fi2 = new(filePath);
                 if (!fi2.Exists) {
                     await SendNotFoundAsync(session).ConfigureAwait(false);
                     return;
                 }
 
                 DateTimeOffset lastModified2 = fi2.LastWriteTimeUtc;
+                string ct2 = HttpResponse.DefaultContentType(fi2.Extension);
+                string etag3 = ComputeWeakETag(fi2.Length, lastModified2);
 
-                if (TryGetIfModifiedSince(request, out DateTimeOffset ims3) && ims3 >= lastModified2) {
-                    await SendNotModifiedAsync(session, lastModified2).ConfigureAwait(false);
+                // 304?
+                if (ShouldReturnNotModified(request, etag3, lastModified2)) {
+                    await SendNotModifiedAsync(session, lastModified2, etag3, cacheSeconds: null).ConfigureAwait(false);
                     return;
                 }
 
-                string ct2 = HttpResponse.DefaultContentType(fi2.Extension);
-                await SendFileStreamAsync(session, fi2, ct2, lastModified2).ConfigureAwait(false);
+                // 200
+                session.Response.AddHeader("ETag", etag3);
+
+                await SendFileStreamAsync(session, fi2, ct2, lastModified2, cacheSeconds: null).ConfigureAwait(false);
             }
 
             /// <summary>
@@ -465,13 +455,14 @@ namespace SimpleW.Modules {
             /// <param name="fi"></param>
             /// <param name="contentType"></param>
             /// <param name="lastModifiedUtc"></param>
+            /// <param name="cacheSeconds"></param>
             /// <returns></returns>
-            private async ValueTask SendFileStreamAsync(HttpSession session, FileInfo fi, string contentType, DateTimeOffset lastModifiedUtc) {
+            private async ValueTask SendFileStreamAsync(HttpSession session, FileInfo fi, string contentType, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
                 long length = fi.Length;
 
                 session.Response
                        .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
-                       .AddHeader("Cache-Control", "no-cache");
+                       .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache");
 
                 // headers only
                 if (session.Request.Method == "HEAD") {
@@ -616,15 +607,25 @@ namespace SimpleW.Modules {
             /// </summary>
             /// <param name="session"></param>
             /// <param name="lastModifiedUtc"></param>
+            /// <param name="etag"></param>
+            /// <param name="cacheSeconds"></param>
             /// <returns></returns>
-            private async ValueTask SendNotModifiedAsync(HttpSession session, DateTimeOffset lastModifiedUtc) {
+            private async ValueTask SendNotModifiedAsync(HttpSession session, DateTimeOffset lastModifiedUtc, string? etag, int? cacheSeconds) {
+
+                string cacheControl = (cacheSeconds.HasValue && cacheSeconds.Value > 0) 
+                                        ? $"public, max-age={cacheSeconds.Value}"
+                                        : "no-cache";
+
+                if (!string.IsNullOrEmpty(etag)) {
+                    session.Response.AddHeader("ETag", etag);
+                }
+
                 await session.Response
-                             .Status(304)
-                             .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
-                             .AddHeader("Cache-Control", "no-cache")
-                             .RemoveBody()
-                             .SendAsync()
-                             .ConfigureAwait(false);
+                       .Status(304)
+                       .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                       .AddHeader("Cache-Control", cacheControl)
+                       .RemoveBody()
+                       .SendAsync().ConfigureAwait(false);
             }
 
             #endregion response
@@ -893,6 +894,83 @@ namespace SimpleW.Modules {
                     imsUtc = dto;
                     return true;
                 }
+                return false;
+            }
+
+            /// <summary>
+            /// ComputeWeakETag
+            /// </summary>
+            /// <param name="length"></param>
+            /// <param name="lastModifiedUtc"></param>
+            /// <returns></returns>
+            private static string ComputeWeakETag(long length, DateTimeOffset lastModifiedUtc) {
+                // Weak ETag based on length + last write ticks (UTC)
+                // Example: W/"12345-638420123456789012"
+                return $"W/\"{length}-{lastModifiedUtc.UtcTicks}\"";
+            }
+
+            /// <summary>
+            /// IfNoneMatchHasMatch
+            /// </summary>
+            /// <param name="request"></param>
+            /// <param name="currentEtag"></param>
+            /// <returns></returns>
+            private static bool IfNoneMatchHasMatch(HttpRequest request, string currentEtag) {
+
+                if (!request.Headers.TryGetValue("If-None-Match", out string? inm) || string.IsNullOrWhiteSpace(inm)) {
+                    return false;
+                }
+
+                inm = inm.Trim();
+
+                // "*" means "any current representation"
+                if (inm == "*")
+                    return true;
+
+                foreach (var raw in inm.Split(',')) {
+                    var token = raw.Trim();
+                    if (token.Length == 0)
+                        continue;
+
+                    // Exact match
+                    if (string.Equals(token, currentEtag, StringComparison.Ordinal))
+                        return true;
+
+                    // Accept strong/weak equivalent: W/"x" <-> "x"
+                    if (NormalizeEtag(token) == NormalizeEtag(currentEtag))
+                        return true;
+                }
+
+                return false;
+
+                static string NormalizeEtag(string etag) {
+                    etag = etag.Trim();
+                    if (etag.StartsWith("W/", StringComparison.OrdinalIgnoreCase)) {
+                        etag = etag.Substring(2).TrimStart();
+                    }
+                    return etag;
+                }
+            }
+
+            /// <summary>
+            /// ShouldReturnNotModified
+            /// </summary>
+            /// <param name="request"></param>
+            /// <param name="etag"></param>
+            /// <param name="lastModifiedUtc"></param>
+            /// <returns></returns>
+            private static bool ShouldReturnNotModified(HttpRequest request, string etag, DateTimeOffset lastModifiedUtc) {
+
+                // 1) If-None-Match first (priority)
+                if (IfNoneMatchHasMatch(request, etag)) {
+                    return true;
+                }
+
+                // 2) Fallback If-Modified-Since
+                if (TryGetIfModifiedSince(request, out DateTimeOffset ims) && ims >= lastModifiedUtc) {
+                    return true;
+                }
+
                 return false;
             }
 
