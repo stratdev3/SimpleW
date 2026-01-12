@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
@@ -14,6 +15,8 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SimpleW;
 using SimpleW.Modules;
+using SimpleW.Newtonsoft;
+using SimpleW.Security;
 
 
 namespace example.rewrite {
@@ -22,6 +25,7 @@ namespace example.rewrite {
     /// Example Program
     /// perf http : bombardier -c 200 -d 10s http://127.0.0.1:8080/api/test/hello
     /// perf https : bombardier -c 200 -d 10s -k https://127.0.0.1:8080/api/test/hello
+    /// perf jwt : bombardier -c 200 -d 10s -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjaGVmIiwiaWF0IjoxNzY3NDQxOTA4LCJleHAiOjE3Njc0NDkxMDgsInJvbGVzIjpbImJvc3MiXX0.qv9TnM7RKM1zu_QcPoTz_pmXMDzHT-OnP6xjs4nMgS4" http://127.0.0.1:8080/api/jwt/decode
     /// </summary>
     internal class Program {
 
@@ -37,6 +41,8 @@ namespace example.rewrite {
         static async Task Rewrite() {
 
             SimpleWServer server = new(IPAddress.Any, 8080);
+
+            #region https
 
 #pragma warning disable CS0162 // Code inaccessible détecté
             if (false) {
@@ -62,60 +68,20 @@ namespace example.rewrite {
             }
 #pragma warning restore CS0162 // Code inaccessible détecté
 
-            //server.MapGet("/", () => {
-            //    return server.Router.Routes;
-            //});
-            // use middleware as firewall/authenticate
-            //server.UseMiddleware(static (session, next) => {
-            //    // check if the user is authorized ?
-            //    if (session.Request.Path.StartsWith("/api/secret", StringComparison.Ordinal)) {
-            //        if (!session.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != "secret") {
-            //            // stop the pipeline here by sending a 401
-            //            return session.Response.Unauthorized("You're authorized in this area").SendAsync();
-            //        }
-            //    }
-            //    // continue the pipeline
-            //    return next();
-            //});
+            #endregion https
 
-            // server.UseBasicAuthModule(o => {
-            //     o.Prefix = "/api/test/hello";
-            //     o.Realm = "Admin";
-            //     o.Users = new[] { new BasicAuthModuleExtension.BasicAuthOptions.BasicUser("chef", "pwd") };
-            // })
-            // .UseBasicAuthModule(o => {
-            //     o.Prefix = "/metrics";
-            //     o.Realm = "Metrics";
-            //     o.CredentialValidator = (u, p) => u == "prom" && p == "scrape";
-            // });
-
-            server.MapGet("/api/test/hello", (HttpSession session, string? name = null) => {
-                return new { message = $"{name}, Hello World !" };
+            server.MapGet("/api/test/hello", object (HttpSession session) => {
+                return new { message = $"Hello World !" };
             });
-            //server.MapGet("/api/test/hello", static (HttpSession session, string? name = null) => {
-            //    return session.Response.Json(new { message = $"{name} Hello World !" }).SendAsync();
-            //});
-            //server.MapGet("/api/user/*", static async ValueTask<object> (HttpSession session, int? id = 999999) => {
-            //    if (id == 999999) {
-            //        await Task.Delay(2_000);
-            //        return session.Response.Status(404);
-            //    }
-            //    return new { message = "Hello World !", id };
-            //});
-            //server.UseModule(new StaticFilesModule(
-            //    @"C:\www\spa\refresh\", "/"
-            //    , timeout: TimeSpan.FromDays(1)
-            //) {
-            //    AutoIndex = true
-            //});
 
-            //server.UseStaticFilesModule(toto);
+            server.UseStaticFilesModule(options => {
+                options.Path = @"C:\www\toto\";
+                options.Prefix = "/";
+                options.AutoIndex = true;
+            });
 
-            //server.UseStaticFilesModule(options => {
-            //    options.Path = @"C:\www\spa\refresh\";
-            //    options.Prefix = "/";
-            //    options.CacheTimeout = TimeSpan.FromDays(1);
-            //});
+            //server.MapControllers<SubController>("/api");
+            //server.MapControllers<Controller>("/api");
 
             //server.UseModule(
             //    new WebsocketModule(
@@ -171,20 +137,23 @@ namespace example.rewrite {
             //);
 
             //server.MapControllers<Controller>("/api");
-            //server.MapController<Post_DynamicContent_HelloWorld_Controller>("/api");
 
             server.Configure(options => {
                 options.ReuseAddress = true;
                 options.TcpNoDelay = true;
                 options.TcpKeepAlive = true;
-                //options.AcceptPerCore = true;
-                //options.ReusePort = true;
+                options.JwtOptions = new JwtOptions("minimumlongsecret") {
+                    ValidateExp = false,
+                    ValidateNbf = false,
+                };
+            });
+            server.ConfigureTelemetry(options => {
+                options.IncludeStackTrace = true;
+                options.EnrichWithHttpSession = (activity, session) => {
+                    
+                };
             });
 
-            //server.UseTelemetry();
-            server.ConfigureTelemetry((activity, session) => {
-                //activity.SetTag("toto", "tutu");
-            });
             openTelemetryObserver("SimpleW");
 
             // start non blocking background server
@@ -225,7 +194,7 @@ namespace example.rewrite {
             _tracerProvider = Sdk.CreateTracerProviderBuilder()
                                  .AddSource(source)
                                  //.SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(0.01)))
-                                 .AddProcessor(new LogProcessor()) // custom log processor
+                                 //.AddProcessor(new LogProcessor()) // custom log processor
                                  .AddOtlpExporter((options) => {
                                      options.Endpoint = new Uri("https://api.uptrace.dev/v1/traces");
                                      options.Headers = "uptrace-dsn=https://CqLctwdpOwM0Ayv64cKzVg@api.uptrace.dev?grpc=4317";
@@ -270,162 +239,5 @@ namespace example.rewrite {
 
         }
     }
-
-    [Route("/test")]
-    public class TestController : Controller {
-
-        [Route("GET", "/hello")]
-        public object Hello(string? name = null) {
-
-            // the return will be serialized to json
-            //return new {
-            //    message = $"{name}, Hello World !"
-            //};
-            string message = "Hello World";
-            for (var i = 0; i < 10; i++) {
-                message += message;
-            }
-            
-            return Session.Response.Json(new { message });
-        }
-
-        [Route("POST", "/api/user/update", isAbsolutePath: true)]
-        public object UserUpdate() {
-
-            User chris = new();
-            Request.BodyMap(chris);
-            
-            return Session.Response.Json(new { message = "ok", chris });
-        }
-
-
-    }
-
-
-    public class User {
-        public string nom { get; set; }
-        public string prenom { get; set; }
-        public int age { get; set; }
-    }
-
-
-    public sealed class UploadController : Controller {
-        private static readonly string UploadDir = @"C:\www\spa\tmp\";
-
-        [Route("POST", "/upload", isAbsolutePath: true)]
-        public async ValueTask<HttpResponse> Upload() {
-            Directory.CreateDirectory(UploadDir);
-
-            string? title = null;
-
-            // On collecte des infos à renvoyer
-            var saved = new List<object>();
-
-            bool ok = Request.BodyMultipartStream(
-                onField: (k, v) => {
-                    if (string.Equals(k, "title", StringComparison.OrdinalIgnoreCase)) {
-                        title = v;
-                    }
-                },
-                onFile: (info, content) => {
-                    // filename vient du client => sanitize + fallback
-                    string originalName = info.FileName ?? "";
-                    string safeName = Path.GetFileName(originalName);
-                    if (string.IsNullOrWhiteSpace(safeName)) {
-                        safeName = "upload.bin";
-                    }
-
-                    // évite les collisions: ajoute un suffixe
-                    string finalName = $"{Path.GetFileNameWithoutExtension(safeName)}_{Guid.NewGuid():N}{Path.GetExtension(safeName)}";
-                    string fullPath = Path.Combine(UploadDir, finalName);
-
-                    using var fs = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 64 * 1024);
-                    content.CopyTo(fs); // extension ReadOnlySequence<byte> -> Stream (qu’on a ajoutée)
-
-                    saved.Add(new {
-                        field = info.FieldName,
-                        originalName = originalName,
-                        savedAs = finalName,
-                        size = info.Length,
-                        contentType = info.ContentType
-                    });
-                },
-                maxParts: 200,
-                maxFileBytes: Session.Request.MaxRequestBodySize
-            );
-
-            if (!ok) {
-                return Session.Response
-                    .Status(400)
-                    .Json(new { ok = false, error = "Invalid multipart/form-data" });
-            }
-
-            // réponse JSON
-            return Session.Response
-                .Status(200)
-                .Json(new {
-                    ok = true,
-                    title,
-                    uploadDir = UploadDir,
-                    files = saved
-                });
-        }
-    }
-
-
-    [Route("/test")]
-    public class Post_DynamicContent_HelloWorld_Controller : Controller {
-
-        [Route("POST", "/hello")]
-        public object HelloWorld() {
-            var user = new User();
-            Request.BodyMap(user);
-
-            return new { message = $"{user.Name}, Hello World ! It's {user.CreatedAt.ToLongDateString()}" };
-        }
-
-        [Route("POST", "/raw")]
-        public ValueTask Raw() {
-            var data = new byte[10];
-            return Session.SendAsync(data);
-            //return Session.Response.Text(Session.Request.BodyString);
-        }
-
-
-
-
-        [Route("POST", "/file")]
-        public object File() {
-            var parser = Request.BodyMultipart();
-            if (parser == null || parser.Files.Any(f => f.Content.Length >= 0)) {
-                return "no file found in the body";
-            }
-
-            var file = parser.Files.First();
-            var extension = Path.GetExtension(file.FileName).ToLower();
-
-            var content = "";
-            try {
-                content = Encoding.UTF8.GetString(file.Content.ToArray());
-            }
-            catch (Exception ex) {
-                return Session.Response.Status(500).Json(ex.Message);
-            }
-
-            var name = parser.Fields.Where(p => p.Key == nameof(Post_DynamicContent_HelloWorld_Controller.User.Name)).FirstOrDefault().Value;
-
-            return new { message = $"{name}, {content}" };
-        }
-
-        public class User {
-            public Guid Id { get; set; }
-            public bool Enabled { get; set; }
-            public string? Name { get; set; }
-            public int Counter { get; set; }
-            public DateTime CreatedAt { get; set; }
-        }
-
-    }
-
 
 }
