@@ -194,6 +194,8 @@ namespace test {
 
         #region cache
 
+        #region file exists
+
         [Fact]
         public async Task Get_StaticContent_NoIndex_404() {
 
@@ -272,15 +274,19 @@ namespace test {
 
             // asserts
             Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.Contains("Last-Modified")).IsTrue();
+            Check.That(response.Headers.CacheControl?.NoCache ?? false).IsTrue();
             Check.That(content).Contains("Index of /files");
-            Check.That(content).Contains("SimpleW.dll");
-            //Check.That(response.Headers.Contains("Last-Modified")).IsTrue();
-            //Check.That(response.Headers.Contains("Cache-Control")).IsTrue();
+            Check.That(content).Contains("SimpleW.xml");
 
             // dispose
             await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
+
+        #endregion file exists
+
+        #region proper header
 
         [Fact]
         public async Task Get_StaticContent_Cache_File_200() {
@@ -299,16 +305,179 @@ namespace test {
 
             // client
             var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.dll");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.xml");
             var content = await response.Content.ReadAsStringAsync();
 
             // asserts
             Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.Contains("Last-Modified")).IsTrue();
+            Check.That(response.Headers?.CacheControl?.MaxAge).IsNotNull();
+            Check.That(response.Headers?.ETag?.Tag).IsNotNull();
 
             // dispose
             await server.StopAsync();
             PortManager.ReleasePort(server.Port);
         }
+
+        #endregion proper header
+
+        #region hit 304
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_File_Hit_Etag_304() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            var content = await response.Content.ReadAsStringAsync();
+            var etag = response.Headers?.ETag?.Tag;
+
+            // client should it cache
+            var request2 = new HttpRequestMessage(HttpMethod.Get, $"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            request2.Headers.Add("If-None-Match", etag);
+            var response2 = await client.SendAsync(request2);
+            var content2 = await response2.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response2.StatusCode).Is(HttpStatusCode.NotModified);
+            Check.That(response2.Content.Headers.Contains("Last-Modified")).IsTrue();
+            Check.That(response2.Headers?.CacheControl?.MaxAge).IsNotNull();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_File_Hit_ModifiedSince_304() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            var content = await response.Content.ReadAsStringAsync();
+            response.Content.Headers.TryGetValues("Last-Modified", out var modifiedSinces);
+
+            // client should it cache
+            var request2 = new HttpRequestMessage(HttpMethod.Get, $"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            request2.Headers.Add("If-Modified-Since", modifiedSinces?.First());
+            var response2 = await client.SendAsync(request2);
+            var content2 = await response2.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response2.StatusCode).Is(HttpStatusCode.NotModified);
+            Check.That(response2.Content.Headers.Contains("Last-Modified")).IsTrue();
+            Check.That(response2.Headers?.CacheControl?.MaxAge).IsNotNull();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        #endregion hit 304
+
+        #region miss 200
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_File_Miss_Etag_304() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            var content = await response.Content.ReadAsStringAsync();
+            var etag = response.Headers?.ETag?.Tag;
+
+            // client should it cache
+            var request2 = new HttpRequestMessage(HttpMethod.Get, $"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            request2.Headers.Add("If-None-Match", "\"000000-639038643743428280\"");
+            var response2 = await client.SendAsync(request2);
+            var content2 = await response2.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response2.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(response2.Content.Headers.Contains("Last-Modified")).IsTrue();
+            Check.That(response2.Headers?.CacheControl?.MaxAge).IsNotNull();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_File_Miss_ModifiedSince_304() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                options.AutoIndex = true;
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            var content = await response.Content.ReadAsStringAsync();
+            response.Content.Headers.TryGetValues("Last-Modified", out var modifiedSinces);
+
+            // client should it cache
+            var request2 = new HttpRequestMessage(HttpMethod.Get, $"http://{server.Address}:{server.Port}/files/SimpleW.xml");
+            request2.Headers.Add("If-Modified-Since", "Mon, 12 Jan 2026 23:27:48 GMT");
+            var response2 = await client.SendAsync(request2);
+            var content2 = await response2.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response2.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(response2.Content.Headers.Contains("Last-Modified")).IsTrue();
+            Check.That(response2.Headers?.CacheControl?.MaxAge).IsNotNull();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        #endregion miss 200
+
+        #region default document
 
         [Fact]
         public async Task Get_StaticContent_Cache_DefaultDocument_200() {
@@ -374,90 +543,7 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
-        /*
-
-        [Fact]
-        public async Task Get_StaticContent_Cache_NoIndex_Filter_200() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", "SimpleW.*", timeout: TimeSpan.FromDays(1));
-
-            // enable autoindex
-            server.AutoIndex = true;
-
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.OK);
-            Check.That(content).Contains("Index of /files");
-            Check.That(content).Contains("SimpleW.dll");
-            Check.That(content).DoesNotContain("OpenTelemetry.dll");
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Get_StaticContent_Cache_Filter_File_200() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", "SimpleW.*", timeout: TimeSpan.FromDays(1));
-
-            // enable autoindex
-            server.AutoIndex = true;
-
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.dll");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.OK);
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Get_StaticContent_Cache_Filter_File_404() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-
-            server.AddStaticContent(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "/files", "SimpleW.*", timeout: TimeSpan.FromDays(1));
-
-            // enable autoindex
-            server.AutoIndex = true;
-
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/OpenTelemetry.dll");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).Is(HttpStatusCode.NotFound);
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        */
+        #endregion default document
 
         #endregion cache
 
