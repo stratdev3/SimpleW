@@ -11,7 +11,7 @@ namespace test {
     /// <summary>
     /// Tests for static content
     /// </summary>
-    public class StaticContentTests {
+    public class StaticFilesModuleTests {
 
         #region no_cache
 
