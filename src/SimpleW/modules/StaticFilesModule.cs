@@ -967,12 +967,18 @@ namespace SimpleW.Modules {
                 }
 
                 // 2) Fallback If-Modified-Since
-                if (TryGetIfModifiedSince(request, out DateTimeOffset ims) && ims >= lastModifiedUtc) {
+                if (TryGetIfModifiedSince(request, out DateTimeOffset ims) && ims >= TruncateToSeconds(lastModifiedUtc)) {
                     return true;
                 }
 
                 return false;
             }
+            /// <summary>
+            /// Truncate DateTimeOffset To Seconds
+            /// </summary>
+            /// <param name="dt"></param>
+            /// <returns></returns>
+            private static DateTimeOffset TruncateToSeconds(DateTimeOffset dt) => dt.AddTicks(-(dt.Ticks % TimeSpan.TicksPerSecond));
 
             /// <summary>
             /// EnsureTrailingSlash
