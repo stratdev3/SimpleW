@@ -9,11 +9,36 @@ That's the goal of the [`StaticFilesModule`](../reference/staticfilesmodule.md).
 
 To serve statics files with very few lines of code :
 
-::: code-group
+```csharp{4,15-20}
+using System;
+using System.Net;
+using SimpleW;
+using SimpleW.Modules;
 
-<<< @/snippets/static-files.cs#basic{4,15-20 csharp:line-numbers} [program.cs]
+namespace Sample {
+    class Program {
 
-:::
+        static async Task Main() {
+
+            // listen to all IPs port 2015
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // use the StaticFilesModule
+            server.UseStaticFilesModule(options => {
+                options.Path = @"C:\www\spa\";                  // serve your files located here
+                options.Prefix = "/";                           // to "/" endpoint
+                options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
+                options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
+            });
+
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
+
+            // start a blocking background server
+            await server.RunAsync();
+        }
+    }
+}
+```
 
 Then just point your browser to http://localhost:2015/.
 
@@ -26,11 +51,39 @@ Note : on Windows, the Firewall can block this simple console app even if expose
 
 SimpleW can handle multiple directories as soon as they are declared under different endpoints.
 
-::: code-group
+```csharp{4,15-24}
+using System;
+using System.Net;
+using SimpleW;
+using SimpleW.Modules;
 
-<<< @/snippets/static-files-multiple-directories.cs#basic{csharp:line-numbers} [program.cs]
+namespace Sample {
+    class Program {
 
-:::
+        static async Task Main() {
+
+            // listen to all IPs port 2015
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            // serve directories/endpoints
+            server.UseStaticFilesModule(options => {
+                options.Path = @"C:\www\frontend\";
+                options.Prefix = "/";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+            });
+            server.UseStaticFilesModule(options => {
+                options.Path = @"C:\www\public\";
+                options.Prefix = "/public/";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+            });
+
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
+
+            await server.RunAsync();
+        }
+    }
+}
+```
 
 
 ## Options
@@ -38,7 +91,7 @@ SimpleW can handle multiple directories as soon as they are declared under diffe
 You can change some settings before server start.
 
 To change the default document `index.html` by your own page
-```csharp:line-numbers
+```csharp
 option.DefaultDocument = "maintenance.html";
 ```
 
@@ -50,7 +103,7 @@ To enable cache, set the `CacheTimeout` property to anything but null.<br />
 
 The following example enable cache for 1 day :
 
-```csharp:line-numbers
+```csharp
 // serve statics files
 server.UseStaticFilesModule(options => {
     options.Path = @"C:\www\";                      // serve your files located here
@@ -142,11 +195,35 @@ $ pwd
 
 Now, we will server this directory using the `StaticFilesModule` module of SimpleW :
 
-::: code-group
+```csharp{15}
+using System;
+using System.Net;
+using SimpleW;
+using SimpleW.Modules;
 
-<<< @/snippets/static-files-vuejs.cs#basic{csharp:line-numbers} [program.cs]
+namespace Sample {
+    class Program {
 
-:::
+        static async Task Main() {
+
+            // listen to all IPs port 2015
+            var server = new SimpleWServer(IPAddress.Any, 2015);
+
+            server.UseStaticFilesModule(options => {
+                options.Path = @"C:\www\my-vue-app\dist\";      // serve your files located here
+                options.Prefix = "/";                           // to "/" endpoint
+                options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
+                options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
+            });
+
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
+
+            // start a blocking background server
+            await server.RunAsync();
+        }
+    }
+}
+```
 
 Open your browser to http://localhost:2015/ and you will see your vue.js app.
 
