@@ -547,6 +547,150 @@ namespace test {
 
         #endregion cache
 
+        #region watcher
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_File_Modified_ReturnsUpdatedContent() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_File_Modified_ReturnsUpdatedContent");
+            Directory.CreateDirectory(path);
+
+            string filePath = Path.Combine(path, "test.txt");
+            File.WriteAllText(filePath, "v1");
+
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+
+            // warm cache
+            var response1 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/test.txt");
+            var content1 = await response1.Content.ReadAsStringAsync();
+
+            Check.That(response1.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(content1).IsEqualTo("v1");
+
+            // modify file
+            File.WriteAllText(filePath, "v2");
+
+            // let watcher invalidate cache (best effort)
+            await Task.Delay(150);
+
+            // should return updated content (not cached v1)
+            var response2 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/test.txt");
+            var content2 = await response2.Content.ReadAsStringAsync();
+
+            Check.That(response2.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(content2).IsEqualTo("v2");
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_File_Deleted_Returns404() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_File_Deleted_Returns404");
+            Directory.CreateDirectory(path);
+
+            string filePath = Path.Combine(path, "test.txt");
+            File.WriteAllText(filePath, "hello");
+
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+
+            // warm cache
+            var response1 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/test.txt");
+            var content1 = await response1.Content.ReadAsStringAsync();
+
+            Check.That(response1.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(content1).IsEqualTo("hello");
+
+            // delete file
+            File.Delete(filePath);
+
+            // let watcher invalidate cache
+            await Task.Delay(150);
+
+            // should now return 404
+            var response2 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/test.txt");
+            var content2 = await response2.Content.ReadAsStringAsync();
+
+            Check.That(response2.StatusCode).Is(HttpStatusCode.NotFound);
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_File_Created_Returns200() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_File_Created_Returns200");
+            Directory.CreateDirectory(path);
+
+            // important: file does NOT exist at startup
+            string filePath = Path.Combine(path, "new.txt");
+
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+
+            // file doesn't exist yet => 404
+            var response1 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/new.txt");
+            Check.That(response1.StatusCode).Is(HttpStatusCode.NotFound);
+
+            // create file
+            File.WriteAllText(filePath, "new content");
+
+            // let watcher invalidate kind-cache/missing cache
+            await Task.Delay(150);
+
+            // now should return 200 + content
+            var response2 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/new.txt");
+            var content2 = await response2.Content.ReadAsStringAsync();
+
+            Check.That(response2.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(content2).IsEqualTo("new content");
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        #endregion watcher
+
     }
 
 }
