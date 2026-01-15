@@ -211,6 +211,26 @@ namespace SimpleW.Modules {
                     return;
                 }
 
+                // HOT PATH : cache hit
+                if (_options.CacheTimeout.HasValue) {
+                    if (endsWithSlash) {
+                        if (_cache.TryGetValue(Path.Combine(fullPath, _options.DefaultDocument), out CacheEntry entry) && !entry.IsExpired) {
+                            await ServeFileAsync(session, request, entry).ConfigureAwait(false);
+                            return;
+                        }
+                        if (_dirIndexCache.TryGetValue(fullPath, out var cached) && !cached.IsExpired) {
+                            await ServeAutoIndexAsync(session, request, cached).ConfigureAwait(false);
+                            return;
+                        }
+                    }
+                    else {
+                        if (_cache.TryGetValue(fullPath, out CacheEntry entry) && !entry.IsExpired) {
+                            await ServeFileAsync(session, request, entry).ConfigureAwait(false);
+                            return;
+                        }
+                    }
+                }
+
                 // directory ?
                 if (Directory.Exists(fullPath)) {
                     string defaultFile = Path.Combine(fullPath, _options.DefaultDocument);
@@ -346,26 +366,7 @@ namespace SimpleW.Modules {
 
                     // 1) cache hit
                     if (_cache.TryGetValue(filePath, out var entry) && !entry.IsExpired) {
-
-                        string etag = ComputeWeakETag(entry.Length, entry.LastModifiedUtc);
-
-                        // 304 ?
-                        if (ShouldReturnNotModified(request, etag, entry.LastModifiedUtc)) {
-                            await SendNotModifiedAsync(session, entry.LastModifiedUtc, etag, cacheSeconds).ConfigureAwait(false);
-                            return;
-                        }
-
-                        // 200
-                        session.Response.AddHeader("ETag", etag);
-
-                        await SendBytesAsync(
-                            session,
-                            contentType: entry.ContentType,
-                            body: entry.Data.AsMemory(0, entry.Length),
-                            lastModifiedUtc: entry.LastModifiedUtc,
-                            cacheSeconds: cacheSeconds
-                        ).ConfigureAwait(false);
-
+                        await ServeFileAsync(session, request, entry).ConfigureAwait(false);
                         return;
                     }
 
@@ -409,7 +410,7 @@ namespace SimpleW.Modules {
                     }
 
                     // 3) fill cache
-                    TryCacheFile(filePath, data, len, contentType, lastModified);
+                    TryCacheFile(filePath, data, len, contentType, etag2, lastModified);
 
                     // 4) send
                     session.Response.AddHeader("ETag", etag2);
@@ -446,6 +447,36 @@ namespace SimpleW.Modules {
                 session.Response.AddHeader("ETag", etag3);
 
                 await SendFileStreamAsync(session, fi2, ct2, lastModified2, cacheSeconds: null).ConfigureAwait(false);
+            }
+
+            /// <summary>
+            /// ServeFileAsync
+            /// </summary>
+            /// <param name="session"></param>
+            /// <param name="request"></param>
+            /// <param name="entry"></param>
+            /// <returns></returns>
+            private async ValueTask ServeFileAsync(HttpSession session, HttpRequest request, CacheEntry entry) {
+                int cacheSeconds = (int)_options.CacheTimeout!.Value.TotalSeconds;
+
+                // 304 ?
+                if (ShouldReturnNotModified(request, entry.Etag, entry.LastModifiedUtc)) {
+                    await SendNotModifiedAsync(session, entry.LastModifiedUtc, entry.Etag, cacheSeconds).ConfigureAwait(false);
+                    return;
+                }
+
+                // 200
+                session.Response.AddHeader("ETag", entry.Etag);
+
+                await SendBytesAsync(
+                    session,
+                    contentType: entry.ContentType,
+                    body: entry.Data.AsMemory(0, entry.Length),
+                    lastModifiedUtc: entry.LastModifiedUtc,
+                    cacheSeconds: cacheSeconds
+                ).ConfigureAwait(false);
+
+                return;
             }
 
             /// <summary>
@@ -491,14 +522,8 @@ namespace SimpleW.Modules {
 
                 // Cache ON ?
                 if (_options.CacheTimeout.HasValue) {
-                    if (_dirIndexCache.TryGetValue(dirPath, out var cached) && !cached.IsExpired) {
-                        await SendBytesAsync(
-                            session,
-                            contentType: "text/html; charset=utf-8",
-                            body: cached.Html.AsMemory(0, cached.Length),
-                            lastModifiedUtc: DateTimeOffset.UtcNow,
-                            cacheSeconds: null
-                        ).ConfigureAwait(false);
+                    if (_dirIndexCache.TryGetValue(dirPath, out DirIndexCacheEntry cached) && !cached.IsExpired) {
+                        await ServeAutoIndexAsync(session, request, cached).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -574,6 +599,24 @@ namespace SimpleW.Modules {
                     lastModifiedUtc: DateTimeOffset.UtcNow,
                     cacheSeconds: null
                 ).ConfigureAwait(false);
+            }
+
+            /// <summary>
+            /// Cached AutoIndex file
+            /// </summary>
+            /// <param name="session"></param>
+            /// <param name="request"></param>
+            /// <param name="entry"></param>
+            /// <returns></returns>
+            private async ValueTask ServeAutoIndexAsync(HttpSession session, HttpRequest request, DirIndexCacheEntry entry) {
+                await SendBytesAsync(
+                            session,
+                            contentType: "text/html; charset=utf-8",
+                            body: entry.Html.AsMemory(0, entry.Length),
+                            lastModifiedUtc: DateTimeOffset.UtcNow,
+                            cacheSeconds: null
+                        ).ConfigureAwait(false);
+                return;
             }
 
             /// <summary>
@@ -736,7 +779,7 @@ namespace SimpleW.Modules {
             /// <param name="ContentType"></param>
             /// <param name="LastModifiedUtc"></param>
             /// <param name="ExpiresUtc"></param>
-            private readonly record struct CacheEntry(byte[] Data, int Length, string ContentType, DateTimeOffset LastModifiedUtc, DateTimeOffset ExpiresUtc) {
+            private readonly record struct CacheEntry(byte[] Data, int Length, string ContentType, string Etag, DateTimeOffset LastModifiedUtc, DateTimeOffset ExpiresUtc) {
                 public bool IsExpired => DateTimeOffset.UtcNow >= ExpiresUtc;
             }
 
@@ -771,7 +814,14 @@ namespace SimpleW.Modules {
             /// Try to cache an entry while enforcing cache limits (max file size / max total size / max entries).
             /// Best-effort eviction (expired first, then arbitrary) to make room.
             /// </summary>
-            private bool TryCacheFile(string filePath, byte[] data, int len, string contentType, DateTimeOffset lastModifiedUtc) {
+            /// <param name="filePath"></param>
+            /// <param name="data"></param>
+            /// <param name="len"></param>
+            /// <param name="contentType"></param>
+            /// <param name="etag"></param>
+            /// <param name="lastModifiedUtc"></param>
+            /// <returns></returns>
+            private bool TryCacheFile(string filePath, byte[] data, int len, string contentType, string etag, DateTimeOffset lastModifiedUtc) {
 
                 // enforce MaxCachedFileBytes
                 if (_options.MaxCachedFileBytes.HasValue && len > _options.MaxCachedFileBytes.Value) {
@@ -809,11 +859,11 @@ namespace SimpleW.Modules {
                         filePath,
                         addValueFactory: _ => {
                             _cacheBytes += len;
-                            return new CacheEntry(data, len, contentType, lastModifiedUtc, expires);
+                            return new CacheEntry(data, len, contentType, etag, lastModifiedUtc, expires);
                         },
                         updateValueFactory: (_, old) => {
                             _cacheBytes += (len - old.Length);
-                            return new CacheEntry(data, len, contentType, lastModifiedUtc, expires);
+                            return new CacheEntry(data, len, contentType, etag, lastModifiedUtc, expires);
                         }
                     );
 
@@ -973,6 +1023,7 @@ namespace SimpleW.Modules {
 
                 return false;
             }
+
             /// <summary>
             /// Truncate DateTimeOffset To Seconds
             /// </summary>
