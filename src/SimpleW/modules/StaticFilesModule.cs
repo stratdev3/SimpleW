@@ -214,11 +214,12 @@ namespace SimpleW.Modules {
                 // HOT PATH : cache hit
                 if (_options.CacheTimeout.HasValue) {
                     if (endsWithSlash) {
-                        if (_cache.TryGetValue(Path.Combine(fullPath, _options.DefaultDocument), out CacheEntry entry) && !entry.IsExpired) {
+                        string dirKey = NormalizeDirKey(fullPath);
+                        if (_cache.TryGetValue(Path.Combine(dirKey, _options.DefaultDocument), out CacheEntry entry) && !entry.IsExpired) {
                             await ServeFileAsync(session, request, entry).ConfigureAwait(false);
                             return;
                         }
-                        if (_dirIndexCache.TryGetValue(fullPath, out var cached) && !cached.IsExpired) {
+                        if (_options.AutoIndex && _dirIndexCache.TryGetValue(dirKey, out DirIndexCacheEntry cached) && !cached.IsExpired) {
                             await ServeAutoIndexAsync(session, request, cached).ConfigureAwait(false);
                             return;
                         }
@@ -231,16 +232,34 @@ namespace SimpleW.Modules {
                     }
                 }
 
-                // directory ?
-                if (Directory.Exists(fullPath)) {
-                    string defaultFile = Path.Combine(fullPath, _options.DefaultDocument);
-                    if (File.Exists(defaultFile)) {
+                // directory request
+                if (endsWithSlash) {
+                    string dirKey = NormalizeDirKey(fullPath);
+
+                    if (!TryGetKindCached(dirKey, out PathKind dirKind)) {
+                        dirKind = ProbeKind(dirKey);
+                        SetKindCached(dirKey, dirKind);
+                    }
+                    // 404 if it's not a directory
+                    if (dirKind != PathKind.Directory) {
+                        await SendNotFoundAsync(session).ConfigureAwait(false);
+                        return;
+                    }
+
+                    // try with DefaultDocument
+                    string defaultFile = Path.Combine(dirKey, _options.DefaultDocument);
+                    if (!TryGetKindCached(defaultFile, out PathKind dfKind)) {
+                        dfKind = ProbeKind(defaultFile);
+                        SetKindCached(defaultFile, dfKind);
+                    }
+                    if (dfKind == PathKind.File) {
                         await ServeFileAsync(session, request, defaultFile).ConfigureAwait(false);
                         return;
                     }
 
+                    // autoindex
                     if (_options.AutoIndex) {
-                        await ServeAutoIndexAsync(session, request, fullPath).ConfigureAwait(false);
+                        await ServeAutoIndexAsync(session, request, dirKey).ConfigureAwait(false);
                         return;
                     }
 
@@ -248,14 +267,40 @@ namespace SimpleW.Modules {
                     return;
                 }
 
-                // if path ends with "/" but isn't a directory -> 404
-                if (endsWithSlash) {
+                // file request
+                if (!TryGetKindCached(fullPath, out PathKind kind)) {
+                    kind = ProbeKind(fullPath);
+                    SetKindCached(fullPath, kind);
+                }
+                if (kind == PathKind.File) {
+                    await ServeFileAsync(session, request, fullPath).ConfigureAwait(false);
+                    return;
+                }
+
+                // url without ending "/" but it's a directory
+                if (kind == PathKind.Directory) {
+                    string dirKey = NormalizeDirKey(fullPath);
+
+                    string defaultFile = Path.Combine(dirKey, _options.DefaultDocument);
+                    if (!TryGetKindCached(defaultFile, out PathKind dfKind)) {
+                        dfKind = ProbeKind(defaultFile);
+                        SetKindCached(defaultFile, dfKind);
+                    }
+                    if (dfKind == PathKind.File) {
+                        await ServeFileAsync(session, request, defaultFile).ConfigureAwait(false);
+                        return;
+                    }
+                    if (_options.AutoIndex) {
+                        await ServeAutoIndexAsync(session, request, dirKey).ConfigureAwait(false);
+                        return;
+                    }
+
                     await SendNotFoundAsync(session).ConfigureAwait(false);
                     return;
                 }
 
-                // file: IMPORTANT => no File.Exists here if cache is ON (ServeFileAsync will fallback to disk)
-                await ServeFileAsync(session, request, fullPath).ConfigureAwait(false);
+                // missing
+                await SendNotFoundAsync(session).ConfigureAwait(false);
             }
 
             /// <summary>
@@ -267,6 +312,7 @@ namespace SimpleW.Modules {
                 _watcher = null;
                 _cache.Clear();
                 _dirIndexCache.Clear();
+                _kindCache.Clear();
                 lock (_cacheEvictionLock) { _cacheBytes = 0; }
             }
 
@@ -675,6 +721,103 @@ namespace SimpleW.Modules {
 
             #region watcher and cache invalidation
 
+            #region kind cache
+
+            /// <summary>
+            /// Type of Kind Cache
+            /// </summary>
+            private enum PathKind : byte { File, Directory, Missing }
+
+            /// <summary>
+            /// KindCache Entry
+            /// </summary>
+            /// <param name="Kind"></param>
+            /// <param name="ExpiresUtc"></param>
+            private readonly record struct KindCacheEntry(PathKind Kind, DateTimeOffset ExpiresUtc) {
+                public bool IsExpired => DateTimeOffset.UtcNow >= ExpiresUtc;
+            }
+
+            /// <summary>
+            /// Kind-cache (path -> kind)
+            /// </summary>
+            private readonly ConcurrentDictionary<string, KindCacheEntry> _kindCache = new(PathComparer);
+
+            /// <summary>
+            /// TTL du kind-cache
+            /// </summary>
+            private static readonly TimeSpan KindCacheTtl = TimeSpan.FromSeconds(5);
+
+            /// <summary>
+            /// Normalize path (remote trailing dir separator)
+            /// </summary>
+            /// <param name="p"></param>
+            /// <returns></returns>
+            private static string NormalizeDirKey(string p) => Path.TrimEndingDirectorySeparator(p);
+
+            /// <summary>
+            /// Try Get Kind Cache
+            /// </summary>
+            /// <param name="path"></param>
+            /// <param name="kind"></param>
+            /// <returns></returns>
+            private bool TryGetKindCached(string path, out PathKind kind) {
+                kind = default;
+                if (_kindCache.TryGetValue(path, out var e) && !e.IsExpired) {
+                    kind = e.Kind;
+                    return true;
+                }
+                return false;
+            }
+
+            /// <summary>
+            /// Set Kind Cache
+            /// </summary>
+            /// <param name="path"></param>
+            /// <param name="kind"></param>
+            private void SetKindCached(string path, PathKind kind) {
+                _kindCache[path] = new KindCacheEntry(kind, DateTimeOffset.UtcNow + KindCacheTtl);
+            }
+
+            /// <summary>
+            /// Probe Kind Cache
+            /// </summary>
+            /// <param name="path"></param>
+            /// <returns></returns>
+            private static PathKind ProbeKind(string path) {
+                try {
+                    var attrs = File.GetAttributes(path);
+                    return (attrs & FileAttributes.Directory) != 0 ? PathKind.Directory : PathKind.File;
+                }
+                catch (UnauthorizedAccessException) {
+                    return PathKind.Missing;
+                }
+                catch (FileNotFoundException) { return PathKind.Missing; }
+                catch (DirectoryNotFoundException) { return PathKind.Missing; }
+                catch (PathTooLongException) { return PathKind.Missing; }
+                catch { return PathKind.Missing; }
+            }
+
+            /// <summary>
+            /// Invalide Kind Cache
+            /// </summary>
+            /// <param name="path"></param>
+            private void InvalidateKind(string path) {
+                if (string.IsNullOrWhiteSpace(path)) {
+                    return;
+                }
+
+                _kindCache.TryRemove(path, out _);
+
+                // parent (useful for default doc/autoindex)
+                string? parent = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(parent)) {
+                    _kindCache.TryRemove(parent, out _);
+                    _dirIndexCache.TryRemove(NormalizeDirKey(parent), out _);
+                }
+            }
+
+            #endregion kind cache
+
             /// <summary>
             /// Start File System Watcher
             /// </summary>
@@ -723,8 +866,10 @@ namespace SimpleW.Modules {
                 // invalidate directory index cache for the parent directory
                 string? parent = Path.GetDirectoryName(e.FullPath);
                 if (!string.IsNullOrEmpty(parent)) {
-                    _dirIndexCache.TryRemove(parent, out _);
+                    _dirIndexCache.TryRemove(NormalizeDirKey(parent), out _);
                 }
+
+                InvalidateKind(e.FullPath);
             }
 
             /// <summary>
@@ -742,8 +887,10 @@ namespace SimpleW.Modules {
 
                     string? oldParent = Path.GetDirectoryName(e.OldFullPath);
                     if (!string.IsNullOrEmpty(oldParent)) {
-                        _dirIndexCache.TryRemove(oldParent, out _);
+                        _dirIndexCache.TryRemove(NormalizeDirKey(oldParent), out _);
                     }
+
+                    InvalidateKind(e.OldFullPath);
                 }
 
                 if (!string.IsNullOrWhiteSpace(e.FullPath)) {
@@ -754,8 +901,10 @@ namespace SimpleW.Modules {
                     }
                     string? newParent = Path.GetDirectoryName(e.FullPath);
                     if (!string.IsNullOrEmpty(newParent)) {
-                        _dirIndexCache.TryRemove(newParent, out _);
+                        _dirIndexCache.TryRemove(NormalizeDirKey(newParent), out _);
                     }
+
+                    InvalidateKind(e.FullPath);
                 }
             }
 
@@ -768,6 +917,7 @@ namespace SimpleW.Modules {
             private void OnWatcherError(object sender, ErrorEventArgs e) {
                 _cache.Clear();
                 _dirIndexCache.Clear();
+                _kindCache.Clear();
                 lock (_cacheEvictionLock) { _cacheBytes = 0; }
             }
 
@@ -777,6 +927,7 @@ namespace SimpleW.Modules {
             /// <param name="Data"></param>
             /// <param name="Length"></param>
             /// <param name="ContentType"></param>
+            /// <param name="Etag"></param>
             /// <param name="LastModifiedUtc"></param>
             /// <param name="ExpiresUtc"></param>
             private readonly record struct CacheEntry(byte[] Data, int Length, string ContentType, string Etag, DateTimeOffset LastModifiedUtc, DateTimeOffset ExpiresUtc) {
