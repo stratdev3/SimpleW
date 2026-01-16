@@ -62,6 +62,11 @@ namespace SimpleW {
         private long? _customContentLength;
 
         /// <summary>
+        /// suppress content length
+        /// </summary>
+        private bool _suppressContentLength;
+
+        /// <summary>
         /// Current compression mode (default: Auto)
         /// </summary>
         private ResponseCompressionMode _compressionMode = ResponseCompressionMode.Auto;
@@ -107,11 +112,6 @@ namespace SimpleW {
         /// owned body writer (ArrayPool)
         /// </summary>
         private PooledBufferWriter? _ownedBodyWriter;
-
-        /// <summary>
-        /// suppress content length
-        /// </summary>
-        private bool _suppressContentLength;
 
         /// <summary>
         /// optional owner for lifetime-managed body
