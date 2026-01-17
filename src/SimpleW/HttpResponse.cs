@@ -67,6 +67,11 @@ namespace SimpleW {
         private bool _suppressContentLength;
 
         /// <summary>
+        /// Connection
+        /// </summary>
+        private string? _connection;
+
+        /// <summary>
         /// Current compression mode (default: Auto)
         /// </summary>
         private ResponseCompressionMode _compressionMode = ResponseCompressionMode.Auto;
@@ -136,6 +141,11 @@ namespace SimpleW {
         /// Return true if response has been sent
         /// </summary>
         public bool Sent => _sent;
+
+        /// <summary>
+        /// Connection
+        /// </summary>
+        public string? Connection => _connection;
 
         #endregion exposed properties
 
@@ -409,6 +419,10 @@ namespace SimpleW {
             }
             if (string.Equals(name, "Content-Type", StringComparison.OrdinalIgnoreCase)) {
                 _contentType = value;
+                return this;
+            }
+            if (string.Equals(name, "Connection", StringComparison.OrdinalIgnoreCase)) {
+                _connection = value;
                 return this;
             }
             if (_headerCount == _headers.Length) {
@@ -808,7 +822,12 @@ namespace SimpleW {
 
                 // Connection (session decides keep-alive/close)
                 WriteBytes(headerWriter, H_CONN);
-                WriteBytes(headerWriter, _session.CloseAfterResponse ? H_CONN_CLOSE : H_CONN_KA);
+                if (_connection == null) {
+                    WriteBytes(headerWriter, _session.CloseAfterResponse ? H_CONN_CLOSE : H_CONN_KA);
+                }
+                else {
+                    WriteAscii(headerWriter, _connection);
+                }
                 WriteCRLF(headerWriter);
 
                 // Set-Cookie headers (multi allowed)
@@ -1219,11 +1238,14 @@ namespace SimpleW {
         public void Reset() {
             _statusCode = 200;
             _statusText = "OK";
+
             _contentType = null;
 
             _headerCount = 0;
             _customContentLength = null;
             _suppressContentLength = false;
+
+            _connection = null;
 
             _compressionMode = ResponseCompressionMode.Auto;
             _compressionMinSize = 512;
