@@ -369,7 +369,7 @@ namespace SimpleW {
                             }
 
                             // if so, then close connection
-                            if (CloseAfterResponse) {
+                            if (WillCloseConnection()) {
                                 return;
                             }
                         }
@@ -432,6 +432,18 @@ namespace SimpleW {
 
             // true to close
             return true;
+        }
+
+        /// <summary>
+        /// WillCloseConnection
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool WillCloseConnection() {
+            if (_response.Sent && _response.Connection != null) {
+                return _response.Connection.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            return CloseAfterResponse;
         }
 
         #endregion Process
