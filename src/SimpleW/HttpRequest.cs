@@ -526,6 +526,8 @@ namespace SimpleW {
         /// Add a Header (name/value).
         /// Set most common else save in _other
         /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
         public void Add(string name, string value) {
             // most common headers
             if (name.Equals("Host", StringComparison.OrdinalIgnoreCase)) {
@@ -594,8 +596,11 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// TryGetValue (headers connus + autres).
+        /// TryGetValue (most commons + others).
         /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
         public bool TryGetValue(string name, out string? value) {
             // most common headers
             if (name.Equals("Host", StringComparison.OrdinalIgnoreCase)) {
@@ -675,8 +680,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Enumère tous les headers (connus + autres).
-        /// Utile si tu veux loguer, etc.
+        /// Enumerated all headers (most commons + others).
         /// </summary>
         public IEnumerable<KeyValuePair<string, string>> EnumerateAll() {
             // most common headers
@@ -743,6 +747,9 @@ namespace SimpleW {
         /// Try get a cookie by name from the Cookie header.
         /// Cookie names are compared case-sensitively (RFC).
         /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
         public bool TryGetCookie(string name, out string? value) {
             value = null;
 
