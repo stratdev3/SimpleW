@@ -56,7 +56,6 @@ public Func<string, string, bool>? CredentialValidator { get; set; }
 ## Example
 
 ```csharp:line-numbers
-// setup cors
 server.UseBasicAuthModule(options => {
     o.Prefix = "/api/admin";
     o.Realm = "Admin";
@@ -64,4 +63,4 @@ server.UseBasicAuthModule(options => {
 });
 ```
 
-See more [examples](../guide/basicauthmodule.md).
+See more [examples](../guide/basicauth.md).

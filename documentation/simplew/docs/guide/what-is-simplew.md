@@ -21,76 +21,19 @@ SimpleW’s architecture and motivations behind its core design choices :
 - **NuGet package available**, easy to integrate
 
 
-## Use Cases
-
-- **High‑Performance**
-
-When network efficiency and observability are critical, **SimpleW ensures fast request throughput and low latency**.
-Coupled with automatic OpenTelemetry instrumentation, you gain full visibility into request flows, latency, and error rates—enabling you to scale horizontally with confidence.
-
-- **Rapid API Prototype**
-
-When you need to **deliver a proof‑of‑concept API in record time**, SimpleW excels. Its minimal configuration lets you define endpoints in just a few lines of code. With JSON serialization handled automatically and no heavyweight server plumbing to configure, developers can focus on business logic from the very first compile.
-
-- **Embedded Service**
-
-When resources are constrained, SimpleW’s **tiny memory footprint and makes it ideal for lightweight background services**, command‑and‑control agents, or any situation where simplicity and reliability are paramount.
-
-- **static site**
-
-Need to ship a single‑page app or docs alongside your API? With SimpleW you point to a folder (e.g. wwwroot), mount it under a URL, and in milliseconds all your files are served with caching—no heavy framework required. Fast, lean, and ready for your Vue.js dashboard or static site...
-
-
 ## Why this library ?
 
-I believe modern web application architecture should be built around a **REST API acting as a clear contract** between two independent parts.
+Most .NET web stacks are powerful but complex. I wanted a **minimal, hackable server** that could be dropped into any app, or used as a base for custom frameworks, game servers, or embedded tools — while still delivering very good performances.
 
-### The Contract Model
+But there's more : dotnet environment suffers of a major issue. **There is only one "_professionally accepted_" web server. **ASP.NET Core** is the de facto standard and if you're not using it, you're considered a serious... amateur.
 
-- **Backend (single)** —
-The backend is free to evolve, refactor, or even change language (C#, Go, Rust, PHP…).
-Its only obligation is to provide and respect the REST API contract.
+**That's a shame !** Not only does an ecosystem need alternatives to grow and improve, but no single product can cover 100% of its users’ needs. I'm certainly not claiming to replace ASP.NET Core or event compete with it, but I want to bring something different in an opinionated way. And I'm not the only one, other devs and organizations have done the same :
 
-- **Frontend (one or many)** —
-Frontends are also free to evolve independently (SPA, mobile apps, desktop clients…).
-They must consume and respect the same REST API contract.
-
-This separation enforces :
-- clear boundaries
-- independent evolution
-- long-term maintainability
-
-
-### My needs
-
-**Frontend** :
-
-- I mostly build fronteds as [SPAs](https://en.wikipedia.org/wiki/Single-page_application) using [Vite](https://vitejs.dev/), [Vue](https://vuejs.org) and [Vuetify](https://vuetifyjs.com).
-- The frontend is a separate project, compiled independently and deployed as static assets.
-
-**Backend** :
-
-- Written in C#, the language I 😍.
-- Easy to integrate, lightweight, with a minimal footprint
-- Focused on API serving, not full-stack rendering
-- Built-in support for : routing, webSockets, server-sent events (SSE)
-- No template engine required
-- Ability to serve static files (typically the output of `npm run build`)
-- Basic observability: request tracing, performance monitoring
-
-
-### The existings projects
-
-I evaluated and used several existing projects over the years.
-
-- [ASP.NET Core](https://learn.microsoft.com/fr-fr/aspnet/core/?view=aspnetcore-8.0) :
-    - too many features I don't need, I don't want _(Razor, Blazor...)_.
-    - some behaviors are unnecessarily complex to customize
-    - heavy for small or focused APIs
-- [IIS](https://iis.net/) an old _« usine à gaz »_ on Windows, Kestrel and SignalR feel similarly heavy on Linux.
-- [EmbedIO](https://github.com/unosquare/embedio) : long-time v2 user, the v3 rewrite didn’t fit my expectations. Moreover, it relies on the old Microsoft `HttpListener` and the `websocket-sharp` alternative was not perfect.
-- [GenHttp](https://genhttp.org) : feels promising but I was in the process of writting my own.
-- __[NetCoreServer](https://github.com/chronoxor/NetCoreServer)__ : Fast, simple, extremly well design, and extendable. Until the v16.0.1, SimpleW was a project on top of the NetCoreServer's `OnReceivedRequest()`
+- [NetCoreServer](https://github.com/chronoxor/NetCoreServer) : still the State Of The Art in terms of performance and design !
+- [Fast-Endpoints](https://fast-endpoints.com/) : built on top of ASP.NET Core, but with a cleaner and nicer API !
+- [GenHTTP](https://github.com/Kaliumhexacyanoferrat/GenHTTP) : modular on its core, its author support many engines and contexts !
+- [Wired.IO](https://mda2av.github.io/Wired.IO.Docs/) : aims to be the fastest, and it actually is. This guy delivers !
+- [EmbedIO](https://github.com/unosquare/embedio) : no longer maintained, but it was one of the first. A true legacy !
 
 
 ### This project
@@ -112,14 +55,11 @@ After 4 years in production, SimpleW now :
 
 No magic. No bloat. Just what is needed.
 
+
 ## Final Words
 
-SimpleW exists because I needed a server that :
-- Matches my architectural beliefs
-- Stays out of my way
-- Scales without becoming complex
+No magic. No bloat. Just what is needed.
 
 If you find a bug, have an idea, or a missing feature — **feel free to open an issue**.
 
 SimpleW is opinionated, but open.
-

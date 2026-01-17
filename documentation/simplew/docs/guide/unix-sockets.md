@@ -5,11 +5,56 @@ They are supported on : **Linux**, **MacOS**, **Android**... and even **Windows*
 
 With just a small change, the [basic api example](./getting-started.md#minimal-example) can also be served over a Unix socket.
 
-::: code-group
 
-<<< @/snippets/unix-sockets.cs#snippet{13 csharp:line-numbers} [program.cs]
+```csharp:line-numbers{13}
+using System;
+using System.Net;
+using System.Net.Sockets;
+using SimpleW;
 
-:::
+namespace Sample {
+    class Program {
+
+        static async Task Main() {
+
+            // unix socket
+            string unixSocketPath = @"C:\www\server.sock";
+            var server = new SimpleWServer(new UnixDomainSocketEndPoint(unixSocketPath));
+
+            // find all Controllers classes and serve on the "/api" endpoint
+            server.MapControllers<Controller>("/api");
+
+            Console.WriteLine(@"server available on : unix:C:\www\server.sock");
+
+            // start a blocking background server
+            await server.RunAsync();
+        }
+    }
+
+    // inherit from Controller
+    public class SomeController : Controller {
+
+        // use the Route attribute to target a public method
+        [Route("GET", "/test")]
+        public object SomePublicMethod() {
+
+            // the Request property contains all data (Url, Headers...) from the client Request
+            var url = Request.RawUrl;
+
+            // the return will be serialized to json and sent as response to client
+            return new {
+                message = Message()
+            };
+        }
+
+        private string Message() {
+            return "Hello World !";
+        }
+
+    }
+
+}
+```
 
 You can use `curl` to test :
 

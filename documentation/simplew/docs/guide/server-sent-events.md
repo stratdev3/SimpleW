@@ -11,13 +11,7 @@ This example illustrates how SimpleW can be used to :
 
 <br />
 
-::: code-group
 
-<<< @/snippets/sse.cs#snippet{csharp:line-numbers} [program.cs]
-
-<<< @/snippets/sse.html#snippet{html:line-numbers} [C:\www\client\index.html]
-
-:::
 
 
 Open your browser to `http://localhost:2015/` :
@@ -34,8 +28,3 @@ Note : the `server.BroadcastSSESessions()` will send response to all SSE clients
 In the following example, the SSE is only enabled for authenticated user.
 Then the broadcast will target only administrator profils.
 
-::: code-group
-
-<<< @/snippets/sse-pushing-data.cs#snippet{csharp:line-numbers} [program.cs]
-
-:::

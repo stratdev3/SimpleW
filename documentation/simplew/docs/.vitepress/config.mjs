@@ -79,9 +79,9 @@ export default defineConfig({
                     text: 'Security',
                     items: [
                         { text: 'Json Web Token', link: '/guide/jsonwebtoken' },
-                        { text: 'Cross-Origin Resource Sharing', link: '/guide/corsmodule' },
+                        { text: 'Cross-Origin Resource Sharing', link: '/guide/cors' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
-                        { text: 'Basic Auth', link: '/guide/basicauthmodule' },
+                        { text: 'Basic Auth', link: '/guide/basicauth' },
                     ]
                 },
                 {
@@ -94,7 +94,7 @@ export default defineConfig({
                 {
                     text: 'Others',
                     items: [
-                        { text: 'Static Files', link: '/guide/staticfilesmodule' },
+                        { text: 'Static Files', link: '/guide/staticfiles' },
                         { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                         { text: 'Observability', link: '/guide/observability' },
                     ]
@@ -106,6 +106,7 @@ export default defineConfig({
                     text: 'Core',
                     items: [
                         { text: 'SimpleWServer', link: '/reference/simplewserver' },
+                        { text: 'SimpleWServerOptions', link: '/reference/simplewserveroptions' },
                         { text: 'HttpSession', link: '/reference/httpsession' },
                         { text: 'HttpRequest', link: '/reference/httprequest' },
                         { text: 'HttpResponse', link: '/reference/httpresponse' },
@@ -132,7 +133,6 @@ export default defineConfig({
                 {
                     text: 'Helpers',
                     items: [
-                        { text: 'SimpleWServerOptions', link: '/reference/simplewserveroptions' },
                         { text: 'SimpleWExtension', link: '/reference/simplewextension' },
                         { text: 'IJsonEngine', link: '/reference/ijsonengine' },
                         { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },

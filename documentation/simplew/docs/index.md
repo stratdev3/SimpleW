@@ -34,7 +34,7 @@ features:
       details: Json Web Token, Cross-Origin Resource Sharing, SSL for security. Websockets and Server Sent Events for communication.
     - icon: 🔬
       title: Observability
-      details: Integrated OpenTelemetry with logging and tracing. Easier to monitor, debug, and analyze requests.
+      details: Integrated OpenTelemetry with traces and metrics. Easier to monitor, debug, and analyze requests.
 
 carousel:
   - src: /logo-min.webp
