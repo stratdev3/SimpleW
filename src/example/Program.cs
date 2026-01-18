@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
-using System.Net.WebSockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -75,67 +75,79 @@ namespace example.rewrite {
             });
 
             server.UseStaticFilesModule(options => {
-                options.Path = @"C:\www\toto\";
+                options.Path = @"C:\www\spa\websocket\";
                 options.Prefix = "/";
                 options.AutoIndex = true;
+                options.CacheTimeout = TimeSpan.FromDays(1);
+            });
+
+            server.UseWebSocketModule(ws => {
+                ws.Prefix = "/ws";
+
+                // Optionnel: si tu ne veux PAS le "__all" par defaut
+                ws.AutoJoinRoom = null;
+
+                // Petit "state" par connexion (alpha style)
+                var userByConn = new ConcurrentDictionary<Guid, string>();
+                var roomByConn = new ConcurrentDictionary<Guid, string>();
+
+                static string ChatEvent(string kind, string room, string name, string? text = null) {
+                    var payload = new { kind, room, name, text = text ?? "" };
+                    var obj = new { op = "chat/event", payload };
+                    return JsonSerializer.Serialize(obj);
+                }
+
+                ws.Map("chat/join", async (conn, ctx, msg) => {
+                    if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+                        return;
+                    }
+
+                    userByConn[conn.Id] = m.name;
+                    roomByConn[conn.Id] = m.room;
+
+                    await ctx.JoinRoomAsync(m.room, conn);
+
+                    // Broadcast aux autres: "X joined"
+                    await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("join", m.room, m.name, $"{m.name} joined"), except: conn);
+
+                    // Ack au client (facultatif)
+                    await conn.SendTextAsync(ChatEvent("join", m.room, m.name, $"joined {m.room}"));
+                });
+
+                ws.Map("chat/leave", async (conn, ctx, msg) => {
+                    if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+                        return;
+                    }
+
+                    await ctx.LeaveRoomAsync(m.room, conn);
+                    await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("leave", m.room, m.name, $"{m.name} left"), except: conn);
+
+                    roomByConn.TryRemove(conn.Id, out _);
+                });
+
+                ws.Map("chat/msg", async (conn, ctx, msg) => {
+                    if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+                        return;
+                    }
+
+                    // Broadcast à toute la room (y compris l'émetteur ou non, au choix)
+                    await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("msg", m.room, m.name, m.text));
+                });
+
+                ws.OnUnknown(async (conn, ctx, msg) => {
+                    // Pratique quand tu débugges
+                    await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : "bad message: expected JSON {op,payload}");
+                });
+
+                ws.OnDisconnect = async (conn, ctx) => {
+                    // cleanup
+                    if (roomByConn.TryRemove(conn.Id, out var room) && userByConn.TryRemove(conn.Id, out var name)) {
+                        await ctx.Hub.BroadcastTextAsync(room, ChatEvent("leave", room, name, $"{name} disconnected"), except: conn);
+                    }
+                };
             });
 
             //server.MapControllers<SubController>("/api");
-            //server.MapControllers<Controller>("/api");
-
-            //server.UseModule(
-            //    new WebsocketModule(
-            //        path: "/websocket",
-            //        onClient: async (ws, session) => {
-
-            //            if (ws.SubProtocol != "json") {
-            //                await ws.CloseAsync(WebSocketCloseStatus.ProtocolError, "json required", CancellationToken.None);
-            //                return;
-            //            }
-
-            //            byte[] buffer = new byte[4096];
-
-            //            while (ws.State == WebSocketState.Open) {
-            //                WebSocketReceiveResult result = await ws.ReceiveAsync(buffer, CancellationToken.None);
-
-            //                if (result.MessageType == WebSocketMessageType.Close) {
-            //                    await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "bye", CancellationToken.None);
-            //                    break;
-            //                }
-            //                if (result.MessageType != WebSocketMessageType.Text) {
-            //                    await ws.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Text(JSON) only", CancellationToken.None);
-            //                    return;
-            //                }
-
-            //                // validate JSON
-            //                try {
-            //                    // reassembly minimal (si tu veux être carré: concat jusqu'à EndOfMessage)
-            //                    var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
-            //                    using var _ = JsonDocument.Parse(text);
-            //                }
-            //                catch {
-            //                    await ws.SendAsync(
-            //                        Encoding.UTF8.GetBytes("""{"type":"error","message":"invalid json"}"""),
-            //                        WebSocketMessageType.Text,
-            //                        true,
-            //                        CancellationToken.None
-            //                    );
-            //                    continue;
-            //                }
-
-            //                // echo
-            //                await ws.SendAsync(
-            //                    buffer.AsMemory(0, result.Count),
-            //                    result.MessageType,
-            //                    result.EndOfMessage,
-            //                    CancellationToken.None
-            //                );
-            //            }
-
-            //        }
-            //    )
-            //);
-
             //server.MapControllers<Controller>("/api");
 
             server.Configure(options => {
@@ -222,6 +234,12 @@ namespace example.rewrite {
                             .Build();
         }
 
+    }
+
+    class RoomName {
+        public string room { get; set; }
+        public string name { get; set; }
+        public string text { get; set; }
     }
 
     class LogProcessor : BaseProcessor<Activity> {
