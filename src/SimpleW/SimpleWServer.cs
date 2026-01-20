@@ -796,19 +796,33 @@ namespace SimpleW {
         #region jwt
 
         /// <summary>
-        /// Get the JwtResolver
+        /// Get the JwtResolver, by priority :
+        ///    1. Request url querystring "jwt"
+        ///    2. Request http header "Authorization: bearer "
+        ///    3. SecWebSocketProtocol "bearer, TOKEN" (websocket only)
         /// </summary>
         public JwtResolver JwtResolver { get; private set; } = (request) => {
-            // 1. Request url querystring "jwt" (api only)
+            // 1. Request url querystring "jwt"
             if (request.Query.TryGetValue("jwt", out string? qs_jwt) && !string.IsNullOrWhiteSpace(qs_jwt)) {
                 return qs_jwt;
             }
 
-            // 2. Request http header "Authorization: bearer " (api only)
-            if (string.IsNullOrWhiteSpace(request.Headers.Authorization) || !request.Headers.Authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
-                return null;
+            // 2. Request http header "Authorization: bearer "
+            if (!string.IsNullOrWhiteSpace(request.Headers.Authorization)
+                && request.Headers.Authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ) {
+                return request.Headers.Authorization["Bearer ".Length..];
             }
-            return request.Headers.Authorization["Bearer ".Length..];
+
+            // 3. SecWebSocketProtocol "bearer, TOKEN" (websocket only)
+            if (request.Headers.SecWebSocketVersion == "13"
+                && !string.IsNullOrWhiteSpace(request.Headers.SecWebSocketProtocol)
+                && request.Headers.SecWebSocketProtocol.StartsWith("Bearer, ", StringComparison.OrdinalIgnoreCase)
+            ) {
+                return request.Headers.SecWebSocketProtocol["Bearer, ".Length..];
+            }
+
+            return null;
         };
 
         /// <summary>
