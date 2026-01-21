@@ -18,16 +18,18 @@ SimpleW’s architecture and motivations behind its core design choices :
 - **Compiled delegate**, close to hard-coded method calls.
 - **Custom parser**, low memory.
 - **Cross‑platform support**, Windows/Linux/Android/MacOS.
-- **NuGet package available**, easy to integrate
+- **NuGet package available**, **no dependency**, easy to integrate
 
 
 ## Why this library ?
 
 Most .NET web stacks are powerful but complex. I wanted a **minimal, hackable server** that could be dropped into any app, or used as a base for custom frameworks, game servers, or embedded tools — while still delivering very good performances.
 
-But there's more : dotnet environment suffers of a major issue. **There is only one "_professionally accepted_" web server. **ASP.NET Core** is the de facto standard and if you're not using it, you're considered a serious... amateur.
+But there's more, dotnet environment suffers of a major issue :
+> **There is only one _professionally accepted_ web server**.
+> ASP.NET Core is the de facto standard and if you're not using it, you're considered a serious... amateur.
 
-**That's a shame !** Not only does an ecosystem need alternatives to grow and improve, but no single product can cover 100% of its users’ needs. I'm certainly not claiming to replace ASP.NET Core or event compete with it, but I want to bring something different in an opinionated way. And I'm not the only one, other devs and organizations have done the same :
+**That's a shame !** Not only does an ecosystem need alternatives to grow and improve, but no single product can cover 100% of its users’ needs. I'm certainly not claiming to replace ASP.NET Core or event compete with it, but I want to bring something different in an opinionated way. And I'm not the only one, other devs have done the same :
 
 - [NetCoreServer](https://github.com/chronoxor/NetCoreServer) : still the State Of The Art in terms of performance and design !
 - [Fast-Endpoints](https://fast-endpoints.com/) : built on top of ASP.NET Core, but with a cleaner and nicer API !
@@ -39,26 +41,16 @@ But there's more : dotnet environment suffers of a major issue. **There is only 
 ### This project
 
 SimpleW is the result of years of experimentation, production usage, and frustration with existing solutions.
+It is a web server designed to be lightweight, explicit, fast and easy to embed.
 
-It is a web server designed to be :
-- Lightweight
-- Explicit
-- Fast
-- Easy to embed
-- Focused on APIs, not full-stack magic
-
-After 4 years in production, SimpleW now :
+After 5 years in production, SimpleW :
 - Powers multiple APIs
 - Handles real-world traffic reliably
 - Continues to gain useful features
 - Remains simple and predictable
 
-No magic. No bloat. Just what is needed.
-
 
 ## Final Words
-
-No magic. No bloat. Just what is needed.
 
 If you find a bug, have an idea, or a missing feature — **feel free to open an issue**.
 

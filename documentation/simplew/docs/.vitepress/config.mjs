@@ -87,7 +87,7 @@ export default defineConfig({
                 {
                     text: 'Communication',
                     items: [
-                        { text: 'Server Sent Events', link: '/guide/server-sent-events' },
+                        { text: 'Server Sent Events', link: '/guide/serversentevents' },
                         { text: 'Websockets', link: '/guide/websockets' },
                     ]
                 },

@@ -2,26 +2,12 @@
 
 The WebsocketModule provides a the two-way communication channels over HTTP called Websockets : server can push data to the client without it has to request (except first time to connect socket).
 
-It is designed to be :
-
-- Fast and minimal
-- Raw RFC6455 implementation (no System.Net.WebSockets)
-- A single WebSocket endpoint (like /ws)
-- A message router based on a JSON envelope field: op
-- An optional Hub system to broadcast messages to rooms
-
-This module is perfect for real-time apps such as :
-- chat systems
-- dashboards / live monitoring
-- multiplayer sessions / signaling
-- lightweight pub/sub
-
 
 ## Key Concepts
 
 ### 1) A Single WebSocket Endpoint
 
-The module exposes exactly **one WS endpoint**, configured via `WebSocketOptions.Prefix` (default: `/ws`).
+The module exposes a **WS endpoint**, configured via `WebSocketOptions.Prefix` (default: `/ws`).
 
 Even if you map `/ws/*`, the handler enforces **strict match**, so anything under `/ws/xxx` will return **404**.
 
@@ -51,6 +37,25 @@ The module includes an in-memory **WebSocketHub**, letting you :
 Connections are **auto-removed on close**, and rooms are auto-cleaned when empty.
 
 
+## Installation
+
+Install the module using :
+
+```csharp
+server.UseWebSocketModule();
+```
+
+Or with options :
+
+```csharp
+server.UseWebSocketModule(ws => {
+    ws.Prefix = "/ws";
+});
+```
+
+See all [options](../reference/websocketmodule.md).
+
+
 ## Basic Usage
 
 ```csharp
@@ -75,17 +80,39 @@ server.UseWebSocketModule(ws => {
 await server.RunAsync();
 ```
 
-Module installation is done using:
+## Router API
+
+### Map an operation
 
 ```csharp
-server.UseWebSocketModule(...)
+ws.Map("chat/join", async (conn, ctx, msg) => {
+    // ...
+});
 ```
 
-This registers a module that maps the route internally
+### Unknown / fallback
+
+```csharp
+ws.OnUnknown(async (conn, ctx, msg) => {
+    await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : "bad message: expected JSON {op,payload}");
+});
+```
+
+### Binary frames
+
+```csharp
+ws.OnBinary(async (conn, ctx, bytes) => {
+    // handle raw bytes
+});
+```
 
 
 ## Example: Chat App (Rooms + Broadcast)
 
+Below is a full example using :
+- `chat/join`, `chat/leave`, `chat/msg`
+- rooms via Hub
+- broadcast with `except:` sender
 
 ::: code-group
 
