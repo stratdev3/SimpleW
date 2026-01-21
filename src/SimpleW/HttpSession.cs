@@ -699,6 +699,7 @@ namespace SimpleW {
             }
 
             request.ParserSetMethod("GET");
+            request.ParserSetRawTarget("/api/test/hello");
             request.ParserSetPath("/api/test/hello");
             request.ParserSetProtocol("HTTP/1.1");
             request.ParserSetHeaders(default);
