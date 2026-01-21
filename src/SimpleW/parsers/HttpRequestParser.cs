@@ -90,7 +90,7 @@ namespace SimpleW.Parsers {
             }
 
             ReadOnlySpan<byte> requestLineSpan = headerSpan.Slice(0, firstCrlf);
-            if (!TryParseRequestLine(requestLineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString)) {
+            if (!TryParseRequestLine(requestLineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString, out ReadOnlySpan<byte> querySpan)) {
                 throw new HttpBadRequestException("");
             }
 
@@ -99,6 +99,7 @@ namespace SimpleW.Parsers {
             request.ParserSetPath(path);
             request.ParserSetProtocol(protocol);
             request.ParserSetQueryString(queryString);
+            HttpRequestParser.ParseQueryString(querySpan, request.Query);
 
             // 3. headers
             HttpHeaders headers = default;
@@ -197,9 +198,10 @@ namespace SimpleW.Parsers {
         /// <param name="protocol"></param>
         /// <param name="queryString"></param>
         /// <returns></returns>
-        private static bool TryParseRequestLine(ReadOnlySpan<byte> lineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString) {
+        private static bool TryParseRequestLine(ReadOnlySpan<byte> lineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString, out ReadOnlySpan<byte> querySpan) {
             method = rawTarget = protocol = string.Empty;
             path = queryString = string.Empty;
+            querySpan = default;
 
             if (lineSpan.Length == 0) {
                 return false;
@@ -221,28 +223,39 @@ namespace SimpleW.Parsers {
             ReadOnlySpan<byte> protocolSpan = TrimAsciiWhitespace(lineSpan.Slice(secondSpace + 1));
 
             if (protocolSpan.Length == 0) {
-                return false;
+                throw new HttpBadRequestException("Missing protocol.");
             }
 
             method = Ascii.GetString(methodSpan);
-            rawTarget = Ascii.GetString(targetSpan);
             protocol = Ascii.GetString(protocolSpan);
 
-            if (string.IsNullOrEmpty(rawTarget)) {
+            if (targetSpan.Length == 0) {
                 throw new HttpBadRequestException("Empty request-target.");
             }
-            if (rawTarget[0] != '/') {
+            if (targetSpan[0] != (byte)'/') {
                 throw new HttpBadRequestException("Unsupported request-target form.");
             }
 
-            int qIndex = rawTarget.IndexOf('?', StringComparison.Ordinal);
+            // find '?'
+            int qIndex = targetSpan.IndexOf((byte)'?');
+            ReadOnlySpan<byte> pathSpan;
+
             if (qIndex >= 0) {
-                path = rawTarget.Substring(0, qIndex);
-                queryString = rawTarget[(qIndex + 1)..];
+                pathSpan = targetSpan.Slice(0, qIndex);
+                if (qIndex + 1 < targetSpan.Length) {
+                    querySpan = targetSpan.Slice(qIndex + 1);
+                }
             }
             else {
-                path = rawTarget;
+                pathSpan = targetSpan;
             }
+
+            // convert RawTarget ONLY ONCE (optional, but you probably want it)
+            rawTarget = Ascii.GetString(targetSpan);
+            // decode path/query *from bytes*
+            path = DecodePathBytes(pathSpan);
+            // querystring raw (NO leading '?')
+            queryString = querySpan.Length == 0 ? string.Empty : Ascii.GetString(querySpan);
 
             return true;
         }
@@ -427,23 +440,22 @@ namespace SimpleW.Parsers {
         /// </summary>
         /// <param name="span"></param>
         /// <param name="dict"></param>
-        public static void ParseQueryString(ReadOnlySpan<char> span, Dictionary<string, string> dict) {
+        public static void ParseQueryString(ReadOnlySpan<byte> span, Dictionary<string, string> dict) {
             while (!span.IsEmpty) {
-                int amp = span.IndexOf('&');
-                ReadOnlySpan<char> pair = amp >= 0 ? span[..amp] : span;
+                int amp = span.IndexOf((byte)'&');
+                ReadOnlySpan<byte> pair = amp >= 0 ? span[..amp] : span;
 
                 if (!pair.IsEmpty) {
-                    int eq = pair.IndexOf('=');
+                    int eq = pair.IndexOf((byte)'=');
                     if (eq > 0) {
-                        ReadOnlySpan<char> key = pair[..eq];
-                        ReadOnlySpan<char> val = pair[(eq + 1)..];
+                        ReadOnlySpan<byte> key = pair[..eq];
+                        ReadOnlySpan<byte> val = pair[(eq + 1)..];
 
-                        // TODO : the URL need to be decoded first
-                        dict[key.ToString()] = val.ToString();
+                        dict[DecodeQueryComponentBytes(key)] = DecodeQueryComponentBytes(val);
                     }
-                    else {
+                    else if (eq < 0) {
                         // when there is not value for a key
-                        dict[pair.ToString()] = "";
+                        dict[DecodeQueryComponentBytes(pair)] = "";
                     }
                 }
 
@@ -512,6 +524,57 @@ namespace SimpleW.Parsers {
 
             value = result;
             return true;
+        }
+
+        /// <summary>
+        /// Decode Path Bytes
+        /// </summary>
+        /// <param name="span"></param>
+        /// <returns></returns>
+        private static string DecodePathBytes(ReadOnlySpan<byte> span) {
+            if (span.Length == 0) {
+                return string.Empty;
+            }
+
+            // fast path
+            if (span.IndexOf((byte)'%') < 0) {
+                return Ascii.GetString(span);
+            }
+
+            string s = Ascii.GetString(span);
+            try {
+                return Uri.UnescapeDataString(s);
+            }
+            catch {
+                return s;
+            }
+        }
+
+        /// <summary>
+        /// Decode Query Component Bytes
+        /// </summary>
+        /// <param name="span"></param>
+        /// <returns></returns>
+        private static string DecodeQueryComponentBytes(ReadOnlySpan<byte> span) {
+
+            // fast path
+            int pct = span.IndexOf((byte)'%');
+            int plus = span.IndexOf((byte)'+');
+            if (pct < 0 && plus < 0) {
+                return Ascii.GetString(span);
+            }
+
+            string s = Ascii.GetString(span);
+            if (plus >= 0) {
+                s = s.Replace('+', ' ');
+            }
+
+            try {
+                return Uri.UnescapeDataString(s);
+            }
+            catch {
+                return s;
+            }
         }
 
         #endregion

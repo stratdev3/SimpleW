@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Text;
-using SimpleW.Parsers;
 using SimpleW.Security;
 
 
@@ -74,31 +73,9 @@ namespace SimpleW {
         public string QueryString { get; private set; } = string.Empty;
 
         /// <summary>
-        /// Flag to Query parsing
-        /// </summary>
-        private bool _queryInitialized = false;
-
-        /// <summary>
-        /// QueryString Dictionnary parsing
-        /// </summary>
-        private Dictionary<string, string>? _query;
-
-        /// <summary>
         /// QueryString as Dictionnary
         /// </summary>
-        public Dictionary<string, string> Query {
-            get {
-                if (!_queryInitialized) {
-                    _queryInitialized = true;
-                    _query ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-                    if (!string.IsNullOrEmpty(QueryString)) {
-                        HttpRequestParser.ParseQueryString(QueryString.AsSpan(), _query);
-                    }
-                }
-                return _query!;
-            }
-        }
+        public Dictionary<string, string> Query { get; private set; } = new Dictionary<string, string>();
 
         /// <summary>
         /// Route values extracted from matched route (ex: :id, :path*)
@@ -282,8 +259,7 @@ namespace SimpleW {
             Headers = default;
             Body = ReadOnlySequence<byte>.Empty;
 
-            _queryInitialized = false;
-            _query?.Clear();
+            Query?.Clear();
 
             RouteValues = null;
             RouteTemplate = null;
@@ -372,6 +348,13 @@ namespace SimpleW {
         /// <param name="qs"></param>
         public void ParserSetQueryString(string qs) {
             QueryString = qs;
+        }
+        /// <summary>
+        /// Set Query
+        /// </summary>
+        /// <param name="query"></param>
+        public void ParserSetQuery(Dictionary<string, string> query) {
+            Query = query;
         }
         /// <summary>
         /// Set RouteValues

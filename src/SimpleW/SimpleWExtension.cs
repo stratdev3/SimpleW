@@ -289,15 +289,6 @@ namespace SimpleW {
         private static readonly Encoding Utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
         /// <summary>
-        /// Decode string
-        /// </summary>
-        /// <param name="str">The string str</param>
-        /// <returns></returns>
-        public static string UrlDecode(string str) {
-            return WebUtility.UrlDecode(str);
-        }
-
-        /// <summary>
         /// IndexOfByte
         /// </summary>
         /// <param name="seq"></param>
