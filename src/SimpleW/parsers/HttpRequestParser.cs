@@ -93,15 +93,6 @@ namespace SimpleW.Parsers {
             if (!TryParseRequestLine(requestLineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString)) {
                 throw new HttpBadRequestException("");
             }
-            if (string.IsNullOrEmpty(rawTarget)) {
-                throw new HttpBadRequestException("Empty request-target.");
-            }
-            if (rawTarget[0] != '/') {
-                throw new HttpBadRequestException("Unsupported request-target form.");
-            }
-            if (string.IsNullOrEmpty(path)) {
-                throw new HttpBadRequestException("Empty path.");
-            }
 
             request.ParserSetMethod(method);
             request.ParserSetRawTarget(rawTarget);
@@ -207,8 +198,8 @@ namespace SimpleW.Parsers {
         /// <param name="queryString"></param>
         /// <returns></returns>
         private static bool TryParseRequestLine(ReadOnlySpan<byte> lineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString) {
-            method = rawTarget = path = protocol = string.Empty;
-            queryString = string.Empty;
+            method = rawTarget = protocol = string.Empty;
+            path = queryString = string.Empty;
 
             if (lineSpan.Length == 0) {
                 return false;
@@ -236,6 +227,13 @@ namespace SimpleW.Parsers {
             method = Ascii.GetString(methodSpan);
             rawTarget = Ascii.GetString(targetSpan);
             protocol = Ascii.GetString(protocolSpan);
+
+            if (string.IsNullOrEmpty(rawTarget)) {
+                throw new HttpBadRequestException("Empty request-target.");
+            }
+            if (rawTarget[0] != '/') {
+                throw new HttpBadRequestException("Unsupported request-target form.");
+            }
 
             int qIndex = rawTarget.IndexOf('?', StringComparison.Ordinal);
             if (qIndex >= 0) {
