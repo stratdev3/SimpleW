@@ -51,19 +51,20 @@ namespace SimpleW.Modules {
         public string? RequiredSubProtocol { get; set; }
 
         /// <summary>
-        /// Optional keep-alive ping
+        /// If set, periodically send ping to keep proxies/load balancers happy
         /// </summary>
-        public TimeSpan? PingInterval { get; set; }
+        public TimeSpan? KeepAliveInterval { get; set; }
 
         /// <summary>
         /// Global hub to allow broadcasts to rooms (and/or an "all" room)
+        /// You can store a reference to it and broadcast from anywhere
         /// </summary>
         public WebSocketHub Hub { get; } = new();
 
         /// <summary>
-        /// Optional: automatically join every connection into this room
+        /// Automatically join every connection into this room.
         /// Handy to broadcast to everyone: options.Hub.BroadcastTextAsync("__all", ...)
-        /// Set to null to disable auto join
+        /// Default "__all". Set to null to disable.
         /// </summary>
         public string? AutoJoinRoom { get; set; } = "__all";
 
@@ -112,8 +113,8 @@ namespace SimpleW.Modules {
             if (MaxMessageBytes <= 0) {
                 MaxMessageBytes = 1 * 1024 * 1024;
             }
-            if (PingInterval.HasValue && PingInterval.Value <= TimeSpan.Zero) {
-                PingInterval = null;
+            if (KeepAliveInterval.HasValue && KeepAliveInterval.Value <= TimeSpan.Zero) {
+                KeepAliveInterval = null;
             }
             if (string.IsNullOrWhiteSpace(AutoJoinRoom)) {
                 AutoJoinRoom = null;
@@ -228,7 +229,7 @@ namespace SimpleW.Modules {
                 return;
             }
 
-            WebSocketConnection conn = new(session, _options.MaxMessageBytes, _options.PingInterval);
+            WebSocketConnection conn = new(session, _options.MaxMessageBytes, _options.KeepAliveInterval);
             WebSocketContext ctx = new(session, _options.Hub, reqPath);
 
             try {
