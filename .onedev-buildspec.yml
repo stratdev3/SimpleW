@@ -24,14 +24,14 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Newtonsoft
+    name: build SimpleW.JsonEngine.Newtonsoft
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/SimpleW.Newtonsoft/
-        dotnet build -c @param:build_configuration@ SimpleW.Newtonsoft.csproj
+        cd src/SimpleW.JsonEngine.Newtonsoft/
+        dotnet build -c @param:build_configuration@ SimpleW.JsonEngine.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -110,16 +110,16 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Newtonsoft
+    name: build SimpleW.JsonEngine.Newtonsoft
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/SimpleW.Newtonsoft
+        cd src/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d-%H%M")
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Newtonsoft.csproj
-        dotnet pack -c Release SimpleW.Newtonsoft.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj
+        dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -130,8 +130,8 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
-    name: publish artifact SimpleW.Newtonsoft
-    sourcePath: src/SimpleW.Newtonsoft/bin/Release/
+    name: publish artifact SimpleW.JsonEngine.Newtonsoft
+    sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -148,13 +148,13 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: deploy SimpleW.Newtonsoft to nuget.org
+    name: deploy SimpleW.JsonEngine.Newtonsoft to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/SimpleW.Newtonsoft/bin/Release
+        cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
