@@ -70,12 +70,16 @@ namespace example.rewrite {
 
             #endregion https
 
+            server.MapGet("/api/syslog/index", object (string? query = null) => {
+                return new { query };
+            });
+
             server.MapGet("/api/test/hello", object (HttpSession session) => {
                 return new { message = $"Hello World !" };
             });
 
             server.UseStaticFilesModule(options => {
-                options.Path = @"C:\www\spa\websocket\";
+                options.Path = @"C:\www\spa\sse\";
                 options.Prefix = "/";
                 options.AutoIndex = true;
                 options.CacheTimeout = TimeSpan.FromDays(1);
@@ -139,12 +143,56 @@ namespace example.rewrite {
                     await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : "bad message: expected JSON {op,payload}");
                 });
 
+                ws.OnConnect = async (conn, ctx) => {
+                    IWebUser? user = ctx.Session.Request.User;
+                    Console.WriteLine($"websocket connect {user?.Id} {user?.Login}");
+                    if (user == null) {
+                        return;
+                    }
+                    //await ctx.JoinRoomAsync(user.Id.ToString(), conn);
+                    //if (user.IsInRoles("admin, task:admin")) {
+                    //    await ctx.JoinRoomAsync("task", conn);
+                    //}
+                };
                 ws.OnDisconnect = async (conn, ctx) => {
                     // cleanup
                     if (roomByConn.TryRemove(conn.Id, out var room) && userByConn.TryRemove(conn.Id, out var name)) {
                         await ctx.Hub.BroadcastTextAsync(room, ChatEvent("leave", room, name, $"{name} disconnected"), except: conn);
                     }
                 };
+            });
+
+            ServerSentEventsHub? hub = null;
+
+            server.UseServerSentEventsModule(opt => {
+                opt.Prefix = "/sse";
+                opt.AllowAnyOrigin = true;                  // pratique si tu ouvres index.html en file:// ou autre origin
+                opt.AutoJoinRoom = "__all";                 // tout le monde dans la room globale
+                opt.KeepAliveInterval = TimeSpan.FromSeconds(15);
+
+                hub = opt.Hub;
+
+                opt.OnConnect = async (conn, ctx) => {
+                    // Message de bienvenue (optionnel)
+                    await conn.SendEventAsync("connected", @event: "status");
+                };
+            });
+
+            // Timer: broadcast toutes les 5 secondes
+            _ = Task.Run(async () => {
+                int i = 0;
+                while (true) {
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+
+                    if (hub is null)
+                        continue;
+
+                    i++;
+                    await hub.BroadcastAsync("__all", new ServerSentEventsMessage {
+                        Event = "tick",
+                        Payload = $"tick #{i} @ {DateTime.UtcNow:O}"
+                    });
+                }
             });
 
             //server.MapControllers<SubController>("/api");
@@ -154,7 +202,7 @@ namespace example.rewrite {
                 options.ReuseAddress = true;
                 options.TcpNoDelay = true;
                 options.TcpKeepAlive = true;
-                options.JwtOptions = new JwtOptions("minimumlongsecret") {
+                options.JwtOptions = new JwtOptions("azertyuiopqsdfghjklmwxcvbn") {
                     ValidateExp = false,
                     ValidateNbf = false,
                 };
