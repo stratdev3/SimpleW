@@ -30,12 +30,12 @@ For the majority of use cases, no configuration is required.
 
 Some projects require features or behaviors that are specific to [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) (custom converters, advanced polymorphism, legacy compatibility, etc.).
 
-For this reason, SimpleW provides an official alternative engine via the [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) package.
+For this reason, SimpleW provides an official alternative engine via the [SimpleW.JsonEngine.Newtonsoft](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) package.
 
 #### Installation
 
 ```sh
-$ dotnet add package SimpleW.Newtonsoft
+$ dotnet add package SimpleW.JsonEngine.Newtonsoft
 ```
 
 

@@ -369,7 +369,7 @@ To change the engine just provide an object which implement the [`IJsonEngine`](
 
 
 ::: tip NOTE
-You can learn how to change the [`JsonEngine`](../guide/response.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.Newtonsoft](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package.
+You can learn how to change the [`JsonEngine`](../guide/response.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.JsonEngine.Newtonsoft](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) nuget package.
 :::
 
 
