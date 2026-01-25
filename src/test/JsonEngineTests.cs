@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.Json;
 using NFluent;
 using SimpleW;
-using SimpleW.Newtonsoft;
+using SimpleW.JsonEngine.Newtonsoft;
 using Xunit;
 
 

@@ -7,7 +7,7 @@ using Newtonsoft.Json.Serialization;
 using SimpleW.Buffers;
 
 
-namespace SimpleW.Newtonsoft {
+namespace SimpleW.JsonEngine.Newtonsoft {
 
     /// <summary>
     /// Implement with IJsonEngine using Newtonsoft.Json
