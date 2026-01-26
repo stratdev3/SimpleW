@@ -117,7 +117,7 @@ namespace SimpleW.Parsers {
 
                 headers.TryGetValue("content-type", out var partCt);
 
-                if (filename is null) {
+                if (filename == null) {
                     fields[name] = Encoding.UTF8.GetString(content.Span);
                 }
                 else {
@@ -250,7 +250,7 @@ namespace SimpleW.Parsers {
                     // Slice “streamable”
                     var contentSeq = body.Slice(pos, contentLen);
 
-                    if (filename is null) {
+                    if (filename == null) {
                         // Field: on decode en UTF-8 (ça alloue une string, normal)
                         string value;
                         if (contentSeq.IsSingleSegment) {
@@ -291,7 +291,7 @@ namespace SimpleW.Parsers {
                 return true;
             }
             finally {
-                if (rented is not null)
+                if (rented != null)
                     ArrayPool<byte>.Shared.Return(rented);
             }
         }

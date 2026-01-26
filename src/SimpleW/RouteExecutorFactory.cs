@@ -91,7 +91,7 @@ namespace SimpleW {
                 // "default value" expression for the param
                 object? defaultObj = GetDefaultValueForParameter(p);
                 Expression defaultExpr;
-                if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
+                if (defaultObj == null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
                     // non nullable value type without default -> default(T)
                     defaultExpr = Expression.Default(p.ParameterType);
                 }
@@ -127,7 +127,7 @@ namespace SimpleW {
                     Expression routeNotNull = Expression.NotEqual(routeValuesProp, Expression.Constant(null, routeValuesType));
 
                     // routeValues.TryGetValue("name", out rawVar)
-                    Expression routeTryGet = (routeTryGetValueMethod is null)
+                    Expression routeTryGet = (routeTryGetValueMethod == null)
                                                 ? Expression.Constant(false)
                                                 : Expression.Call(
                                                       Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
@@ -202,7 +202,7 @@ namespace SimpleW {
                 call = Expression.Call(method, argExpressions);
             }
             // 2. instance and non null target, close delegate instance
-            else if (handler.Target is not null) {
+            else if (handler.Target != null) {
                 call = Expression.Call(Expression.Constant(handler.Target), method, argExpressions);
             }
             // 3. instance and null target, open delegate instance (fallback)
@@ -414,7 +414,7 @@ namespace SimpleW {
                 // "default value" expression for the param
                 object? defaultObj = GetDefaultValueForParameter(p);
                 Expression defaultExpr;
-                if (defaultObj is null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
+                if (defaultObj == null && p.ParameterType.IsValueType && Nullable.GetUnderlyingType(p.ParameterType) == null) {
                     defaultExpr = Expression.Default(p.ParameterType);
                 }
                 else {
@@ -449,7 +449,7 @@ namespace SimpleW {
                     Expression routeNotNull = Expression.NotEqual(routeValuesProp, Expression.Constant(null, routeValuesType));
 
                     // routeValues.TryGetValue("name", out rawVar)
-                    Expression routeTryGet = (routeTryGetValueMethod is null)
+                    Expression routeTryGet = (routeTryGetValueMethod == null)
                                                 ? Expression.Constant(false)
                                                 : Expression.Call(
                                                       Expression.Convert(routeValuesProp, typeof(Dictionary<string, string>)),
@@ -947,7 +947,7 @@ namespace SimpleW {
         /// <param name="result"></param>
         /// <returns></returns>
         public static ValueTask InvokeHandlerResult(HttpSession session, HttpHandlerResult handlerResult, object? result) {
-            if (result is null) {
+            if (result == null) {
                 return default;
             }
             return handlerResult(session, result);
@@ -989,7 +989,7 @@ namespace SimpleW {
         /// <returns></returns>
         private static async ValueTask AwaitTaskWithResultAsync<T>(Task<T> task, HttpSession session, HttpHandlerResult handlerResult) {
             T? result = await task.ConfigureAwait(false);
-            if (result is not null) {
+            if (result != null) {
                 await handlerResult(session, result!).ConfigureAwait(false);
             }
         }
@@ -1016,7 +1016,7 @@ namespace SimpleW {
         /// <returns></returns>
         private static async ValueTask AwaitValueTaskWithResultAsync<T>(ValueTask<T> task, HttpSession session, HttpHandlerResult handlerResult) {
             T? result = await task.ConfigureAwait(false);
-            if (result is not null) {
+            if (result != null) {
                 await handlerResult(session, result!).ConfigureAwait(false);
             }
         }

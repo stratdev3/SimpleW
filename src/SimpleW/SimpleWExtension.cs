@@ -198,7 +198,7 @@ namespace SimpleW {
         /// <returns></returns>
         /// <example>
         /// var form = request.BodyMultipart();
-        /// if (form is null) {
+        /// if (form == null) {
         ///     response.Status(400).Text("Bad multipart").SendAsync();
         ///     return;
         /// }

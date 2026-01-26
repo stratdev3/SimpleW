@@ -184,7 +184,7 @@ namespace example.rewrite {
                 while (true) {
                     await Task.Delay(TimeSpan.FromSeconds(5));
 
-                    if (hub is null)
+                    if (hub == null)
                         continue;
 
                     i++;

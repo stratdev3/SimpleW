@@ -263,14 +263,14 @@
             };
 
             // GET / POST exact
-            if (dict is not null && dict.TryGetValue(session.Request.Path, out route)) {
+            if (dict != null && dict.TryGetValue(session.Request.Path, out route)) {
                 session.Request.ParserSetRouteTemplate(route.Attribute.Path);
                 task = ExecutePipelineAsync(session, route.Executor);
                 return true;
             }
 
             // other methods exact
-            if (dict is null
+            if (dict == null
                 && _others.TryGetValue(session.Request.Method, out Dictionary<string, Route>? otherDict)
                 && otherDict.TryGetValue(session.Request.Path, out route)
             ) {
@@ -300,7 +300,7 @@
                 _ => _otherMatchers.TryGetValue(session.Request.Method, out var l) ? l : null
             };
 
-            if (matchers is null || matchers.Count == 0) {
+            if (matchers == null || matchers.Count == 0) {
                 return false;
             }
 
@@ -316,13 +316,13 @@
                     continue;
                 }
 
-                if (best is null || m.Specificity > best.Specificity) {
+                if (best == null || m.Specificity > best.Specificity) {
                     best = m;
                     bestValues = values;
                 }
             }
 
-            if (best is null) {
+            if (best == null) {
                 return false;
             }
 

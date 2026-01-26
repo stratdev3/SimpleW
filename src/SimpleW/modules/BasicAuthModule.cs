@@ -105,7 +105,7 @@ namespace SimpleW.Modules {
                 }
 
                 Users = (Users ?? Array.Empty<BasicUser>())
-                        .Where(u => u is not null && !string.IsNullOrWhiteSpace(u.Username))
+                        .Where(u => u != null && !string.IsNullOrWhiteSpace(u.Username))
                         .Select(u => new BasicUser((u.Username ?? string.Empty).Trim(), u.Password ?? string.Empty))
                         .Distinct(BasicUserUsernameComparer.Instance)
                         .ToArray();
@@ -195,7 +195,7 @@ namespace SimpleW.Modules {
                 }
 
                 // no setup or preflight, follow next in the pipeline
-                if (rule is null) {
+                if (rule == null) {
                     return next();
                 }
                 if (rule.BypassOptionsRequests && session.Request.Method == "OPTIONS") {
@@ -332,7 +332,7 @@ namespace SimpleW.Modules {
             }
 
             public bool IsValid(string username, string password) {
-                if (Validator is not null) {
+                if (Validator != null) {
                     return Validator(username, password);
                 }
 

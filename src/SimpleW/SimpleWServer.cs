@@ -623,7 +623,7 @@ namespace SimpleW {
             //RegisterSession(connection);
 
             try {
-                if (SslContext is not null) {
+                if (SslContext != null) {
                     await connection.UseHttps(SslContext).ConfigureAwait(false);
                 }
                 connection.Connect()                    ;                   // receive data

@@ -84,7 +84,7 @@ namespace SimpleW {
         /// <returns></returns>
         public T Deserialize<T>(string json) {
             T? value = JsonSerializer.Deserialize<T>(json, DeserializeOptionsCache);
-            if (value is null) {
+            if (value == null) {
                 throw new JsonException($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
             }
             return value;
@@ -98,7 +98,7 @@ namespace SimpleW {
         /// <param name="model"></param>
         public T DeserializeAnonymous<T>(string json, T model) {
             T? value = JsonSerializer.Deserialize<T>(json, DeserializeAnonymousOptionsCache);
-            if (value is null) {
+            if (value == null) {
                 throw new JsonException($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
             }
             return value;
@@ -113,7 +113,7 @@ namespace SimpleW {
         /// <param name="includeProperties"></param>
         /// <param name="excludeProperties"></param>
         public void Populate<T>(string json, T target, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null) {
-            if (target is null) {
+            if (target == null) {
                 return;
             }
             T source = Deserialize<T>(json);

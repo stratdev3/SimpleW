@@ -249,7 +249,7 @@
             /// <param name="origin"></param>
             /// <returns></returns>
             private bool IsOriginAllowed(string origin) {
-                if (_options.OriginValidator is not null) {
+                if (_options.OriginValidator != null) {
                     return _options.OriginValidator(origin);
                 }
 

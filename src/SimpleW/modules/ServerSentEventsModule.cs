@@ -185,7 +185,7 @@ namespace SimpleW.Modules {
                 // send comment for proxy
                 await conn.SendCommentAsync("connected").ConfigureAwait(false);
 
-                if (_options.OnConnect is not null) {
+                if (_options.OnConnect != null) {
                     await _options.OnConnect(conn, ctx).ConfigureAwait(false);
                 }
 
@@ -200,7 +200,7 @@ namespace SimpleW.Modules {
             catch { }
             finally {
                 try {
-                    if (_options.OnDisconnect is not null) {
+                    if (_options.OnDisconnect != null) {
                         await _options.OnDisconnect(conn, ctx).ConfigureAwait(false);
                     }
                 }
@@ -264,7 +264,7 @@ namespace SimpleW.Modules {
         /// Join a room (Hub must be set by module)
         /// </summary>
         public ValueTask JoinAsync(string room) {
-            if (Hub is null) {
+            if (Hub == null) {
                 throw new InvalidOperationException("No hub attached to this connection.");
             }
             return Hub.JoinAsync(room, this);
@@ -274,7 +274,7 @@ namespace SimpleW.Modules {
         /// Leave a room (Hub must be set by module)
         /// </summary>
         public ValueTask LeaveAsync(string room) {
-            if (Hub is null) {
+            if (Hub == null) {
                 throw new InvalidOperationException("No hub attached to this connection.");
             }
             return Hub.LeaveAsync(room, this);

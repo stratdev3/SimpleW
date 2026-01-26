@@ -286,7 +286,7 @@ namespace SimpleW {
         /// Return the buffer to ArrayPool
         /// </summary>
         public void ReturnPooledBodyBuffer() {
-            if (PooledBodyBuffer is not null) {
+            if (PooledBodyBuffer != null) {
                 ArrayPool<byte>.Shared.Return(PooledBodyBuffer);
                 PooledBodyBuffer = null;
             }
@@ -588,67 +588,67 @@ namespace SimpleW {
             // most common headers
             if (name.Equals("Host", StringComparison.OrdinalIgnoreCase)) {
                 value = Host;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Content-Type", StringComparison.OrdinalIgnoreCase)) {
                 value = ContentType;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Content-Length", StringComparison.OrdinalIgnoreCase)) {
                 value = ContentLengthRaw;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("User-Agent", StringComparison.OrdinalIgnoreCase)) {
                 value = UserAgent;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Accept", StringComparison.OrdinalIgnoreCase)) {
                 value = Accept;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Accept-Encoding", StringComparison.OrdinalIgnoreCase)) {
                 value = AcceptEncoding;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Accept-Language", StringComparison.OrdinalIgnoreCase)) {
                 value = AcceptLanguage;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Connection", StringComparison.OrdinalIgnoreCase)) {
                 value = Connection;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Transfer-Encoding", StringComparison.OrdinalIgnoreCase)) {
                 value = TransferEncoding;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Cookie", StringComparison.OrdinalIgnoreCase)) {
                 value = Cookie;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Upgrade", StringComparison.OrdinalIgnoreCase)) {
                 value = Upgrade;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Authorization", StringComparison.OrdinalIgnoreCase)) {
                 value = Authorization;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Sec-WebSocket-Key", StringComparison.OrdinalIgnoreCase)) {
                 value = SecWebSocketKey;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Sec-WebSocket-Version", StringComparison.OrdinalIgnoreCase)) {
                 value = SecWebSocketVersion;
-                return value is not null;
+                return value != null;
             }
             if (name.Equals("Sec-WebSocket-Protocol", StringComparison.OrdinalIgnoreCase)) {
                 value = SecWebSocketProtocol;
-                return value is not null;
+                return value != null;
             }
 
             // fallback
-            if (_other is not null) {
+            if (_other != null) {
                 for (int i = 0; i < _otherCount; i++) {
                     ref readonly HeaderEntry entry = ref _other[i];
                     if (entry.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) {
@@ -667,54 +667,54 @@ namespace SimpleW {
         /// </summary>
         public IEnumerable<KeyValuePair<string, string>> EnumerateAll() {
             // most common headers
-            if (Host is not null) {
+            if (Host != null) {
                 yield return new("Host", Host);
             }
-            if (ContentType is not null) {
+            if (ContentType != null) {
                 yield return new("Content-Type", ContentType);
             }
-            if (ContentLengthRaw is not null) {
+            if (ContentLengthRaw != null) {
                 yield return new("Content-Length", ContentLengthRaw);
             }
-            if (UserAgent is not null) {
+            if (UserAgent != null) {
                 yield return new("User-Agent", UserAgent);
             }
-            if (Accept is not null) {
+            if (Accept != null) {
                 yield return new("Accept", Accept);
             }
-            if (AcceptEncoding is not null) {
+            if (AcceptEncoding != null) {
                 yield return new("Accept-Encoding", AcceptEncoding);
             }
-            if (AcceptLanguage is not null) {
+            if (AcceptLanguage != null) {
                 yield return new("Accept-Language", AcceptLanguage);
             }
-            if (Connection is not null) {
+            if (Connection != null) {
                 yield return new("Connection", Connection);
             }
-            if (TransferEncoding is not null) {
+            if (TransferEncoding != null) {
                 yield return new("Transfer-Encoding", TransferEncoding);
             }
-            if (Cookie is not null) {
+            if (Cookie != null) {
                 yield return new("Cookie", Cookie);
             }
-            if (Upgrade is not null) {
+            if (Upgrade != null) {
                 yield return new("Upgrade", Upgrade);
             }
-            if (Authorization is not null) {
+            if (Authorization != null) {
                 yield return new("Authorization", Authorization);
             }
-            if (SecWebSocketKey is not null) {
+            if (SecWebSocketKey != null) {
                 yield return new("Sec-WebSocket-Key", SecWebSocketKey);
             }
-            if (SecWebSocketVersion is not null) {
+            if (SecWebSocketVersion != null) {
                 yield return new("Sec-WebSocket-Version", SecWebSocketVersion);
             }
-            if (SecWebSocketProtocol is not null) {
+            if (SecWebSocketProtocol != null) {
                 yield return new("Sec-WebSocket-Protocol", SecWebSocketProtocol);
             }
 
             // fallback
-            if (_other is not null) {
+            if (_other != null) {
                 for (int i = 0; i < _otherCount; i++) {
 #if NET9_0_OR_GREATER
                     ref readonly HeaderEntry e = ref _other[i];
@@ -736,7 +736,7 @@ namespace SimpleW {
         public bool TryGetCookie(string name, out string? value) {
             value = null;
 
-            if (Cookie is null || string.IsNullOrEmpty(name)) {
+            if (Cookie == null || string.IsNullOrEmpty(name)) {
                 return false;
             }
 
@@ -777,7 +777,7 @@ namespace SimpleW {
         /// Enumerate all cookies as key/value pairs.
         /// </summary>
         public IEnumerable<KeyValuePair<string, string>> EnumerateCookies() {
-            if (Cookie is null) {
+            if (Cookie == null) {
                 yield break;
             }
 
@@ -817,7 +817,7 @@ namespace SimpleW {
         /// <param name="name"></param>
         /// <param name="value"></param>
         private void AddFallback(string name, string value) {
-            if (_other is null) {
+            if (_other == null) {
                 _other = new HeaderEntry[4];
             }
             else if (_otherCount == _other.Length) {

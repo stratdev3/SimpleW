@@ -239,7 +239,7 @@ namespace SimpleW.Modules {
                     await _options.Hub.JoinWithBroadcastAsync(_options.AutoJoinRoom!, conn).ConfigureAwait(false);
                 }
 
-                if (_options.OnConnect is not null) {
+                if (_options.OnConnect != null) {
                     await _options.OnConnect(conn, ctx).ConfigureAwait(false);
                 }
 
@@ -253,7 +253,7 @@ namespace SimpleW.Modules {
             }
             finally {
                 try {
-                    if (_options.OnDisconnect is not null) {
+                    if (_options.OnDisconnect != null) {
                         await _options.OnDisconnect(conn, ctx).ConfigureAwait(false);
                     }
                 }
@@ -289,7 +289,7 @@ namespace SimpleW.Modules {
                 return false;
             }
             if (!req.Headers.TryGetValue("Connection", out var conn)
-                || conn is null || conn.IndexOf("Upgrade", StringComparison.OrdinalIgnoreCase) < 0
+                || conn == null || conn.IndexOf("Upgrade", StringComparison.OrdinalIgnoreCase) < 0
             ) {
                 return false;
             }
@@ -398,7 +398,7 @@ namespace SimpleW.Modules {
         /// <param name="except"></param>
         /// <returns></returns>
         public ValueTask HubBroadcastTextAsync(string text, WebSocketConnection? except = null) {
-            if (_broadcastText is null) {
+            if (_broadcastText == null) {
                 return ValueTask.CompletedTask;
             }
             return _broadcastText(text, except);
@@ -411,7 +411,7 @@ namespace SimpleW.Modules {
         /// <param name="except"></param>
         /// <returns></returns>
         public ValueTask HubBroadcastBinaryAsync(ReadOnlyMemory<byte> data, WebSocketConnection? except = null) {
-            if (_broadcastBinary is null) {
+            if (_broadcastBinary == null) {
                 return ValueTask.CompletedTask;
             }
             return _broadcastBinary(data, except);
@@ -533,7 +533,7 @@ namespace SimpleW.Modules {
 
                     if (opcode == 0x0) {
                         // continuation
-                        if (reassembly is null) {
+                        if (reassembly == null) {
                             frame.Dispose();
                             continue; // ignore
                         }
@@ -600,7 +600,7 @@ namespace SimpleW.Modules {
                 }
             }
             finally {
-                if (reassembly is not null) {
+                if (reassembly != null) {
                     _pool.Return(reassembly);
                 }
 
@@ -609,7 +609,7 @@ namespace SimpleW.Modules {
                 }
                 catch { }
 
-                if (pingTask is not null) {
+                if (pingTask != null) {
                     try { await pingTask.ConfigureAwait(false); }
                     catch { }
                 }

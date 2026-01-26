@@ -73,7 +73,7 @@ namespace SimpleW.JsonEngine.Newtonsoft {
         /// <param name="value"></param>
         /// <exception cref="ArgumentNullException"></exception>
         public void SerializeUtf8<T>(IBufferWriter<byte> writer, T value) {
-            if (writer is null) {
+            if (writer == null) {
                 throw new ArgumentNullException(nameof(writer));
             }
 
@@ -104,7 +104,7 @@ namespace SimpleW.JsonEngine.Newtonsoft {
         /// <returns></returns>
         public T Deserialize<T>(string json) {
             T? value = JsonConvert.DeserializeObject<T>(json, DeserializeSettingsCache);
-            if (value is null) {
+            if (value == null) {
                 throw new JsonException($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
             }
             return value;
@@ -119,7 +119,7 @@ namespace SimpleW.JsonEngine.Newtonsoft {
         public T DeserializeAnonymous<T>(string json, T model) {
             JsonSerializerSettings settings = DeserializeAnonymousSettingsCache ?? new JsonSerializerSettings();
             T? value = JsonConvert.DeserializeAnonymousType(json, model, settings);
-            if (value is null) {
+            if (value == null) {
                 throw new JsonException($"Deserialization returned null for anonymous type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
             }
             return value;
@@ -134,7 +134,7 @@ namespace SimpleW.JsonEngine.Newtonsoft {
         /// <param name="includeProperties"></param>
         /// <param name="excludeProperties"></param>
         public void Populate<T>(string json, T target, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null) {
-            if (target is null) {
+            if (target == null) {
                 return;
             }
 

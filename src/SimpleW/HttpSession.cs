@@ -473,7 +473,7 @@ namespace SimpleW {
                 if (Interlocked.Exchange(ref _sending, 1) != 0) {
                     throw new InvalidOperationException("Concurrent SendAsync on same session");
                 }
-                if (_sslStream is not null) {
+                if (_sslStream != null) {
                     await _sslStream.WriteAsync(buffer).ConfigureAwait(false);
                     _response.BytesSent += buffer.Length;
                 }
@@ -503,10 +503,10 @@ namespace SimpleW {
                 if (Interlocked.Exchange(ref _sending, 1) != 0) {
                     throw new InvalidOperationException("Concurrent SendAsync on same session");
                 }
-                if (_sslStream is not null) {
+                if (_sslStream != null) {
                     // HTTPS : write each segment to sslStream
                     foreach (ArraySegment<byte> seg in segments) {
-                        if (seg.Array is null || seg.Count == 0) {
+                        if (seg.Array == null || seg.Count == 0) {
                             continue;
                         }
                         await _sslStream.WriteAsync(seg.Array, seg.Offset, seg.Count).ConfigureAwait(false);
@@ -540,13 +540,13 @@ namespace SimpleW {
                 if (Interlocked.Exchange(ref _sending, 1) != 0) {
                     throw new InvalidOperationException("Concurrent SendAsync on same session");
                 }
-                if (_sslStream is not null) {
+                if (_sslStream != null) {
                     // HTTPS : write each segment to sslStream
-                    if (header.Array is not null && header.Count > 0) {
+                    if (header.Array != null && header.Count > 0) {
                         await _sslStream.WriteAsync(header.Array, header.Offset, header.Count).ConfigureAwait(false);
                         _response.BytesSent += header.Count;
                     }
-                    if (body.Array is not null && body.Count > 0) {
+                    if (body.Array != null && body.Count > 0) {
                         await _sslStream.WriteAsync(body.Array, body.Offset, body.Count).ConfigureAwait(false);
                         _response.BytesSent += body.Count;
                     }
@@ -580,7 +580,7 @@ namespace SimpleW {
                 if (Interlocked.Exchange(ref _sending, 1) != 0) {
                     throw new InvalidOperationException("Concurrent SendAsync on same session");
                 }
-                if (_sslStream is not null) {
+                if (_sslStream != null) {
                     await _sslStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
                     _response.BytesSent += buffer.Count;
                 }
@@ -629,12 +629,12 @@ namespace SimpleW {
             try { _sslStream?.Dispose(); } catch { }
             _sslStream = null;
 
-            if (_recvBuffer is not null) {
+            if (_recvBuffer != null) {
                 _bufferPool.Return(_recvBuffer);
                 _recvBuffer = null!;
             }
 
-            if (_parseBuffer is not null) {
+            if (_parseBuffer != null) {
                 _bufferPool.Return(_parseBuffer);
                 _parseBuffer = null!;
                 _parseBufferCount = 0;

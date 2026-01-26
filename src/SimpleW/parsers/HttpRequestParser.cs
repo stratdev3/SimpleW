@@ -121,7 +121,7 @@ namespace SimpleW.Parsers {
                     continue;
                 }
 
-                if (!TryParseHeaderLine(lineSpan, out string? name, out string? value) || name is null) {
+                if (!TryParseHeaderLine(lineSpan, out string? name, out string? value) || name == null) {
                     throw new HttpBadRequestException("Invalid header line.");
                 }
 
@@ -139,7 +139,7 @@ namespace SimpleW.Parsers {
                     }
                 }
             }
-            //if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && headers.Host is null) {
+            //if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && headers.Host == null) {
             //    throw new HttpBadRequestException("Missing Host header (HTTP/1.1).");
             //}
 
@@ -319,7 +319,7 @@ namespace SimpleW.Parsers {
             while (true) {
                 // need more data
                 if (pos >= totalLength) {
-                    if (rented is not null) {
+                    if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
                     return false;
@@ -329,7 +329,7 @@ namespace SimpleW.Parsers {
                 int lineEndRel = sizeSearch.IndexOf(Crlf);
                 if (lineEndRel < 0) {
                     // need more data
-                    if (rented is not null) {
+                    if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
                     return false;
@@ -337,7 +337,7 @@ namespace SimpleW.Parsers {
 
                 ReadOnlySpan<byte> sizeLine = sizeSearch.Slice(0, lineEndRel);
                 if (!TryParseHexInt(sizeLine, out int chunkSize)) {
-                    if (rented is not null) {
+                    if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
                     throw new HttpBadRequestException("Invalid chunk size.");
@@ -352,7 +352,7 @@ namespace SimpleW.Parsers {
 
                 // check chunk + CRLF
                 if (totalLength - pos < chunkSize + Crlf.Length) {
-                    if (rented is not null) {
+                    if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
                     return false;
@@ -360,14 +360,14 @@ namespace SimpleW.Parsers {
 
                 long newTotal = (long)written + chunkSize;
                 if (newTotal > _maxBodySize) {
-                    if (rented is not null) {
+                    if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
                     throw new HttpRequestTooLargeException($"Request body too large (chunked): {newTotal} bytes (limit: {_maxBodySize}).");
                 }
 
                 // allocation / resize buffer
-                if (rented is null) {
+                if (rented == null) {
                     int initial = Math.Max(chunkSize, 4096);
                     rented = ArrayPool<byte>.Shared.Rent(initial);
                     rentedSize = rented.Length;
@@ -393,13 +393,13 @@ namespace SimpleW.Parsers {
 
                 // CRLF after chunk
                 if (totalLength - pos < Crlf.Length) {
-                    if (rented is not null) {
+                    if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
                     return false;
                 }
                 if (!(span[pos] == (byte)'\r' && span[pos + 1] == (byte)'\n')) {
-                    if (rented is not null) {
+                    if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
                     throw new InvalidOperationException("Invalid chunk terminator.");
@@ -412,7 +412,7 @@ namespace SimpleW.Parsers {
             int trailerEndRel = trailerSpan.IndexOf(HeaderTerminator);
             if (trailerEndRel < 0) {
                 // need more data
-                if (rented is not null) {
+                if (rented != null) {
                     ArrayPool<byte>.Shared.Return(rented);
                 }
                 return false;
@@ -423,7 +423,7 @@ namespace SimpleW.Parsers {
 
             if (written == 0) {
                 body = ReadOnlySequence<byte>.Empty;
-                if (rented is not null) {
+                if (rented != null) {
                     ArrayPool<byte>.Shared.Return(rented);
                 }
                 pooledBuffer = null;

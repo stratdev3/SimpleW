@@ -459,7 +459,7 @@ namespace SimpleW {
             _bodyMemory = default;
             _bodyOwner = null;
 
-            if (contentType is not null) {
+            if (contentType != null) {
                 _contentType = contentType;
             }
             return this;
@@ -496,7 +496,7 @@ namespace SimpleW {
 
             _bodyOwner = null;
 
-            if (contentType is not null) {
+            if (contentType != null) {
                 _contentType = contentType;
             }
             return this;
@@ -532,7 +532,7 @@ namespace SimpleW {
 
             _bodyOwner = owner;
 
-            if (contentType is not null) {
+            if (contentType != null) {
                 _contentType = contentType;
             }
             return this;
@@ -711,14 +711,14 @@ namespace SimpleW {
 
                 case BodyKind.Segment:
                 case BodyKind.OwnedBuffer:
-                    if (_bodyArray is not null && _bodyLength > 0) {
+                    if (_bodyArray != null && _bodyLength > 0) {
                         bodyMem = _bodyArray.AsMemory(_bodyOffset, _bodyLength);
                         bodyLength = _bodyLength;
                     }
                     break;
 
                 case BodyKind.OwnedWriter:
-                    if (_ownedBodyWriter is not null && _ownedBodyWriter.Length > 0) {
+                    if (_ownedBodyWriter != null && _ownedBodyWriter.Length > 0) {
                         bodyMem = _ownedBodyWriter.Buffer.AsMemory(0, _ownedBodyWriter.Length);
                         bodyLength = _ownedBodyWriter.Length;
                     }
@@ -1037,7 +1037,7 @@ namespace SimpleW {
         /// </example>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HttpResponse SetCookie(string name, string value, in CookieOptions options = default) {
-            if (_cookies is null) {
+            if (_cookies == null) {
                 _cookies = new CookieEntry[2];
             }
             else if (_cookieCount == _cookies.Length) {
@@ -1265,19 +1265,19 @@ namespace SimpleW {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void DisposeBody() {
             // dispose explicit owner
-            if (_bodyOwner is not null) {
+            if (_bodyOwner != null) {
                 _bodyOwner.Dispose();
                 _bodyOwner = null;
             }
 
             // dispose writer (returns its pooled array)
-            if (_ownedBodyWriter is not null) {
+            if (_ownedBodyWriter != null) {
                 _ownedBodyWriter.Dispose();
                 _ownedBodyWriter = null;
             }
 
             // return pooled buffer only if we own it
-            if (_bodyKind == BodyKind.OwnedBuffer && _bodyArray is not null) {
+            if (_bodyKind == BodyKind.OwnedBuffer && _bodyArray != null) {
                 _bufferPool.Return(_bodyArray);
             }
 
