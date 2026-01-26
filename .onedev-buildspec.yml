@@ -36,6 +36,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.Hosting
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Hosting/
+        dotnet build -c @param:build_configuration@ SimpleW.Helper.Hosting.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: test
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -123,6 +135,20 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: build SimpleW.Helper.Hosting
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Hosting
+        TS=$(date +"%Y%m%d-%H%M")
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj
+        dotnet pack -c Release SimpleW.Helper.Hosting.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/Release/
@@ -132,6 +158,12 @@ jobs:
   - type: PublishArtifactStep
     name: publish artifact SimpleW.JsonEngine.Newtonsoft
     sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Hosting
+    sourcePath: src/SimpleW.Helper.Hosting/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -155,6 +187,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.Hosting to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Hosting/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
