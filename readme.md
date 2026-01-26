@@ -58,7 +58,7 @@ namespace Sample {
 
 ## Documentation
 
-To check out docs, visit [stratdev3.github.io](https://stratdev3.github.io/SimpleW).
+To check out docs, visit [simplew.net](https://simplew.net).
 
 ## Changelog
 

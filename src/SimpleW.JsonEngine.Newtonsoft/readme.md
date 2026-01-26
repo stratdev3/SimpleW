@@ -1,4 +1,4 @@
-# SimpleW.Newtonsoft
+# SimpleW.JsonEngine.Newtonsoft
 
 [![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://stratdev3.github.io/SimpleW)
 
@@ -12,7 +12,7 @@
 
 ### Features
 
-This package add the Newtonsoft.Json support for the SimpleW package.
+This package add the Newtonsoft.Json as JsonEngine for the SimpleW package.
 
 ### Getting Started
 
@@ -22,7 +22,7 @@ The minimal API
 using System;
 using System.Net;
 using SimpleW;
-using SimpleW.Newtonsoft;
+using SimpleW.JsonEngine.Newtonsoft;
 
 namespace Sample {
     class Program {
@@ -33,7 +33,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // set Newtonsoft.json as a JsonEngine
-            server.JsonEngine = new NewtonsoftJsonEngine();
+            server.ConfigureJsonEngine(new NewtonsoftJsonEngine());
 
             // minimal api
             server.MapGet("/api/test", () => {
@@ -53,7 +53,7 @@ namespace Sample {
 
 ## Documentation
 
-To check out docs, visit [stratdev3.github.io](https://stratdev3.github.io/SimpleW).
+To check out docs, visit [simplew.net](https://simplew.net).
 
 ## Changelog
 

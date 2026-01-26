@@ -46,6 +46,8 @@ $ dotnet add package SimpleW.JsonEngine.Newtonsoft
 To replace the default engine with Newtonsoft.Json :
 
 ```csharp
+using SimpleW.JsonEngine.Newtonsoft;
+//...
 server.ConfigureJsonEngine(new NewtonsoftJsonEngine());
 ```
 
@@ -59,6 +61,8 @@ This applies globally to :
 You can also customize the `JsonSerializerSettings` used by Newtonsoft.Json.
 
 ```csharp
+using SimpleW.JsonEngine.Newtonsoft;
+//...
 server.ConfigureJsonEngine(new NewtonsoftJsonEngine(
     (action) => {
         Newtonsoft.Json.JsonSerializerSettings settings = new();
