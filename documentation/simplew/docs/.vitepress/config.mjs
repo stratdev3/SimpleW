@@ -30,6 +30,11 @@ export default defineConfig({
                 activeMatch: '/guide/'
             },
             {
+                text: 'Addons',
+                link: '/addons/addons',
+                activeMatch: '/addons/'
+            },
+            {
                 text: 'Reference',
                 link: '/reference/simplewserver',
                 activeMatch: '/reference/'
@@ -97,6 +102,27 @@ export default defineConfig({
                         { text: 'Static Files', link: '/guide/staticfiles' },
                         { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                         { text: 'Observability', link: '/guide/observability' },
+                    ]
+                },
+            ],
+
+            '/addons/': [
+                {
+                    text: 'Services',
+                    items: [
+                        
+                    ]
+                },
+                {
+                    text: 'JsonEngine',
+                    items: [
+                        { text: 'Newtonsoft', link: '/addons/newtonsoft' },
+                    ]
+                },
+                {
+                    text: 'Helpers',
+                    items: [
+                        { text: 'Hosting', link: '/addons/hosting' },
                     ]
                 },
             ],
