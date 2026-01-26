@@ -197,6 +197,7 @@ namespace SimpleW.Parsers {
         /// <param name="path"></param>
         /// <param name="protocol"></param>
         /// <param name="queryString"></param>
+        /// <param name="querySpan"></param>
         /// <returns></returns>
         private static bool TryParseRequestLine(ReadOnlySpan<byte> lineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString, out ReadOnlySpan<byte> querySpan) {
             method = rawTarget = protocol = string.Empty;
