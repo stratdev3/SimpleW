@@ -411,7 +411,7 @@ namespace SimpleW.Modules {
                     int cacheSeconds = (int)_options.CacheTimeout.Value.TotalSeconds;
 
                     // 1) cache hit
-                    if (_cache.TryGetValue(filePath, out var entry) && !entry.IsExpired) {
+                    if (_cache.TryGetValue(filePath, out CacheEntry entry) && !entry.IsExpired) {
                         await ServeFileAsync(session, request, entry).ConfigureAwait(false);
                         return;
                     }
@@ -598,7 +598,7 @@ namespace SimpleW.Modules {
                 }
 
                 try {
-                    foreach (var d in Directory.EnumerateDirectories(dirPath)) {
+                    foreach (string d in Directory.EnumerateDirectories(dirPath)) {
                         string name = Path.GetFileName(d);
                         sb.Append("<a href=\"");
                         sb.Append(HtmlEncode(EnsureTrailingSlash(JoinUrl(request.Path, name))));
@@ -607,7 +607,7 @@ namespace SimpleW.Modules {
                         sb.Append("/</a><br />");
                     }
 
-                    foreach (var f in Directory.EnumerateFiles(dirPath)) {
+                    foreach (string f in Directory.EnumerateFiles(dirPath)) {
                         string name = Path.GetFileName(f);
                         sb.Append("<a href=\"");
                         sb.Append(HtmlEncode(JoinUrl(request.Path, name)));
@@ -762,7 +762,7 @@ namespace SimpleW.Modules {
             /// <returns></returns>
             private bool TryGetKindCached(string path, out PathKind kind) {
                 kind = default;
-                if (_kindCache.TryGetValue(path, out var e) && !e.IsExpired) {
+                if (_kindCache.TryGetValue(path, out KindCacheEntry e) && !e.IsExpired) {
                     kind = e.Kind;
                     return true;
                 }
@@ -785,7 +785,7 @@ namespace SimpleW.Modules {
             /// <returns></returns>
             private static PathKind ProbeKind(string path) {
                 try {
-                    var attrs = File.GetAttributes(path);
+                    FileAttributes attrs = File.GetAttributes(path);
                     return (attrs & FileAttributes.Directory) != 0 ? PathKind.Directory : PathKind.File;
                 }
                 catch (UnauthorizedAccessException) {
@@ -857,7 +857,7 @@ namespace SimpleW.Modules {
                     return;
                 }
 
-                if (_cache.TryRemove(e.FullPath, out var removed)) {
+                if (_cache.TryRemove(e.FullPath, out CacheEntry removed)) {
                     lock (_cacheEvictionLock) {
                         _cacheBytes -= removed.Length;
                     }
@@ -879,7 +879,7 @@ namespace SimpleW.Modules {
             /// <param name="e"></param>
             private void OnFsRenamed(object sender, RenamedEventArgs e) {
                 if (!string.IsNullOrWhiteSpace(e.OldFullPath)) {
-                    if (_cache.TryRemove(e.OldFullPath, out var oldRemoved)) {
+                    if (_cache.TryRemove(e.OldFullPath, out CacheEntry oldRemoved)) {
                         lock (_cacheEvictionLock) {
                             _cacheBytes -= oldRemoved.Length;
                         }
@@ -894,7 +894,7 @@ namespace SimpleW.Modules {
                 }
 
                 if (!string.IsNullOrWhiteSpace(e.FullPath)) {
-                    if (_cache.TryRemove(e.FullPath, out var newRemoved)) {
+                    if (_cache.TryRemove(e.FullPath, out CacheEntry newRemoved)) {
                         lock (_cacheEvictionLock) {
                             _cacheBytes -= newRemoved.Length;
                         }
@@ -1035,9 +1035,9 @@ namespace SimpleW.Modules {
             /// EvictExpiredLocked
             /// </summary>
             private void EvictExpiredLocked() {
-                foreach (var kv in _cache) {
+                foreach (KeyValuePair<string, CacheEntry> kv in _cache) {
                     if (kv.Value.IsExpired) {
-                        if (_cache.TryRemove(kv.Key, out var removed)) {
+                        if (_cache.TryRemove(kv.Key, out CacheEntry removed)) {
                             _cacheBytes -= removed.Length;
                         }
                     }
@@ -1052,12 +1052,12 @@ namespace SimpleW.Modules {
             private bool EvictOneLocked(string? exceptKey) {
 
                 // expired entries first
-                foreach (var kv in _cache) {
+                foreach (KeyValuePair<string, CacheEntry> kv in _cache) {
                     if (kv.Key == exceptKey) {
                         continue;
                     }
                     if (kv.Value.IsExpired) {
-                        if (_cache.TryRemove(kv.Key, out var removed)) {
+                        if (_cache.TryRemove(kv.Key, out CacheEntry removed)) {
                             _cacheBytes -= removed.Length;
                             return true;
                         }
@@ -1065,11 +1065,11 @@ namespace SimpleW.Modules {
                 }
 
                 // else evict an arbitrary entry (best-effort)
-                foreach (var kv in _cache) {
+                foreach (KeyValuePair<string, CacheEntry> kv in _cache) {
                     if (kv.Key == exceptKey) {
                         continue;
                     }
-                    if (_cache.TryRemove(kv.Key, out var removed)) {
+                    if (_cache.TryRemove(kv.Key, out CacheEntry removed)) {
                         _cacheBytes -= removed.Length;
                         return true;
                     }
@@ -1128,18 +1128,21 @@ namespace SimpleW.Modules {
                 if (inm == "*")
                     return true;
 
-                foreach (var raw in inm.Split(',')) {
-                    var token = raw.Trim();
-                    if (token.Length == 0)
+                foreach (string raw in inm.Split(',')) {
+                    string token = raw.Trim();
+                    if (token.Length == 0) {
                         continue;
+                    }
 
                     // Exact match
-                    if (string.Equals(token, currentEtag, StringComparison.Ordinal))
+                    if (string.Equals(token, currentEtag, StringComparison.Ordinal)) {
                         return true;
+                    }
 
                     // Accept strong/weak equivalent: W/"x" <-> "x"
-                    if (NormalizeEtag(token) == NormalizeEtag(currentEtag))
+                    if (NormalizeEtag(token) == NormalizeEtag(currentEtag)) {
                         return true;
+                    }
                 }
 
                 return false;

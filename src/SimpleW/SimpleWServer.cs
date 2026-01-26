@@ -178,7 +178,7 @@ namespace SimpleW {
                 }
 
                 // close all active connections
-                foreach (var session in Sessions.Values) {
+                foreach (HttpSession session in Sessions.Values) {
                     try { session.Dispose(); } catch { }
                 }
                 Sessions.Clear();
@@ -188,7 +188,7 @@ namespace SimpleW {
                 _sessionTimeoutTimer = null;
 
                 // acceptors
-                foreach (var e in _acceptorEventArgs) {
+                foreach (SocketAsyncEventArgs e in _acceptorEventArgs) {
                     try { e.Completed -= OnAcceptSocketCompleted; } catch { }
                     try { e.Dispose(); }  catch { }
                 }
@@ -710,7 +710,7 @@ namespace SimpleW {
                 long now = Environment.TickCount64;
                 long timeoutMs = (long)Options.SessionTimeout.TotalMilliseconds;
 
-                foreach (var kvp in Sessions) {
+                foreach (KeyValuePair<Guid, HttpSession> kvp in Sessions) {
                     HttpSession? session = kvp.Value;
                     if (now - session.LastActivityTick > timeoutMs) {
                         Sessions.TryRemove(session.Id, out HttpSession? s);

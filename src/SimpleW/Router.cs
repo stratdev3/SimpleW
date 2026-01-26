@@ -384,8 +384,8 @@
 
                     ReadOnlySpan<char> seg = p.Slice(start, i - start);
 
-                    string s = seg.ToString(); // OK ici : compile-time, une seule fois au Map()
-                    var compiled = new Segment(s);
+                    string s = seg.ToString();
+                    Segment compiled = new(s);
                     _segments[segIndex++] = compiled;
 
                     if (!compiled.IsParam && !compiled.IsWildcard) {
@@ -545,27 +545,27 @@
                 );
 
                 // exact routes
-                foreach (var r in _get.Values) {
+                foreach (Route r in _get.Values) {
                     routes.Add(ToInfo(r, isPattern: false));
                 }
-                foreach (var r in _post.Values) {
+                foreach (Route r in _post.Values) {
                     routes.Add(ToInfo(r, isPattern: false));
                 }
-                foreach (var dict in _others.Values) {
-                    foreach (var r in dict.Values) {
+                foreach (Dictionary<string, Route> dict in _others.Values) {
+                    foreach (Route r in dict.Values) {
                         routes.Add(ToInfo(r, isPattern: false));
                     }
                 }
 
                 // pattern routes
-                foreach (var m in _getMatchers) {
+                foreach (RouteMatcher m in _getMatchers) {
                     routes.Add(ToInfo(m.Route, isPattern: true));
                 }
-                foreach (var m in _postMatchers) {
+                foreach (RouteMatcher m in _postMatchers) {
                     routes.Add(ToInfo(m.Route, isPattern: true));
                 }
-                foreach (var list in _otherMatchers.Values) {
-                    foreach (var m in list) {
+                foreach (List<RouteMatcher> list in _otherMatchers.Values) {
+                    foreach (RouteMatcher m in list) {
                         routes.Add(ToInfo(m.Route, isPattern: true));
                     }
                 }

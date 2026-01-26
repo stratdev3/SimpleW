@@ -595,7 +595,7 @@ namespace SimpleW.Modules {
             /// <param name="except"></param>
             /// <returns></returns>
             public async ValueTask BroadcastAsync(ServerSentEventsMessage message, ServerSentEventsConnection? except = null) {
-                foreach (var kv in _conns) {
+                foreach (KeyValuePair<Guid, ServerSentEventsConnection> kv in _conns) {
                     ServerSentEventsConnection c = kv.Value;
                     if (c.IsClosed) {
                         _conns.TryRemove(kv.Key, out _);

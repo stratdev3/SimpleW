@@ -184,7 +184,7 @@ namespace SimpleW {
             private static Expression BuildAssignments(Expression srcObj, Expression tgtObj, Type currentType, List<string>? include, List<string>? exclude, string? parentPath) {
                 List<Expression> exprs = new();
 
-                foreach (var prop in currentType.GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
+                foreach (PropertyInfo prop in currentType.GetProperties(BindingFlags.Public | BindingFlags.Instance)) {
                     if (!prop.CanRead || !prop.CanWrite || prop.GetIndexParameters().Length > 0) {
                         continue;
                     }
@@ -303,7 +303,7 @@ namespace SimpleW {
                                                 .Select(s => s.Substring(parentPath.Length + 1))
                                                 .ToList();
 
-                var hasParent = include.Contains(parentPath, StringComparer.OrdinalIgnoreCase);
+                bool hasParent = include.Contains(parentPath, StringComparer.OrdinalIgnoreCase);
                 if (hasParent) {
                     HashSet<string> childNames = GetProps(childType).Select(p => p.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     List<string> unqualified = include.Where(s => !s.Contains('.')).Where(childNames.Contains).ToList();

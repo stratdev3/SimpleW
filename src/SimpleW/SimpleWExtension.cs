@@ -244,7 +244,7 @@ namespace SimpleW {
         /// Write ReadOnlySequence to a Stream
         /// </summary>
         public static void CopyTo(this ReadOnlySequence<byte> seq, Stream destination) {
-            foreach (var mem in seq) {
+            foreach (ReadOnlyMemory<byte> mem in seq) {
                 destination.Write(mem.Span);
             }
         }
@@ -253,7 +253,7 @@ namespace SimpleW {
         /// Write Async ReadOnlySequence to a Stream
         /// </summary>
         public static async Task CopyToAsync(this ReadOnlySequence<byte> seq, Stream destination, CancellationToken ct = default) {
-            foreach (var mem in seq) {
+            foreach (ReadOnlyMemory<byte> mem in seq) {
                 await destination.WriteAsync(mem, ct).ConfigureAwait(false);
             }
         }
@@ -300,7 +300,7 @@ namespace SimpleW {
             }
 
             int offset = 0;
-            foreach (var mem in seq) {
+            foreach (ReadOnlyMemory<byte> mem in seq) {
                 int idx = mem.Span.IndexOf(value);
                 if (idx >= 0) {
                     return offset + idx;
@@ -316,8 +316,8 @@ namespace SimpleW {
         /// <param name="seq"></param>
         /// <returns></returns>
         private static bool ContainsPctOrPlus(in ReadOnlySequence<byte> seq) {
-            foreach (var mem in seq) {
-                var span = mem.Span;
+            foreach (ReadOnlyMemory<byte> mem in seq) {
+                ReadOnlySpan<byte> span = mem.Span;
                 // IndexOfAny is fast on Span<byte>
                 if (span.IndexOfAny((byte)'%', (byte)'+') >= 0) {
                     return true;

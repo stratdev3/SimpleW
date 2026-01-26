@@ -189,8 +189,6 @@ namespace SimpleW.Parsers {
         /// <param name="maxFileBytes"></param>
         /// <returns></returns>
         private static bool ParseBodyMultipartStream(ReadOnlySequence<byte> body, string boundary, Action<string, string>? onField, Action<MultipartFileInfo, ReadOnlySequence<byte>>? onFile, int maxParts, long maxFileBytes) {
-            // On bosse sur un span pour scanner vite.
-            // Si multi segment, on copie dans un buffer stable (rare, mais safe).
             ReadOnlySpan<byte> span;
             byte[]? rented = null;
             int length = checked((int)body.Length);
@@ -206,58 +204,65 @@ namespace SimpleW.Parsers {
             }
 
             try {
-                var boundaryLine = Encoding.ASCII.GetBytes("--" + boundary);
-                var boundaryEnd = Encoding.ASCII.GetBytes("--" + boundary + "--");
+                byte[]? boundaryLine = Encoding.ASCII.GetBytes("--" + boundary);
+                byte[]? boundaryEnd = Encoding.ASCII.GetBytes("--" + boundary + "--");
 
                 int pos = IndexOf(span, boundaryLine, 0);
-                if (pos < 0)
+                if (pos < 0) {
                     return false;
+                }
 
                 while (true) {
-                    if (maxParts-- <= 0)
+                    if (maxParts-- <= 0) {
                         return false;
+                    }
 
-                    if (StartsWithAt(span, boundaryEnd, pos))
+                    if (StartsWithAt(span, boundaryEnd, pos)) {
                         break;
+                    }
 
                     pos += boundaryLine.Length;
-                    if (!ConsumeCrlf(span, ref pos))
+                    if (!ConsumeCrlf(span, ref pos)) {
                         return false;
+                    }
 
-                    if (!TryReadHeaders(span, ref pos, out var headers))
+                    if (!TryReadHeaders(span, ref pos, out var headers)) {
                         return false;
+                    }
 
                     int nextBoundary = FindNextBoundary(span, boundaryLine, pos);
-                    if (nextBoundary < 0)
+                    if (nextBoundary < 0) {
                         return false;
+                    }
 
                     int contentEnd = nextBoundary;
-                    if (contentEnd >= 2 && span[contentEnd - 2] == (byte)'\r' && span[contentEnd - 1] == (byte)'\n')
+                    if (contentEnd >= 2 && span[contentEnd - 2] == (byte)'\r' && span[contentEnd - 1] == (byte)'\n') {
                         contentEnd -= 2;
+                    }
 
                     int contentLen = contentEnd - pos;
-                    if (contentLen < 0)
+                    if (contentLen < 0) {
                         return false;
+                    }
 
-                    if (!headers.TryGetValue("content-disposition", out var cd))
+                    if (!headers.TryGetValue("content-disposition", out var cd)) {
                         return false;
+                    }
 
-                    if (!TryParseContentDisposition(cd, out var name, out var filename))
+                    if (!TryParseContentDisposition(cd, out var name, out var filename)) {
                         return false;
+                    }
 
                     headers.TryGetValue("content-type", out var partCt);
 
-                    // Slice “streamable”
-                    var contentSeq = body.Slice(pos, contentLen);
+                    ReadOnlySequence<byte> contentSeq = body.Slice(pos, contentLen);
 
                     if (filename == null) {
-                        // Field: on decode en UTF-8 (ça alloue une string, normal)
                         string value;
                         if (contentSeq.IsSingleSegment) {
                             value = Encoding.UTF8.GetString(contentSeq.FirstSpan);
                         }
                         else {
-                            // rare ici, mais au cas où
                             byte[] tmp = ArrayPool<byte>.Shared.Rent(contentLen);
                             try {
                                 contentSeq.CopyTo(tmp);
@@ -270,29 +275,34 @@ namespace SimpleW.Parsers {
                         onField?.Invoke(name, value);
                     }
                     else {
-                        if (contentLen > maxFileBytes)
+                        if (contentLen > maxFileBytes) {
                             return false;
+                        }
 
                         onFile?.Invoke(
                             new MultipartFileInfo(
                                 FieldName: name,
                                 FileName: filename,
                                 ContentType: partCt,
-                                Length: contentLen),
-                            contentSeq);
+                                Length: contentLen
+                            ),
+                            contentSeq
+                        );
                     }
 
                     pos = nextBoundary;
 
-                    if (StartsWithAt(span, boundaryEnd, pos))
+                    if (StartsWithAt(span, boundaryEnd, pos)) {
                         break;
+                    }
                 }
 
                 return true;
             }
             finally {
-                if (rented != null)
+                if (rented != null) {
                     ArrayPool<byte>.Shared.Return(rented);
+                }
             }
         }
 
@@ -313,7 +323,7 @@ namespace SimpleW.Parsers {
                 return false;
             }
 
-            foreach (var p in parts) {
+            foreach (string p in parts) {
                 if (p.StartsWith("boundary=", StringComparison.OrdinalIgnoreCase)) {
                     boundary = p.Substring("boundary=".Length).Trim();
                     if (boundary.Length >= 2 && boundary[0] == '"' && boundary[^1] == '"') {
@@ -361,7 +371,7 @@ namespace SimpleW.Parsers {
             filename = null;
 
             // form-data; name="x"; filename="y"
-            var parts = value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            string[] parts = value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (parts.Length == 0) {
                 return false;
             }
@@ -369,7 +379,7 @@ namespace SimpleW.Parsers {
                 return false;
             }
 
-            foreach (var p in parts) {
+            foreach (string p in parts) {
                 if (p.StartsWith("name=", StringComparison.OrdinalIgnoreCase)) {
                     name = Unquote(p.Substring("name=".Length).Trim());
                 }

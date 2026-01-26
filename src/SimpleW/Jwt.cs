@@ -26,7 +26,7 @@ namespace SimpleW.Security {
             // standard to dict
             Dictionary<string, object?> payload = standard.ToDict();
             // custom to dict
-            foreach (var kv in customClaims) {
+            foreach (KeyValuePair<string, object?> kv in customClaims) {
                 if (payload.ContainsKey(kv.Key)) {
                     throw new ArgumentException($"Custom claim '{kv.Key}' conflicts with a registered claim.", nameof(customClaims));
                 }

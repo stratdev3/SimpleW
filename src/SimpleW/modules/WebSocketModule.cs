@@ -313,7 +313,7 @@ namespace SimpleW.Modules {
             if (string.IsNullOrWhiteSpace(header)) {
                 return false;
             }
-            foreach (var item in header.Split(',')) {
+            foreach (string item in header.Split(',')) {
                 if (string.Equals(item.Trim(), required, StringComparison.Ordinal)) {
                     return true;
                 }
@@ -499,7 +499,7 @@ namespace SimpleW.Modules {
             int reassemblyLen = 0;
             byte reassemblyOpcode = 0;
 
-            using var pingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using CancellationTokenSource pingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             Task? pingTask = null;
             if (_pingInterval.HasValue) {
                 pingTask = RunPingLoopAsync(_pingInterval.Value, pingCts.Token);
@@ -578,7 +578,7 @@ namespace SimpleW.Modules {
                             yield return new WebSocketMessage(WebSocketMessageKind.Text, text, default);
                         }
                         else {
-                            var data = frame.Payload;
+                            ReadOnlyMemory<byte> data = frame.Payload;
                             frame.Dispose();
                             yield return new WebSocketMessage(WebSocketMessageKind.Binary, null, data);
                         }
@@ -985,7 +985,7 @@ namespace SimpleW.Modules {
                 // try json
                 try {
                     using JsonDocument doc = JsonDocument.Parse(raw);
-                    var root = doc.RootElement;
+                    JsonElement root = doc.RootElement;
 
                     string op = "";
                     if (root.ValueKind == JsonValueKind.Object &&

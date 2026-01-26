@@ -860,7 +860,7 @@ namespace SimpleW {
                     await _session.SendAsync(headerSeg).ConfigureAwait(false);
                     // stream body file
                     const int FileChunkSize = 64 * 1024;
-                    using var fs = new FileStream(
+                    using FileStream fs = new(
                         _filePath!,
                         FileMode.Open,
                         FileAccess.Read,
@@ -1750,7 +1750,7 @@ namespace SimpleW {
             }
 
             for (int i = 0; i < _cookieCount; i++) {
-                ref readonly var c = ref cookies[i];
+                ref readonly CookieEntry c = ref cookies[i];
                 if (string.IsNullOrEmpty(c.Name)) {
                     continue;
                 }
@@ -1763,7 +1763,7 @@ namespace SimpleW {
                 WriteAscii(headerWriter, c.Value ?? string.Empty);
 
                 // attributes
-                ref readonly var o = ref Unsafe.AsRef(in c.Options);
+                ref readonly CookieOptions o = ref Unsafe.AsRef(in c.Options);
 
                 if (!string.IsNullOrEmpty(o.Path)) {
                     WriteBytes(headerWriter, SEMI_SP);
