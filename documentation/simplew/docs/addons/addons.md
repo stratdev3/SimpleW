@@ -3,9 +3,6 @@
 **Addons** are optional components that extend SimpleW without modifying its core.
 They allow developers to add new features, integrate services, or customize behaviors in a clear and explicit way.
 
-Addons are designed to stay **simple, lightweight, and explicit,** avoiding complex plugin systems or hidden magic.
-Each addon focuses on a specific responsibility and integrates naturally into the SimpleW pipeline.
-
 
 ## Services
 

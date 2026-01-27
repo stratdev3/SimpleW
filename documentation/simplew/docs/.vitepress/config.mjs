@@ -41,10 +41,11 @@ export default defineConfig({
             },
             //{ text: '📖✨ Features', link: '/features' },
             {
-                text: 'v26.0-alpha',
+                text: 'v26.0-beta',
                 items: [
                     { text: 'v16.1.0', link: 'https://simplew.net/' },
                     { text: 'Changelog', link: 'https://github.com/stratdev3/SimpleW/blob/master/release.md' },
+                    { text: 'FAQ', link: '/guide/faq' },
                 ]
             },
         ],
@@ -110,7 +111,7 @@ export default defineConfig({
                 {
                     text: 'Services',
                     items: [
-                        
+                        { text: 'Firewall', link: '/addons/firewall' },
                     ]
                 },
                 {

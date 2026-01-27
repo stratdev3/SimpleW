@@ -1,4 +1,4 @@
-# SimpleW.Newtonsoft
+# SimpleW.Helper.Hosting
 
 [![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://stratdev3.github.io/SimpleW)
 
