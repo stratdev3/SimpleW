@@ -78,6 +78,26 @@ namespace example.rewrite {
                 return new { message = $"Hello World !" };
             });
 
+            //server.UseFirewallModule(options => {
+            //    options.AllowRules.Add(IpRule.Cidr("192.168.0.0/16"));
+            //    options.AllowRules.Add(IpRule.Cidr("10.0.0.0/8"));
+
+            //    options.ClientIpResolver = (HttpSession session) => {
+
+            //        // look for any X-Real-IP header (note: you should check this value come from a trust proxy)
+            //        if (session.Request.Headers.TryGetValue("X-Real-IP", out string? XRealIp)) {
+            //            return IPEndPoint.Parse(XRealIp).Address;
+            //        }
+
+            //        // client ip
+            //        if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+            //            return null;
+            //        }
+            //        return ep.Address;
+            //    };
+
+            //});
+
             server.UseStaticFilesModule(options => {
                 options.Path = @"C:\www\spa\sse\";
                 options.Prefix = "/";
