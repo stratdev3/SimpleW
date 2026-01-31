@@ -1,6 +1,6 @@
 # Getting Started
 
-Stop talking and show me the code !
+Stop talking, show me the code !
 
 <div class="images-inline">
     <a href="https://github.com/quozd/awesome-dotnet?tab=readme-ov-file#web-servers" target="_blank"><img src="/public/awesome.svg" alt="dotnet awesome" /></a>

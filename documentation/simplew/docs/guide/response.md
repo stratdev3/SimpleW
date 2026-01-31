@@ -12,18 +12,6 @@ They are ordered from *highest-level / most automatic to lowest-level / most exp
 
 Returning a value from a handler is the simplest and fastest way to produce a response.
 
-When a handler returns a non-null value :
-- The value is passed to the global `HttpHandlerResult`
-- By default, it is serialized as JSON
-- The response is sent automatically
-
-You do not need to :
-- Create a response object
-- Set headers
-- Call `SendAsync()`
-
-SimpleW takes care of everything.
-
 ### Example: Object Return
 
 ```csharp
@@ -50,6 +38,18 @@ Response:
   "d": { "Foo": "Bar" }
 }
 ```
+
+When a handler returns a non-null value :
+- The value is passed to the global `HttpHandlerResult`
+- By default, it is serialized as JSON
+- The response is sent automatically
+
+You do not need to :
+- Create a response object
+- Set headers
+- Call `SendAsync()`
+
+SimpleW takes care of everything.
 
 ### Supported Return Types
 

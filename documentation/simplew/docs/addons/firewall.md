@@ -257,3 +257,66 @@ It does **not** :
 - implement authentication or authorization
 
 If you need those features, use a reverse proxy or a dedicated security layer.
+
+
+
+## Telemetry & Counters
+
+The firewall module can optionally emit **telemetry and metrics** to help you observe its behavior in production.
+
+When enabled, the module exposes :
+- structured **Activity / tracing spans**
+- **counters and histograms** for allowed, denied, and rate-limited requests
+- minimal overhead when disabled
+
+Telemetry is fully optional and disabled by default.
+
+### Enabling telemetry
+
+```csharp
+server.UseFirewallModule(options => {
+    options.EnableTelemetry = true;
+});
+```
+
+### What is tracked
+
+When `EnableTelemetry` is set to `true`, the firewall reports :
+
+**Tracing (Activity)**
+
+Each firewall decision may create an Activity containing tags such as :
+- `firewall.action` → allow | deny | rate_limit
+- `client.ip` → resolved client IP
+- `path.prefix` → matched path rule (if any)
+- `rate_limit.limit` → configured limit
+- `rate_limit.window_ms` → window size
+
+This allows correlation with the rest of the SimpleW request pipeline.
+
+**Metrics**
+
+Typical counters and instruments include :
+- `firewall.requests.allowed`
+- `firewall.requests.denied`
+- `firewall.requests.rate_limited`
+- `firewall.state.tracked_ips`
+- `firewall.cleanup.runs`
+
+These metrics can be exported through the same observability pipeline used by SimpleW.
+
+### Performance impact
+
+- When disabled, telemetry adds **near-zero overhead**
+- When enabled, all instruments are designed to be allocation-light
+- No background threads are introduced
+
+### When to enable
+
+Recommended for :
+- production environments
+- tuning rate limits
+- diagnosing unexpected blocks
+- validating new firewall rules
+
+For extremely latency-sensitive deployments, telemetry can remain disabled.

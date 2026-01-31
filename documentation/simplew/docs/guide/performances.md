@@ -81,6 +81,7 @@ Even a fast server can be made slow by misuse.
 - Middleware runs on every request
 - Each middleware adds overhead
 - Complex middleware stacks multiply cost
+- Observability : 10 to 15% cost, but observability is mandatory in production
 
 Use middleware only for true cross-cutting concerns.
 

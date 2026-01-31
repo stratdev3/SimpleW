@@ -114,6 +114,24 @@ public bool IsStarted { get; private set; }
 public bool IsStopping { get; private set; } = false;
 ```
 
+### Events
+
+There are also some events you can subscribe to track server state :
+
+```csharp
+/// <summary>
+/// Raised when the server has started listening and is ready to accept connections
+/// </summary>
+public event EventHandler? OnStarted;
+```
+
+```csharp
+/// <summary>
+/// Raised when the server has fully stopped and all resources have been released
+/// </summary>
+public event EventHandler? OnStopped;
+```
+
 
 ## Router
 

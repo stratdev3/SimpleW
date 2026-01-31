@@ -56,7 +56,7 @@ namespace Sample {
         static async Task Main() {
 
             // subscribe to all SimpleW events
-            openTelemetryObserver("SimpleW");
+            openTelemetryObserver("SimpleW*");
 
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
@@ -153,7 +153,7 @@ namespace Sample {
         static async Task Main() {
 
             // subscribe to all SimpleW events
-            openTelemetryObserver("SimpleW");
+            openTelemetryObserver("SimpleW*");
 
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
@@ -226,6 +226,50 @@ When telemetry is enabled, SimpleW emits standard HTTP server metrics using Open
 - Response duration
 
 These metrics can be scraped or collected by any OpenTelemetry-compatible metrics backend (Prometheus, Uptrace, etc.).
+
+
+## Telemetry Per Instance
+
+When running multiple instances of SimpleW (for example behind a load balancer, in containers, or as multiple processes on the same host), telemetry in SimpleW is per instance by design.
+
+Each SimpleW instance maintains its own :
+- ActivitySource
+- Meter
+- Runtime context
+
+This means that **without explicit configuration**, multiple instances may appear indistinguishable in your observability backend.
+
+### Important : Configure InstanceId
+
+When multiple instances are running, it is **strongly recommended** to set `TelemetryOptions.InstanceId`.
+The `InstanceId` is automatically attached to all emitted traces and metrics, allowing you to :
+- Distinguish instances in traces and metrics
+- Debug instance-specific issues
+- Correlate performance or errors to a specific node
+
+**Example**
+
+```csharp
+server.ConfigureTelemetry(options => {
+    options.InstanceId = Environment.MachineName;
+});
+```
+
+You may also use :
+- A container ID
+- A pod name
+- A unique GUID per process
+
+```csharp
+server.ConfigureTelemetry(options => {
+    options.InstanceId = Guid.NewGuid().ToString();
+});
+```
+
+::: tip NOTE
+If `InstanceId` is not set, telemetry remains functional but instance-level correlation becomes difficult or impossible when multiple SimpleW instances are running.
+:::
+
 
 
 ## Telemetry Customization

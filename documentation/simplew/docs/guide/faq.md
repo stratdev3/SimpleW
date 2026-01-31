@@ -10,26 +10,21 @@ All core components are production-ready.
 
 Because I strongly believe in open source, and I use open-source software every day. It's simply a matter of principle.
 
-> Why do I dislike ASP.NET Core ?
+> Why do you hate ASP.NET Core ?
 
-I don't hate it, but I don't like it (see the paragraph about [Why this library exists](./what-is-simplew.md#why-this-library-)).
+I don't hate it, but I don't like it (see the paragraph about [Why this library exists](./what-is-simplew.md#why-this-library)).
 
 > What is the primary goal of SimpleW ?
 
-It's in the name : **simplicity first**.
+It's in the name : **simplicity first** ! <br />
+I embrace the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle, whether on the API side or on the developer side.
+In other words, not only should users have a simple way to use SimpleW, but its source code should also be easy to read.
+
 
 > "Blazingly Fast" slogan ?
 
 I admit that nowadays almost every open-source project overuses the word blazing in its description.
 But when it is actually true (see [performance comparisons](./performances.md) or [TechEmpower](https://www.techempower.com/benchmarks) results), then it deserves to be used.
-
-> How can I add custom headers to all responses ?
-
-Depending on how you use handlers, you can insert your "always-on" headers either :
-- In a custom `ResultHandler`
-- Or by declaring a new middleware
-
-The first approach is more efficient and performant, but the second one covers all cases.
 
 > Support .NET Framework
 
@@ -44,3 +39,7 @@ I want to keep the core simple and lightweight so that :
 
 Addons are the place for everything that does not belong in the core.
 Also, a product is much easier to adopt when there is a healthy ecosystem around it.
+
+> How to use SimpleW ?
+
+I spent a **crazy** amount of time writing documentation. Please, [RTFM](https://en.wikipedia.org/wiki/RTFM)
