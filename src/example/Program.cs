@@ -16,6 +16,8 @@ using OpenTelemetry.Trace;
 using SimpleW;
 using SimpleW.Modules;
 using SimpleW.JsonEngine.Newtonsoft;
+using SimpleW.Service.Razor;
+using SimpleW.Service.Firewall;
 using SimpleW.Security;
 
 
@@ -78,9 +80,21 @@ namespace example.rewrite {
                 return new { message = $"Hello World !" };
             });
 
+            //server.UseRazorModule(o => {
+            //    o.ViewsPath = @"C:\www\toto\views";
+            //});
+            //server.MapGet("/", () => {
+            //    return RazorResults.View("Home", new { Title = "SimpleW", Name = "chef" })
+            //                       .WithViewBag(vb => {
+            //                           vb.Title = "Ma room";
+            //                           vb.Footer = "SimpleW";
+            //                       });
+            //});
+
             //server.UseFirewallModule(options => {
-            //    options.AllowRules.Add(IpRule.Cidr("192.168.0.0/16"));
+            //    options.AllowRules.Add(IpRule.Cidr("192.168.1.0/24"));
             //    options.AllowRules.Add(IpRule.Cidr("10.0.0.0/8"));
+            //    options.AllowRules.Add(IpRule.Single("127.0.0.1"));
 
             //    options.ClientIpResolver = (HttpSession session) => {
 
@@ -98,12 +112,12 @@ namespace example.rewrite {
 
             //});
 
-            server.UseStaticFilesModule(options => {
-                options.Path = @"C:\www\spa\sse\";
-                options.Prefix = "/";
-                options.AutoIndex = true;
-                options.CacheTimeout = TimeSpan.FromDays(1);
-            });
+            //server.UseStaticFilesModule(options => {
+            //    options.Path = @"C:\www\spa\sse\";
+            //    options.Prefix = "/";
+            //    options.AutoIndex = true;
+            //    options.CacheTimeout = TimeSpan.FromDays(1);
+            //});
 
             server.UseWebSocketModule(ws => {
                 ws.Prefix = "/ws";
@@ -229,12 +243,10 @@ namespace example.rewrite {
             });
             server.ConfigureTelemetry(options => {
                 options.IncludeStackTrace = true;
-                options.EnrichWithHttpSession = (activity, session) => {
-                    
-                };
             });
+            server.EnableTelemetry();
 
-            openTelemetryObserver("SimpleW");
+            openTelemetryObserver("SimpleW*");
 
             // start non blocking background server
             CancellationTokenSource cts = new();
@@ -309,6 +321,20 @@ namespace example.rewrite {
         public string name { get; set; }
         public string text { get; set; }
     }
+
+    public sealed class HomeRazorController : RazorController {
+
+        [Route("GET", "/index")]
+        public object Index() {
+            return View("Home", new { Title = "SimpleW", Name = "chef" })
+                   .WithViewBag(vb => {
+                        //vb.Title = "Ma room";
+                        vb.Footer = "SimpleW";
+                    });
+        }
+
+    }
+
 
     class LogProcessor : BaseProcessor<Activity> {
         // write log to console

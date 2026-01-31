@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SimpleW.Service.Firewall\SimpleW.Service.Firewall.csproj" />
     <ProjectReference Include="..\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
+    <ProjectReference Include="..\SimpleW.Service.Razor\SimpleW.Service.Razor.csproj" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
   </ItemGroup>
 
