@@ -1,6 +1,6 @@
 # SimpleW.JsonEngine.Newtonsoft
 
-[![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://stratdev3.github.io/SimpleW)
+[![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://simplew.net)
 
 [![NuGet Package](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/SimpleW)
