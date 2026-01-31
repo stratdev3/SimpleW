@@ -222,12 +222,6 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Handle error notification
-        /// </summary>
-        /// <param name="error">Socket error code</param>
-        protected virtual void OnError(SocketError error) { }
-
-        /// <summary>
         /// Raised when the server has started listening and is ready to accept connections
         /// </summary>
         public event EventHandler? OnStarted;
@@ -586,7 +580,7 @@ namespace SimpleW {
                     || e.SocketError == SocketError.OperationAborted
                     || e.SocketError == SocketError.Shutdown)
             ) {
-                OnError(e.SocketError);
+                //OnError(e.SocketError);
             }
 
             // accept new client (except if socket is closed)
@@ -601,7 +595,6 @@ namespace SimpleW {
         /// </summary>
         private void OnAcceptSocketCompleted(object? sender, SocketAsyncEventArgs e) {
             if (_listenSocket == null || _listenSocket.SafeHandle.IsInvalid || IsStopping) {
-                Console.WriteLine("OnAcceptSocketCompleted ERROR");
                 return;
             }
             ProcessAcceptSocket(e);
