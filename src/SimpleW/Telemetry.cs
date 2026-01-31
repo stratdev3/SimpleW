@@ -10,39 +10,61 @@ namespace SimpleW.Observability {
     /// <summary>
     /// Telemetry
     /// </summary>
-    internal static class Telemetry {
+    public class Telemetry : IDisposable {
 
         /// <summary>
         /// Global Switch for Telemetry
         /// </summary>
-        public static bool Enabled { get; private set; }
+        internal bool Enabled { get; private set; }
 
         /// <summary>
         /// Enable Telemetry
         /// </summary>
-        public static void Enable() => Enabled = true;
+        internal void Enable() => Enabled = true;
 
         /// <summary>
         /// Disable Telemetry
         /// </summary>
-        public static void Disable() => Enabled = false;
+        internal void Disable() => Enabled = false;
 
         /// <summary>
         /// Options
         /// </summary>
-        internal static TelemetryOptions Options { get; set; } = new();
+        public readonly TelemetryOptions Options;
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="options"></param>
+        public Telemetry(TelemetryOptions options) {
+            Options = options;
+
+            // trace provider
+            ActivitySourceName = Options.InstanceName;
+            ActivitySource = new(ActivitySourceName, Assembly.GetExecutingAssembly().GetName().Version?.ToString());
+
+            // meter provider
+            MeterName = Options.InstanceName;
+            Meter = new(MeterName);
+
+            // meters
+            RequestsTotal = Meter.CreateCounter<long>("http.server.request.count", unit: "request");
+            RequestDurationMs = Meter.CreateHistogram<double>("http.server.request.duration", unit: "ms");
+            ResponsesTotal = Meter.CreateCounter<long>("http.server.response.count", unit: "response");
+            ResponseDurationMs = Meter.CreateHistogram<double>("http.server.response.duration", unit: "ms");
+        }
 
         #region traces
 
         /// <summary>
         /// Activity Source Name
         /// </summary>
-        public const string ActivitySourceName = "SimpleW";
+        private readonly string ActivitySourceName;
 
         /// <summary>
         /// Activity Source
         /// </summary>
-        private static readonly ActivitySource ActivitySource = new(ActivitySourceName, Assembly.GetExecutingAssembly().GetName().Version?.ToString());
+        private readonly ActivitySource ActivitySource;
 
         /// <summary>
         /// Start an Activity with DisplayName else Request Method/Path
@@ -52,11 +74,12 @@ namespace SimpleW.Observability {
         /// <param name="useRequest"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Activity? StartActivity(HttpSession session, string? displayName = null, bool useRequest = true) {
+        public Activity? StartActivity(HttpSession session, string? displayName = null, bool useRequest = true) {
             Activity? activity = ActivitySource.StartActivity(displayName ?? $"{session.Request.Method} {session.Request.Path}", ActivityKind.Server);
 
             if (activity != null) {
 
+                activity.SetTag("simplew.instance", Options.InstanceId);
                 activity.SetTag("session_id", session.Id.ToString());
 
                 activity.SetTag("network.transport", "TCP");
@@ -93,11 +116,8 @@ namespace SimpleW.Observability {
         /// </summary>
         /// <param name="activity"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void StopActivity(Activity? activity) {
-            if (activity == null) {
-                return;
-            }
-            activity.Dispose();
+        public void StopActivity(Activity? activity) {
+            activity?.Dispose();
         }
 
         /// <summary>
@@ -106,7 +126,7 @@ namespace SimpleW.Observability {
         /// <param name="activity"></param>
         /// <param name="ex"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UpdateActivityAddException(Activity? activity, Exception ex) {
+        public void UpdateActivityAddException(Activity? activity, Exception ex) {
             if (activity == null || !Options.RecordException) {
                 return;
             }
@@ -127,7 +147,7 @@ namespace SimpleW.Observability {
         /// <param name="activity"></param>
         /// <param name="session"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UpdateActivityAddNoResponse(Activity? activity, HttpSession session) {
+        public void UpdateActivityAddNoResponse(Activity? activity, HttpSession session) {
             if (activity == null) {
                 return;
             }
@@ -148,7 +168,7 @@ namespace SimpleW.Observability {
         /// <param name="activity"></param>
         /// <param name="session"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void UpdateActivityAddResponse(Activity? activity, HttpSession session) {
+        public void UpdateActivityAddResponse(Activity? activity, HttpSession session) {
             if (activity == null) {
                 return;
             }
@@ -170,7 +190,6 @@ namespace SimpleW.Observability {
             Options.EnrichWithHttpSession?.Invoke(activity, session);
         }
 
-
         #endregion traces
 
         #region meter
@@ -178,34 +197,32 @@ namespace SimpleW.Observability {
         /// <summary>
         /// Meter Name
         /// </summary>
-        public const string MeterName = "SimpleW";
+        private readonly string MeterName;
 
         /// <summary>
         /// Meter
         /// </summary>
-        public static readonly Meter Meter = new(MeterName);
+        public readonly Meter Meter;
 
         /// <summary>
         /// RequestsTotal
         /// </summary>
-        //public static readonly Counter<long> RequestsTotal = Meter.CreateCounter<long>("simplew_http_requests_total", unit: "request");
-        public static readonly Counter<long> RequestsTotal = Meter.CreateCounter<long>("http.server.request.count", unit: "request");
+        private readonly Counter<long> RequestsTotal;
 
         /// <summary>
         /// RequestDurationMs
         /// </summary>
-        public static readonly Histogram<double> RequestDurationMs = Meter.CreateHistogram<double>("http.server.request.duration", unit: "ms");
+        private readonly Histogram<double> RequestDurationMs;
 
         /// <summary>
         /// ResponseTotal
         /// </summary>
-        public static readonly Counter<long> ResponsesTotal = Meter.CreateCounter<long>("http.server.response.count", unit: "response");
+        private readonly Counter<long> ResponsesTotal;
 
         /// <summary>
         /// ResponseDurationMs
         /// </summary>
-        public static readonly Histogram<double> ResponseDurationMs = Meter.CreateHistogram<double>("http.server.response.duration", unit: "ms");
-
+        private readonly Histogram<double> ResponseDurationMs;
 
         /// <summary>
         /// AddRequestMetrics
@@ -213,15 +230,17 @@ namespace SimpleW.Observability {
         /// <param name="session"></param>
         /// <param name="elapsedMs"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void AddRequestMetrics(HttpSession session, double elapsedMs) {
+        public void AddRequestMetrics(HttpSession session, double elapsedMs) {
             RequestsTotal.Add(
                 1,
+                new("simplew.instance", Options.InstanceId),
                 new("http.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched")
             );
 
             RequestDurationMs.Record(
                 elapsedMs,
+                new("simplew.instance", Options.InstanceId),
                 new("http.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched")
             );
@@ -233,9 +252,10 @@ namespace SimpleW.Observability {
         /// <param name="session"></param>
         /// <param name="elapsedMs"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void AddResponseMetrics(HttpSession session, double elapsedMs) {
+        public void AddResponseMetrics(HttpSession session, double elapsedMs) {
             ResponsesTotal.Add(
                 1,
+                new("simplew.instance", Options.InstanceId),
                 new("http.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched"),
                 new("http.response.status_code", session.Response.StatusCode)
@@ -243,6 +263,7 @@ namespace SimpleW.Observability {
 
             ResponseDurationMs.Record(
                 elapsedMs,
+                new("simplew.instance", Options.InstanceId),
                 new("http.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched"),
                 new("http.response.status_code", session.Response.StatusCode)
@@ -250,6 +271,14 @@ namespace SimpleW.Observability {
         }
 
         #endregion meters
+
+        /// <summary>
+        /// Dispose
+        /// </summary>
+        public void Dispose() {
+            ActivitySource.Dispose();
+            Meter.Dispose();
+        }
 
         #region helpers
 
@@ -286,6 +315,16 @@ namespace SimpleW.Observability {
     /// Telemetry Options
     /// </summary>
     public sealed class TelemetryOptions {
+
+        /// <summary>
+        /// InstanceId
+        /// </summary>
+        public string? InstanceId { get; set; } = "";
+
+        /// <summary>
+        /// InstanceName
+        /// </summary>
+        public string InstanceName => string.IsNullOrWhiteSpace(InstanceId) ? "SimpleW" : $"SimpleW.{InstanceId}";
 
         /// <summary>
         /// Record Exception

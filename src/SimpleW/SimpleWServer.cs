@@ -194,6 +194,11 @@ namespace SimpleW {
                 }
                 _acceptorEventArgs.Clear();
 
+                // telemetry
+                try { Telemetry?.Dispose(); }
+                catch { }
+                Telemetry = null;
+
                 // reset state
                 IsStarted = false;
                 IsStopping = false;
@@ -752,9 +757,14 @@ namespace SimpleW {
         #region telemetry
 
         /// <summary>
-        /// Status of Telemetry
+        /// Telemetry
         /// </summary>
-        public bool IsTelemetryEnabled => Telemetry.Enabled;
+        public Telemetry? Telemetry { get; private set; }
+
+        /// <summary>
+        /// Telemetry Status
+        /// </summary>
+        public bool IsTelemetryEnabled => Telemetry?.Enabled ?? false;
 
         /// <summary>
         /// Configure Telemetry
@@ -768,7 +778,12 @@ namespace SimpleW {
         /// <returns></returns>
         public SimpleWServer ConfigureTelemetry(Action<TelemetryOptions> configure) {
             ArgumentNullException.ThrowIfNull(configure);
-            configure(Telemetry.Options);
+            if (Telemetry != null) {
+                throw new InvalidOperationException("Telemetry must be configured before being enabled.");
+            }
+            TelemetryOptions TelemetryOptions = new();
+            configure(TelemetryOptions);
+            Telemetry = new Telemetry(TelemetryOptions);
             return this;
         }
 
@@ -777,6 +792,7 @@ namespace SimpleW {
         /// </summary>
         /// <returns></returns>
         public SimpleWServer EnableTelemetry() {
+            Telemetry ??= new Telemetry(new TelemetryOptions());
             Telemetry.Enable();
             return this;
         }
@@ -786,10 +802,9 @@ namespace SimpleW {
         /// </summary>
         /// <returns></returns>
         public SimpleWServer DisableTelemetry() {
-            Telemetry.Disable();
+            Telemetry?.Disable();
             return this;
         }
-
 
         #endregion telemetry
 
