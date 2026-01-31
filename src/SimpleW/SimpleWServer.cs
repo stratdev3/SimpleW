@@ -113,6 +113,12 @@ namespace SimpleW {
             IsStarted = true;
             _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
 
+            // notify listeners (don't let user code break start)
+            try {
+                OnStarted?.Invoke(this, EventArgs.Empty);
+            }
+            catch { }
+
             // not blocking
             return Task.CompletedTask;
         }
@@ -206,6 +212,12 @@ namespace SimpleW {
                 _lifetimeCts?.Dispose();
                 _lifetimeCts = null;
                 _lifetimeTask = null;
+
+                // notify listeners (don't let user code break stop)
+                try {
+                    OnStopped?.Invoke(this, EventArgs.Empty);
+                }
+                catch { }
             }
         }
 
@@ -214,6 +226,16 @@ namespace SimpleW {
         /// </summary>
         /// <param name="error">Socket error code</param>
         protected virtual void OnError(SocketError error) { }
+
+        /// <summary>
+        /// Raised when the server has started listening and is ready to accept connections
+        /// </summary>
+        public event EventHandler? OnStarted;
+
+        /// <summary>
+        /// Raised when the server has fully stopped and all resources have been released
+        /// </summary>
+        public event EventHandler? OnStopped;
 
         #endregion actions
 
