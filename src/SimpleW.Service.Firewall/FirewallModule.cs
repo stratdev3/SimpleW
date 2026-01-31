@@ -1,9 +1,13 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Sockets;
+using SimpleW.Modules;
+using SimpleW.Observability;
 
 
-namespace SimpleW.Modules {
+namespace SimpleW.Service.Firewall {
 
     /// <summary>
     /// FirewallModuleExtension
@@ -75,6 +79,12 @@ namespace SimpleW.Modules {
             /// Opportunistic sweep
             /// </summary>
             public int CleanupEveryNRequests { get; set; } = 10_000;
+
+            /// <summary>
+            /// Enable Telemetry
+            /// (the underlying SimpleWServer.Telemetry must be enabled)
+            /// </summary>
+            public bool EnableTelemetry { get; set; }
 
             /// <summary>
             /// Check Properties and return
@@ -164,8 +174,20 @@ namespace SimpleW.Modules {
 
                 server.UseMiddleware(async (session, next) => {
 
+                    long _ts0 = Stopwatch.GetTimestamp();
+                    FirewallTelemetry? _mt = EnsureTelemetry(_options.EnableTelemetry, session.Server);
+
                     IPAddress? ip = _options.ClientIpResolver(session);
                     if (ip == null) {
+                        if (_mt != null) {
+                            TagList tags = default;
+                            tags.Add("result", "blocked");
+                            tags.Add("reason", "no_ip");
+                            tags.Add("scope", "global");
+                            _mt.DecisionsTotal.Add(1, tags);
+                            _mt.BlockedTotal.Add(1, tags);
+                            _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                        }
                         await session.Response.Status(403).SendAsync();
                         return;
                     }
@@ -176,23 +198,91 @@ namespace SimpleW.Modules {
                     // deny/allow path rule
                     if (pathRule != null) {
                         if (MatchesAny(pathRule.Deny, ip)) {
+                            if (_mt != null) {
+                                TagList tags = default;
+                                tags.Add("result", "blocked");
+                                tags.Add("reason", "path_deny");
+                                tags.Add("scope", "path");
+                                tags.Add("path_prefix", pathRule.Prefix);
+                                _mt.DecisionsTotal.Add(1, tags);
+                                _mt.BlockedTotal.Add(1, tags);
+                                TagList mtags = default;
+                                mtags.Add("scope", "path");
+                                mtags.Add("path_prefix", pathRule.Prefix);
+                                _mt.DenyMatchTotal.Add(1, mtags);
+                                _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                            }
                             await session.Response.Status(403).SendAsync();
                             return;
                         }
-                        if (pathRule.Allow.Count > 0 && !MatchesAny(pathRule.Allow, ip)) {
+
+                        bool mustMatchAllow = pathRule.Allow.Count > 0;
+                        bool allowMatched = mustMatchAllow && MatchesAny(pathRule.Allow, ip);
+                        if (mustMatchAllow && !allowMatched) {
+                            if (_mt != null) {
+                                TagList tags = default;
+                                tags.Add("result", "blocked");
+                                tags.Add("reason", "path_allow_miss");
+                                tags.Add("scope", "path");
+                                tags.Add("path_prefix", pathRule.Prefix);
+                                _mt.DecisionsTotal.Add(1, tags);
+                                _mt.BlockedTotal.Add(1, tags);
+                                TagList mtags = default;
+                                mtags.Add("scope", "path");
+                                mtags.Add("path_prefix", pathRule.Prefix);
+                                _mt.AllowMissTotal.Add(1, mtags);
+                                _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                            }
                             await session.Response.Status(403).SendAsync();
                             return;
+                        }
+                        if (mustMatchAllow && allowMatched && _mt != null) {
+                            TagList mtags = default;
+                            mtags.Add("scope", "path");
+                            mtags.Add("path_prefix", pathRule.Prefix);
+                            _mt.AllowMatchTotal.Add(1, mtags);
                         }
                     }
                     // deny/allow global rule
                     else {
                         if (MatchesAny(_options.DenyRules, ip)) {
+                            if (_mt != null) {
+                                TagList tags = default;
+                                tags.Add("result", "blocked");
+                                tags.Add("reason", "global_deny");
+                                tags.Add("scope", "global");
+                                _mt.DecisionsTotal.Add(1, tags);
+                                _mt.BlockedTotal.Add(1, tags);
+                                TagList mtags = default;
+                                mtags.Add("scope", "global");
+                                _mt.DenyMatchTotal.Add(1, mtags);
+                                _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                            }
                             await session.Response.Status(403).SendAsync();
                             return;
                         }
-                        if (_options.AllowRules.Count > 0 && !MatchesAny(_options.AllowRules, ip)) {
+                        bool mustMatchGlobalAllow = _options.AllowRules.Count > 0;
+                        bool globalAllowMatched = mustMatchGlobalAllow && MatchesAny(_options.AllowRules, ip);
+                        if (mustMatchGlobalAllow && !globalAllowMatched) {
+                            if (_mt != null) {
+                                TagList tags = default;
+                                tags.Add("result", "blocked");
+                                tags.Add("reason", "global_allow_miss");
+                                tags.Add("scope", "global");
+                                _mt.DecisionsTotal.Add(1, tags);
+                                _mt.BlockedTotal.Add(1, tags);
+                                TagList mtags = default;
+                                mtags.Add("scope", "global");
+                                _mt.AllowMissTotal.Add(1, mtags);
+                                _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                            }
                             await session.Response.Status(403).SendAsync();
                             return;
+                        }
+                        if (mustMatchGlobalAllow && globalAllowMatched && _mt != null) {
+                            TagList mtags = default;
+                            mtags.Add("scope", "global");
+                            _mt.AllowMatchTotal.Add(1, mtags);
                         }
                     }
 
@@ -200,15 +290,120 @@ namespace SimpleW.Modules {
                     RateLimitOptions? rl = pathRule?.RateLimit ?? _options.GlobalRateLimit;
                     if (rl != null) {
                         if (IsRateLimited(ip, rl)) {
+                            if (_mt != null) {
+                                TagList tags = default;
+                                tags.Add("result", "rate_limited");
+                                tags.Add("reason", "rate_limited");
+                                tags.Add("scope", pathRule != null ? "path" : "global");
+                                tags.Add("window", rl.SlidingWindow ? "sliding" : "fixed");
+                                if (pathRule != null) {
+                                    tags.Add("path_prefix", pathRule.Prefix);
+                                }
+                                _mt.DecisionsTotal.Add(1, tags);
+                                _mt.RateLimitedTotal.Add(1, tags);
+                                _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                            }
                             await session.Response.Status(429).SendAsync();
                             return;
                         }
+                    }
+
+                    if (_mt != null) {
+                        TagList tags = default;
+                        tags.Add("result", "allowed");
+                        tags.Add("reason", "ok");
+                        tags.Add("scope", pathRule != null ? "path" : "global");
+                        if (pathRule != null) {
+                            tags.Add("path_prefix", pathRule.Prefix);
+                        }
+                        _mt.DecisionsTotal.Add(1, tags);
+                        _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
                     }
 
                     await next();
                 });
 
             }
+
+            #region telemetry
+
+            /// <summary>
+            /// Telemtry (lazy)
+            /// </summary>
+            private FirewallTelemetry? _telemetry;
+
+            /// <summary>
+            /// Telemtry Lock
+            /// </summary>
+            private readonly object _telemetryLock = new();
+
+            /// <summary>
+            /// Set Firewall Telemetry dependings the underlying server.Telemetry
+            /// </summary>
+            /// <param name="enable"></param>
+            /// <param name="server"></param>
+            /// <returns></returns>
+            private FirewallTelemetry? EnsureTelemetry(bool enable, SimpleWServer server) {
+                if (!enable) {
+                    return null;
+                }
+                Telemetry? telemetry = server.Telemetry;
+                if (telemetry == null || !server.IsTelemetryEnabled) {
+                    return null;
+                }
+                FirewallTelemetry? t = _telemetry;
+                if (t != null) {
+                    return t;
+                }
+                lock (_telemetryLock) {
+                    _telemetry ??= new FirewallTelemetry(telemetry.Meter, this);
+                    return _telemetry;
+                }
+            }
+
+            /// <summary>
+            /// FirewallTelemetry
+            /// </summary>
+            private class FirewallTelemetry {
+
+                public readonly Counter<long> DecisionsTotal;
+                public readonly Counter<long> BlockedTotal;
+                public readonly Counter<long> RateLimitedTotal;
+                public readonly Counter<long> AllowMatchTotal;
+                public readonly Counter<long> DenyMatchTotal;
+                public readonly Counter<long> AllowMissTotal;
+                public readonly Histogram<double> DecisionDurationMs;
+
+                /// <summary>
+                /// Constructor
+                /// </summary>
+                /// <param name="meter"></param>
+                /// <param name="module"></param>
+                public FirewallTelemetry(Meter meter, FirewallModule module) {
+                    DecisionsTotal = meter.CreateCounter<long>("simplew.firewall.decision.count", unit: "decision");
+                    BlockedTotal = meter.CreateCounter<long>("simplew.firewall.block.count", unit: "request");
+                    RateLimitedTotal = meter.CreateCounter<long>("simplew.firewall.ratelimit.count", unit: "request");
+                    AllowMatchTotal = meter.CreateCounter<long>("simplew.firewall.match.allow.count", unit: "match");
+                    DenyMatchTotal = meter.CreateCounter<long>("simplew.firewall.match.deny.count", unit: "match");
+                    AllowMissTotal = meter.CreateCounter<long>("simplew.firewall.match.allow_miss.count", unit: "miss");
+                    DecisionDurationMs = meter.CreateHistogram<double>("simplew.firewall.decision.duration", unit: "ms");
+
+                    // Gauges: keep low-cardinality (no IPs / no per-path labels here)
+                    meter.CreateObservableGauge<int>("simplew.firewall.tracked_ips.fixed", () => module._fixed.Count, unit: "ip");
+
+                    meter.CreateObservableGauge<int>("simplew.firewall.tracked_ips.sliding", () => module._sliding.Count, unit: "ip");
+
+                    meter.CreateObservableGauge<int>("simplew.firewall.tracked_ips.total", () => module._fixed.Count + module._sliding.Count, unit: "ip");
+
+                    meter.CreateObservableGauge<int>("simplew.firewall.rules.paths", () => module._options.PathRules.Count, unit: "rule");
+
+                    meter.CreateObservableGauge<int>("simplew.firewall.rules.allow.global", () => module._options.AllowRules.Count, unit: "rule");
+
+                    meter.CreateObservableGauge<int>("simplew.firewall.rules.deny.global", () => module._options.DenyRules.Count, unit: "rule");
+                }
+            }
+
+            #endregion telemetry
 
             #region helpers
 
