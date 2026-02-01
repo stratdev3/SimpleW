@@ -139,7 +139,7 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW
-        TS=$(date +"%Y%m%d-%H%M")
+        TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.csproj
         dotnet pack -c Release SimpleW.csproj
     useTTY: false
@@ -153,7 +153,7 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft
-        TS=$(date +"%Y%m%d-%H%M")
+        TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj
         dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
     useTTY: false
@@ -167,7 +167,7 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Hosting
-        TS=$(date +"%Y%m%d-%H%M")
+        TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj
         dotnet pack -c Release SimpleW.Helper.Hosting.csproj
     useTTY: false
@@ -181,7 +181,7 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Firewall
-        TS=$(date +"%Y%m%d-%H%M")
+        TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Firewall.csproj
         dotnet pack -c Release SimpleW.Service.Firewall.csproj
     useTTY: false
@@ -195,7 +195,7 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Razor
-        TS=$(date +"%Y%m%d-%H%M")
+        TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Razor.csproj
         dotnet pack -c Release SimpleW.Service.Razor.csproj
     useTTY: false
