@@ -779,6 +779,36 @@ namespace test {
 
         #endregion mapcontrollers subclass
 
+        #region invalid path
+
+        [Fact]
+        public async Task Router_InvaludPath() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            bool exception = false;
+            try {
+                server.MapController<Router_InvaludPath_Controller>("/");
+            }
+            catch (ArgumentException) {
+                exception = true;
+            }
+            catch {
+            }
+
+            // asserts
+            Check.That(exception).IsTrue();
+        }
+        public class Router_InvaludPath_Controller : Controller {
+            [Route("GET", "/hello")]
+            public object Hello() {
+                return new { message = "Hello World !" };
+            }
+        }
+
+        #endregion invalid path
+
     }
 
 }

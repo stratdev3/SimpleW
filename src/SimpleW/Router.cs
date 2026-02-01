@@ -161,6 +161,8 @@
         private void AddRouteInternal(Route route) {
             string p = route.Attribute.Path;
 
+            ValidateRoutePath(p);
+
             bool isPattern = p.IndexOf('*') >= 0 || p.IndexOf(':') >= 0;
 
             if (!isPattern) {
@@ -198,6 +200,18 @@
                     }
                     list.Add(matcher);
                     return;
+            }
+        }
+
+        /// <summary>
+        /// Validate Route Path
+        /// </summary>
+        /// <param name="path"></param>
+        /// <exception cref="ArgumentException"></exception>
+        private static void ValidateRoutePath(string path) {
+            // no double slash
+            if (path.Contains("//", StringComparison.Ordinal)) {
+                throw new ArgumentException($"Invalid route path '{path}'. Double slashes '//' are not allowed.", nameof(path));
             }
         }
 
