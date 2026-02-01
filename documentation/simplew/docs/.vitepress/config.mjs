@@ -44,8 +44,8 @@ export default defineConfig({
                 text: 'v26.0-beta',
                 items: [
                     { text: 'v16.1.0', link: 'https://simplew.net/' },
-                    { text: 'Changelog', link: 'https://github.com/stratdev3/SimpleW/blob/master/release.md' },
-                    { text: 'FAQ', link: '/guide/faq' },
+                    { text: 'Changelog', link: '/version/changelog' },
+                    { text: 'FAQ', link: '/version/faq' },
                 ]
             },
         ],
@@ -112,6 +112,7 @@ export default defineConfig({
                     text: 'Services',
                     items: [
                         { text: 'Firewall', link: '/addons/firewall' },
+                        { text: 'Razor', link: '/addons/razor' },
                     ]
                 },
                 {
@@ -168,7 +169,16 @@ export default defineConfig({
                         { text: 'TelemetryOptions', link: '/reference/telemetryoptions' },
                     ]
                 },
-            ]
+            ],
+
+            '/version/': [
+                {
+                    items: [
+                        { text: 'Changelog', link: './changelog' },
+                        { text: 'FAQ', link: './faq' },
+                    ]
+                },
+            ],
 
         },
 

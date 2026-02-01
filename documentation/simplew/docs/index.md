@@ -41,6 +41,7 @@ carousel:
   - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-lightweight-by-design-min.jpg
   - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-addons-min.jpg
   - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-simplicity-min.jpg
+  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-design-by-dev-for-dev-min.jpg
   #- src: /simplewbot/simplew-lightweight-by-design-min.jpg
   #- src: /simplewbot/simplew-complexity-is-not-a-feature-min.jpg
   #- src: /simplewbot/simplew-frameworks-should-not-be-cages-min.jpg

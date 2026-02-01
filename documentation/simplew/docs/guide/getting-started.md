@@ -158,7 +158,7 @@ namespace Sample {
 }
 ```
 
-```csharp:line-numbers [C:\www\index.html]
+```html:line-numbers [C:\www\index.html]
 <html>
     <head>
         <title>index</title>
@@ -245,7 +245,7 @@ namespace Sample {
 }
 ```
 
-```csharp:line-numbers [C:\www\index.html]
+```html:line-numbers [C:\www\index.html]
 <html>
     <head>
         <title>index</title>

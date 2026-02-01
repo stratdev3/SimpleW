@@ -6,7 +6,7 @@ It provides **fast IP filtering and rate limiting**, implemented as a SimpleW mi
 
 ## What this package does
 
-`SimpleW.Modules.Firewall` allows you to :
+`SimpleW.Service.Firewall` allows you to :
 - Allow or deny requests based on **client IP**
 - Define rules globally or **per-path**
 - Use **CIDR notation** (IPv4 and IPv6)
@@ -34,7 +34,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Modules.Firewall --version 26.0.0-beta.20260129-0011
+$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260129-0011
 ```
 
 
@@ -45,7 +45,7 @@ $ dotnet add package SimpleW.Modules.Firewall --version 26.0.0-beta.20260129-001
 ```csharp
 using System.Net;
 using SimpleW;
-using SimpleW.Modules;
+using SimpleW.Service.Firewall;
 
 var server = new SimpleWServer(IPAddress.Any, 8080);
 
