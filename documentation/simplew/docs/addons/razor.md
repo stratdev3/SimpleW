@@ -30,7 +30,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Razor --version 26.0.0-beta.20260129-0011
+$ dotnet add package SimpleW.Service.Razor --version 26.0.0-beta.20260202-1339
 ```
 
 

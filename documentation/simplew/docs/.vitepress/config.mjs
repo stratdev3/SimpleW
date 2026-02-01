@@ -111,8 +111,10 @@ export default defineConfig({
                 {
                     text: 'Services',
                     items: [
+                        { text: 'Chaos', link: '/addons/chaos' },
                         { text: 'Firewall', link: '/addons/firewall' },
                         { text: 'Razor', link: '/addons/razor' },
+                        { text: 'Swagger', link: '/addons/swagger' },
                     ]
                 },
                 {

@@ -21,19 +21,6 @@ Notes :
 
 
 
-## v26.0.0 - _(2026-??-??)_
-Major release, complete rewrite of SimpleW.
-
-### breakingChange
-
-- 
-
-### feature
-
-- 
-
-
-
 ## v16.1.0 - _(2025-11-02)_
 Maintenance, rewritten some parts of the code and documentation for easier use.
 
@@ -687,7 +674,7 @@ Maintenance
 
 ### fix
 
-- sync with upstream NetCoreServer (fix deadlock in websocker/wssession)
+- sync with upstream NetCoreServer (fix deadlock in websocket/wssession)
 - sync with upstream NetCoreServer (Add HTTP cookie SameSite=Strict mode)
 
 ### feature
