@@ -752,19 +752,23 @@ namespace SimpleW {
                     ResponseCompressionMode.Auto => (bodyLength >= _compressionMinSize),
                     ResponseCompressionMode.ForceGzip => true,
                     ResponseCompressionMode.ForceDeflate => true,
+                    ResponseCompressionMode.ForceBrotli => true,
                     _ => false
                 };
 
                 if (wantCompress) {
-                    bool allowGzip = _compressionMode != ResponseCompressionMode.ForceDeflate;
-                    bool allowDeflate = _compressionMode != ResponseCompressionMode.ForceGzip;
-                    negotiated = NegotiateEncoding(_session.Request.Headers.AcceptEncoding, allowGzip, allowDeflate);
+                    bool allowGzip = _compressionMode != ResponseCompressionMode.ForceDeflate && _compressionMode != ResponseCompressionMode.ForceBrotli;
+                    bool allowDeflate = _compressionMode != ResponseCompressionMode.ForceGzip && _compressionMode != ResponseCompressionMode.ForceBrotli;
+                    bool allowBrotli = _compressionMode != ResponseCompressionMode.ForceGzip && _compressionMode != ResponseCompressionMode.ForceDeflate;
+                    negotiated = NegotiateEncoding(_session.Request.Headers.AcceptEncoding, allowGzip, allowDeflate, allowBrotli);
 
                     if (negotiated != NegotiatedEncoding.None) {
                         compressedWriter = CompressToPooledWriter(_bufferPool, bodyMem, negotiated, _compressionLevel);
                         compressedSeg = new ArraySegment<byte>(compressedWriter.Buffer, 0, compressedWriter.Length);
 
-                        bool forced = _compressionMode == ResponseCompressionMode.ForceGzip || _compressionMode == ResponseCompressionMode.ForceDeflate;
+                        bool forced = _compressionMode == ResponseCompressionMode.ForceGzip 
+                                      || _compressionMode == ResponseCompressionMode.ForceDeflate
+                                      || _compressionMode == ResponseCompressionMode.ForceBrotli;
                         if (!forced && compressedWriter.Length >= bodyLength) {
                             compressedWriter.Dispose();
                             compressedWriter = null;
@@ -809,7 +813,12 @@ namespace SimpleW {
                 // Content-Encoding + Vary (only if compressed)
                 if (negotiated != NegotiatedEncoding.None && compressedWriter != null) {
                     WriteBytes(headerWriter, H_CE);
-                    WriteBytes(headerWriter, negotiated == NegotiatedEncoding.Gzip ? H_GZIP : H_DEFLATE);
+                    WriteBytes(headerWriter, negotiated switch {
+                        NegotiatedEncoding.Gzip => H_GZIP,
+                        NegotiatedEncoding.Deflate => H_DEFLATE,
+                        NegotiatedEncoding.Brotli => H_BR,
+                        _ => throw new ArgumentOutOfRangeException()
+                    });
                     WriteCRLF(headerWriter);
 
                     // Vary: Accept-Encoding (avoid duplicates if caller already set it)
@@ -1344,6 +1353,11 @@ namespace SimpleW {
         /// </summary>
         private static ReadOnlySpan<byte> H_DEFLATE => "deflate"u8;
         /// <summary>
+        /// "br"
+        /// </summary>
+        private static ReadOnlySpan<byte> H_BR => "br"u8;
+
+        /// <summary>
         /// "Accept-Encoding"
         /// </summary>
         private static ReadOnlySpan<byte> H_ACCEPT_ENCODING => "Accept-Encoding"u8;
@@ -1469,13 +1483,17 @@ namespace SimpleW {
             /// <summary>
             /// Force deflate (if client allows it)
             /// </summary>
-            ForceDeflate = 3
+            ForceDeflate = 3,
+            /// <summary>
+            /// Force Brotli (if client allows it)
+            /// </summary>
+            ForceBrotli = 4
         }
 
         /// <summary>
         /// Negotiated Encoding
         /// </summary>
-        private enum NegotiatedEncoding : byte { None = 0, Gzip = 1, Deflate = 2 }
+        private enum NegotiatedEncoding : byte { None = 0, Gzip = 1, Deflate = 2, Brotli = 3 }
 
         /// <summary>
         /// Return true if the current HttpResponse has header matching name
@@ -1562,14 +1580,16 @@ namespace SimpleW {
         /// <param name="acceptEncoding"></param>
         /// <param name="allowGzip"></param>
         /// <param name="allowDeflate"></param>
+        /// <param name="allowBrotli"></param>
         /// <returns></returns>
-        private static NegotiatedEncoding NegotiateEncoding(string? acceptEncoding, bool allowGzip, bool allowDeflate) {
+        private static NegotiatedEncoding NegotiateEncoding(string? acceptEncoding, bool allowGzip, bool allowDeflate, bool allowBrotli) {
             if (string.IsNullOrEmpty(acceptEncoding)) {
                 return NegotiatedEncoding.None;
             }
 
             float qGzip = -1f;
             float qDeflate = -1f;
+            float qBrotli = -1f;
 
             ReadOnlySpan<char> s = acceptEncoding.AsSpan();
             int i = 0;
@@ -1615,6 +1635,9 @@ namespace SimpleW {
                 else if (name.Equals("deflate".AsSpan(), StringComparison.OrdinalIgnoreCase)) {
                     qDeflate = q;
                 }
+                else if (name.Equals("br".AsSpan(), StringComparison.OrdinalIgnoreCase)) {
+                    qBrotli = q;
+                }
             }
 
             if (!allowGzip) {
@@ -1623,15 +1646,19 @@ namespace SimpleW {
             if (!allowDeflate) {
                 qDeflate = -1f;
             }
-
-            if (qGzip <= 0f && qDeflate <= 0f) {
-                return NegotiatedEncoding.None;
+            if (!allowBrotli) {
+                qBrotli = -1f;
             }
 
-            if (qGzip >= qDeflate) {
-                return qGzip > 0f ? NegotiatedEncoding.Gzip : NegotiatedEncoding.None;
-            }
-            return qDeflate > 0f ? NegotiatedEncoding.Deflate : NegotiatedEncoding.None;
+            // pick best q (strictly > 0)
+            float best = 0f;
+            NegotiatedEncoding bestEnc = NegotiatedEncoding.None;
+
+            if (qGzip > best) { best = qGzip; bestEnc = NegotiatedEncoding.Gzip; }
+            if (qDeflate > best) { best = qDeflate; bestEnc = NegotiatedEncoding.Deflate; }
+            if (qBrotli > best) { best = qBrotli; bestEnc = NegotiatedEncoding.Brotli; }
+
+            return best > 0f ? bestEnc : NegotiatedEncoding.None;
         }
 
         /// <summary>
@@ -1651,6 +1678,7 @@ namespace SimpleW {
                 Stream compressor = encoding switch {
                     NegotiatedEncoding.Gzip => new GZipStream(bw, level, leaveOpen: true),
                     NegotiatedEncoding.Deflate => new DeflateStream(bw, level, leaveOpen: true),
+                    NegotiatedEncoding.Brotli => new BrotliStream(bw, level, leaveOpen: true),
                     _ => throw new ArgumentOutOfRangeException(nameof(encoding))
                 };
 
