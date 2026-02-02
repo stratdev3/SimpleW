@@ -34,7 +34,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260202-1339
+$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260202-1347
 ```
 
 
