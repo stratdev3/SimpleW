@@ -21,6 +21,7 @@ using SimpleW.Service.Firewall;
 using SimpleW.Security;
 using SimpleW.Service.Swagger;
 using SimpleW.Service.Chaos;
+using SimpleW.Service.Latency;
 
 
 namespace example.rewrite {
@@ -81,6 +82,11 @@ namespace example.rewrite {
             server.MapGet("/api/test/hello", object (HttpSession session) => {
                 return new { message = $"Hello World !" };
             });
+
+            //server.UseLatencyModule(options => {
+            //    options.GlobalLatency = TimeSpan.FromSeconds(1);
+            //    options.Rules.Add(new LatencyRule("/api/*", TimeSpan.FromSeconds(2)));
+            //});
 
             //server.UseRazorModule(o => {
             //    o.ViewsPath = @"C:\www\toto\views";
