@@ -84,6 +84,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Service.Chaos
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Chaos/
+        dotnet build -c @param:build_configuration@ SimpleW.Service.Chaos.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: test
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -227,6 +239,20 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: build SimpleW.Service.Chaos
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Chaos
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Chaos.csproj
+        dotnet pack -c Release SimpleW.Service.Chaos.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/Release/
@@ -260,6 +286,12 @@ jobs:
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Swagger
     sourcePath: src/SimpleW.Service.Swagger/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Chaos
+    sourcePath: src/SimpleW.Service.Chaos/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -319,6 +351,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Razor/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Service.Chaos to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Chaos/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
