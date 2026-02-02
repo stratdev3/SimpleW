@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0;</TargetFrameworks>
+    <OutputType>Library</OutputType>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+    <!-- nuget metadata -->
+    <Authors>Christophe CHATEAU</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Latency module for SimpleW that introduces artificial delays in HTTP responses for testing and debugging.</Description>
+    <PackageTags>simplew;latency;</PackageTags>
+    <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
+    <PackageIcon>logo-transparent.png</PackageIcon>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Stratdev3/SimpleW</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- versioning -->
+    <AssemblyVersion>26.0.0</AssemblyVersion>
+    <FileVersion>26.0.0</FileVersion>
+    <Version>26.0.0-beta</Version>
+
+    <!-- build options -->
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- ci/cd -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+
+    <!-- debug options-->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>portable</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- no useless ref -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="logo-transparent.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="readme.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
