@@ -40,7 +40,7 @@ Response:
 ```
 
 When a handler returns a non-null value :
-- The value is passed to the global `HttpHandlerResult`
+- The value is passed to the global `HttpResultHandler`
 - By default, it is serialized as JSON
 - The response is sent automatically
 

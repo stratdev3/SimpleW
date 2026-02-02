@@ -8,6 +8,7 @@ It provides **fast IP filtering and rate limiting**, implemented as a SimpleW mi
 
 `SimpleW.Service.Firewall` allows you to :
 - Allow or deny requests based on **client IP**
+- Allow or deny requests based on **client country** (GeoIP2 / MaxMind, optional)
 - Define rules globally or **per-path**
 - Use **CIDR notation** (IPv4 and IPv6)
 - Apply **rate limiting** :
@@ -28,13 +29,15 @@ It **does not** :
 - .NET 8.0+
 - SimpleW (core server)
 
-No external dependencies.
+Optional dependency if you enable GeoIP country filtering :
+- MaxMind.GeoIP2 (NuGet)
+- a MaxMind `.mmdb` database (ex: GeoLite2-Country.mmdb)
 
 
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260202-1347
+$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260203-1360
 ```
 
 
@@ -108,6 +111,108 @@ server.UseFirewallModule(options => {
 Example :
 - `/api/admin` is evaluated before `/api`
 - `/api` is evaluated before `/`
+
+
+## GeoIP country filtering (MaxMind)
+
+The firewall can optionally filter requests based on the **client country**, resolved from the client IP using a **MaxMind GeoIP2 database**.
+
+This feature is **disabled by default**.  
+When enabled, you can define **allow/deny rules by country** globally and/or per-path, exactly like IP allow/deny rules.
+
+### Enabling GeoIP
+
+```csharp
+server.UseFirewallModule(options => {
+    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb"; // adjust path depending on your mmdb location
+});
+```
+
+### Country rules (global)
+
+Country codes use ISO2 format (examples: `"FR"`, `"US"`, `"DE"`).
+
+```csharp
+server.UseFirewallModule(options => {
+
+    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb"; // adjust path depending on your mmdb location
+
+    // Deny RU and CN globally
+    options.DenyCountries.Add(CountryRule.Any("RU", "CN"));
+
+    // If AllowCountries is not empty => default deny for all other countries
+    options.AllowCountries.Add(CountryRule.Any("FR", "BE", "CH"));
+});
+```
+
+Behavior :
+- If `AllowCountries` is not empty, the firewall operates in **default deny** mode for countries (same behavior as AllowRules for IPs).
+- `DenyCountries` is always evaluated first.
+
+### Country rules (per-path)
+
+You can define country allow/deny rules for specific prefixes :
+
+```csharp
+server.UseFirewallModule(options => {
+
+    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb"; // adjust path depending on your mmdb location
+
+    options.PathRules.Add(new PathRule {
+        Prefix = "/admin",
+
+        // Only allow admin access from FR/BE/CH
+        AllowCountries = { CountryRule.Any("FR", "BE", "CH") }
+    });
+
+});
+```
+
+Per-path behavior :
+- Path rules are evaluated first (most specific prefix wins).
+- If a path rule has `AllowCountries`, it becomes **default deny** for that path unless a country matches.
+
+### Unknown / unresolved country
+
+Sometimes a country cannot be resolved :
+- database not configured
+- IP not in the database
+- lookup error
+
+In that case, the resolved country is `unknown`.
+
+You can choose how the firewall treats unknown countries:
+
+```csharp
+options.TreatUnknownCountryAsMatchable = true; // default
+```
+
+If `TreatUnknownCountryAsMatchable` is true, you can explicitly match unknown countries:
+
+```csharp
+options.DenyCountries.Add(CountryRule.Unknown());
+```
+
+If `TreatUnknownCountryAsMatchable` is false, unknown countries will **never match** any country rule.
+
+### Caching and performance
+
+Country resolution is cached :
+- IP → Country ISO2 is cached in-memory
+- TTL is controlled by:
+  - `CountryCacheTtl` (if set)
+  - otherwise `StateTtl`
+
+```csharp
+options.CountryCacheTtl = TimeSpan.FromMinutes(10);
+```
+
+The cache is bounded by the same memory safety mechanisms :
+- TTL eviction
+- hard cap (`MaxTrackedIps`)
+- opportunistic cleanup (`CleanupEveryNRequests`)
+
+This ensures GeoIP support remains fast and safe under load.
 
 
 ## Rate limiting
@@ -243,21 +348,6 @@ When a request is blocked :
 - **429 Too Many Requests** is returned for rate limiting
 
 Requests are rejected **before** routing and controller execution.
-
-
-## What this module is NOT
-
-This module is intentionally limited.
-
-It does **not** :
-- inspect headers
-- parse request bodies
-- detect SQL injection or XSS
-- replace a WAF or CDN
-- implement authentication or authorization
-
-If you need those features, use a reverse proxy or a dedicated security layer.
-
 
 
 ## Telemetry & Counters

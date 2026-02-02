@@ -11,8 +11,7 @@ Because I strongly believe in open source, and I use open-source software every 
 
 > How to contribute ?
 
-Github is just a mirror, I only use [OneDev](https://onedev.io) which is, in my opinion, the **best tool for a software project**.
-Open an issue or a PR, ping me, if your code is interesting and still MIT license, I will pull from your repo.
+Github is just a mirror. Open an issue or a PR, ping me, if your code is interesting and still MIT license, I will pull from your repo.
 
 > Why do you hate ASP.NET Core ?
 
@@ -37,7 +36,7 @@ Just update your dying runtime !
 > Addons ?
 
 I want to keep the core simple and lightweight so that :
-- The code can be reviewed by a human in a few hours
+- The code can be reviewed by a developer in a few hours
 - Or fully ingested (and reasoned about) by an AI in a few seconds
 
 Addons are the place for everything that does not belong in the core.

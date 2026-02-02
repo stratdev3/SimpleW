@@ -77,7 +77,7 @@ export default defineConfig({
                         { text: 'Middleware', link: '/guide/middleware' },
                         { text: 'Module', link: '/guide/module' },
                         { text: 'Callback', link: '/guide/callback' },
-                        { text: 'Result Handler', link: '/guide/handlerresult' },
+                        { text: 'Result Handler', link: '/guide/resulthandler' },
                         { text: 'Json Engine', link: '/guide/jsonengine' },
                     ]
                 },
@@ -113,6 +113,7 @@ export default defineConfig({
                     items: [
                         { text: 'Chaos', link: '/addons/chaos' },
                         { text: 'Firewall', link: '/addons/firewall' },
+                        { text: 'Latency', link: '/addons/latency' },
                         { text: 'Razor', link: '/addons/razor' },
                         { text: 'Swagger', link: '/addons/swagger' },
                     ]

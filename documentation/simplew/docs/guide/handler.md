@@ -69,7 +69,7 @@ Internally :
 - The method is discovered via reflection
 - A handler executor is generated exactly like for a delegate
 - Parameters are bound using the same rules (route, query, session)
-- The return value is processed by the same HttpHandlerResult
+- The return value is processed by the same HttpResultHandler
 
 Controllers **do not introduce a different execution model**. They are *a structured way to declare handlers*, not a separate abstraction.
 
@@ -141,6 +141,75 @@ server.MapGet("/async", async () => {
 Supported forms: `ValueTask`, `ValueTask<T>`, `Task`, `Task<T>`.
 
 
+## CancellationToken (RequestAborted)
+
+SimpleW exposes a `CancellationToken` directly from `HttpSession` so a handler can stop its work when :
+
+- the client closes the connection,
+- a network write/read fails,
+- the session is closed by the server (timeout, dispose, etc.).
+
+The token is available through :
+
+```csharp
+session.RequestAborted
+```
+
+### Concept
+
+The `CancellationToken` does **not automatically kill** your code.
+Cancellation is **cooperative** and must be explicitly honored by your logic :
+- pass the token to APIs that support cancellation (database, HTTP client, delays, etc.)
+- or manually check the token inside long-running loops.
+
+**Example : cancellable PostgreSQL query**
+
+```csharp
+server.MapGet("/execute", async (HttpSession session) => {
+    await using var conn = new Npgsql.NpgsqlConnection(connString);
+    await conn.OpenAsync(session.RequestAborted);
+
+    await using var cmd = new Npgsql.NpgsqlCommand("select pg_sleep(1800);", conn);
+    await cmd.ExecuteNonQueryAsync(session.RequestAborted);
+
+    return "OK";
+});
+```
+
+If the client disconnects while the query is running, it will be automatically cancelled.
+
+
+**Example: CPU loop with cooperative cancellation**
+
+```csharp
+server.MapGet("/work", (HttpSession session) => {
+    for (int i = 0; i < 10_000_000; i++) {
+        session.ThrowIfAborted(); // stops if client is gone
+        DoWork(i);
+    }
+
+    return "DONE";
+});
+```
+
+**Manual state check**
+
+```csharp
+if (session.RequestAborted.IsCancellationRequested) {
+    return;
+}
+```
+
+This allows exiting gracefully without throwing an exception.
+
+### Best practices
+
+- Prefer `async` handlers.
+- Always use async APIs when available.
+- Always pass `session.RequestAborted` to long-running I/O operations.
+- Use `ThrowIfAborted()` for CPU-bound loops or custom processing.
+
+
 ## Direct Response Control
 
 A handler may directly manipulate the response :
@@ -162,7 +231,7 @@ See the [Response](./response.md) for more examples.
 
 ## Handler Result Processing
 
-When a handler returns a non-null value, it is passed to a global HttpHandlerResult delegate.
+When a handler returns a non-null value, it is passed to a global HttpResultHandler delegate.
 
 ### Default Behavior
 
@@ -172,7 +241,7 @@ By default :
 
 Conceptually :
 ```
-handler() -> object result -> HandlerResult -> HttpResponse
+handler() -> object result -> ResultHandler -> HttpResponse
 ```
 
 ### Custom Handler Result
@@ -180,7 +249,7 @@ handler() -> object result -> HandlerResult -> HttpResponse
 You can override this behavior globally :
 
 ```csharp
-server.ConfigureHandlerResult((session, result) => {
+server.ConfigureResultHandler((session, result) => {
     Console.WriteLine("Processing result");
     return session.Response.Json(result).SendAsync();
 });
@@ -189,7 +258,7 @@ server.ConfigureHandlerResult((session, result) => {
 This allows logging, delayed responses, conditional serialization, custom response strategies...
 
 ::: tip NOTE
-See the [Result Handler](./handlerresult.md) for more examples.
+See the [Result Handler](./resulthandler.md) for more examples.
 :::
 
 
