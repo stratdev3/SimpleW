@@ -19,6 +19,8 @@ using SimpleW.JsonEngine.Newtonsoft;
 using SimpleW.Service.Razor;
 using SimpleW.Service.Firewall;
 using SimpleW.Security;
+using SimpleW.Service.Swagger;
+using SimpleW.Service.Chaos;
 
 
 namespace example.rewrite {
@@ -117,6 +119,20 @@ namespace example.rewrite {
             //    options.Prefix = "/";
             //    options.AutoIndex = true;
             //    options.CacheTimeout = TimeSpan.FromDays(1);
+            //});
+
+            server.UseChaosModule(options => {
+                options.Enabled = true;
+                options.Prefix = "/api";
+                options.Probability = 0.50;
+            });
+
+
+            //server.UseSwaggerModule(options => {
+            //    options.Title = "My API";
+            //    options.Version = "v1";
+            //    // optionnel: ne documenter que /api/*
+            //    //options.RouteFilter = r => r.Path.StartsWith("/", StringComparison.Ordinal);
             //});
 
             server.UseWebSocketModule(ws => {
@@ -230,7 +246,7 @@ namespace example.rewrite {
             });
 
             //server.MapControllers<SubController>("/api");
-            //server.MapControllers<Controller>("/api");
+            server.MapController<HomeController>("/");
 
             server.Configure(options => {
                 options.ReuseAddress = true;
@@ -320,6 +336,15 @@ namespace example.rewrite {
         public string room { get; set; }
         public string name { get; set; }
         public string text { get; set; }
+    }
+
+    public sealed class HomeController : Controller {
+
+        [Route("GET", "home")]
+        public object Index(string? name = null) {
+            return "Home";
+        }
+
     }
 
     public sealed class HomeRazorController : RazorController {
