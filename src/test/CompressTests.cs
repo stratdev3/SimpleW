@@ -314,6 +314,31 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
+        [Fact]
+        public async Task Response_200_ForceBrotli() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", (HttpSession session) => {
+                return session.Response.Json(new { message = "Hello World !" }).Compression(HttpResponse.ResponseCompressionMode.ForceBrotli);
+            });
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept-Encoding", "zstd, gzip, deflate, br");
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
+            var content = await response.Content.ReadAsByteArrayAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("br");
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
     }
 
 }
