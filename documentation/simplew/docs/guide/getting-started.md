@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the nuget package, always prefer the last version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-beta.20260202-1339
+$ dotnet add package SimpleW --version 26.0.0-beta.20260202-1347
 ```
 
 ::: tip NOTE
