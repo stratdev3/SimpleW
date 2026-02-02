@@ -96,6 +96,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Service.Latency
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Latency/
+        dotnet build -c @param:build_configuration@ SimpleW.Service.Latency.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: test
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -253,6 +265,20 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  - type: CommandStep
+    name: build SimpleW.Service.Latency
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Latency
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Latency.csproj
+        dotnet pack -c Release SimpleW.Service.Latency.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW
     sourcePath: src/SimpleW/bin/Release/
@@ -292,6 +318,12 @@ jobs:
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Chaos
     sourcePath: src/SimpleW.Service.Chaos/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Latency
+    sourcePath: src/SimpleW.Service.Latency/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -375,6 +407,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Swagger/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Service.Latency to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Latency/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
