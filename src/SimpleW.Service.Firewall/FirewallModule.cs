@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Sockets;
+using MaxMind.GeoIP2;
+using MaxMind.GeoIP2.Exceptions;
 using SimpleW.Modules;
 using SimpleW.Observability;
 
@@ -87,6 +89,35 @@ namespace SimpleW.Service.Firewall {
             public bool EnableTelemetry { get; set; }
 
             /// <summary>
+            /// Optional MaxMind GeoIP database path (.mmdb) for country lookup.
+            /// If null or empty => country rules disabled (treated as unknown).
+            /// </summary>
+            public string? MaxMindCountryDbPath { get; set; } = null;
+
+            /// <summary>
+            /// If false, unresolved country (no db / lookup fail / not found) will never match country rules.
+            /// If true, unresolved country can match CountryRule.Unknown().
+            /// </summary>
+            public bool TreatUnknownCountryAsMatchable { get; set; } = true;
+
+            /// <summary>
+            /// Cache resolved IP -> country for this duration.
+            /// If null, uses StateTtl.
+            /// </summary>
+            public TimeSpan? CountryCacheTtl { get; set; } = null;
+
+            /// <summary>
+            /// Global allow by country (ISO2 like "FR", "US")
+            /// If non-empty => default deny (same behavior as AllowRules)
+            /// </summary>
+            public List<CountryRule> AllowCountries { get; } = new();
+
+            /// <summary>
+            /// Global deny by country (ISO2 like "FR", "US")
+            /// </summary>
+            public List<CountryRule> DenyCountries { get; } = new();
+
+            /// <summary>
             /// Check Properties and return
             /// </summary>
             /// <returns></returns>
@@ -101,6 +132,9 @@ namespace SimpleW.Service.Firewall {
                 }
                 if (CleanupEveryNRequests <= 0) {
                     throw new ArgumentException($"{nameof(FirewallOptions)}.{nameof(CleanupEveryNRequests)} must be > 0.", nameof(CleanupEveryNRequests));
+                }
+                if (CountryCacheTtl != null && CountryCacheTtl <= TimeSpan.Zero) {
+                    throw new ArgumentException($"{nameof(FirewallOptions)}.{nameof(CountryCacheTtl)} must be > 0.", nameof(CountryCacheTtl));
                 }
 
                 return this;
@@ -129,6 +163,11 @@ namespace SimpleW.Service.Firewall {
             private readonly ConcurrentDictionary<IPAddress, SlidingWindowState> _sliding = new();
 
             /// <summary>
+            /// Country cache: ip -> (iso2, expiresUtcTicks)
+            /// </summary>
+            private readonly ConcurrentDictionary<IPAddress, CountryCacheEntry> _countryCache = new();
+
+            /// <summary>
             /// Request Counter
             /// </summary>
             private long _requestCounter;
@@ -142,6 +181,13 @@ namespace SimpleW.Service.Firewall {
             private readonly record struct FixedWindowState(long WindowStartTicks, int Count, long LastSeenTicks);
 
             /// <summary>
+            /// CountryCacheEntry
+            /// </summary>
+            /// <param name="Iso2"></param>
+            /// <param name="ExpiresUtcTicks"></param>
+            private readonly record struct CountryCacheEntry(string? Iso2, long ExpiresUtcTicks);
+
+            /// <summary>
             /// SlidingWindowState
             /// </summary>
             private sealed class SlidingWindowState {
@@ -149,6 +195,16 @@ namespace SimpleW.Service.Firewall {
                 public int Count;
                 public long LastSeenTicks;
             }
+
+            /// <summary>
+            /// MaxMind reader (lazy)
+            /// </summary>
+            private DatabaseReader? _geoReader;
+
+            /// <summary>
+            /// Lock
+            /// </summary>
+            private readonly object _geoLock = new();
 
             /// <summary>
             /// Constructor
@@ -192,11 +248,16 @@ namespace SimpleW.Service.Firewall {
                         return;
                     }
 
+                    // Resolve country ISO2 (ex: "FR") from MaxMind (may be null => unknown)
+                    string? countryIso2 = (_options.AllowCountries.Count > 0 || _options.DenyCountries.Count > 0) ? ResolveCountryIso2(ip) : null;
+
                     // path rule (first match wins)
                     PathRule? pathRule = FindPathRule(session.Request.Path);
 
                     // deny/allow path rule
                     if (pathRule != null) {
+
+                        // deny by IP
                         if (MatchesAny(pathRule.Deny, ip)) {
                             if (_mt != null) {
                                 TagList tags = default;
@@ -216,8 +277,30 @@ namespace SimpleW.Service.Firewall {
                             return;
                         }
 
-                        bool mustMatchAllow = pathRule.Allow.Count > 0;
-                        bool allowMatched = mustMatchAllow && MatchesAny(pathRule.Allow, ip);
+                        // deny by country
+                        if (MatchesAnyCountry(pathRule.DenyCountries, countryIso2, _options.TreatUnknownCountryAsMatchable)) {
+                            if (_mt != null) {
+                                TagList tags = default;
+                                tags.Add("result", "blocked");
+                                tags.Add("reason", "path_country_deny");
+                                tags.Add("scope", "path");
+                                tags.Add("path_prefix", pathRule.Prefix);
+                                _mt.DecisionsTotal.Add(1, tags);
+                                _mt.BlockedTotal.Add(1, tags);
+                                TagList mtags = default;
+                                mtags.Add("scope", "path");
+                                mtags.Add("path_prefix", pathRule.Prefix);
+                                _mt.DenyMatchTotal.Add(1, mtags);
+                                _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                            }
+                            await session.Response.Status(403).SendAsync();
+                            return;
+                        }
+
+                        bool mustMatchAllow = (pathRule.Allow.Count > 0) || (pathRule.AllowCountries.Count > 0);
+                        bool allowMatched = (pathRule.Allow.Count > 0 && MatchesAny(pathRule.Allow, ip))
+                                            || (pathRule.AllowCountries.Count > 0 && MatchesAnyCountry(pathRule.AllowCountries, countryIso2, _options.TreatUnknownCountryAsMatchable));
+
                         if (mustMatchAllow && !allowMatched) {
                             if (_mt != null) {
                                 TagList tags = default;
@@ -245,6 +328,7 @@ namespace SimpleW.Service.Firewall {
                     }
                     // deny/allow global rule
                     else {
+                        // deny by IP
                         if (MatchesAny(_options.DenyRules, ip)) {
                             if (_mt != null) {
                                 TagList tags = default;
@@ -261,8 +345,29 @@ namespace SimpleW.Service.Firewall {
                             await session.Response.Status(403).SendAsync();
                             return;
                         }
-                        bool mustMatchGlobalAllow = _options.AllowRules.Count > 0;
-                        bool globalAllowMatched = mustMatchGlobalAllow && MatchesAny(_options.AllowRules, ip);
+                        // deny by country
+                        if (MatchesAnyCountry(_options.DenyCountries, countryIso2, _options.TreatUnknownCountryAsMatchable)) {
+                            if (_mt != null) {
+                                TagList tags = default;
+                                tags.Add("result", "blocked");
+                                tags.Add("reason", "global_country_deny");
+                                tags.Add("scope", "global");
+                                _mt.DecisionsTotal.Add(1, tags);
+                                _mt.BlockedTotal.Add(1, tags);
+                                TagList mtags = default;
+                                mtags.Add("scope", "global");
+                                _mt.DenyMatchTotal.Add(1, mtags);
+                                _mt.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(_ts0).TotalMilliseconds, tags);
+                            }
+                            await session.Response.Status(403).SendAsync();
+                            return;
+                        }
+
+
+                        bool mustMatchGlobalAllow = (_options.AllowRules.Count > 0) || (_options.AllowCountries.Count > 0);
+                        bool globalAllowMatched = (_options.AllowRules.Count > 0 && MatchesAny(_options.AllowRules, ip))
+                                                   || (_options.AllowCountries.Count > 0 && MatchesAnyCountry(_options.AllowCountries, countryIso2, _options.TreatUnknownCountryAsMatchable));
+
                         if (mustMatchGlobalAllow && !globalAllowMatched) {
                             if (_mt != null) {
                                 TagList tags = default;
@@ -390,16 +495,15 @@ namespace SimpleW.Service.Firewall {
 
                     // Gauges: keep low-cardinality (no IPs / no per-path labels here)
                     meter.CreateObservableGauge<int>("simplew.firewall.tracked_ips.fixed", () => module._fixed.Count, unit: "ip");
-
                     meter.CreateObservableGauge<int>("simplew.firewall.tracked_ips.sliding", () => module._sliding.Count, unit: "ip");
-
                     meter.CreateObservableGauge<int>("simplew.firewall.tracked_ips.total", () => module._fixed.Count + module._sliding.Count, unit: "ip");
+                    meter.CreateObservableGauge<int>("simplew.firewall.tracked_ips.country_cache", () => module._countryCache.Count, unit: "ip");
 
                     meter.CreateObservableGauge<int>("simplew.firewall.rules.paths", () => module._options.PathRules.Count, unit: "rule");
-
                     meter.CreateObservableGauge<int>("simplew.firewall.rules.allow.global", () => module._options.AllowRules.Count, unit: "rule");
-
                     meter.CreateObservableGauge<int>("simplew.firewall.rules.deny.global", () => module._options.DenyRules.Count, unit: "rule");
+                    meter.CreateObservableGauge<int>("simplew.firewall.rules.allow_countries.global", () => module._options.AllowCountries.Count, unit: "rule");
+                    meter.CreateObservableGauge<int>("simplew.firewall.rules.deny_countries.global", () => module._options.DenyCountries.Count, unit: "rule");
                 }
             }
 
@@ -435,6 +539,95 @@ namespace SimpleW.Service.Firewall {
                     }
                 }
                 return false;
+            }
+
+            /// <summary>
+            /// MatchesAnyCountry
+            /// </summary>
+            /// <param name="rules"></param>
+            /// <param name="iso2"></param>
+            /// <param name="treatUnknownAsMatchable"></param>
+            /// <returns></returns>
+            private static bool MatchesAnyCountry(List<CountryRule> rules, string? iso2, bool treatUnknownAsMatchable) {
+                if (rules.Count == 0) {
+                    return false;
+                }
+                if (iso2 == null && !treatUnknownAsMatchable) {
+                    return false;
+                }
+                for (int i = 0; i < rules.Count; i++) {
+                    if (rules[i].Match(iso2)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            /// <summary>
+            /// GetGeoReader (lazy)
+            /// </summary>
+            /// <returns></returns>
+            private DatabaseReader? GetGeoReader() {
+                string? path = _options.MaxMindCountryDbPath;
+                if (string.IsNullOrWhiteSpace(path)) {
+                    return null;
+                }
+
+                DatabaseReader? r = _geoReader;
+                if (r != null) {
+                    return r;
+                }
+
+                lock (_geoLock) {
+                    if (_geoReader != null) {
+                        return _geoReader;
+                    }
+                    _geoReader = new DatabaseReader(path);
+                    return _geoReader;
+                }
+            }
+
+            /// <summary>
+            /// Resolve country ISO2 for IP using MaxMind (Country DB)
+            /// Returns null if unknown/unresolved/no DB.
+            /// </summary>
+            /// <param name="ip"></param>
+            /// <returns></returns>
+            private string? ResolveCountryIso2(IPAddress ip) {
+                DatabaseReader? reader = GetGeoReader();
+                if (reader == null) {
+                    return null;
+                }
+
+                long now = DateTimeOffset.UtcNow.UtcTicks;
+                TimeSpan ttl = _options.CountryCacheTtl ?? _options.StateTtl;
+                long exp = now + ttl.Ticks;
+
+                if (_countryCache.TryGetValue(ip, out CountryCacheEntry entry) && entry.ExpiresUtcTicks > now) {
+                    return entry.Iso2;
+                }
+
+                string? iso2 = null;
+                try {
+                    var resp = reader.Country(ip);
+                    iso2 = resp?.Country?.IsoCode;
+                    if (!string.IsNullOrWhiteSpace(iso2)) {
+                        iso2 = iso2.Trim().ToUpperInvariant();
+                    }
+                    else {
+                        iso2 = null;
+                    }
+                }
+                catch (AddressNotFoundException) {
+                    iso2 = null;
+                }
+                catch {
+                    // Fail-safe: firewall must not crash because geo DB is unhappy
+                    iso2 = null;
+                }
+
+                _countryCache[ip] = new CountryCacheEntry(iso2, exp);
+                return iso2;
             }
 
             /// <summary>
@@ -525,13 +718,15 @@ namespace SimpleW.Service.Firewall {
 
                 bool fixedOverCap = _fixed.Count > _options.MaxTrackedIps;
                 bool slidingOverCap = _sliding.Count > _options.MaxTrackedIps;
+                bool countryOverCap = _countryCache.Count > _options.MaxTrackedIps;
 
                 // trigger cleanup periodically OR if maps grow too large
-                if (!fixedOverCap && !slidingOverCap && (n % _options.CleanupEveryNRequests != 0)) {
+                if (!fixedOverCap && !slidingOverCap && !countryOverCap && (n % _options.CleanupEveryNRequests != 0)) {
                     return;
                 }
 
                 long minTtl = nowTicks - _options.StateTtl.Ticks;
+                long minCountryTtl = nowTicks - (_options.CountryCacheTtl ?? _options.StateTtl).Ticks;
 
                 // 1) Remove TTL-expired first (cheap + precise)
                 if (_fixed.Count > 0) {
@@ -539,6 +734,9 @@ namespace SimpleW.Service.Firewall {
                 }
                 if (_sliding.Count > 0) {
                     PurgeExpiredSliding(minTtl, batch: slidingOverCap ? 5000 : 500);
+                }
+                if (_countryCache.Count > 0) {
+                    PurgeExpiredCountry(minCountryTtl, batch: countryOverCap ? 5000 : 500);
                 }
 
                 // 2) If still over cap, remove oldest (LRU-ish, best precision)
@@ -548,10 +746,13 @@ namespace SimpleW.Service.Firewall {
                 if (_sliding.Count > _options.MaxTrackedIps) {
                     PurgeOldestSliding(targetCount: _options.MaxTrackedIps, batch: 3000);
                 }
+                if (_countryCache.Count > _options.MaxTrackedIps) {
+                    PurgeOldestCountry(targetCount: _options.MaxTrackedIps, batch: 3000);
+                }
             }
 
             /// <summary>
-            /// Remote expired entries
+            /// Remove expired entries
             /// </summary>
             /// <param name="minTtlTicks"></param>
             /// <param name="batch"></param>
@@ -567,7 +768,7 @@ namespace SimpleW.Service.Firewall {
             }
 
             /// <summary>
-            /// Remote expired entries
+            /// Remove expired entries
             /// </summary>
             /// <param name="minTtlTicks"></param>
             /// <param name="batch"></param>
@@ -579,6 +780,22 @@ namespace SimpleW.Service.Firewall {
                     long last = Volatile.Read(ref kv.Value.LastSeenTicks);
                     if (last < minTtlTicks) {
                         _sliding.TryRemove(kv.Key, out _);
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Remove expired entries
+            /// </summary>
+            /// <param name="minTtlTicks"></param>
+            /// <param name="batch"></param>
+            private void PurgeExpiredCountry(long minTtlTicks, int batch) {
+                foreach (KeyValuePair<IPAddress, CountryCacheEntry> kv in _countryCache) {
+                    if (batch-- <= 0) {
+                        break;
+                    }
+                    if (kv.Value.ExpiresUtcTicks < minTtlTicks) {
+                        _countryCache.TryRemove(kv.Key, out _);
                     }
                 }
             }
@@ -644,6 +861,36 @@ namespace SimpleW.Service.Firewall {
                 }
             }
 
+            /// <summary>
+            /// Remove oldest entries
+            /// </summary>
+            /// <param name="targetCount"></param>
+            /// <param name="batch"></param>
+            private void PurgeOldestCountry(int targetCount, int batch) {
+                while (_countryCache.Count > targetCount && batch-- > 0) {
+
+                    IPAddress? oldestKey = null;
+                    long oldestExp = long.MaxValue;
+
+                    int scan = 200;
+                    foreach (KeyValuePair<IPAddress, CountryCacheEntry> kv in _countryCache) {
+                        if (scan-- <= 0) {
+                            break;
+                        }
+                        long exp = kv.Value.ExpiresUtcTicks;
+                        if (exp < oldestExp) {
+                            oldestExp = exp;
+                            oldestKey = kv.Key;
+                        }
+                    }
+
+                    if (oldestKey == null) {
+                        break;
+                    }
+                    _countryCache.TryRemove(oldestKey, out _);
+                }
+            }
+
             #endregion helpers
 
         }
@@ -695,9 +942,69 @@ namespace SimpleW.Service.Firewall {
         public List<IpRule> Deny { get; } = new();
 
         /// <summary>
+        /// Allow Countries (ISO2 like "FR", "US")
+        /// If non-empty => default deny for this path if no match (same as Allow)
+        /// </summary>
+        public List<CountryRule> AllowCountries { get; } = new();
+
+        /// <summary>
+        /// Deny Countries (ISO2 like "FR", "US")
+        /// </summary>
+        public List<CountryRule> DenyCountries { get; } = new();
+
+        /// <summary>
         /// Rate Limit
         /// </summary>
         public RateLimitOptions? RateLimit { get; set; } = null;
+
+    }
+
+    /// <summary>
+    /// CountryRule (ISO2 codes, case-insensitive).
+    /// Unknown country is represented by iso2 == null.
+    /// </summary>
+    public abstract record CountryRule {
+
+        /// <summary>
+        /// One
+        /// </summary>
+        /// <param name="iso2"></param>
+        /// <returns></returns>
+        public static CountryRule One(string iso2) => new OneCountryRule(Norm(iso2));
+
+        /// <summary>
+        /// Any
+        /// </summary>
+        /// <param name="iso2"></param>
+        /// <returns></returns>
+        public static CountryRule Any(params string[] iso2) => new AnyCountryRule(iso2.Select(Norm).ToArray());
+
+        /// <summary>
+        /// Matches when the country is unknown (no db / not found / lookup fail).
+        /// </summary>
+        public static CountryRule Unknown() => new UnknownCountryRule();
+
+        /// <summary>
+        /// Match
+        /// </summary>
+        /// <param name="iso2"></param>
+        /// <returns></returns>
+        public abstract bool Match(string? iso2);
+
+        private static string Norm(string s) => s.Trim().ToUpperInvariant();
+
+        private sealed record OneCountryRule(string Iso2) : CountryRule {
+            public override bool Match(string? iso2) => iso2 != null && string.Equals(iso2, Iso2, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private sealed record AnyCountryRule(string[] Iso2) : CountryRule {
+            private readonly HashSet<string> _set = new(Iso2, StringComparer.OrdinalIgnoreCase);
+            public override bool Match(string? iso2) => iso2 != null && _set.Contains(iso2);
+        }
+
+        private sealed record UnknownCountryRule() : CountryRule {
+            public override bool Match(string? iso2) => iso2 == null;
+        }
 
     }
 

@@ -58,4 +58,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="MaxMind.GeoIP2" Version="5.4.1" />
+  </ItemGroup>
+
 </Project>
