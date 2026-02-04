@@ -26,9 +26,9 @@ namespace SimpleW {
             ParameterInfo[] parameters = method.GetParameters();
             HandlerReturnKind kind = GetReturnKind(method.ReturnType);
 
-            // lambda parameters (session + handlerResult)
+            // lambda parameters (session + resultHandler)
             ParameterExpression sessionParam = Expression.Parameter(typeof(HttpSession), "session");
-            ParameterExpression handlerResultParam = Expression.Parameter(typeof(HttpHandlerResult), "handlerResult");
+            ParameterExpression resultHandlerParam = Expression.Parameter(typeof(HttpResultHandler), "resultHandler");
 
             // session.Request
             MemberExpression? requestProp = Expression.Property(sessionParam, nameof(HttpSession.Request));
@@ -245,15 +245,15 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.SyncResult: {
-                    // result -> object -> RouteExecutorHelpers.InvokeHandlerResult(session, handlerResult, (object)result)
-                    MethodInfo invokeResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.InvokeHandlerResult), BindingFlags.Public | BindingFlags.Static)!;
+                    // result -> object -> RouteExecutorHelpers.InvokeResultHandler(session, resultHandler, (object)result)
+                    MethodInfo invokeResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.InvokeResultHandler), BindingFlags.Public | BindingFlags.Static)!;
                     Expression resultAsObject = method.ReturnType.IsValueType
                                                     ? Expression.Convert(call, typeof(object))
                                                     : Expression.TypeAs(call, typeof(object));
                     returnExpr = Expression.Call(
                                      invokeResultMethod,
                                      sessionParam,
-                                     handlerResultParam,
+                                     resultHandlerParam,
                                      resultAsObject
                                  );
                     break;
@@ -267,7 +267,7 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.TaskWithResult: {
-                    // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, handlerResult)
+                    // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, resultHandler)
                     Type[] args = method.ReturnType.GetGenericArguments();
                     MethodInfo fromTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
                                                                                        .MakeGenericMethod(args[0]);
@@ -275,7 +275,7 @@ namespace SimpleW {
                                      fromTaskWithResultGeneric,
                                      call,
                                      sessionParam,
-                                     handlerResultParam
+                                     resultHandlerParam
                                  );
                     break;
                 }
@@ -288,7 +288,7 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.ValueTaskWithResult: {
-                    // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, handlerResult)
+                    // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, resultHandler)
                     Type[] args = method.ReturnType.GetGenericArguments();
                     MethodInfo fromValueTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
                                                                                             .MakeGenericMethod(args[0]);
@@ -296,7 +296,7 @@ namespace SimpleW {
                                      fromValueTaskWithResultGeneric,
                                      call,
                                      sessionParam,
-                                     handlerResultParam
+                                     resultHandlerParam
                                  );
                     break;
                 }
@@ -311,7 +311,7 @@ namespace SimpleW {
             Expression<HttpRouteExecutor>? lambda = Expression.Lambda<HttpRouteExecutor>(
                                                         block,
                                                         sessionParam,
-                                                        handlerResultParam
+                                                        resultHandlerParam
                                                     );
 
             return lambda.Compile();
@@ -333,9 +333,9 @@ namespace SimpleW {
             ParameterInfo[] parameters = method.GetParameters();
             HandlerReturnKind kind = GetReturnKind(method.ReturnType);
 
-            // lambda parameters (session + handlerResult)
+            // lambda parameters (session + resultHandler)
             ParameterExpression sessionParam = Expression.Parameter(typeof(HttpSession), "session");
-            ParameterExpression handlerResultParam = Expression.Parameter(typeof(HttpHandlerResult), "handlerResult");
+            ParameterExpression resultHandlerParam = Expression.Parameter(typeof(HttpResultHandler), "resultHandler");
 
             // session.Request
             MemberExpression requestProp = Expression.Property(sessionParam, nameof(HttpSession.Request));
@@ -534,15 +534,15 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.SyncResult: {
-                    // result -> object -> RouteExecutorHelpers.InvokeHandlerResult(session, handlerResult, (object)result)
-                    MethodInfo invokeResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.InvokeHandlerResult), BindingFlags.Public | BindingFlags.Static)!;
+                    // result -> object -> RouteExecutorHelpers.InvokeResultHandler(session, resultHandler, (object)result)
+                    MethodInfo invokeResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.InvokeResultHandler), BindingFlags.Public | BindingFlags.Static)!;
                     Expression resultAsObject = method.ReturnType.IsValueType
                                                     ? Expression.Convert(callExpr, typeof(object))
                                                     : Expression.TypeAs(callExpr, typeof(object));
                     returnExpr = Expression.Call(
                                      invokeResultMethod,
                                      sessionParam,
-                                     handlerResultParam,
+                                     resultHandlerParam,
                                      resultAsObject
                                  );
                     break;
@@ -556,7 +556,7 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.TaskWithResult: {
-                    // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, handlerResult)
+                    // Task<T> -> RouteExecutorHelpers.FromTaskWithResult<T>(task, session, resultHandler)
                     Type[] args = method.ReturnType.GetGenericArguments();
                     MethodInfo fromTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
                                                                                        .MakeGenericMethod(args[0]);
@@ -564,7 +564,7 @@ namespace SimpleW {
                                      fromTaskWithResultGeneric,
                                      callExpr,
                                      sessionParam,
-                                     handlerResultParam
+                                     resultHandlerParam
                                  );
                     break;
                 }
@@ -577,7 +577,7 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.ValueTaskWithResult: {
-                    // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, handlerResult)
+                    // ValueTask<T> -> RouteExecutorHelpers.FromValueTaskWithResult<T>(vt, session, resultHandler)
                     Type[] args = method.ReturnType.GetGenericArguments();
                     MethodInfo fromValueTaskWithResultGeneric = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.FromValueTaskWithResult), BindingFlags.Public | BindingFlags.Static)!
                                                                                             .MakeGenericMethod(args[0]);
@@ -585,7 +585,7 @@ namespace SimpleW {
                                      fromValueTaskWithResultGeneric,
                                      callExpr,
                                      sessionParam,
-                                     handlerResultParam
+                                     resultHandlerParam
                                  );
                     break;
                 }
@@ -600,7 +600,7 @@ namespace SimpleW {
             Expression<HttpRouteExecutor> lambda = Expression.Lambda<HttpRouteExecutor>(
                                                        block,
                                                        sessionParam,
-                                                       handlerResultParam
+                                                       resultHandlerParam
                                                    );
 
             return lambda.Compile();
@@ -940,17 +940,17 @@ namespace SimpleW {
         public static ValueTask Completed() => default;
 
         /// <summary>
-        /// Call HandlerResult if Result is not null else a return ValueTask
+        /// Call ResultHandler if Result is not null else a return ValueTask
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="handlerResult"></param>
+        /// <param name="resultHandler"></param>
         /// <param name="result"></param>
         /// <returns></returns>
-        public static ValueTask InvokeHandlerResult(HttpSession session, HttpHandlerResult handlerResult, object? result) {
+        public static ValueTask InvokeResultHandler(HttpSession session, HttpResultHandler resultHandler, object? result) {
             if (result == null) {
                 return default;
             }
-            return handlerResult(session, result);
+            return resultHandler(session, result);
         }
 
         /// <summary>
@@ -973,10 +973,10 @@ namespace SimpleW {
         /// <typeparam name="T"></typeparam>
         /// <param name="task"></param>
         /// <param name="session"></param>
-        /// <param name="handlerResult"></param>
+        /// <param name="resultHandler"></param>
         /// <returns></returns>
-        public static ValueTask FromTaskWithResult<T>(Task<T> task, HttpSession session, HttpHandlerResult handlerResult) {
-            return AwaitTaskWithResultAsync(task, session, handlerResult);
+        public static ValueTask FromTaskWithResult<T>(Task<T> task, HttpSession session, HttpResultHandler resultHandler) {
+            return AwaitTaskWithResultAsync(task, session, resultHandler);
         }
 
         /// <summary>
@@ -985,12 +985,12 @@ namespace SimpleW {
         /// <typeparam name="T"></typeparam>
         /// <param name="task"></param>
         /// <param name="session"></param>
-        /// <param name="handlerResult"></param>
+        /// <param name="resultHandler"></param>
         /// <returns></returns>
-        private static async ValueTask AwaitTaskWithResultAsync<T>(Task<T> task, HttpSession session, HttpHandlerResult handlerResult) {
+        private static async ValueTask AwaitTaskWithResultAsync<T>(Task<T> task, HttpSession session, HttpResultHandler resultHandler) {
             T? result = await task.ConfigureAwait(false);
             if (result != null) {
-                await handlerResult(session, result!).ConfigureAwait(false);
+                await resultHandler(session, result!).ConfigureAwait(false);
             }
         }
 
@@ -1000,10 +1000,10 @@ namespace SimpleW {
         /// <typeparam name="T"></typeparam>
         /// <param name="task"></param>
         /// <param name="session"></param>
-        /// <param name="handlerResult"></param>
+        /// <param name="resultHandler"></param>
         /// <returns></returns>
-        public static ValueTask FromValueTaskWithResult<T>(ValueTask<T> task, HttpSession session, HttpHandlerResult handlerResult) {
-            return AwaitValueTaskWithResultAsync(task, session, handlerResult);
+        public static ValueTask FromValueTaskWithResult<T>(ValueTask<T> task, HttpSession session, HttpResultHandler resultHandler) {
+            return AwaitValueTaskWithResultAsync(task, session, resultHandler);
         }
 
         /// <summary>
@@ -1012,12 +1012,12 @@ namespace SimpleW {
         /// <typeparam name="T"></typeparam>
         /// <param name="task"></param>
         /// <param name="session"></param>
-        /// <param name="handlerResult"></param>
+        /// <param name="resultHandler"></param>
         /// <returns></returns>
-        private static async ValueTask AwaitValueTaskWithResultAsync<T>(ValueTask<T> task, HttpSession session, HttpHandlerResult handlerResult) {
+        private static async ValueTask AwaitValueTaskWithResultAsync<T>(ValueTask<T> task, HttpSession session, HttpResultHandler resultHandler) {
             T? result = await task.ConfigureAwait(false);
             if (result != null) {
-                await handlerResult(session, result!).ConfigureAwait(false);
+                await resultHandler(session, result!).ConfigureAwait(false);
             }
         }
 

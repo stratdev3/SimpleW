@@ -94,9 +94,9 @@ namespace SimpleW.Service.Razor {
                             .Build();
 
             // wrap existing handler-result (default is JSON sender) 
-            HttpHandlerResult next = server.Router.HandlerResult;
+            HttpResultHandler next = server.Router.ResultHandler;
 
-            server.ConfigureHandlerResult(async (session, result) => {
+            server.ConfigureResultHandler(async (session, result) => {
                 // add Razor render
                 if (result is ViewResult vr) {
                     await RenderViewAsync(session, vr).ConfigureAwait(false);

@@ -5,7 +5,7 @@
     /// <summary>
     /// Executor for a Route
     /// </summary>
-    public delegate ValueTask HttpRouteExecutor(HttpSession session, HttpHandlerResult handlerResult);
+    public delegate ValueTask HttpRouteExecutor(HttpSession session, HttpResultHandler resultHandler);
 
     #endregion handlers for map delegate
 
@@ -17,17 +17,17 @@
     /// <param name="session"></param>
     /// <param name="result"></param>
     /// <returns></returns>
-    public delegate ValueTask HttpHandlerResult(HttpSession session, object result);
+    public delegate ValueTask HttpResultHandler(HttpSession session, object result);
 
     /// <summary>
-    /// Examples of HttpHandlerResult
+    /// Examples of HttpResultHandler
     /// </summary>
-    public static class HttpHandlerResults {
+    public static class HttpResultHandlers {
 
         /// <summary>
         /// Send Result as Json
         /// </summary>
-        public static readonly HttpHandlerResult SendJsonResult = (session, result) => {
+        public static readonly HttpResultHandler SendJsonResult = (session, result) => {
             if (result is HttpResponse response) {
                 // must be sure the response return result is the one of the current session !
                 if (!ReferenceEquals(response, session.Response)) {
@@ -42,7 +42,7 @@
         /// <summary>
         /// Set Result as Json Body Response
         /// </summary>
-        public static readonly HttpHandlerResult SetJsonBodyResponseResult = (session, result) => {
+        public static readonly HttpResultHandler SetJsonBodyResponseResult = (session, result) => {
             session.Response.Json(result);
             return ValueTask.CompletedTask;
         };
@@ -50,7 +50,7 @@
         /// <summary>
         /// Do nothing
         /// </summary>
-        public static readonly HttpHandlerResult DoNothingResult = (session, result) => {
+        public static readonly HttpResultHandler DoNothingResult = (session, result) => {
             return ValueTask.CompletedTask;
         };
 

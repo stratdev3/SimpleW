@@ -8,12 +8,12 @@ using Xunit;
 namespace test {
 
     /// <summary>
-    /// Tests for HandlerResult
+    /// Tests for ResultHandler
     /// </summary>
-    public class HandlerResultTests {
+    public class ResultHandlerTests {
 
         [Fact]
-        public async Task Response_200_Default_HandlerResult() {
+        public async Task Response_200_Default_ResultHandler() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
@@ -38,11 +38,11 @@ namespace test {
         }
 
         [Fact]
-        public async Task Response_200_Custom_HandlerResult_AddHeader() {
+        public async Task Response_200_Custom_ResultHandler_AddHeader() {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.ConfigureHandlerResult(async (session, result) => {
+            server.ConfigureResultHandler(async (session, result) => {
                 await session.Response
                              .AddHeader("custom", "value")
                              .Html($"<p>{result.ToString()}</p>")

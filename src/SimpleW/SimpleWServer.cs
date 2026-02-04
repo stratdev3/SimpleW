@@ -300,24 +300,24 @@ namespace SimpleW {
         #region handler result
 
         /// <summary>
-        /// Override HandlerResult, Action to do for the non nulls returns
+        /// Override ResultHandler, Action to do for the non nulls returns
         /// </summary>
         /// <param name="handler"></param>
         /// <example>
         /// // example1 : log and sent
-        /// server.ConfigureHandlerResult((session, result) => {
+        /// server.ConfigureResultHandler((session, result) => {
         ///     Console.WriteLine("result will be serialized and sent as response");
         ///     return session.SendJsonAsync(result);
         /// });
         /// // exemple2: do something async and sent response
-        /// server.ConfigureHandlerResult(async (session, result) => {
+        /// server.ConfigureResultHandler(async (session, result) => {
         ///     Console.WriteLine("wait 2sec then result will be serialized and sent as response");
         ///     await Task.Delay(2_000);
         ///     await session.SendJsonAsync(result);
         /// });
         /// </example>
-        public SimpleWServer ConfigureHandlerResult(HttpHandlerResult handler) {
-            Router.HandlerResult = handler;
+        public SimpleWServer ConfigureResultHandler(HttpResultHandler handler) {
+            Router.ResultHandler = handler;
             return this;
         }
 

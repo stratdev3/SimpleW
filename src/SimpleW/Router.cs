@@ -90,11 +90,11 @@
         /// <returns></returns>
         private ValueTask ExecutePipelineAsync(HttpSession session, HttpRouteExecutor terminalExecutor) {
             if (_middlewares.Count == 0) {
-                return terminalExecutor(session, HandlerResult);
+                return terminalExecutor(session, ResultHandler);
             }
 
             // build the next()
-            Func<ValueTask> next = () => terminalExecutor(session, HandlerResult);
+            Func<ValueTask> next = () => terminalExecutor(session, ResultHandler);
 
             // loop the next()
             for (int i = _middlewares.Count - 1; i >= 0; i--) {
@@ -108,14 +108,14 @@
 
         #endregion middleware
 
-        #region HandlerResult
+        #region ResultHandler
 
         /// <summary>
         /// Action to do on the non null Result of any handler (Delegate).
         /// </summary>
-        public HttpHandlerResult HandlerResult { get; set; } = HttpHandlerResults.SendJsonResult;
+        public HttpResultHandler ResultHandler { get; set; } = HttpResultHandlers.SendJsonResult;
 
-        #endregion HandlerResult
+        #endregion ResultHandler
 
         #region Map Method Path Delegate
 
