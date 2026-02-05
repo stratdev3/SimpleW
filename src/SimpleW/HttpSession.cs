@@ -170,6 +170,38 @@ namespace SimpleW {
 
         #endregion Connect
 
+        #region cancellationToken
+
+        /// <summary>
+        /// The CancellationTokenSource
+        /// </summary>
+        private readonly CancellationTokenSource _abortCts = new();
+
+        /// <summary>
+        /// Cancellation Token
+        /// pass this cts to any async method in handler
+        /// you want to stop when client disconnect
+        /// </summary>
+        public CancellationToken RequestAborted => _abortCts.Token;
+
+        /// <summary>
+        /// Abort (call cts.Cancel())
+        /// </summary>
+        internal void Abort() {
+            if (!_abortCts.IsCancellationRequested) {
+                _abortCts.Cancel();
+            }
+        }
+
+        /// <summary>
+        /// ThrowIfAborted
+        /// use this method in any sync handler
+        /// you want to stop when client disconnect
+        /// </summary>
+        public void ThrowIfAborted() => RequestAborted.ThrowIfCancellationRequested();
+
+        #endregion cancellationToken
+
         #region ssl
 
         /// <summary>
@@ -285,16 +317,19 @@ namespace SimpleW {
                                   || se.SocketErrorCode == SocketError.ConnectionAborted)
                     ) {
                     // client a reset/abort (consider as a normal closed)
+                    Abort();
                     return;
                 }
                 catch (SocketException se)
                     when (se.SocketErrorCode == SocketError.ConnectionReset
                           || se.SocketErrorCode == SocketError.ConnectionAborted
                 ) {
+                    Abort();
                     return;
                 }
                 catch (ObjectDisposedException) {
                     // socket/stream closed (idle timeout or Dispose)
+                    Abort();
                     return;
                 }
 
@@ -304,6 +339,7 @@ namespace SimpleW {
 
                 if (bytesRead == 0) {
                     // remote closed
+                    Abort();
                     return;
                 }
 
@@ -485,8 +521,10 @@ namespace SimpleW {
                 }
             }
             catch (ObjectDisposedException) {
+                Abort();
             }
             catch (SocketException) {
+                Abort();
             }
             finally {
                 Volatile.Write(ref _sending, 0);
@@ -521,8 +559,10 @@ namespace SimpleW {
                 }
             }
             catch (ObjectDisposedException) {
+                Abort();
             }
             catch (SocketException) {
+                Abort();
             }
             finally {
                 Volatile.Write(ref _sending, 0);
@@ -561,8 +601,10 @@ namespace SimpleW {
                 }
             }
             catch (ObjectDisposedException) {
+                Abort();
             }
             catch (SocketException) {
+                Abort();
             }
             finally {
                 Volatile.Write(ref _sending, 0);
@@ -592,8 +634,10 @@ namespace SimpleW {
                 }
             }
             catch (ObjectDisposedException) {
+                Abort();
             }
             catch (SocketException) {
+                Abort();
             }
             finally {
                 Volatile.Write(ref _sending, 0);
@@ -619,6 +663,9 @@ namespace SimpleW {
 
             _disposed = true;
 
+            // ensure Abort is signaled for in-flight work
+            Abort();
+
             try {
                 if (_socket.Connected) {
                     _socket.Shutdown(SocketShutdown.Both);
@@ -642,6 +689,7 @@ namespace SimpleW {
                 _parseBufferCount = 0;
             }
 
+            try { _abortCts.Dispose(); } catch { }
         }
 
         #endregion IDisposable
