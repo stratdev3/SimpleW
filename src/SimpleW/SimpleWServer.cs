@@ -646,7 +646,7 @@ namespace SimpleW {
                 if (SslContext != null) {
                     await connection.UseHttps(SslContext).ConfigureAwait(false);
                 }
-                connection.Connect()                    ;                   // receive data
+                connection.Connect();                                       // receive data
                 await connection.ProcessAsync().ConfigureAwait(false);      // handle data
             }
             catch (Exception ex) {
