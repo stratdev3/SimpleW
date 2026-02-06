@@ -654,7 +654,8 @@ namespace test {
             Directory.CreateDirectory(path);
 
             // important: file does NOT exist at startup
-            string filePath = Path.Combine(path, "new.txt");
+            string fileName = $"new-{Guid.NewGuid()}.txt";
+            string filePath = Path.Combine(path, fileName);
 
             server.UseStaticFilesModule(options => {
                 options.Path = path;
@@ -668,7 +669,7 @@ namespace test {
             var client = new HttpClient();
 
             // file doesn't exist yet => 404
-            var response1 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/new.txt");
+            var response1 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/{fileName}");
             Check.That(response1.StatusCode).Is(HttpStatusCode.NotFound);
 
             // create file
@@ -678,7 +679,7 @@ namespace test {
             await Task.Delay(150);
 
             // now should return 200 + content
-            var response2 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/new.txt");
+            var response2 = await client.GetAsync($"http://{server.Address}:{server.Port}/files/{fileName}");
             var content2 = await response2.Content.ReadAsStringAsync();
 
             Check.That(response2.StatusCode).Is(HttpStatusCode.OK);
