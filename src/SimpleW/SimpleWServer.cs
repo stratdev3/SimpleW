@@ -527,7 +527,13 @@ namespace SimpleW {
             // start listen to the socket with the given accepting backlog size
             _listenSocket.Listen(Options.ListenBacklog);
 
-            int maxParalleListenSocketEventArgs = Options.AcceptPerCore ? Environment.ProcessorCount : 1;
+            // by default only run one SAEA instance but when
+            // user enables AcceptPerCore, he wants better perf
+            // and we force a minimum of 2 instances. The use case
+            // it VPS hosting with only 1 core, 2 instances
+            // can be a real perf improvement.
+            int maxParalleListenSocketEventArgs = Options.AcceptPerCore ? Math.Max(2, Environment.ProcessorCount / 2) : 1;
+
             for (int i = 0; i < maxParalleListenSocketEventArgs; i++) {
                 // SocketAsyncEventArgs
                 SocketAsyncEventArgs listenSocketEventArgs = new();
@@ -920,7 +926,7 @@ namespace SimpleW {
         /// <summary>
         /// This option will set the maximum length of the pending connections queue.
         /// </summary>
-        public int ListenBacklog { get; set; } = 1024;
+        public int ListenBacklog { get; set; } = 8192;
 
         /// <summary>
         /// Specifies whether the Socket is a dual-mode socket used for both IPv4 and IPv6.
