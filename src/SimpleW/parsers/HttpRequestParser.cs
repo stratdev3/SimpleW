@@ -25,6 +25,11 @@ namespace SimpleW.Parsers {
         #endregion
 
         /// <summary>
+        /// ArrayPool
+        /// </summary>
+        private readonly ArrayPool<byte> _bufferPool;
+
+        /// <summary>
         /// MaxHeaderSize
         /// </summary>
         private readonly int _maxHeaderSize;
@@ -37,9 +42,11 @@ namespace SimpleW.Parsers {
         /// <summary>
         /// Constructor
         /// </summary>
+        /// <param name="bufferPool"></param>
         /// <param name="maxHeaderSize"></param>
         /// <param name="maxBodySize"></param>
-        public HttpRequestParser(int maxHeaderSize, long maxBodySize) {
+        public HttpRequestParser(ArrayPool<byte> bufferPool, int maxHeaderSize, long maxBodySize) {
+            _bufferPool = bufferPool;
             _maxHeaderSize = maxHeaderSize;
             _maxBodySize = maxBodySize;
         }
@@ -81,12 +88,12 @@ namespace SimpleW.Parsers {
             }
             if (!TryParseRequestLine(ToSpanOrPooled(requestLine, out byte[]? pooled1), out string method, out string rawTarget, out string path, out string protocol, out string queryString, out ReadOnlySpan<byte> querySpan)) {
                 if (pooled1 != null) {
-                    ArrayPool<byte>.Shared.Return(pooled1);
+                    _bufferPool.Return(pooled1);
                 }
                 throw new HttpBadRequestException("Invalid request line.");
             }
             if (pooled1 != null) {
-                ArrayPool<byte>.Shared.Return(pooled1);
+                _bufferPool.Return(pooled1);
             }
 
             request.ParserSetMethod(method);
@@ -112,7 +119,7 @@ namespace SimpleW.Parsers {
 
                 if (!TryParseHeaderLine(lineSpan, out string? name, out string? value) || name == null) {
                     if (pooled2 != null) {
-                        ArrayPool<byte>.Shared.Return(pooled2);
+                        _bufferPool.Return(pooled2);
                     }
                     throw new HttpBadRequestException("Invalid header line.");
                 }
@@ -132,7 +139,7 @@ namespace SimpleW.Parsers {
                 }
 
                 if (pooled2 != null) {
-                    ArrayPool<byte>.Shared.Return(pooled2);
+                    _bufferPool.Return(pooled2);
                 }
             }
             request.ParserSetHeaders(headers);
@@ -348,7 +355,7 @@ namespace SimpleW.Parsers {
                     ReadOnlySpan<byte> sizeLineSpan = ToSpanOrPooled(sizeLineSeq, out var pooledLine);
                     bool ok = TryParseHexInt(sizeLineSpan, out int chunkSize);
                     if (pooledLine != null) {
-                        ArrayPool<byte>.Shared.Return(pooledLine);
+                        _bufferPool.Return(pooledLine);
                     }
 
                     if (!ok) {
@@ -372,7 +379,7 @@ namespace SimpleW.Parsers {
                     // ensure buffer capacity
                     if (rented == null) {
                         int initial = Math.Max(chunkSize, 4096);
-                        rented = ArrayPool<byte>.Shared.Rent(initial);
+                        rented = _bufferPool.Rent(initial);
                         rentedSize = rented.Length;
                     }
                     if (written + chunkSize > rentedSize) {
@@ -382,9 +389,9 @@ namespace SimpleW.Parsers {
                             newSize = required;
                         }
 
-                        byte[] newBuf = ArrayPool<byte>.Shared.Rent(newSize);
+                        byte[] newBuf = _bufferPool.Rent(newSize);
                         Buffer.BlockCopy(rented, 0, newBuf, 0, written);
-                        ArrayPool<byte>.Shared.Return(rented);
+                        _bufferPool.Return(rented);
                         rented = newBuf;
                         rentedSize = newSize;
                     }
@@ -415,7 +422,7 @@ namespace SimpleW.Parsers {
 
                 if (written == 0) {
                     if (rented != null) {
-                        ArrayPool<byte>.Shared.Return(rented);
+                        _bufferPool.Return(rented);
                     }
                     pooledBuffer = null;
                     body = ReadOnlySequence<byte>.Empty;
@@ -432,7 +439,7 @@ namespace SimpleW.Parsers {
             }
             catch {
                 if (rented != null) {
-                    ArrayPool<byte>.Shared.Return(rented);
+                    _bufferPool.Return(rented);
                 }
                 throw;
             }
@@ -477,14 +484,14 @@ namespace SimpleW.Parsers {
         /// <param name="seq"></param>
         /// <param name="pooled"></param>
         /// <returns></returns>
-        private static ReadOnlySpan<byte> ToSpanOrPooled(in ReadOnlySequence<byte> seq, out byte[]? pooled) {
+        private ReadOnlySpan<byte> ToSpanOrPooled(in ReadOnlySequence<byte> seq, out byte[]? pooled) {
             if (seq.IsSingleSegment) {
                 pooled = null;
                 return seq.FirstSpan;
             }
 
             int len = checked((int)seq.Length);
-            pooled = ArrayPool<byte>.Shared.Rent(len);
+            pooled = _bufferPool.Rent(len);
             seq.CopyTo(pooled);
             return pooled.AsSpan(0, len);
         }

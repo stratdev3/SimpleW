@@ -11,6 +11,11 @@ namespace SimpleW {
     public sealed class HttpRequest {
 
         /// <summary>
+        /// ArrayPool
+        /// </summary>
+        private readonly ArrayPool<byte> _bufferPool;
+
+        /// <summary>
         /// Get the HTTP request method
         /// </summary>
         public string Method { get; private set; } = string.Empty;
@@ -55,14 +60,14 @@ namespace SimpleW {
 
                 // multi segments -> copy to temp buffer via ArrayPool
                 int length = checked((int)Body.Length);
-                byte[] rented = ArrayPool<byte>.Shared.Rent(length);
+                byte[] rented = _bufferPool.Rent(length);
 
                 try {
                     Body.CopyTo(rented);
                     return Utf8.GetString(rented, 0, length);
                 }
                 finally {
-                    ArrayPool<byte>.Shared.Return(rented);
+                    _bufferPool.Return(rented);
                 }
             }
         }
@@ -231,13 +236,15 @@ namespace SimpleW {
         /// <summary>
         /// Constructor
         /// </summary>
+        /// <param name="bufferPool"></param>
         /// <param name="jsonEngine"></param>
         /// <param name="maxRequestHeaderSize"></param>
         /// <param name="maxRequestBodySize"></param>
         /// <param name="jwtResolver"></param>
         /// <param name="jwtOptions"></param>
         /// <param name="userResolver"></param>
-        internal HttpRequest(IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions, WebUserResolver? userResolver) {
+        internal HttpRequest(ArrayPool<byte> bufferPool, IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions, WebUserResolver? userResolver) {
+            _bufferPool = bufferPool;
             JsonEngine = jsonEngine;
             MaxRequestHeaderSize = maxRequestHeaderSize;
             MaxRequestBodySize = maxRequestBodySize;
@@ -287,7 +294,7 @@ namespace SimpleW {
         /// </summary>
         public void ReturnPooledBodyBuffer() {
             if (PooledBodyBuffer != null) {
-                ArrayPool<byte>.Shared.Return(PooledBodyBuffer);
+                _bufferPool.Return(PooledBodyBuffer);
                 PooledBodyBuffer = null;
             }
         }

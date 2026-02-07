@@ -119,8 +119,8 @@ namespace SimpleW {
             _parseBuffer = _bufferPool.Rent(server.Options.ReceiveBufferSize);
             _parseBufferCount = 0;
 
-            _request = new HttpRequest(server.JsonEngine, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize, server.JwtResolver, server.Options.JwtOptions, server.UserResolver);
-            _parser = new HttpRequestParser(server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
+            _request = new HttpRequest(_bufferPool, server.JsonEngine, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize, server.JwtResolver, server.Options.JwtOptions, server.UserResolver);
+            _parser = new HttpRequestParser(_bufferPool, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
             _response = new HttpResponse(this, _bufferPool);
 
             SocketOptions();
