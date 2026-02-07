@@ -368,13 +368,14 @@ namespace SimpleW {
                             return;
                         }
 
-                        int consumed = _parser.TryReadHttpRequest(_parseBuffer, offset, _parseBufferCount - offset, _request);
+                        _parser.TryReadHttpRequest(new ReadOnlySequence<byte>(_parseBuffer, offset, _parseBufferCount - offset), _request, out long consumed);
+
                         if (consumed == 0) {
                             // if nothing consumed, we need/wait for more data
                             break;
                         }
 
-                        offset += consumed;
+                        offset += (int)consumed;
 
                         // PER-REQUEST SCOPE
                         bool hasCatched = false;

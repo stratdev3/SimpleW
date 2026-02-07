@@ -48,50 +48,45 @@ namespace SimpleW.Parsers {
         /// Parse HttpRequest from contiguous buffer
         /// </summary>
         /// <param name="buffer"></param>
-        /// <param name="offset"></param>
-        /// <param name="length"></param>
         /// <param name="request"></param>
-        /// <returns>
-        /// Return number of bytes consumed in buffer[offset..offset+length],
-        /// or 0 if need more data to read the request
-        /// </returns>
+        /// <param name="consumedBytes"></param>
         /// <exception cref="HttpRequestTooLargeException"></exception>
-        public int TryReadHttpRequest(byte[] buffer, int offset, int length, HttpRequest request) {
+        public bool TryReadHttpRequest(in ReadOnlySequence<byte> buffer, HttpRequest request, out long consumedBytes) {
             request.Reset();
+            consumedBytes = 0;
 
-            if (length <= 0) {
-                return 0;
+            if (buffer.IsEmpty) {
+                return false;
             }
 
-            ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(buffer, offset, length);
 
             // 1. find header end (CRLF CRLF)
-            int headerEnd = span.IndexOf(HeaderTerminator);
-            if (headerEnd < 0) {
-                // check for headers max size
-                if (span.Length > _maxHeaderSize) {
-                    throw new HttpRequestTooLargeException($"Request headers too large: {span.Length} bytes (limit: {_maxHeaderSize}).");
+            if (!TryFindHeaderEnd(buffer, out var headerEndPos, out int headerBytesLen)) {
+                // check in case we need more data but the header is already too large
+                if (buffer.Length > _maxHeaderSize) {
+                    throw new HttpRequestTooLargeException($"Request headers too large: {buffer.Length} bytes (limit: {_maxHeaderSize}).");
                 }
-                return 0;
+                return false; // need more data
             }
-
-            // check for headers max size
-            int headerBytesLen = headerEnd + HeaderTerminator.Length;
             if (headerBytesLen > _maxHeaderSize) {
                 throw new HttpRequestTooLargeException($"Request headers too large: {headerBytesLen} bytes (limit: {_maxHeaderSize}).");
             }
+            ReadOnlySequence<byte> headerBlock = buffer.Slice(0, headerEndPos); // header block includes the final CRLFCRLF
 
-            ReadOnlySpan<byte> headerSpan = span.Slice(0, headerEnd + Crlf.Length);
 
             // 2. request line
-            int firstCrlf = headerSpan.IndexOf(Crlf);
-            if (firstCrlf <= 0) {
+            SequenceReader<byte> reader = new(headerBlock);
+            if (!TryReadLine(ref reader, out ReadOnlySequence<byte> requestLine)) {
                 throw new HttpBadRequestException("Invalid request line.");
             }
-
-            ReadOnlySpan<byte> requestLineSpan = headerSpan.Slice(0, firstCrlf);
-            if (!TryParseRequestLine(requestLineSpan, out string method, out string rawTarget, out string path, out string protocol, out string queryString, out ReadOnlySpan<byte> querySpan)) {
-                throw new HttpBadRequestException("");
+            if (!TryParseRequestLine(ToSpanOrPooled(requestLine, out byte[]? pooled1), out string method, out string rawTarget, out string path, out string protocol, out string queryString, out ReadOnlySpan<byte> querySpan)) {
+                if (pooled1 != null) {
+                    ArrayPool<byte>.Shared.Return(pooled1);
+                }
+                throw new HttpBadRequestException("Invalid request line.");
+            }
+            if (pooled1 != null) {
+                ArrayPool<byte>.Shared.Return(pooled1);
             }
 
             request.ParserSetMethod(method);
@@ -101,27 +96,24 @@ namespace SimpleW.Parsers {
             request.ParserSetQueryString(queryString);
             HttpRequestParser.ParseQueryString(querySpan, request.Query);
 
+
             // 3. headers
             HttpHeaders headers = default;
             long? contentLength = null;
             bool isChunked = false;
 
-            int headerPos = firstCrlf + Crlf.Length;
-
-            while (headerPos < headerEnd) {
-                int rel = headerSpan.Slice(headerPos).IndexOf(Crlf);
-                if (rel < 0) {
+            while (TryReadLine(ref reader, out ReadOnlySequence<byte> line)) {
+                // empty line => end headers (should not happen because headerBlock stops at CRLFCRLF, but safe)
+                if (line.Length == 0) {
                     break;
                 }
 
-                ReadOnlySpan<byte> lineSpan = headerSpan.Slice(headerPos, rel);
-                headerPos += rel + Crlf.Length;
-
-                if (lineSpan.Length == 0) {
-                    continue;
-                }
+                ReadOnlySpan<byte> lineSpan = ToSpanOrPooled(line, out var pooled2);
 
                 if (!TryParseHeaderLine(lineSpan, out string? name, out string? value) || name == null) {
+                    if (pooled2 != null) {
+                        ArrayPool<byte>.Shared.Return(pooled2);
+                    }
                     throw new HttpBadRequestException("Invalid header line.");
                 }
 
@@ -138,33 +130,35 @@ namespace SimpleW.Parsers {
                         isChunked = true;
                     }
                 }
-            }
-            //if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && headers.Host == null) {
-            //    throw new HttpBadRequestException("Missing Host header (HTTP/1.1).");
-            //}
 
+                if (pooled2 != null) {
+                    ArrayPool<byte>.Shared.Return(pooled2);
+                }
+            }
             request.ParserSetHeaders(headers);
 
-            // no content-length and no chunked
+
+            // 4. body
+
+            long headerTotalLen = headerBytesLen; // bytes up to and including CRLFCRLF
+            ReadOnlySequence<byte> bodyBuffer = buffer.Slice(headerTotalLen);
+
+            // no chunked and no content-length
             if (!isChunked && (!contentLength.HasValue || contentLength.Value == 0)) {
                 request.ParserSetBody(ReadOnlySequence<byte>.Empty);
-                return headerBytesLen;
+                consumedBytes = headerTotalLen;
+                return true;
             }
 
-            // 4. body (Content-Length ou chunked)
-            int bodyStart = headerBytesLen;
-            int availableBodyBytes = length - bodyStart;
-
-            // chunked
             if (isChunked) {
-                if (!TryReadChunkedBody(span, bodyStart, out ReadOnlySequence<byte> bodySeq, out byte[]? pooledBuffer, out int totalConsumed)) {
-                    // need more data
-                    return 0;
+                if (!TryReadChunkedBody(bodyBuffer, out ReadOnlySequence<byte> bodySeq, out byte[]? pooledBody, out long bodyConsumed)) {
+                    return false;
                 }
-
                 request.ParserSetBody(bodySeq);
-                request.PooledBodyBuffer = pooledBuffer;
-                return totalConsumed;
+                request.PooledBodyBuffer = pooledBody;
+
+                consumedBytes = headerTotalLen + bodyConsumed;
+                return true;
             }
 
             // check for body max size (hide warning on contextLengh as we already know it has value)
@@ -172,20 +166,50 @@ namespace SimpleW.Parsers {
             if (clLong > _maxBodySize) {
                 throw new HttpRequestTooLargeException($"Request body too large: {clLong} bytes (limit: {_maxBodySize}).");
             }
-
-            int bodyLength = checked((int)clLong);
-
-            if (availableBodyBytes < bodyLength) {
-                // need more data
-                return 0;
+            if (bodyBuffer.Length < clLong) {
+                return false;
             }
 
-            // contiguous body in the same buffer
-            int bodyOffsetInBuffer = offset + bodyStart;
-            request.ParserSetBody(new ReadOnlySequence<byte>(buffer, bodyOffsetInBuffer, bodyLength));
+            // slice body directly (zero-copy, even across segments)
+            request.ParserSetBody(bodyBuffer.Slice(0, clLong));
+            consumedBytes = headerTotalLen + clLong;
+            return true;
+        }
 
-            // total consumed = headers + body
-            return headerBytesLen + bodyLength;
+        /// <summary>
+        /// We find header end by search CRLF CRLF
+        /// headerBytesLen = bytes count up to that point
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="endPos">contains the header CRLK CRLK delimiter</param>
+        /// <param name="headerBytesLen"></param>
+        /// <returns></returns>
+        private static bool TryFindHeaderEnd(in ReadOnlySequence<byte> buffer, out SequencePosition endPos, out int headerBytesLen) {
+            SequenceReader<byte> reader = new(buffer);
+
+            // read until CRLF CRLF, keep delimiter
+            if (!reader.TryReadTo(out ReadOnlySequence<byte> _, HeaderTerminator, advancePastDelimiter: true)) {
+                endPos = default;
+                headerBytesLen = 0;
+                return false;
+            }
+
+            endPos = reader.Position;
+            headerBytesLen = (int)reader.Consumed; // safe because headers are bounded by _maxHeaderSize
+            return true;
+        }
+
+        /// <summary>
+        /// Line Reader
+        /// </summary>
+        /// <param name="reader"></param>
+        /// <param name="line">return the line without the CRLF</param>
+        /// <returns></returns>
+        private static bool TryReadLine(ref SequenceReader<byte> reader, out ReadOnlySequence<byte> line) {
+            if (!reader.TryReadTo(out line, Crlf, advancePastDelimiter: true)) {
+                return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -294,146 +318,124 @@ namespace SimpleW.Parsers {
         }
 
         /// <summary>
-        /// Body : chunked
+        /// Body : chunked (works across segments)
         /// </summary>
-        /// <param name="span"></param>
-        /// <param name="bodyStart"></param>
+        /// <param name="bodyBuffer"></param>
         /// <param name="body"></param>
         /// <param name="pooledBuffer"></param>
         /// <param name="totalConsumed"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
         /// <exception cref="HttpRequestTooLargeException"></exception>
-        private bool TryReadChunkedBody(ReadOnlySpan<byte> span, int bodyStart, out ReadOnlySequence<byte> body, out byte[]? pooledBuffer, out int totalConsumed) {
+        private bool TryReadChunkedBody(in ReadOnlySequence<byte> bodyBuffer, out ReadOnlySequence<byte> body, out byte[]? pooledBuffer, out long totalConsumed) {
             body = ReadOnlySequence<byte>.Empty;
             pooledBuffer = null;
             totalConsumed = 0;
 
-            int pos = bodyStart;
-            int totalLength = span.Length;
+            SequenceReader<byte> reader = new(bodyBuffer);
 
             byte[]? rented = null;
             int rentedSize = 0;
             int written = 0;
 
-            while (true) {
-                // need more data
-                if (pos >= totalLength) {
-                    if (rented != null) {
-                        ArrayPool<byte>.Shared.Return(rented);
+            try {
+                while (true) {
+                    // read chunk size line
+                    if (!reader.TryReadTo(out ReadOnlySequence<byte> sizeLineSeq, Crlf, advancePastDelimiter: true)) {
+                        return false;
                     }
+
+                    ReadOnlySpan<byte> sizeLineSpan = ToSpanOrPooled(sizeLineSeq, out var pooledLine);
+                    bool ok = TryParseHexInt(sizeLineSpan, out int chunkSize);
+                    if (pooledLine != null) {
+                        ArrayPool<byte>.Shared.Return(pooledLine);
+                    }
+
+                    if (!ok) {
+                        throw new HttpBadRequestException("Invalid chunk size.");
+                    }
+
+                    if (chunkSize == 0) {
+                        break;
+                    }
+
+                    long newTotal = (long)written + chunkSize;
+                    if (newTotal > _maxBodySize) {
+                        throw new HttpRequestTooLargeException($"Request body too large (chunked): {newTotal} bytes (limit: {_maxBodySize}).");
+                    }
+
+                    // need chunk bytes + CRLF
+                    if (reader.Remaining < chunkSize + Crlf.Length) {
+                        return false;
+                    }
+
+                    // ensure buffer capacity
+                    if (rented == null) {
+                        int initial = Math.Max(chunkSize, 4096);
+                        rented = ArrayPool<byte>.Shared.Rent(initial);
+                        rentedSize = rented.Length;
+                    }
+                    if (written + chunkSize > rentedSize) {
+                        int newSize = rentedSize * 2;
+                        int required = written + chunkSize;
+                        if (newSize < required) {
+                            newSize = required;
+                        }
+
+                        byte[] newBuf = ArrayPool<byte>.Shared.Rent(newSize);
+                        Buffer.BlockCopy(rented, 0, newBuf, 0, written);
+                        ArrayPool<byte>.Shared.Return(rented);
+                        rented = newBuf;
+                        rentedSize = newSize;
+                    }
+
+                    // copy chunk (may be multi-segment)
+                    var chunkSeq = reader.Sequence.Slice(reader.Position, chunkSize);
+                    CopySequenceTo(chunkSeq, rented.AsSpan(written));
+                    written += chunkSize;
+
+                    reader.Advance(chunkSize);
+
+                    // expect CRLF after chunk data
+                    if (!reader.TryRead(out byte b1) || !reader.TryRead(out byte b2)) {
+                        return false;
+                    }
+
+                    if (b1 != (byte)'\r' || b2 != (byte)'\n') {
+                        throw new InvalidOperationException("Invalid chunk terminator.");
+                    }
+                }
+
+                // trailers end with CRLFCRLF
+                if (!reader.TryReadTo(out ReadOnlySequence<byte> _, HeaderTerminator, advancePastDelimiter: true)) {
                     return false;
                 }
 
-                ReadOnlySpan<byte> sizeSearch = span.Slice(pos, totalLength - pos);
-                int lineEndRel = sizeSearch.IndexOf(Crlf);
-                if (lineEndRel < 0) {
-                    // need more data
+                totalConsumed = reader.Consumed;
+
+                if (written == 0) {
                     if (rented != null) {
                         ArrayPool<byte>.Shared.Return(rented);
                     }
-                    return false;
+                    pooledBuffer = null;
+                    body = ReadOnlySequence<byte>.Empty;
                 }
-
-                ReadOnlySpan<byte> sizeLine = sizeSearch.Slice(0, lineEndRel);
-                if (!TryParseHexInt(sizeLine, out int chunkSize)) {
-                    if (rented != null) {
-                        ArrayPool<byte>.Shared.Return(rented);
+                else {
+                    if (rented == null) {
+                        throw new InvalidOperationException("Internal error: chunk buffer is null while written > 0.");
                     }
-                    throw new HttpBadRequestException("Invalid chunk size.");
+                    pooledBuffer = rented;
+                    body = new ReadOnlySequence<byte>(rented, 0, written);
                 }
 
-                pos += lineEndRel + Crlf.Length;
-
-                if (chunkSize == 0) {
-                    // last chunk
-                    break;
-                }
-
-                // check chunk + CRLF
-                if (totalLength - pos < chunkSize + Crlf.Length) {
-                    if (rented != null) {
-                        ArrayPool<byte>.Shared.Return(rented);
-                    }
-                    return false;
-                }
-
-                long newTotal = (long)written + chunkSize;
-                if (newTotal > _maxBodySize) {
-                    if (rented != null) {
-                        ArrayPool<byte>.Shared.Return(rented);
-                    }
-                    throw new HttpRequestTooLargeException($"Request body too large (chunked): {newTotal} bytes (limit: {_maxBodySize}).");
-                }
-
-                // allocation / resize buffer
-                if (rented == null) {
-                    int initial = Math.Max(chunkSize, 4096);
-                    rented = ArrayPool<byte>.Shared.Rent(initial);
-                    rentedSize = rented.Length;
-                }
-                if (written + chunkSize > rentedSize) {
-                    int newSize = rentedSize * 2;
-                    int required = written + chunkSize;
-                    if (newSize < required) {
-                        newSize = required;
-                    }
-                    byte[] newBuf = ArrayPool<byte>.Shared.Rent(newSize);
-                    Buffer.BlockCopy(rented, 0, newBuf, 0, written);
-                    ArrayPool<byte>.Shared.Return(rented);
-                    rented = newBuf;
-                    rentedSize = newSize;
-                }
-
-                // copy chunk data
-                span.Slice(pos, chunkSize).CopyTo(rented.AsSpan(written));
-                written += chunkSize;
-
-                pos += chunkSize;
-
-                // CRLF after chunk
-                if (totalLength - pos < Crlf.Length) {
-                    if (rented != null) {
-                        ArrayPool<byte>.Shared.Return(rented);
-                    }
-                    return false;
-                }
-                if (!(span[pos] == (byte)'\r' && span[pos + 1] == (byte)'\n')) {
-                    if (rented != null) {
-                        ArrayPool<byte>.Shared.Return(rented);
-                    }
-                    throw new InvalidOperationException("Invalid chunk terminator.");
-                }
-                pos += Crlf.Length;
+                return true;
             }
-
-            // pos at trailers start (after "0\r\n")
-            ReadOnlySpan<byte> trailerSpan = span.Slice(pos);
-            int trailerEndRel = trailerSpan.IndexOf(HeaderTerminator);
-            if (trailerEndRel < 0) {
-                // need more data
+            catch {
                 if (rented != null) {
                     ArrayPool<byte>.Shared.Return(rented);
                 }
-                return false;
+                throw;
             }
-
-            int trailerBytesLen = trailerEndRel + HeaderTerminator.Length;
-            totalConsumed = pos + trailerBytesLen;
-
-            if (written == 0) {
-                body = ReadOnlySequence<byte>.Empty;
-                if (rented != null) {
-                    ArrayPool<byte>.Shared.Return(rented);
-                }
-                pooledBuffer = null;
-            }
-            else {
-                body = new ReadOnlySequence<byte>(rented!, 0, written);
-                pooledBuffer = rented;
-            }
-
-            return true;
         }
 
         /// <summary>
@@ -468,6 +470,37 @@ namespace SimpleW.Parsers {
         }
 
         #region Helpers
+
+        /// <summary>
+        /// To Span Or Pooled
+        /// </summary>
+        /// <param name="seq"></param>
+        /// <param name="pooled"></param>
+        /// <returns></returns>
+        private static ReadOnlySpan<byte> ToSpanOrPooled(in ReadOnlySequence<byte> seq, out byte[]? pooled) {
+            if (seq.IsSingleSegment) {
+                pooled = null;
+                return seq.FirstSpan;
+            }
+
+            int len = checked((int)seq.Length);
+            pooled = ArrayPool<byte>.Shared.Rent(len);
+            seq.CopyTo(pooled);
+            return pooled.AsSpan(0, len);
+        }
+
+        /// <summary>
+        /// CopySequenceTo
+        /// </summary>
+        /// <param name="seq"></param>
+        /// <param name="dest"></param>
+        private static void CopySequenceTo(in ReadOnlySequence<byte> seq, Span<byte> dest) {
+            int offset = 0;
+            foreach (var mem in seq) {
+                mem.Span.CopyTo(dest.Slice(offset));
+                offset += mem.Length;
+            }
+        }
 
         private static ReadOnlySpan<byte> TrimAsciiWhitespace(ReadOnlySpan<byte> span) {
             int start = 0;
