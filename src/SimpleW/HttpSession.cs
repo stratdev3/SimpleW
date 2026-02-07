@@ -95,10 +95,15 @@ namespace SimpleW {
         public Socket Socket => _socket;
 
         /// <summary>
+        /// TransportStream
+        /// </summary>
+        private Stream? _transportStream;
+
+        /// <summary>
         /// Exposes the underlying transport as a Stream (NetworkStream or SslStream)
         /// NOTE: caller must NOT dispose this stream (it would close the socket)
         /// </summary>
-        public Stream TransportStream => (_sslStream != null ? _sslStream : new NetworkStream(_socket, ownsSocket: false));
+        public Stream TransportStream => _transportStream ??= new NetworkStream(_socket, ownsSocket: false);
 
         /// <summary>
         /// Constructor
@@ -224,12 +229,9 @@ namespace SimpleW {
                 return;
             }
 
-            // raw stream on the socket (do not close the socket when we dispose the stream)
-            NetworkStream networkStream = new(_socket, ownsSocket: false);
-
             // SslStream above NetworkStream
             SslStream sslStream = new(
-                innerStream: networkStream,
+                innerStream: TransportStream,
                 leaveInnerStreamOpen: false,
                 userCertificateValidationCallback: sslContext.ClientCertificateValidation
             );
