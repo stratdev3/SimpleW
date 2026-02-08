@@ -142,6 +142,10 @@ namespace SimpleW.Parsers {
                     _bufferPool.Return(pooled2);
                 }
             }
+            // check header
+            if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && headers.Host == null) {
+                throw new HttpBadRequestException("Missing Host header (HTTP/1.1).");
+            }
             request.ParserSetHeaders(headers);
 
 
