@@ -57,7 +57,7 @@ namespace SimpleW.Parsers {
         /// <param name="buffer"></param>
         /// <param name="request"></param>
         /// <param name="consumedBytes"></param>
-        /// <exception cref="HttpRequestTooLargeException"></exception>
+        /// <exception cref="HttpRequestException"></exception>
         public bool TryReadHttpRequest(in ReadOnlySequence<byte> buffer, HttpRequest request, out long consumedBytes) {
             request.Reset();
             consumedBytes = 0;
@@ -71,12 +71,12 @@ namespace SimpleW.Parsers {
             if (!TryFindHeaderEnd(buffer, out var headerEndPos, out int headerBytesLen)) {
                 // check in case we need more data but the header is already too large
                 if (buffer.Length > _maxHeaderSize) {
-                    throw new HttpRequestTooLargeException($"Request headers too large: {buffer.Length} bytes (limit: {_maxHeaderSize}).");
+                    throw new HttpRequestException($"Request headers too large: {buffer.Length} bytes (limit: {_maxHeaderSize}).", 413);
                 }
                 return false; // need more data
             }
             if (headerBytesLen > _maxHeaderSize) {
-                throw new HttpRequestTooLargeException($"Request headers too large: {headerBytesLen} bytes (limit: {_maxHeaderSize}).");
+                throw new HttpRequestException($"Request headers too large: {headerBytesLen} bytes (limit: {_maxHeaderSize}).", 413);
             }
             ReadOnlySequence<byte> headerBlock = buffer.Slice(0, headerEndPos); // header block includes the final CRLFCRLF
 
@@ -84,13 +84,13 @@ namespace SimpleW.Parsers {
             // 2. request line
             SequenceReader<byte> reader = new(headerBlock);
             if (!TryReadLine(ref reader, out ReadOnlySequence<byte> requestLine)) {
-                throw new HttpBadRequestException("Invalid request line.");
+                throw new HttpRequestException("Invalid request line.", 400);
             }
             if (!TryParseRequestLine(ToSpanOrPooled(requestLine, out byte[]? pooled1), out string method, out string rawTarget, out string path, out string protocol, out string queryString, out ReadOnlySpan<byte> querySpan)) {
                 if (pooled1 != null) {
                     _bufferPool.Return(pooled1);
                 }
-                throw new HttpBadRequestException("Invalid request line.");
+                throw new HttpRequestException("Invalid request line.", 400);
             }
             if (pooled1 != null) {
                 _bufferPool.Return(pooled1);
@@ -121,7 +121,7 @@ namespace SimpleW.Parsers {
                     if (pooled2 != null) {
                         _bufferPool.Return(pooled2);
                     }
-                    throw new HttpBadRequestException("Invalid header line.");
+                    throw new HttpRequestException("Invalid header line.", 413);
                 }
 
                 value ??= string.Empty;
@@ -144,7 +144,7 @@ namespace SimpleW.Parsers {
             }
             // check header
             if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && headers.Host == null) {
-                throw new HttpBadRequestException("Missing Host header (HTTP/1.1).");
+                throw new HttpRequestException("Missing Host header (HTTP/1.1).", 400);
             }
             request.ParserSetHeaders(headers);
 
@@ -175,7 +175,7 @@ namespace SimpleW.Parsers {
             // check for body max size (hide warning on contextLengh as we already know it has value)
             long clLong = contentLength!.Value;
             if (clLong > _maxBodySize) {
-                throw new HttpRequestTooLargeException($"Request body too large: {clLong} bytes (limit: {_maxBodySize}).");
+                throw new HttpRequestException($"Request body too large: {clLong} bytes (limit: {_maxBodySize}).", 413, "Payload Too Large", "HTTP parse");
             }
             if (bodyBuffer.Length < clLong) {
                 return false;
@@ -259,17 +259,17 @@ namespace SimpleW.Parsers {
             ReadOnlySpan<byte> protocolSpan = TrimAsciiWhitespace(lineSpan.Slice(secondSpace + 1));
 
             if (protocolSpan.Length == 0) {
-                throw new HttpBadRequestException("Missing protocol.");
+                throw new HttpRequestException("Missing protocol.", 400);
             }
 
             method = Ascii.GetString(methodSpan);
             protocol = Ascii.GetString(protocolSpan);
 
             if (targetSpan.Length == 0) {
-                throw new HttpBadRequestException("Empty request-target.");
+                throw new HttpRequestException("Empty request-target.", 400);
             }
             if (targetSpan[0] != (byte)'/') {
-                throw new HttpBadRequestException("Unsupported request-target form.");
+                throw new HttpRequestException("Unsupported request-target form.", 400);
             }
 
             // find '?'
@@ -337,7 +337,7 @@ namespace SimpleW.Parsers {
         /// <param name="totalConsumed"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        /// <exception cref="HttpRequestTooLargeException"></exception>
+        /// <exception cref="HttpRequestException"></exception>
         private bool TryReadChunkedBody(in ReadOnlySequence<byte> bodyBuffer, out ReadOnlySequence<byte> body, out byte[]? pooledBuffer, out long totalConsumed) {
             body = ReadOnlySequence<byte>.Empty;
             pooledBuffer = null;
@@ -363,7 +363,7 @@ namespace SimpleW.Parsers {
                     }
 
                     if (!ok) {
-                        throw new HttpBadRequestException("Invalid chunk size.");
+                        throw new HttpRequestException("Invalid chunk size.", 400);
                     }
 
                     if (chunkSize == 0) {
@@ -372,7 +372,7 @@ namespace SimpleW.Parsers {
 
                     long newTotal = (long)written + chunkSize;
                     if (newTotal > _maxBodySize) {
-                        throw new HttpRequestTooLargeException($"Request body too large (chunked): {newTotal} bytes (limit: {_maxBodySize}).");
+                        throw new HttpRequestException($"Request body too large (chunked): {newTotal} bytes (limit: {_maxBodySize}).", 413, "Payload Too Large", "HTTP parse");
                     }
 
                     // need chunk bytes + CRLF

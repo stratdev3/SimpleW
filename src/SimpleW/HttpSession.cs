@@ -565,12 +565,8 @@ namespace SimpleW {
                     // compress buffer
                     CompressParseBuffer(offset);
                 }
-                catch (HttpRequestTooLargeException ex) {
-                    await UpdateActivityOnExceptionAsync(ex, 413, "Payload Too Large", "HTTP parse");
-                    return;
-                }
-                catch (HttpBadRequestException ex) {
-                    await UpdateActivityOnExceptionAsync(ex, 400, "Bad Request", "HTTP parse");
+                catch (HttpRequestException ex) {
+                    await UpdateActivityOnExceptionAsync(ex, ex.StatusCode, ex.StatusText, ex.DisplayName);
                     return;
                 }
                 catch (Exception ex) {
@@ -978,16 +974,36 @@ namespace SimpleW {
     }
 
     /// <summary>
-    /// HttpRequest Exception
+    /// HttpRequestException
     /// </summary>
-    public sealed class HttpRequestTooLargeException(string message) : Exception(message) {
-    }
+    public sealed class HttpRequestException : Exception {
 
-    /// <summary>
-    /// HttpBadRequest Exception
-    /// </summary>
-    /// <param name="message"></param>
-    public sealed class HttpBadRequestException(string message) : Exception(message) {
+        /// <summary>
+        /// Response Status Code
+        /// </summary>
+        public int StatusCode { get; }
+        /// <summary>
+        /// Response Status Text
+        /// </summary>
+        public string StatusText { get; }
+        /// <summary>
+        /// Diplay Name
+        /// </summary>
+        public string DisplayName { get; }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="statusCode"></param>
+        /// <param name="statusText"></param>
+        /// <param name="displayName"></param>
+        public HttpRequestException(string message, int statusCode, string? statusText = null, string? displayName = "HTTP Parse") : base(message) {
+            StatusCode = statusCode;
+            StatusText = statusText ?? HttpResponse.DefaultStatusText(statusCode);
+            DisplayName = displayName ?? StatusText;
+        }
+
     }
 
 }
