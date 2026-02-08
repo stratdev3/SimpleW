@@ -300,6 +300,9 @@ namespace SimpleW {
             // MAIN PROCESS LOOP
             //
             while (true) {
+
+                #region read
+
                 if (IsTransportOwned) {
                     return;
                 }
@@ -359,6 +362,9 @@ namespace SimpleW {
                 Buffer.BlockCopy(_recvBuffer, 0, _parseBuffer, _parseBufferCount, bytesRead);
                 _parseBufferCount += bytesRead;
 
+                #endregion read
+
+                #region parse & process
                 try {
                     int offset = 0;
 
@@ -450,6 +456,7 @@ namespace SimpleW {
                     await UpdateActivityOnExceptionAsync(ex, 500, "Internal Server Error", "HTTP process");
                     return;
                 }
+                #endregion parse & process
             }
         }
 
