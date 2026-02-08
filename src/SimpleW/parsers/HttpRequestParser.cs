@@ -95,6 +95,10 @@ namespace SimpleW.Parsers {
             if (pooled1 != null) {
                 _bufferPool.Return(pooled1);
             }
+            // check header
+            if (!(protocol.Equals("HTTP/1.0") || protocol.Equals("HTTP/1.1"))) {
+                throw new HttpRequestException("HTTP Version Not Supported.", 505, "HTTP Version Not Supported", "Not Supported");
+            }
 
             request.ParserSetMethod(method);
             request.ParserSetRawTarget(rawTarget);
