@@ -83,6 +83,34 @@ namespace example.rewrite {
                 return new { message = $"Hello World !" };
             });
 
+            server.MapGet("/api/test/async", async (HttpSession session) => {
+                try {
+                    session.RequestAborted.Register(() =>
+                        Console.WriteLine($"[ABORTED] session={session.Id} t={Environment.TickCount64}")
+                    );
+
+                    Console.WriteLine($"[START] session={session.Id} t={Environment.TickCount64}");
+
+                    await Task.Delay(TimeSpan.FromSeconds(30), session.RequestAborted);
+
+                    Console.WriteLine($"[END] session={session.Id} t={Environment.TickCount64}");
+                    
+                }
+                catch (OperationCanceledException) when (session.RequestAborted.IsCancellationRequested) {
+                    Console.WriteLine($"[OperationCanceledException] session={session.Id} t={Environment.TickCount64}");
+                }
+                catch (Exception ex) {
+                    Console.WriteLine($"[Exception] session={session.Id} t={Environment.TickCount64}");
+                }
+                return new { message = "Hello World!" };
+            });
+
+            //server.UseStaticFilesModule(options => {
+            //    options.Prefix = "/spa";
+            //    options.Path = @"C:\www\spa\spa";
+            //    //options.CacheTimeout = TimeSpan.FromMinutes(10);
+            //});
+
             //server.UseLatencyModule(options => {
             //    options.GlobalLatency = TimeSpan.FromSeconds(1);
             //    options.Rules.Add(new LatencyRule("/api/*", TimeSpan.FromSeconds(2)));
@@ -127,11 +155,11 @@ namespace example.rewrite {
             //    options.CacheTimeout = TimeSpan.FromDays(1);
             //});
 
-            server.UseChaosModule(options => {
-                options.Enabled = true;
-                options.Prefix = "/api";
-                options.Probability = 0.50;
-            });
+            //server.UseChaosModule(options => {
+            //    options.Enabled = true;
+            //    options.Prefix = "/api";
+            //    options.Probability = 0.50;
+            //});
 
 
             //server.UseSwaggerModule(options => {
@@ -252,23 +280,25 @@ namespace example.rewrite {
             });
 
             //server.MapControllers<SubController>("/api");
-            server.MapController<HomeController>("/");
+            //server.MapController<HomeController>("/");
 
             server.Configure(options => {
                 options.ReuseAddress = true;
                 options.TcpNoDelay = true;
                 options.TcpKeepAlive = true;
+                options.AcceptPerCore = true;
+                //options.SocketDisconnectPollInterval = TimeSpan.Zero;
                 options.JwtOptions = new JwtOptions("azertyuiopqsdfghjklmwxcvbn") {
                     ValidateExp = false,
                     ValidateNbf = false,
                 };
             });
-            server.ConfigureTelemetry(options => {
-                options.IncludeStackTrace = true;
-            });
-            server.EnableTelemetry();
+            //server.ConfigureTelemetry(options => {
+            //    options.IncludeStackTrace = true;
+            //});
+            //server.EnableTelemetry();
 
-            openTelemetryObserver("SimpleW*");
+            //openTelemetryObserver("SimpleW*");
 
             // start non blocking background server
             CancellationTokenSource cts = new();
@@ -365,7 +395,6 @@ namespace example.rewrite {
         }
 
     }
-
 
     class LogProcessor : BaseProcessor<Activity> {
         // write log to console
