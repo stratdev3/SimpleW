@@ -465,10 +465,8 @@ namespace SimpleW {
                             return;
                         }
 
-                        _parser.TryReadHttpRequest(new ReadOnlySequence<byte>(_parseBuffer, offset, _parseBufferCount - offset), _request, out long consumed);
-
-                        if (consumed == 0) {
-                            // if nothing consumed, we need/wait for more data
+                        if (!_parser.TryReadHttpRequest(new ReadOnlySequence<byte>(_parseBuffer, offset, _parseBufferCount - offset), _request, out long consumed)) {
+                            // need/wait for more data
                             break;
                         }
 
