@@ -143,7 +143,10 @@ Supported forms: `ValueTask`, `ValueTask<T>`, `Task`, `Task<T>`.
 
 ## CancellationToken (RequestAborted)
 
-SimpleW exposes a `CancellationToken` directly from `HttpSession` so a handler can stop its work when :
+By default, a handler **runs to completion** even if the client disconnects.
+This behavior is acceptable in most cases, but sometimes you want to **stop the handler immediately** when the client goes away — especially for handlers that perform I/O or long-running work.
+
+SimpleW exposes a `CancellationToken` directly from `HttpSession`, allowing a handler to cooperatively stop its execution when :
 
 - the client closes the connection,
 - a network write/read fails,
@@ -161,6 +164,33 @@ The `CancellationToken` does **not automatically kill** your code.
 Cancellation is **cooperative** and must be explicitly honored by your logic :
 - pass the token to APIs that support cancellation (database, HTTP client, delays, etc.)
 - or manually check the token inside long-running loops.
+
+**Example : cancellable Delay**
+
+```csharp
+server.MapGet("/delay", async (HttpSession session) => {
+    try {
+        Console.WriteLine($"[START] session={session.Id} t={Environment.TickCount64}");
+        await Task.Delay(TimeSpan.FromSeconds(30), session.RequestAborted);
+        Console.WriteLine($"[END] session={session.Id} t={Environment.TickCount64}");
+    }
+    catch (OperationCanceledException) when (session.RequestAborted.IsCancellationRequested) {
+        Console.WriteLine($"[OperationCanceledException] session={session.Id} t={Environment.TickCount64}");
+    }
+    catch (Exception ex) {
+        Console.WriteLine($"[Exception] session={session.Id} t={Environment.TickCount64}");
+    }
+    return new { message = "Hello World!" };
+});
+```
+
+How to test :
+1. Open the URL in a browser.
+2. Wait 30 seconds to let the handler complete normally.
+3. Reload the page, then close the connection before 30 seconds.
+
+The handler will be canceled immediately when the client disconnects.
+
 
 **Example : cancellable PostgreSQL query**
 
