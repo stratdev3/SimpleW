@@ -187,14 +187,25 @@ namespace SimpleW {
         /// pass this cts to any async method in handler
         /// you want to stop when client disconnect
         /// </summary>
-        public CancellationToken RequestAborted => _abortCts.Token;
+        public CancellationToken RequestAborted {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                Volatile.Write(ref _requestAbortedAccessed, 1);
+                TryStartDisconnectWatcherForCurrentDispatch();
+                return _abortCts.Token;
+            }
+        }
 
         /// <summary>
-        /// Abort (call cts.Cancel())
+        /// Abort (call cts.Cancel)
         /// </summary>
         internal void Abort() {
-            if (!_abortCts.IsCancellationRequested) {
-                _abortCts.Cancel();
+            try {
+                if (!_abortCts.IsCancellationRequested)
+                    _abortCts.Cancel();
+            }
+            catch (ObjectDisposedException) {
+                // ignore rare race condition
             }
         }
 
@@ -204,6 +215,84 @@ namespace SimpleW {
         /// you want to stop when client disconnect
         /// </summary>
         public void ThrowIfAborted() => RequestAborted.ThrowIfCancellationRequested();
+
+        #region watcher
+
+        /// <summary>
+        /// flag 0/1 : the RequestAborted has been accessed for this request
+        /// </summary>
+        private int _requestAbortedAccessed;
+
+        /// <summary>
+        /// Current handler task (only set for async dispatch)
+        /// </summary>
+        private Task? _currentDispatchTask;
+
+        /// <summary>
+        /// flag 0/1 : watcher started for current request
+        /// </summary>
+        private int _disconnectWatcherStarted;
+
+        /// <summary>
+        /// Try Start then WatchDisconnectWhileAsync for the current Request
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void TryStartDisconnectWatcherForCurrentDispatch() {
+            // session already dead / taken over
+            if (_disposed || IsTransportOwned || _abortCts.IsCancellationRequested) {
+                return;
+            }
+            // dispatch has not been called yet or the task is completed
+            Task? t = _currentDispatchTask;
+            if (t == null || t.IsCompleted) {
+                return;
+            }
+            // start once per request
+            if (Interlocked.Exchange(ref _disconnectWatcherStarted, 1) != 0) {
+                return;
+            }
+
+            // fire-and-forget watcher (it exits when dispatchTask completes)
+            _ = WatchDisconnectWhileAsync(t);
+        }
+
+        /// <summary>
+        /// Watch for Disconnected Client (a poll loop)
+        /// </summary>
+        /// <param name="awaitedHandlerTask"></param>
+        /// <returns></returns>
+        private async Task WatchDisconnectWhileAsync(Task awaitedHandlerTask) {
+            // only check if handler is not completed
+            while (!awaitedHandlerTask.IsCompleted) {
+                if (_abortCts.IsCancellationRequested || IsTransportOwned) {
+                    // stop the watcher if an Abort() has been called or Transported by another process
+                    return;
+                }
+
+                try {
+                    // FIN flag socket : selectRead + available == 0
+                    if (_socket.Poll(0, SelectMode.SelectRead) && _socket.Available == 0) {
+                        Abort();
+                        return;
+                    }
+                }
+                catch {
+                    // assume dead
+                    Abort();
+                    return;
+                }
+
+                try {
+                    await Task.Delay(Server.Options.SocketDisconnectPollInterval, _abortCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) {
+                    // if Abort() has been called, this Task.Delay will throw but it's what we want so silent the exception
+                    return;
+                }
+            }
+        }
+
+        #endregion watcher
 
         #endregion cancellationToken
 
@@ -408,8 +497,42 @@ namespace SimpleW {
                                 _currentActivity = Server.Telemetry?.StartActivity(this);
                             }
 
-                            // router and dispatch
-                            await _router.DispatchAsync(this).ConfigureAwait(false);
+                            #region dispatch
+
+                            Volatile.Write(ref _requestAbortedAccessed, 0);
+                            Volatile.Write(ref _disconnectWatcherStarted, 0);
+                            _currentDispatchTask = null;
+
+                            // RequestAborted disabled
+                            if (Server.Options.SocketDisconnectPollInterval == TimeSpan.Zero) {
+                                await _router.DispatchAsync(this).ConfigureAwait(false);
+                            }
+                            else {
+                                ValueTask dispatch = _router.DispatchAsync(this);
+                                // sync
+                                if (dispatch.IsCompletedSuccessfully) {
+                                    // need to consume
+                                    dispatch.GetAwaiter().GetResult();
+                                }
+                                // async
+                                else {
+                                    Task dispatchTask = dispatch.AsTask();
+                                    _currentDispatchTask = dispatchTask;
+                                    // RequestAborted was accessed before _currentDispatchTask was set
+                                    if (Volatile.Read(ref _requestAbortedAccessed) != 0) {
+                                        TryStartDisconnectWatcherForCurrentDispatch();
+                                    }
+                                    try {
+                                        // wait handler
+                                        await dispatchTask.ConfigureAwait(false);
+                                    }
+                                    finally {
+                                        _currentDispatchTask = null;
+                                    }
+                                }
+                            }
+
+                            #endregion dispatch
 
                             if (IsTransportOwned) {
                                 return;
