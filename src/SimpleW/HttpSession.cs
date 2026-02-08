@@ -488,6 +488,9 @@ namespace SimpleW {
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool WillCloseConnection() {
+            if (_abortCts.IsCancellationRequested) {
+                return true;
+            }
             if (_response.Sent && _response.Connection != null) {
                 return _response.Connection.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0;
             }
