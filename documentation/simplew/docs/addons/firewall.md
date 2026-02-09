@@ -26,7 +26,7 @@ It **does not** :
 
 ## Requirements
 
-- .NET 8.0+
+- .NET 8.0
 - SimpleW (core server)
 
 Optional dependency if you enable GeoIP country filtering :

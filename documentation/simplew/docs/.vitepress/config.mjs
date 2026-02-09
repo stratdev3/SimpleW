@@ -117,16 +117,16 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'JsonEngine',
-                    items: [
-                        { text: 'Newtonsoft', link: '/addons/newtonsoft' },
-                    ]
-                },
-                {
                     text: 'Helpers',
                     items: [
                         { text: 'Hosting', link: '/addons/hosting' },
                         { text: 'Razor', link: '/addons/razor' },
+                    ]
+                },
+                {
+                    text: 'JsonEngine',
+                    items: [
+                        { text: 'Newtonsoft', link: '/addons/newtonsoft' },
                     ]
                 },
             ],

@@ -13,7 +13,7 @@ This module is designed to :
 
 ## Requirements
 
-- .NET 8.0+
+- .NET 8.0
 - SimpleW (core server)
 
 No external dependencies.

@@ -20,7 +20,7 @@ Features
 
 ## Requirements
 
-- .NET 8.0+
+- .NET 8.0
 - SimpleW (core server)
 - RazorLight package (automatically included)
 
