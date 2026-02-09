@@ -42,24 +42,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: documentation/v16/package-lock.json
+          cache-dependency-path: documentation/simplew/package-lock.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
-
-      # build simplew v16 doc
-      - name: Install dependencies
-        run: npm ci
-        working-directory: documentation/v16/
-      - name: Build with VitePress
-        run: npm run docs:build
-        working-directory: documentation/v16/
-
-      - name: Stage to public/
-        run: |
-          rm -rf public
-          mkdir -p public
-          cp -r documentation/v16/docs/.vitepress/dist/* public/
 
       # build simplew v26 doc
       - name: Install dependencies
@@ -69,10 +55,24 @@ jobs:
         run: npm run docs:build
         working-directory: documentation/simplew/
 
-      - name: Stage to public/simplew/
+      - name: Stage to public/
         run: |
-          mkdir -p public/v26
-          cp -r documentation/simplew/docs/.vitepress/dist/* public/v26/
+          rm -rf public
+          mkdir -p public
+          cp -r documentation/simplew/docs/.vitepress/dist/* public/
+
+      # build simplew v16 doc
+      - name: Install dependencies
+        run: npm ci
+        working-directory: documentation/v16/
+      - name: Build with VitePress
+        run: npm run docs:build
+        working-directory: documentation/v16/
+
+      - name: Stage to public/v16/
+        run: |
+          mkdir -p public/v16
+          cp -r documentation/v16/docs/.vitepress/dist/* public/v16/
 
       # final artifact
       - name: Upload artifact

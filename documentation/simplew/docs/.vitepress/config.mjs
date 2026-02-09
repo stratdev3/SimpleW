@@ -3,12 +3,11 @@ import { defineConfig } from 'vitepress'
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
     appearance: 'dark',
-    base: '/v26/',
     title: 'SimpleW',
     titleTemplate: 'SimpleW',
     description: "SimpleW is a Web server library in .NET Core. Designed for Simplicity. Built for Speed. Packed with Power.",
     head: [
-        ['link', { rel: 'icon', href: '/v26/favicon.ico' }],
+        ['link', { rel: 'icon', href: 'favicon.ico' }],
         // analytics
         ['script', { async: '', src: 'https://cloud.umami.is/script.js', 'data-website-id': '6cb0147f-6faa-4c64-ba68-6bd607980ea5' } ],
         // og
@@ -43,7 +42,7 @@ export default defineConfig({
             {
                 text: 'v26.0-beta',
                 items: [
-                    { text: 'v16.1.0', link: 'https://simplew.net/' },
+                    { text: 'v16.1.0', link: 'https://simplew.net/v16/' },
                     { text: 'Changelog', link: '/version/changelog' },
                     { text: 'FAQ', link: '/version/faq' },
                 ]
