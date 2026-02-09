@@ -5,7 +5,7 @@ using RazorLight.Compilation;
 using SimpleW.Modules;
 
 
-namespace SimpleW.Service.Razor {
+namespace SimpleW.Helper.Razor {
 
     /// <summary>
     /// RazorModuleExtension

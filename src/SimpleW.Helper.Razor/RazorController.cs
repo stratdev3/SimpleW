@@ -1,4 +1,4 @@
-﻿namespace SimpleW.Service.Razor {
+﻿namespace SimpleW.Helper.Razor {
 
     /// <summary>
     /// Base controller that provides View().

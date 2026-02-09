@@ -1,7 +1,7 @@
 ﻿using System.Dynamic;
 
 
-namespace SimpleW.Service.Razor {
+namespace SimpleW.Helper.Razor {
 
     /// <summary>
     /// Returned by handlers/controllers to render a Razor view.

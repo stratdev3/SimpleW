@@ -1,4 +1,4 @@
-# SimpleW.Service.Razor
+# SimpleW.Helper.Razor
 
 [![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://simplew.net)
 
@@ -20,7 +20,7 @@ The minimal API
 
 ```cs
 using SimpleW;
-using SimpleW.Service.Razor;
+using SimpleW.Helper.Razor;
 
 namespace Sample {
     class Program {
