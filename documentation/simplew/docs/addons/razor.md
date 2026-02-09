@@ -1,6 +1,6 @@
 # Razor
 
-The [`SimpleW.Service.Razor`](https://www.nuget.org/packages/SimpleW.Service.Razor) is a Razor templating module for the SimpleW web server.
+The [`SimpleW.Helper.Razor`](https://www.nuget.org/packages/SimpleW.Helper.Razor) is a Razor templating module for the SimpleW web server.
 It enables server-side HTML rendering using Razor syntax (via RazorLight) and integrates with SimpleW’s routing/controller system by introducing a ViewResult that the module can render into an HTTP response.
 
 This module is designed to feel familiar to ASP.NET MVC developers, while staying simple and minimal.
@@ -30,7 +30,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Razor --version 26.0.0-beta.20260208-1374
+$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260209-1385
 ```
 
 
