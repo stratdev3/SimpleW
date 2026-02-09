@@ -27,7 +27,7 @@
     <ProjectReference Include="..\SimpleW.Service.Firewall\SimpleW.Service.Firewall.csproj" />
     <ProjectReference Include="..\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
     <ProjectReference Include="..\SimpleW.Service.Latency\SimpleW.Service.Latency.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.Razor\SimpleW.Service.Razor.csproj" />
+    <ProjectReference Include="..\SimpleW.Helper.Razor\SimpleW.Helper.Razor.csproj" />
     <ProjectReference Include="..\SimpleW.Service.Swagger\SimpleW.Service.Swagger.csproj" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
   </ItemGroup>

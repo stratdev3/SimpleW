@@ -16,7 +16,7 @@ using OpenTelemetry.Trace;
 using SimpleW;
 using SimpleW.Modules;
 using SimpleW.JsonEngine.Newtonsoft;
-using SimpleW.Service.Razor;
+using SimpleW.Helper.Razor;
 using SimpleW.Service.Firewall;
 using SimpleW.Security;
 using SimpleW.Service.Swagger;
@@ -77,6 +77,10 @@ namespace example.rewrite {
 
             server.MapGet("/api/syslog/index", object (string? query = null) => {
                 return new { query };
+            });
+
+            server.MapGet("/", () => {
+                return "Hello World !";
             });
 
             server.MapGet("/api/test/hello", object (HttpSession session) => {
