@@ -1,4 +1,4 @@
-# SimpleW.Service.Swagger
+# SimpleW.Helper.Swagger
 
 [![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://simplew.net)
 
@@ -20,7 +20,7 @@ The minimal API
 
 ```cs
 using SimpleW;
-using SimpleW.Service.Swagger;
+using SimpleW.Helper.Swagger;
 
 namespace Sample {
     class Program {
@@ -34,10 +34,18 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            // setup swagger module
-            server.UseSwaggerModule(options => {
-                options.Title = "My API";
-                options.Version = "v1";
+            server.MapGet("/swagger.json", static (HttpSession session) => {
+                return Swagger.Json(session, options => {
+                    options.Title = "My API";
+                    options.Version = "v1";
+                });
+            });
+
+            server.MapGet("/admin/swagger", static (HttpSession session) => {
+                return Swagger.Ui(session, "/swagger.json", options => {
+                    options.Title = "My API";
+                    options.Version = "v1";
+                });
             });
 
             Console.WriteLine("server started at http://localhost:{server.Port}/");
@@ -51,7 +59,7 @@ namespace Sample {
 }
 ```
 
-Open http://localhost:{server.Port}/swagger to see Swagger UI.
+Open http://localhost:{server.Port}/admin/swagger to see Swagger UI or http://localhost:{server.Port}/swagger.json for the json version only
 
 ## Documentation
 

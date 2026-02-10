@@ -1,58 +1,76 @@
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using SimpleW.Modules;
 
 
-namespace SimpleW.Service.Swagger {
+namespace SimpleW.Helper.Swagger {
 
     /// <summary>
-    /// Swagger/OpenAPI module for SimpleW.
+    /// Swagger/OpenAPI helper for SimpleW.
     /// Generates an OpenAPI 3.0 JSON document from the currently registered routes
-    /// (server.Router.Routes) and serves a minimal Swagger UI.
+    ///
+    /// You call it from your own routes so YOU control security/auth.
+    ///
+    /// Example:
+    /// server.MapGet("/swagger.json", static (HttpSession session) =>
+    ///     Swagger.Json(session));
+    ///
+    /// server.MapGet("/admin/swagger", static (HttpSession session) => {
+    ///     // your security here
+    ///     // if (!IsAdmin(session)) return session.Response.Status(403).Text("Forbidden");
+    ///     return Swagger.Ui(session, "/swagger.json");
+    /// });
     /// </summary>
-    public static class SwaggerModuleExtension {
+    public static class Swagger {
 
         /// <summary>
-        /// Enable Swagger module.
+        /// Build and write the OpenAPI 3.0 JSON document into session.Response, then return it.
         /// </summary>
-        /// <example>
-        /// server.UseSwaggerModule(o => {
-        ///     o.Title = "My API";
-        ///     o.Version = "v1";
-        ///     o.RouteFilter = r => r.Path.StartsWith("/api", StringComparison.Ordinal);
-        /// });
-        /// </example>
-        public static SimpleWServer UseSwaggerModule(this SimpleWServer server, Action<SwaggerOptions>? configure = null) {
-            ArgumentNullException.ThrowIfNull(server);
+        /// <param name="session"></param>
+        /// <param name="configure"></param>
+        /// <returns></returns>
+        public static HttpResponse Json(HttpSession session, Action<SwaggerOptions>? configure = null) {
+            ArgumentNullException.ThrowIfNull(session);
 
             SwaggerOptions options = new();
             configure?.Invoke(options);
             options.ValidateAndNormalize();
 
-            server.UseModule(new SwaggerModule(options));
-            return server;
+            object doc = OpenApiBuilder.Build(session.Server, session, options);
+
+            session.Response.Json(doc);
+            return session.Response;
         }
 
         /// <summary>
-        /// Options for SwaggerModule
+        /// Write a Swagger UI HTML page into session.Response, then return it.
+        /// swaggerJsonUrl can be relative (recommended): "/swagger.json"
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="swaggerJsonUrl"></param>
+        /// <param name="configure"></param>
+        /// <returns></returns>
+        public static HttpResponse Ui(HttpSession session, string swaggerJsonUrl, Action<SwaggerOptions>? configure = null) {
+            ArgumentNullException.ThrowIfNull(session);
+
+            if (string.IsNullOrWhiteSpace(swaggerJsonUrl)) {
+                swaggerJsonUrl = "/swagger.json";
+            }
+
+            SwaggerOptions options = new();
+            configure?.Invoke(options);
+            options.ValidateAndNormalize();
+
+            string html = options.UiHtmlFactory?.Invoke(swaggerJsonUrl) ?? DefaultUiHtml(options.Title, swaggerJsonUrl);
+
+            session.Response.Html(html);
+            return session.Response;
+        }
+
+        /// <summary>
+        /// Options for Swagger helper
         /// </summary>
         public sealed class SwaggerOptions {
-
-            /// <summary>
-            /// Enable/disable module
-            /// </summary>
-            public bool Enabled { get; set; } = true;
-
-            /// <summary>
-            /// Mount path for the UI. Default "/swagger"
-            /// </summary>
-            public string Prefix { get; set; } = "/swagger";
-
-            /// <summary>
-            /// Document name in swagger UI selector. Default "v1"
-            /// </summary>
-            public string DocName { get; set; } = "v1";
 
             /// <summary>
             /// OpenAPI title
@@ -70,25 +88,17 @@ namespace SimpleW.Service.Swagger {
             public string? Description { get; set; }
 
             /// <summary>
-            /// Filter which routes appear in swagger
-            /// If null => all routes
+            /// Filter which routes appear in swagger (null => all routes)
             /// </summary>
             public Func<Router.RouteInfo, bool>? RouteFilter { get; set; }
 
             /// <summary>
-            /// If true, will try to scan Controller types to enrich query parameters (best effort)
-            /// This is optional and safe: if it can't match a route, it just falls back to basic info
+            /// Best effort: scan Controller methods to infer query params types
             /// </summary>
             public bool ScanControllersForParameters { get; set; } = true;
 
             /// <summary>
-            /// If true, swagger endpoints themselves will be hidden from the generated document
-            /// </summary>
-            public bool HideSwaggerEndpoints { get; set; } = true;
-
-            /// <summary>
-            /// Customize the swagger UI HTML (advanced)
-            /// If null, a default UI page using CDN swagger-ui-dist is generated
+            /// Customize swagger UI HTML (advanced)
             /// </summary>
             public Func<string /*swaggerJsonUrl*/, string /*html*/>? UiHtmlFactory { get; set; }
 
@@ -97,159 +107,85 @@ namespace SimpleW.Service.Swagger {
             /// </summary>
             /// <returns></returns>
             internal SwaggerOptions ValidateAndNormalize() {
-
-                Prefix = NormalizePrefix(Prefix);
-                DocName = string.IsNullOrWhiteSpace(DocName) ? "v1" : DocName.Trim();
                 Title = string.IsNullOrWhiteSpace(Title) ? "SimpleW API" : Title.Trim();
                 Version = string.IsNullOrWhiteSpace(Version) ? "v1" : Version.Trim();
-
                 return this;
-            }
-
-            /// <summary>
-            /// NormalizePrefix
-            /// </summary>
-            /// <param name="prefix"></param>
-            /// <returns></returns>
-            private static string NormalizePrefix(string prefix) {
-                if (string.IsNullOrWhiteSpace(prefix)) {
-                    return "/swagger";
-                }
-                prefix = prefix.Trim();
-                if (!prefix.StartsWith("/", StringComparison.Ordinal)) {
-                    prefix = "/" + prefix;
-                }
-                // remove trailing slash (except "/")
-                if (prefix.Length > 1 && prefix.EndsWith("/", StringComparison.Ordinal)) {
-                    prefix = prefix.TrimEnd('/');
-                }
-                return prefix;
             }
 
         }
 
         /// <summary>
-        /// SwaggerModule
+        /// Default UI
         /// </summary>
-        private sealed class SwaggerModule : IHttpModule {
-
-            /// <summary>
-            /// Options
-            /// </summary>
-            private readonly SwaggerOptions _options;
-
-            /// <summary>
-            /// Constructor
-            /// </summary>
-            /// <param name="options"></param>
-            public SwaggerModule(SwaggerOptions options) {
-                _options = options;
-            }
-
-            /// <summary>
-            /// Install Module in server (called by SimpleW)
-            /// </summary>
-            /// <param name="server"></param>
-            public void Install(SimpleWServer server) {
-                if (!_options.Enabled) {
-                    return;
-                }
-
-                string prefix = _options.Prefix;
-
-                // endpoints
-                string swaggerJson = $"{prefix}/{_options.DocName}/swagger.json";
-                string uiRoot = $"{prefix}";      // redirect to /swagger/
-                string uiIndex = $"{prefix}/";    // actual UI
-
-                // UI redirect
-                server.MapGet(uiRoot, (HttpSession session) => {
-                    session.Response.Redirect(uiIndex);
-                    return session.Response.SendAsync();
-                });
-
-                // UI page
-                server.MapGet(uiIndex, (HttpSession session) => {
-                    string jsonUrl = swaggerJson;
-
-                    // Swagger UI is OK with relative URLs, so keep it relative by default.
-                    string html = _options.UiHtmlFactory?.Invoke(jsonUrl) ?? DefaultUiHtml(_options.Title, jsonUrl);
-
-                    session.Response.Html(html);
-                    return session.Response.SendAsync();
-                });
-
-                // OpenAPI JSON
-                server.MapGet(swaggerJson, (HttpSession session) => {
-                    object doc = OpenApiBuilder.Build(server, session, _options);
-                    session.Response.Json(doc);
-                    return session.Response.SendAsync();
-                });
-            }
-
-            /// <summary>
-            /// Default Html UI
-            /// </summary>
-            /// <param name="title"></param>
-            /// <param name="swaggerJsonUrl"></param>
-            /// <returns></returns>
-            private static string DefaultUiHtml(string title, string swaggerJsonUrl) {
-                return $$"""
-                            <!doctype html>
-                            <html lang="en">
-                            <head>
-                                <meta charset="utf-8" />
-                                <meta name="viewport" content="width=device-width, initial-scale=1" />
-                                <title>{{EscapeHtml(title)}} - Swagger UI</title>
-                                <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
-                                <style>
-                                body {margin: 0; background: #0b1020; }
-                                .topbar { display:none; }
-                                </style>
-                            </head>
-                            <body>
-                                <div id="swagger-ui"></div>
-                                <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-                                <script>
-                                window.onload = function() {
-                                    window.ui = SwaggerUIBundle({
-                                        url: "{{swaggerJsonUrl}}",
-                                        dom_id: '#swagger-ui',
-                                        deepLinking: true,
-                                        presets: [SwaggerUIBundle.presets.apis],
-                                        layout: "BaseLayout"
-                                    });
-                                };
-                                </script>
-                            </body>
-                            </html>
-                        """;
-            }
-
-            /// <summary>
-            /// Escape Html
-            /// </summary>
-            /// <param name="s"></param>
-            /// <returns></returns>
-            private static string EscapeHtml(string s) => s.Replace("&", "&amp;")
-                                                           .Replace("<", "&lt;")
-                                                           .Replace(">", "&gt;")
-                                                           .Replace("\"", "&quot;")
-                                                           .Replace("'", "&#39;");
-
+        /// <param name="title"></param>
+        /// <param name="swaggerJsonUrl"></param>
+        /// <returns></returns>
+        private static string DefaultUiHtml(string title, string swaggerJsonUrl) {
+            return $$"""
+                        <!doctype html>
+                        <html lang="en">
+                        <head>
+                            <meta charset="utf-8" />
+                            <meta name="viewport" content="width=device-width, initial-scale=1" />
+                            <title>{{EscapeHtml(title)}} - Swagger UI</title>
+                            <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+                            <style>
+                            body {margin: 0; background: #0b1020; }
+                            .topbar { display:none; }
+                            </style>
+                        </head>
+                        <body>
+                            <div id="swagger-ui"></div>
+                            <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+                            <script>
+                            window.onload = function() {
+                                window.ui = SwaggerUIBundle({
+                                    url: "{{swaggerJsonUrl}}",
+                                    dom_id: '#swagger-ui',
+                                    deepLinking: true,
+                                    presets: [SwaggerUIBundle.presets.apis],
+                                    layout: "BaseLayout"
+                                });
+                            };
+                            </script>
+                        </body>
+                        </html>
+                    """;
         }
+
+        /// <summary>
+        /// Escapge HTML char
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        private static string EscapeHtml(string s) => s.Replace("&", "&amp;")
+                                                       .Replace("<", "&lt;")
+                                                       .Replace(">", "&gt;")
+                                                       .Replace("\"", "&quot;")
+                                                       .Replace("'", "&#39;");
 
         /// <summary>
         /// OpenApiBuilder
         /// </summary>
         private static class OpenApiBuilder {
 
-            // Match "{param}" in already-openapi path templates.
+            /// <summary>
+            /// Match "{param}" in already-openapi path templates.
+            /// </summary>
             private static readonly Regex OpenApiParamRegex = new(@"\{([^}]+)\}", RegexOptions.Compiled);
 
-            // Match SimpleW segments :id and :path*
+            /// <summary>
+            /// // Match SimpleW segments :id and :path*
+            /// </summary>
             private static readonly Regex SimpleWParamRegex = new(@":([A-Za-z0-9_]+)\*?", RegexOptions.Compiled);
 
+            /// <summary>
+            /// Builder
+            /// </summary>
+            /// <param name="server"></param>
+            /// <param name="session"></param>
+            /// <param name="options"></param>
+            /// <returns></returns>
             public static object Build(SimpleWServer server, HttpSession session, SwaggerOptions options) {
 
                 // Build base server URL (best effort)
@@ -259,11 +195,6 @@ namespace SimpleW.Service.Swagger {
 
                 // routes -> paths
                 IEnumerable<Router.RouteInfo> allRoutes = server.Router.Routes;
-
-                if (options.HideSwaggerEndpoints) {
-                    string swaggerRoot = options.Prefix;
-                    allRoutes = allRoutes.Where(r => !r.Path.StartsWith(swaggerRoot, StringComparison.Ordinal));
-                }
 
                 if (options.RouteFilter != null) {
                     allRoutes = allRoutes.Where(options.RouteFilter);
@@ -279,7 +210,7 @@ namespace SimpleW.Service.Swagger {
                 // OpenAPI "paths" object
                 Dictionary<string, object> paths = new(StringComparer.Ordinal);
 
-                foreach (var r in allRoutes) {
+                foreach (Router.RouteInfo r in allRoutes) {
 
                     string openApiPath = ToOpenApiPathTemplate(r.Path);
 
@@ -314,14 +245,12 @@ namespace SimpleW.Service.Swagger {
                     }
 
                     // responses (minimal)
-                    var responses = new Dictionary<string, object> {
-                        ["200"] = new Dictionary<string, object> {
-                            ["description"] = "Success"
-                        }
+                    Dictionary<string, object> responses = new Dictionary<string, object> {
+                        ["200"] = new Dictionary<string, object> { ["description"] = "Success" }
                     };
 
                     // operation
-                    var op = new Dictionary<string, object> {
+                    Dictionary<string, object> op = new Dictionary<string, object> {
                         ["summary"] = r.Description ?? $"{r.Method} {r.Path}",
                         ["operationId"] = MakeOperationId(r.Method, openApiPath),
                         ["responses"] = responses
@@ -339,7 +268,7 @@ namespace SimpleW.Service.Swagger {
                 }
 
                 // Build final OpenAPI doc
-                var doc = new Dictionary<string, object> {
+                Dictionary<string, object> doc = new Dictionary<string, object> {
                     ["openapi"] = "3.0.3",
                     ["info"] = new Dictionary<string, object> {
                         ["title"] = options.Title,
@@ -409,6 +338,8 @@ namespace SimpleW.Service.Swagger {
             /// - ":path*" becomes "{path}"
             /// - "*" becomes "{wildcard}"
             /// </summary>
+            /// <param name="simpleWPath"></param>
+            /// <returns></returns>
             private static string ToOpenApiPathTemplate(string simpleWPath) {
                 if (string.IsNullOrWhiteSpace(simpleWPath)) {
                     return "/";
@@ -462,12 +393,11 @@ namespace SimpleW.Service.Swagger {
                                 continue;
                             }
 
-                            // controller prefix from [Route] on class
                             RouteAttribute? classRoute = t.GetCustomAttribute<RouteAttribute>(inherit: true);
                             string controllerPrefix = classRoute?.Path ?? string.Empty;
 
                             foreach (var mi in t.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
-                                var attrs = mi.GetCustomAttributes<RouteAttribute>(inherit: true).ToArray();
+                                RouteAttribute[] attrs = mi.GetCustomAttributes<RouteAttribute>(inherit: true).ToArray();
                                 if (attrs.Length == 0) {
                                     continue;
                                 }
@@ -479,22 +409,18 @@ namespace SimpleW.Service.Swagger {
                                         fullPath = string.IsNullOrEmpty(attr.Path) ? "/" : attr.Path;
                                     }
                                     else {
-                                        // We don't know the server basePrefix here (because it's a runtime choice),
-                                        // so we best-effort just concat controllerPrefix + method path.
                                         string path = (controllerPrefix ?? string.Empty) + (attr.Path ?? string.Empty);
                                         fullPath = string.IsNullOrEmpty(path) ? "/" : path;
                                     }
 
-                                    // infer query params from method signature:
-                                    // SimpleW executor maps param names first from RouteValues then from QueryString.
                                     HashSet<string> pathParamNames = new(StringComparer.OrdinalIgnoreCase);
                                     foreach (Match m in SimpleWParamRegex.Matches(fullPath)) {
                                         pathParamNames.Add(m.Groups[1].Value);
                                     }
 
-                                    var specs = new List<ParameterSpec>();
+                                    List<ParameterSpec> specs = new();
 
-                                    foreach (var p in mi.GetParameters()) {
+                                    foreach (ParameterInfo p in mi.GetParameters()) {
                                         if (p.ParameterType == typeof(HttpSession)) {
                                             continue;
                                         }
@@ -505,16 +431,7 @@ namespace SimpleW.Service.Swagger {
                                         bool isPath = pathParamNames.Contains(p.Name);
                                         string location = isPath ? "path" : "query";
 
-                                        bool required;
-                                        if (isPath) {
-                                            required = true;
-                                        }
-                                        else {
-                                            // query param: required if no default value and non-nullable value type
-                                            bool nullable = IsNullable(p);
-                                            required = !p.HasDefaultValue && !nullable;
-                                        }
-
+                                        bool required = isPath ? true : (!p.HasDefaultValue && !IsNullable(p));
                                         string schemaType = ToOpenApiScalar(p.ParameterType);
 
                                         specs.Add(new ParameterSpec(p.Name, location, required, schemaType));
@@ -571,10 +488,11 @@ namespace SimpleW.Service.Swagger {
                     return "boolean";
                 }
 
-                if (t == typeof(byte) || t == typeof(sbyte) ||
-                    t == typeof(short) || t == typeof(ushort) ||
-                    t == typeof(int) || t == typeof(uint) ||
-                    t == typeof(long) || t == typeof(ulong)) {
+                if (t == typeof(byte) || t == typeof(sbyte)
+                    || t == typeof(short) || t == typeof(ushort)
+                    || t == typeof(int) || t == typeof(uint)
+                    || t == typeof(long) || t == typeof(ulong)
+                ) {
                     return "integer";
                 }
 
@@ -594,7 +512,6 @@ namespace SimpleW.Service.Swagger {
             }
 
         }
-
     }
 
 }
