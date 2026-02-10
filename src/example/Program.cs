@@ -19,7 +19,7 @@ using SimpleW.JsonEngine.Newtonsoft;
 using SimpleW.Helper.Razor;
 using SimpleW.Service.Firewall;
 using SimpleW.Security;
-using SimpleW.Service.Swagger;
+using SimpleW.Helper.Swagger;
 using SimpleW.Service.Chaos;
 using SimpleW.Service.Latency;
 
@@ -165,13 +165,21 @@ namespace example.rewrite {
             //    options.Probability = 0.50;
             //});
 
-
-            //server.UseSwaggerModule(options => {
-            //    options.Title = "My API";
-            //    options.Version = "v1";
-            //    // optionnel: ne documenter que /api/*
-            //    //options.RouteFilter = r => r.Path.StartsWith("/", StringComparison.Ordinal);
+            //server.MapGet("/swagger.json", static (HttpSession session) => {
+            //    return Swagger.Json(session, options => {
+            //        options.Title = "My API";
+            //        options.Version = "v1";
+            //        options.RouteFilter = r => r.Path.StartsWith("/", StringComparison.Ordinal);
+            //    });
             //});
+            //server.MapGet("/admin/swagger", static (HttpSession session) => {
+            //    return Swagger.Ui(session, "/swagger.json", options => {
+            //        options.Title = "My API";
+            //        options.Version = "v1";
+            //        options.RouteFilter = r => r.Path.StartsWith("/", StringComparison.Ordinal);
+            //    });
+            //});
+
 
             server.UseWebSocketModule(ws => {
                 ws.Prefix = "/ws";
