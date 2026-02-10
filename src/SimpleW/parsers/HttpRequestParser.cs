@@ -111,6 +111,7 @@ namespace SimpleW.Parsers {
             long? contentLength = null;
             bool isChunked = false;
             bool hostSeen = false;
+            bool contentLengthSeen = false;
 
             while (TryReadLine(ref reader, out ReadOnlySequence<byte> line)) {
                 // empty line => end headers (should not happen because headerBlock stops at CRLFCRLF, but safe)
@@ -131,9 +132,15 @@ namespace SimpleW.Parsers {
                 headers.Add(name, value);
 
                 if (name.Equals(HeaderContentLength, StringComparison.OrdinalIgnoreCase)) {
-                    if (long.TryParse(value, out long parsedCL) && parsedCL >= 0) {
-                        contentLength = parsedCL;
+                    if (!TryParseContentLengthStrict(value.AsSpan(), out long parsedCL)) {
+                        throw new HttpRequestException("Invalid Content-Length header.", 400);
                     }
+                    // if multiple CL headers exist, they must match (otherwise 400).
+                    if (contentLengthSeen && contentLength.HasValue && contentLength.Value != parsedCL) {
+                        throw new HttpRequestException("Multiple Content-Length headers with different values.", 400);
+                    }
+                    contentLength = parsedCL;
+                    contentLengthSeen = true;
                 }
                 else if (name.Equals(HeaderTransferEncoding, StringComparison.OrdinalIgnoreCase)) {
                     if (value.IndexOf("chunked", StringComparison.OrdinalIgnoreCase) >= 0) {
@@ -389,6 +396,36 @@ namespace SimpleW.Parsers {
             value = valueSpan.Length > 0 ? Ascii.GetString(valueSpan) : string.Empty;
 
 
+            return true;
+        }
+
+        /// <summary>
+        /// Content-Length Value parser
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private static bool TryParseContentLengthStrict(ReadOnlySpan<char> s, out long value) {
+            value = 0;
+            if (s.Length == 0) {
+                return false;
+            }
+            if (s[0] == '+' || s[0] == '-') {
+                return false;
+            }
+
+            long acc = 0;
+            foreach (var ch in s) {
+                if (ch < '0' || ch > '9') {
+                    return false;
+                }
+                int digit = ch - '0';
+                if (acc > (long.MaxValue - digit) / 10) {
+                    return false;
+                }
+                acc = acc * 10 + digit;
+            }
+            value = acc;
             return true;
         }
 
