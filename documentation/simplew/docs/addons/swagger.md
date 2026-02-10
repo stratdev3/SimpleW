@@ -1,16 +1,19 @@
 # Swagger
 
 
-The [`SimpleW.Service.Swagger`](https://www.nuget.org/packages/SimpleW.Service.Swagger) package provides **Swagger / OpenAPI documentation** support for the SimpleW web server.
+The [`SimpleW.Helper.Swagger`](https://www.nuget.org/packages/SimpleW.Helper.Swagger) package provides **Swagger / OpenAPI documentation** support for the SimpleW web server.
 
 It automatically generates an **OpenAPI 3.0 specification** from the routes and handlers registered in SimpleW, and exposes a built-in Swagger UI for API exploration.
 
-This module is designed to work **without ASP.NET, without annotations**, and **without modifying the SimpleW core**.
+Swagger is exposed as a **helper**, not a module:
+you decide **where**, **how**, and **under which** security rules it is served.
+
+This package works **without ASP.NET, without annotations**, and **without modifying the SimpleW core**.
 
 
 ## What this package does
 
-`SimpleW.Service.Swagger` allows you to :
+`SimpleW.Helper.Swagger` allows you to :
 - Generate an **OpenAPI 3.0 JSON document** automatically
 - Infer **paths, HTTP methods, and parameters** from registered routes
 - Detect **path parameters**
@@ -37,7 +40,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Swagger --version 26.0.0-beta.20260202-1339
+$ dotnet add package SimpleW.Helper.Swagger --version 26.0.0-beta.20260202-1339
 ```
 
 
@@ -48,7 +51,7 @@ Minimal exemple
 ```csharp [Controller Based]
 using System.Net;
 using SimpleW;
-using SimpleW.Service.Swagger;
+using SimpleW.Helper.Swagger;
 
 var server = new SimpleWServer(IPAddress.Any, 8080);
 
@@ -58,16 +61,26 @@ server.MapGet("/api/hello", (string name) => {
     return new { message = $"Hello {name}" };
 });
 
+// OpenAPI JSON
+server.MapGet("/swagger.json", static (HttpSession session) => {
+    return session.SwaggerJson()
+});
+
+// Swagger UI (you control security here)
+server.MapGet("/admin/swagger", static (HttpSession session) => {
+    return session.Swagger("/swagger.json")
+});
+
 await server.RunAsync();
 ```
 
-- Swagger UI will be available at : http://localhost:8080/swagger
-- The OpenAPI JSON document is served at : http://localhost:8080/swagger/v1/swagger.json
+Nothing is registered automatically.
+You explicitly choose **where Swagger lives**.
 
 
 ## Route discovery
 
-The Swagger module automatically discovers routes from the SimpleW router.
+The Swagger package automatically discovers routes from the SimpleW router.
 
 Supported styles :
 - `MapGet`, `MapPost`, `Map(method, path, handler)`
@@ -109,26 +122,33 @@ public sealed class UsersController : Controller {
 }
 ```
 
-The Swagger module inspects controller methods via reflection and infers parameters from their signatures.
+The Swagger helper inspects controller methods via reflection and infers parameters from their signatures.
 
 
 ## Swagger UI
 
-The module serves a built-in Swagger UI using a CDN-based distribution.
+Swagger UI is returned explicitly by the helper.
+There is **no default route and no fixed path**.
 
-Default URLs :
-- UI : `/swagger/`
-- OpenAPI JSON : `/swagger/v1/swagger.json`
+Example :
 
-No additional static files are required.
+```csharp
+server.MapGet("/swagger", static (HttpSession session) => {
+    return session.Swagger("/swagger.json")
+});
+```
+
+The UI uses a CDN-based Swagger UI distribution by default.
+No static files are required.
 
 You can override the UI HTML if needed :
 
 ```csharp
-server.UseSwaggerModule(options => {
+return session.Swagger("/swagger.json", options => {
     options.UiHtmlFactory = jsonUrl => $"<html>Custom UI for {jsonUrl}</html>";
 });
 ```
+
 
 ## Configuration options
 
@@ -152,11 +172,9 @@ server.UseSwaggerModule(options => {
 | `Title`                        | OpenAPI document title                              |
 | `Version`                      | OpenAPI version string                              |
 | `Description`                  | Optional document description                       |
-| `Prefix`                       | Base URL for Swagger endpoints (default `/swagger`) |
-| `DocName`                      | Document name (default `v1`)                        |
 | `RouteFilter`                  | Predicate to filter visible routes                  |
-| `HideSwaggerEndpoints`         | Hide `/swagger` routes from the document            |
 | `ScanControllersForParameters` | Enable controller parameter inference               |
+| `UiHtmlFactory`                | Custom Swagger UI HTML renderer                     |
 
 
 ## OpenAPI generation behavior
@@ -179,16 +197,16 @@ The goal is **accurate route documentation**, not full schema generation.
 - No impact on request handling
 - Best-effort reflection, never required configuration
 
-If the module cannot infer something reliably, it simply omits it instead of guessing.
+If the helper cannot infer something reliably, it simply omits it instead of guessing.
 
 
 ## What this module is NOT
 
-This module intentionally does **not** :
+This package intentionally does **not** :
 - generate full DTO schemas
 - replace a full OpenAPI authoring tool
 - validate requests or responses
 - enforce API contracts
 - require Swagger attributes everywhere
 
-It is meant to document **what SimpleW actually routes**, nothing more.
+It documents **what SimpleW actually routes**, nothing more.

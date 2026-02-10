@@ -37,7 +37,7 @@ Optional dependency if you enable GeoIP country filtering :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260209-1385
+$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260210-1405
 ```
 
 
