@@ -125,7 +125,7 @@ namespace SimpleW.Parsers {
                     if (pooled2 != null) {
                         _bufferPool.Return(pooled2);
                     }
-                    throw new HttpRequestException("Invalid header line.", 413);
+                    throw new HttpRequestException("Invalid header line.", 400);
                 }
 
                 value ??= string.Empty;
