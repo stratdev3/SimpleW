@@ -17,6 +17,7 @@ namespace SimpleW.Parsers {
         private const byte SpaceByte = (byte)' ';
         private const byte ColonByte = (byte)':';
 
+        private const string HeaderHost = "Host";
         private const string HeaderContentLength = "Content-Length";
         private const string HeaderTransferEncoding = "Transfer-Encoding";
 
@@ -109,6 +110,7 @@ namespace SimpleW.Parsers {
             HttpHeaders headers = default;
             long? contentLength = null;
             bool isChunked = false;
+            bool hostSeen = false;
 
             while (TryReadLine(ref reader, out ReadOnlySequence<byte> line)) {
                 // empty line => end headers (should not happen because headerBlock stops at CRLFCRLF, but safe)
@@ -137,6 +139,12 @@ namespace SimpleW.Parsers {
                     if (value.IndexOf("chunked", StringComparison.OrdinalIgnoreCase) >= 0) {
                         isChunked = true;
                     }
+                }
+                else if (name.Equals(HeaderHost, StringComparison.OrdinalIgnoreCase)) {
+                    if (hostSeen) {
+                        throw new HttpRequestException("Duplicate Host header (HTTP/1.1).", 400);
+                    }
+                    hostSeen = true;
                 }
 
                 if (pooled2 != null) {
