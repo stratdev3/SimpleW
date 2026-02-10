@@ -311,24 +311,34 @@ namespace SimpleW.Parsers {
             name = null;
             value = null;
 
+            // checks
             if (lineSpan.Length == 0) {
                 return false;
             }
-
             int colonIndex = lineSpan.IndexOf(ColonByte);
             if (colonIndex <= 0) {
                 return false;
             }
 
-            ReadOnlySpan<byte> nameSpan = TrimAsciiWhitespace(lineSpan.Slice(0, colonIndex));
-            ReadOnlySpan<byte> valueSpan = TrimAsciiWhitespace(lineSpan.Slice(colonIndex + 1));
+            // name
+            ReadOnlySpan<byte> nameSpan = lineSpan.Slice(0, colonIndex);
 
+            // checks
             if (nameSpan.Length == 0) {
                 return false;
             }
+            if (!IsValidHeaderNameToken(nameSpan)) {
+                return false;
+            }
+            
+            // value
+            ReadOnlySpan<byte> valueSpan = TrimAsciiWhitespace(lineSpan.Slice(colonIndex + 1));
 
+            // set
             name = Ascii.GetString(nameSpan);
             value = valueSpan.Length > 0 ? Ascii.GetString(valueSpan) : string.Empty;
+
+
             return true;
         }
 
@@ -529,6 +539,51 @@ namespace SimpleW.Parsers {
             }
 
             return span.Slice(start, end - start + 1);
+        }
+
+        /// <summary>
+        /// Lookup Tchar Table
+        /// </summary>
+        private static readonly byte[] TCharTable = BuildTCharTable();
+
+        /// <summary>
+        /// Build TChar Table
+        /// </summary>
+        /// <returns></returns>
+        private static byte[] BuildTCharTable() {
+            byte[] t = new byte[128];
+
+            for (int c = '0'; c <= '9'; c++) {
+                t[c] = 1;
+            }
+            for (int c = 'A'; c <= 'Z'; c++) {
+                t[c] = 1;
+            }
+            for (int c = 'a'; c <= 'z'; c++) {
+                t[c] = 1;
+            }
+
+            const string extra = "!#$%&'*+-.^_`|~";
+            foreach (char ch in extra) {
+                t[ch] = 1;
+            }
+
+            return t;
+        }
+
+        private static bool IsValidHeaderNameToken(ReadOnlySpan<byte> nameSpan) {
+            if (nameSpan.Length == 0)
+                return false;
+
+            foreach (byte b in nameSpan) {
+                if (b >= 128) {
+                    return false; // non-ASCII => nope
+                }
+                if (TCharTable[b] == 0) {
+                    return false; // also rejects space/tab/ctl
+                }
+            }
+            return true;
         }
 
         private static bool IsAsciiWhitespace(byte b) => b == (byte)' ' || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n';
