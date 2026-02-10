@@ -68,15 +68,12 @@ namespace SimpleW.Parsers {
 
 
             // 1. find header end (CRLF CRLF)
-            if (!TryFindHeaderEnd(buffer, out var headerEndPos, out int headerBytesLen)) {
+            if (!TryFindHeaderEndStrict(buffer, out var headerEndPos, out int headerBytesLen)) {
                 // check in case we need more data but the header is already too large
                 if (buffer.Length > _maxHeaderSize) {
                     throw new HttpRequestException($"Request headers too large: {buffer.Length} bytes (limit: {_maxHeaderSize}).", 413);
                 }
                 return false; // need more data
-            }
-            if (headerBytesLen > _maxHeaderSize) {
-                throw new HttpRequestException($"Request headers too large: {headerBytesLen} bytes (limit: {_maxHeaderSize}).", 413);
             }
             ReadOnlySequence<byte> headerBlock = buffer.Slice(0, headerEndPos); // header block includes the final CRLFCRLF
 
@@ -192,26 +189,71 @@ namespace SimpleW.Parsers {
         }
 
         /// <summary>
-        /// We find header end by search CRLF CRLF
-        /// headerBytesLen = bytes count up to that point
+        /// Strictly find end of headers: CRLFCRLF.
+        /// Enforces RFC line endings while scanning:
+        /// - Any LF must be immediately preceded by CR (reject bare LF)
+        /// - Any CR must be immediately followed by LF (reject bare CR)
+        /// Also enforces _maxHeaderSize early.
         /// </summary>
         /// <param name="buffer"></param>
         /// <param name="endPos">contains the header CRLK CRLK delimiter</param>
         /// <param name="headerBytesLen"></param>
-        /// <returns></returns>
-        private static bool TryFindHeaderEnd(in ReadOnlySequence<byte> buffer, out SequencePosition endPos, out int headerBytesLen) {
-            SequenceReader<byte> reader = new(buffer);
+        private bool TryFindHeaderEndStrict(in ReadOnlySequence<byte> buffer, out SequencePosition endPos, out int headerBytesLen) {
+            var reader = new SequenceReader<byte>(buffer);
 
-            // read until CRLF CRLF, keep delimiter
-            if (!reader.TryReadTo(out ReadOnlySequence<byte> _, HeaderTerminator, advancePastDelimiter: true)) {
-                endPos = default;
-                headerBytesLen = 0;
-                return false;
+            int d = 0;              // delimiter state for \r\n\r\n
+            bool pendingCr = false; // saw CR, must see LF next
+
+            while (true) {
+                if (!reader.TryRead(out byte b)) {
+                    endPos = default;
+                    headerBytesLen = 0;
+                    return false;
+                }
+
+                if (reader.Consumed > _maxHeaderSize) {
+                    throw new HttpRequestException($"Request headers too large: {reader.Consumed} bytes (limit: {_maxHeaderSize}).", 413);
+                }
+
+                // strict line endings
+                if (pendingCr) {
+                    if (b != (byte)'\n') {
+                        throw new HttpRequestException("Invalid line endings in headers (bare CR).", 400);
+                    }
+                    pendingCr = false;
+                }
+                else {
+                    if (b == (byte)'\n') {
+                        throw new HttpRequestException("Invalid line endings in headers (bare LF).", 400);
+                    }
+                }
+
+                if (b == (byte)'\r') {
+                    pendingCr = true;
+                }
+
+                // delimiter FSM: \r\n\r\n
+                switch (d) {
+                    case 0:
+                        d = (b == (byte)'\r') ? 1 : 0;
+                        break;
+                    case 1:
+                        d = (b == (byte)'\n') ? 2 : (b == (byte)'\r' ? 1 : 0);
+                        break;
+                    case 2:
+                        d = (b == (byte)'\r') ? 3 : 0;
+                        break;
+                    case 3:
+                        d = (b == (byte)'\n') ? 4 : (b == (byte)'\r' ? 1 : 0);
+                        break;
+                }
+
+                if (d == 4) {
+                    endPos = reader.Position; // after last LF
+                    headerBytesLen = (int)reader.Consumed; // <= _maxHeaderSize
+                    return true;
+                }
             }
-
-            endPos = reader.Position;
-            headerBytesLen = (int)reader.Consumed; // safe because headers are bounded by _maxHeaderSize
-            return true;
         }
 
         /// <summary>
