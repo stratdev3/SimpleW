@@ -40,7 +40,7 @@ It **does not** :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260210-1405
+$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260211-1417
 ```
 
 This package targets .NET 8 and depends on :
