@@ -10,14 +10,63 @@ Notes :
 
 ## Roadmap - _(2026)_
 
-- let's encrypt certicate integration with auto-renew
-- automatic `Swagger API JSON` generation
-- jwt verify `iss`
-- support `async Task` in controller method return
-- Mutual TLS authentication
-- sync `LiteJWT` library with upstream
-- sync `HttpMultipartDataParser` library with upstream
+- docker template
+- dotnet template
+- captcha module
 - HTTP/3 quic
+
+
+## v26.0.0-beta - _(2026-??-??)_
+
+This version is a major release :
+- a **complete rewrite** of the project (start from scratch no more netcoreserver override)
+- the core is **simple** as possible and delivers **very good performances** !
+- there is many place for **extensibility**.
+- so there are **addons** !
+
+### breakingChange
+
+There is a [complete migration guide](../guide/migrate-from-v16.md). But for short : even if some high level classes/methods has been renamed, your understanding of their role remains quite the same and the bump version should not be a pain. I've migrated a full project (thirty controllers / four hundred methods) on a couple of hours.
+
+### feature / comparison
+
+| Feature / Aspect                                   | SimpleW v16 (old) | SimpleW v26 (new) |
+|----------------------------------------------------|-------------------------|-----------------------------|
+| NET runtime                                 | NET8 | NET8 but should consider NET9/NET10 for better perfs and RAM usage under heady load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
+| Core architecture                                  | ⚠️ (tied to NetCoreServer) | ✅ from scratch (custom, simple, clean) |
+| Code readability                                   | ⚠️                                        | ✅                           |
+| Overall design philosophy                    | ⚠️ wrapper                           | ✅ minimal, custom, fast     |
+| Long-term maintainability                    | ⚠️ harder                               | ✅ much easier               |
+| Performance                                         | ✅ (very high)                        | ✅  (very high)  |
+| Middleware                                          | ❌                                                | ✅   |
+| Modules                                                | ❌                                              | ✅  |
+| Extensibility                                          | ⚠️ (callback, subclass)              | ✅ midlleware, module, callback, subclass     |
+| Response Builder                                   | ✅(status, contentType, headers, body, cookies)                                               | ✅    (status, contentType, contentLength, headers, body, cookies, compression)                       |
+| Handler (Expression Tree)                   | ✅ sync  ❌async                        | ✅ sync ✅ async + RequestAborted   |
+| Routing                                                | ✅ (minimal, attribute, querystring, regexp, path, wildcard)               | ✅ (minimal, attribute, querystring, path, wildcard) |
+| Minimal API                                           | ✅                                               | ✅                           |
+| Controllers                                            | ✅                                                | ✅                             |
+| SSL / HTTPS                                           | ✅ (SslContext)                            | ✅  (SslContext, mutual authentication)  |
+| WebSocket                                              | ✅(full broadcast)                      | ✅ (smart broadcast using "rooms")   |
+| Server-Sent Events (SSE)                            | ✅                                          | ✅                               |
+| Basic Auth                                                 | ❌                                          | ✅                                 |
+| JWT auth                                                 | ✅                                             | ✅                               |
+| Unix socket                                            | ✅                                               | ✅                               |
+| Static files                                               | ✅ (Cache, FileWatcher)            | ✅ (Cache, FileWatcher, Last-Modified, Etag) |
+| Cross-Origin Resource Sharing (CORS)  | ✅                                               | ✅                             |
+| Body parsing (JSON)                               | ✅                                             | ✅                               |
+| Body parsing (form-urlencoded)            | ✅                                                | ✅                            |
+| Body parsing (multipart/form-data)       | ✅                                                | ✅                             |
+| WebUser / Identity                                    | ✅                                              | ✅                             |
+| Custom JSON engine                                | ✅                                             | ✅                              |
+| HTTP pipelining                                       | ❌                                              | ✅                               |
+| Idle Timeout                                             | ❌                                             | ✅                               |
+| Request Protection                                   | ❌                                              | ✅(malformed)          |
+| Observability                                             | ✅ (traces) & global to all processes       | ✅  (traces, metrics, enrich)  per SimpleWServer instance           |
+| Documentation                                         | ✅                                              | ✅ [simplew.net](https://simplew.net/v26/)                  |
+| Tests                                                          | ✅                                             | ✅ (more tests)  |
+| Support                                                     | ❌                                              | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                  |
+| Addons                                                    | ❌                                              | ✅ Chaos, Firewall, Hosting, Latency, Razor, Swagger       |
 
 
 

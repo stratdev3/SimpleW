@@ -55,20 +55,18 @@ using SimpleW.Helper.Swagger;
 
 var server = new SimpleWServer(IPAddress.Any, 8080);
 
-server.UseSwaggerModule();
-
 server.MapGet("/api/hello", (string name) => {
     return new { message = $"Hello {name}" };
 });
 
 // OpenAPI JSON
 server.MapGet("/swagger.json", static (HttpSession session) => {
-    return session.SwaggerJson()
+    return Swagger.Json(session);
 });
 
-// Swagger UI (you control security here)
-server.MapGet("/admin/swagger", static (HttpSession session) => {
-    return session.Swagger("/swagger.json")
+// Swagger UI
+server.MapGet("/swagger", static (HttpSession session) => {
+    return Swagger.UI(session);
 });
 
 await server.RunAsync();
@@ -134,7 +132,7 @@ Example :
 
 ```csharp
 server.MapGet("/swagger", static (HttpSession session) => {
-    return session.Swagger("/swagger.json")
+    return Swagger.UI(session);
 });
 ```
 
@@ -144,8 +142,10 @@ No static files are required.
 You can override the UI HTML if needed :
 
 ```csharp
-return session.Swagger("/swagger.json", options => {
-    options.UiHtmlFactory = jsonUrl => $"<html>Custom UI for {jsonUrl}</html>";
+server.MapGet("/swagger", static (HttpSession session) => {
+    return Swagger.UI(session, options => {
+        options.UiHtmlFactory = jsonContent => $"<html>Custom UI for {jsonContent}</html>";
+    });
 });
 ```
 
@@ -153,15 +153,14 @@ return session.Swagger("/swagger.json", options => {
 ## Configuration options
 
 ```csharp
-server.UseSwaggerModule(options => {
+Swagger.Json(session, options => {
 
     options.Title = "My API";
     options.Version = "v1";
     options.Description = "Public API documentation";
 
     // Only expose /api routes
-    options.RouteFilter = r => r.Path.StartsWith("/api");
-
+    options.RouteFilter = r => r.Path.StartsWith("/api", StringComparison.Ordinal);
 });
 ```
 

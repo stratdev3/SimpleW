@@ -224,6 +224,7 @@ When telemetry is enabled, SimpleW emits standard HTTP server metrics using Open
 - Response count
 - Request duration
 - Response duration
+- Session count
 
 These metrics can be scraped or collected by any OpenTelemetry-compatible metrics backend (Prometheus, Uptrace, etc.).
 
