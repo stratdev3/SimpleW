@@ -532,7 +532,7 @@ namespace SimpleW {
             // and we force a minimum of 2 instances. The use case
             // it VPS hosting with only 1 core, 2 instances
             // can be a real perf improvement.
-            int maxParalleListenSocketEventArgs = Options.AcceptPerCore ? Math.Max(2, Environment.ProcessorCount / 2) : 1;
+            int maxParalleListenSocketEventArgs = Options.AcceptPerCore ? Math.Max(2, Environment.ProcessorCount) : 1;
 
             for (int i = 0; i < maxParalleListenSocketEventArgs; i++) {
                 // SocketAsyncEventArgs
