@@ -646,7 +646,7 @@ namespace SimpleW {
 
             // context
             HttpSession connection = new(this, socket, _bufferPool, Router);
-            //RegisterSession(connection);
+            RegisterSession(connection);
 
             try {
                 if (SslContext != null) {
@@ -659,7 +659,7 @@ namespace SimpleW {
                 Console.WriteLine($"[HTTP] Connection error: {ex.Message}");
             }
             finally {
-                //UnregisterSession(connection.Id);
+                UnregisterSession(connection.Id);
                 connection.Dispose();
             }
         }
