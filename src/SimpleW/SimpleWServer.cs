@@ -678,7 +678,9 @@ namespace SimpleW {
         /// </summary>
         /// <param name="session">Session to register</param>
         internal void RegisterSession(HttpSession session) {
-            Sessions.TryAdd(session.Id, session);
+            if (Sessions.TryAdd(session.Id, session)) {
+                Telemetry?.ActiveSessionIncrement();
+            }
         }
 
         /// <summary>
@@ -686,7 +688,9 @@ namespace SimpleW {
         /// </summary>
         /// <param name="id">Session Id</param>
         internal void UnregisterSession(Guid id) {
-            Sessions.TryRemove(id, out _);
+            if (Sessions.TryRemove(id, out _)) {
+                Telemetry?.ActiveSessionDecrement();
+            }
         }
 
         /// <summary>
@@ -739,8 +743,8 @@ namespace SimpleW {
                 foreach (KeyValuePair<Guid, HttpSession> kvp in Sessions) {
                     HttpSession? session = kvp.Value;
                     if (now - session.LastActivityTick > timeoutMs) {
-                        Sessions.TryRemove(session.Id, out HttpSession? s);
-                        s?.Dispose();
+                        UnregisterSession(session.Id);
+                        session.Dispose();
                     }
                 }
             }

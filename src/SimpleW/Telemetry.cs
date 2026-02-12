@@ -52,6 +52,7 @@ namespace SimpleW.Observability {
             RequestDurationMs = Meter.CreateHistogram<double>("http.server.request.duration", unit: "ms");
             ResponsesTotal = Meter.CreateCounter<long>("http.server.response.count", unit: "response");
             ResponseDurationMs = Meter.CreateHistogram<double>("http.server.response.duration", unit: "ms");
+            ActiveSessions = Meter.CreateObservableGauge<long>("simplew.session.active", () => Volatile.Read(ref _activeSessions), unit: "session");
         }
 
         #region traces
@@ -225,6 +226,11 @@ namespace SimpleW.Observability {
         private readonly Histogram<double> ResponseDurationMs;
 
         /// <summary>
+        /// ActiveSessions
+        /// </summary>
+        private readonly ObservableGauge<long> ActiveSessions;
+
+        /// <summary>
         /// AddRequestMetrics
         /// </summary>
         /// <param name="session"></param>
@@ -269,6 +275,23 @@ namespace SimpleW.Observability {
                 new("http.response.status_code", session.Response.StatusCode)
             );
         }
+
+        /// <summary>
+        /// ActiveSession Count
+        /// </summary>
+        private long _activeSessions;
+
+        /// <summary>
+        /// Increment Session Gauge
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ActiveSessionIncrement() => Interlocked.Increment(ref _activeSessions);
+
+        /// <summary>
+        /// Decrement Session Gauge
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void ActiveSessionDecrement() => Interlocked.Decrement(ref _activeSessions);
 
         #endregion meters
 
