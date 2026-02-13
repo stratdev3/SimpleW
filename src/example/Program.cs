@@ -79,7 +79,7 @@ namespace example.rewrite {
                 return new { query };
             });
 
-            server.MapGet("/", () => {
+            server.MapGet("/", (HttpSession session) => {
                 return "Hello World !";
             });
 
@@ -173,7 +173,7 @@ namespace example.rewrite {
             //    });
             //});
             //server.MapGet("/admin/swagger", static (HttpSession session) => {
-            //    return Swagger.Ui(session, "/swagger.json", options => {
+            //    return Swagger.UI(session, options => {
             //        options.Title = "My API";
             //        options.Version = "v1";
             //        options.RouteFilter = r => r.Path.StartsWith("/", StringComparison.Ordinal);
