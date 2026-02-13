@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 
@@ -12,12 +13,14 @@ namespace SimpleW.Helper.Swagger {
     /// You call it from your own routes so YOU control security/auth.
     ///
     /// Example:
-    /// server.MapGet("/swagger.json", static (HttpSession session) =>
-    ///     Swagger.Json(session));
-    ///
+    /// server.MapGet("/swagger.json", static (HttpSession session) => {
+    ///     return Swagger.Json(session));
+    /// }
     /// server.MapGet("/admin/swagger", static (HttpSession session) => {
     ///     // your security here
-    ///     // if (!IsAdmin(session)) return session.Response.Status(403).Text("Forbidden");
+    ///     if (!IsAdmin(session)) {
+    ///         return session.Response.Status(403).Text("Forbidden");
+    ///     }
     ///     return Swagger.Ui(session, "/swagger.json");
     /// });
     /// </summary>
@@ -47,21 +50,25 @@ namespace SimpleW.Helper.Swagger {
         /// swaggerJsonUrl can be relative (recommended): "/swagger.json"
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="swaggerJsonUrl"></param>
         /// <param name="configure"></param>
         /// <returns></returns>
-        public static HttpResponse Ui(HttpSession session, string swaggerJsonUrl, Action<SwaggerOptions>? configure = null) {
+        public static HttpResponse UI(HttpSession session, Action<SwaggerOptions>? configure = null) {
             ArgumentNullException.ThrowIfNull(session);
-
-            if (string.IsNullOrWhiteSpace(swaggerJsonUrl)) {
-                swaggerJsonUrl = "/swagger.json";
-            }
 
             SwaggerOptions options = new();
             configure?.Invoke(options);
             options.ValidateAndNormalize();
 
-            string html = options.UiHtmlFactory?.Invoke(swaggerJsonUrl) ?? DefaultUiHtml(options.Title, swaggerJsonUrl);
+            // Build the OpenAPI document now (same as Json())
+            object doc = OpenApiBuilder.Build(session.Server, session, options);
+
+            // Serialize as JSON for embedding into the HTML page
+            string openApiJson = session.Server.JsonEngine.Serialize(doc);
+
+            // Make the JSON safer to inline in a <script> tag
+            openApiJson = MakeJsonSafeForInlineScript(openApiJson);
+
+            string html = options.UiHtmlFactory?.Invoke(openApiJson) ?? DefaultUiHtml(options.Title, openApiJson);
 
             session.Response.Html(html);
             return session.Response;
@@ -100,7 +107,7 @@ namespace SimpleW.Helper.Swagger {
             /// <summary>
             /// Customize swagger UI HTML (advanced)
             /// </summary>
-            public Func<string /*swaggerJsonUrl*/, string /*html*/>? UiHtmlFactory { get; set; }
+            public Func<string /*swaggerJson*/, string /*html*/>? UiHtmlFactory { get; set; }
 
             /// <summary>
             /// Check Properties and return
@@ -118,9 +125,9 @@ namespace SimpleW.Helper.Swagger {
         /// Default UI
         /// </summary>
         /// <param name="title"></param>
-        /// <param name="swaggerJsonUrl"></param>
+        /// <param name="openApiJson"></param>
         /// <returns></returns>
-        private static string DefaultUiHtml(string title, string swaggerJsonUrl) {
+        private static string DefaultUiHtml(string title, string openApiJson) {
             return $$"""
                         <!doctype html>
                         <html lang="en">
@@ -139,8 +146,9 @@ namespace SimpleW.Helper.Swagger {
                             <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
                             <script>
                             window.onload = function() {
+                                const openApiSpec = {{openApiJson}};
                                 window.ui = SwaggerUIBundle({
-                                    url: "{{swaggerJsonUrl}}",
+                                    spec: openApiSpec,
                                     dom_id: '#swagger-ui',
                                     deepLinking: true,
                                     presets: [SwaggerUIBundle.presets.apis],
@@ -163,6 +171,16 @@ namespace SimpleW.Helper.Swagger {
                                                        .Replace(">", "&gt;")
                                                        .Replace("\"", "&quot;")
                                                        .Replace("'", "&#39;");
+
+        /// <summary>
+        /// Prevent breaking out of the script tag in worst cases.
+        /// </summary>
+        private static string MakeJsonSafeForInlineScript(string json) {
+            // Avoid </script> termination edge case + handle JS line separators
+            return json.Replace("</", "<\\/", StringComparison.Ordinal)
+                       .Replace("\u2028", "\\u2028", StringComparison.Ordinal)
+                       .Replace("\u2029", "\\u2029", StringComparison.Ordinal);
+        }
 
         /// <summary>
         /// OpenApiBuilder
