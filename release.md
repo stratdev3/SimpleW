@@ -60,7 +60,7 @@ You can find a [complete list of features](https://simplew.net/version/changelog
 - Documentation : [simplew.net](https://simplew.net)
 - Tests
 - Support: [Discord](https://discord.gg/mDNRjyV8Ak)
-- Addons : Chaos, Firewall, Hosting, Latency, Razor, Swagger
+- Addons : Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger
 
 
 
