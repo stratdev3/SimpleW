@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
@@ -14,14 +15,15 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SimpleW;
-using SimpleW.Modules;
-using SimpleW.JsonEngine.Newtonsoft;
 using SimpleW.Helper.Razor;
-using SimpleW.Service.Firewall;
-using SimpleW.Security;
 using SimpleW.Helper.Swagger;
+using SimpleW.JsonEngine.Newtonsoft;
+using SimpleW.Modules;
+using SimpleW.Security;
 using SimpleW.Service.Chaos;
+using SimpleW.Service.Firewall;
 using SimpleW.Service.Latency;
+using SimpleW.Service.OpenID;
 
 
 namespace example.rewrite {
@@ -75,39 +77,48 @@ namespace example.rewrite {
 
             #endregion https
 
-            server.MapGet("/api/syslog/index", object (string? query = null) => {
-                return new { query };
-            });
+            //server.MapGet("/", (HttpSession session) => {
+            //    return "Hello World !";
+            //});
 
-            server.MapGet("/", (HttpSession session) => {
-                return "Hello World !";
-            });
+            //server.MapGet("/api/test/hello", object (HttpSession session) => {
+            //    return new { message = $"Hello World !" };
+            //});
 
-            server.MapGet("/api/test/hello", object (HttpSession session) => {
-                return new { message = $"Hello World !" };
-            });
+            // OpenID
+            //server.UseOpenIDModule(options => {
 
-            server.MapGet("/api/test/async", async (HttpSession session) => {
-                try {
-                    session.RequestAborted.Register(() =>
-                        Console.WriteLine($"[ABORTED] session={session.Id} t={Environment.TickCount64}")
-                    );
+            //    options.Add("google", o => {
+            //        o.Authority = "https://accounts.google.com";
+            //        o.PublicBaseUrl = "http://dev.simplew.net";
+            //    });
 
-                    Console.WriteLine($"[START] session={session.Id} t={Environment.TickCount64}");
+            //    options.CookieSecure = false;
+            //});
 
-                    await Task.Delay(TimeSpan.FromSeconds(30), session.RequestAborted);
+            //// route to protect
+            //server.Router.MapGet("/api/me", (HttpSession session) => {
+            //    if (!session.Request.User.Identity) {
+            //        return session.Response
+            //                      .Unauthorized()
+            //                      .SendAsync();
+            //    }
+            //    var u = session.Request.User;
+            //    return session.Response.Json(new {
+            //        authenticated = true,
+            //        id = u.Id,
+            //        login = u.Login,
+            //        mail = u.Mail,
+            //        fullName = u.FullName,
+            //        roles = u.Roles,
+            //        profile = u.Profile
+            //    }).SendAsync();
+            //});
+            //server.UseStaticFilesModule(options => {
+            //    options.Path = @"C:\www\toto\openid";
+            //    options.CacheTimeout = TimeSpan.FromMinutes(10);
+            //});
 
-                    Console.WriteLine($"[END] session={session.Id} t={Environment.TickCount64}");
-                    
-                }
-                catch (OperationCanceledException) when (session.RequestAborted.IsCancellationRequested) {
-                    Console.WriteLine($"[OperationCanceledException] session={session.Id} t={Environment.TickCount64}");
-                }
-                catch (Exception ex) {
-                    Console.WriteLine($"[Exception] session={session.Id} t={Environment.TickCount64}");
-                }
-                return new { message = "Hello World!" };
-            });
 
             //server.UseStaticFilesModule(options => {
             //    options.Prefix = "/spa";
@@ -181,115 +192,115 @@ namespace example.rewrite {
             //});
 
 
-            server.UseWebSocketModule(ws => {
-                ws.Prefix = "/ws";
+            //server.UseWebSocketModule(ws => {
+            //    ws.Prefix = "/ws";
 
-                // Optionnel: si tu ne veux PAS le "__all" par defaut
-                ws.AutoJoinRoom = null;
+            //    // Optionnel: si tu ne veux PAS le "__all" par defaut
+            //    ws.AutoJoinRoom = null;
 
-                // Petit "state" par connexion (alpha style)
-                var userByConn = new ConcurrentDictionary<Guid, string>();
-                var roomByConn = new ConcurrentDictionary<Guid, string>();
+            //    // Petit "state" par connexion (alpha style)
+            //    var userByConn = new ConcurrentDictionary<Guid, string>();
+            //    var roomByConn = new ConcurrentDictionary<Guid, string>();
 
-                static string ChatEvent(string kind, string room, string name, string? text = null) {
-                    var payload = new { kind, room, name, text = text ?? "" };
-                    var obj = new { op = "chat/event", payload };
-                    return JsonSerializer.Serialize(obj);
-                }
+            //    static string ChatEvent(string kind, string room, string name, string? text = null) {
+            //        var payload = new { kind, room, name, text = text ?? "" };
+            //        var obj = new { op = "chat/event", payload };
+            //        return JsonSerializer.Serialize(obj);
+            //    }
 
-                ws.Map("chat/join", async (conn, ctx, msg) => {
-                    if (!msg.TryGetPayload(out RoomName? m) || m == null) {
-                        return;
-                    }
+            //    ws.Map("chat/join", async (conn, ctx, msg) => {
+            //        if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+            //            return;
+            //        }
 
-                    userByConn[conn.Id] = m.name;
-                    roomByConn[conn.Id] = m.room;
+            //        userByConn[conn.Id] = m.name;
+            //        roomByConn[conn.Id] = m.room;
 
-                    await ctx.JoinRoomAsync(m.room, conn);
+            //        await ctx.JoinRoomAsync(m.room, conn);
 
-                    // Broadcast aux autres: "X joined"
-                    await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("join", m.room, m.name, $"{m.name} joined"), except: conn);
+            //        // Broadcast aux autres: "X joined"
+            //        await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("join", m.room, m.name, $"{m.name} joined"), except: conn);
 
-                    // Ack au client (facultatif)
-                    await conn.SendTextAsync(ChatEvent("join", m.room, m.name, $"joined {m.room}"));
-                });
+            //        // Ack au client (facultatif)
+            //        await conn.SendTextAsync(ChatEvent("join", m.room, m.name, $"joined {m.room}"));
+            //    });
 
-                ws.Map("chat/leave", async (conn, ctx, msg) => {
-                    if (!msg.TryGetPayload(out RoomName? m) || m == null) {
-                        return;
-                    }
+            //    ws.Map("chat/leave", async (conn, ctx, msg) => {
+            //        if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+            //            return;
+            //        }
 
-                    await ctx.LeaveRoomAsync(m.room, conn);
-                    await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("leave", m.room, m.name, $"{m.name} left"), except: conn);
+            //        await ctx.LeaveRoomAsync(m.room, conn);
+            //        await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("leave", m.room, m.name, $"{m.name} left"), except: conn);
 
-                    roomByConn.TryRemove(conn.Id, out _);
-                });
+            //        roomByConn.TryRemove(conn.Id, out _);
+            //    });
 
-                ws.Map("chat/msg", async (conn, ctx, msg) => {
-                    if (!msg.TryGetPayload(out RoomName? m) || m == null) {
-                        return;
-                    }
+            //    ws.Map("chat/msg", async (conn, ctx, msg) => {
+            //        if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+            //            return;
+            //        }
 
-                    // Broadcast à toute la room (y compris l'émetteur ou non, au choix)
-                    await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("msg", m.room, m.name, m.text));
-                });
+            //        // Broadcast à toute la room (y compris l'émetteur ou non, au choix)
+            //        await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("msg", m.room, m.name, m.text));
+            //    });
 
-                ws.OnUnknown(async (conn, ctx, msg) => {
-                    // Pratique quand tu débugges
-                    await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : "bad message: expected JSON {op,payload}");
-                });
+            //    ws.OnUnknown(async (conn, ctx, msg) => {
+            //        // Pratique quand tu débugges
+            //        await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : "bad message: expected JSON {op,payload}");
+            //    });
 
-                ws.OnConnect = async (conn, ctx) => {
-                    IWebUser? user = ctx.Session.Request.User;
-                    Console.WriteLine($"websocket connect {user?.Id} {user?.Login}");
-                    if (user == null) {
-                        return;
-                    }
-                    //await ctx.JoinRoomAsync(user.Id.ToString(), conn);
-                    //if (user.IsInRoles("admin, task:admin")) {
-                    //    await ctx.JoinRoomAsync("task", conn);
-                    //}
-                };
-                ws.OnDisconnect = async (conn, ctx) => {
-                    // cleanup
-                    if (roomByConn.TryRemove(conn.Id, out var room) && userByConn.TryRemove(conn.Id, out var name)) {
-                        await ctx.Hub.BroadcastTextAsync(room, ChatEvent("leave", room, name, $"{name} disconnected"), except: conn);
-                    }
-                };
-            });
+            //    ws.OnConnect = async (conn, ctx) => {
+            //        IWebUser? user = ctx.Session.Request.User;
+            //        Console.WriteLine($"websocket connect {user?.Id} {user?.Login}");
+            //        if (user == null) {
+            //            return;
+            //        }
+            //        //await ctx.JoinRoomAsync(user.Id.ToString(), conn);
+            //        //if (user.IsInRoles("admin, task:admin")) {
+            //        //    await ctx.JoinRoomAsync("task", conn);
+            //        //}
+            //    };
+            //    ws.OnDisconnect = async (conn, ctx) => {
+            //        // cleanup
+            //        if (roomByConn.TryRemove(conn.Id, out var room) && userByConn.TryRemove(conn.Id, out var name)) {
+            //            await ctx.Hub.BroadcastTextAsync(room, ChatEvent("leave", room, name, $"{name} disconnected"), except: conn);
+            //        }
+            //    };
+            //});
 
-            ServerSentEventsHub? hub = null;
+            //ServerSentEventsHub? hub = null;
 
-            server.UseServerSentEventsModule(opt => {
-                opt.Prefix = "/sse";
-                opt.AllowAnyOrigin = true;                  // pratique si tu ouvres index.html en file:// ou autre origin
-                opt.AutoJoinRoom = "__all";                 // tout le monde dans la room globale
-                opt.KeepAliveInterval = TimeSpan.FromSeconds(15);
+            //server.UseServerSentEventsModule(opt => {
+            //    opt.Prefix = "/sse";
+            //    opt.AllowAnyOrigin = true;                  // pratique si tu ouvres index.html en file:// ou autre origin
+            //    opt.AutoJoinRoom = "__all";                 // tout le monde dans la room globale
+            //    opt.KeepAliveInterval = TimeSpan.FromSeconds(15);
 
-                hub = opt.Hub;
+            //    hub = opt.Hub;
 
-                opt.OnConnect = async (conn, ctx) => {
-                    // Message de bienvenue (optionnel)
-                    await conn.SendEventAsync("connected", @event: "status");
-                };
-            });
+            //    opt.OnConnect = async (conn, ctx) => {
+            //        // Message de bienvenue (optionnel)
+            //        await conn.SendEventAsync("connected", @event: "status");
+            //    };
+            //});
 
-            // Timer: broadcast toutes les 5 secondes
-            _ = Task.Run(async () => {
-                int i = 0;
-                while (true) {
-                    await Task.Delay(TimeSpan.FromSeconds(5));
+            //// Timer: broadcast toutes les 5 secondes
+            //_ = Task.Run(async () => {
+            //    int i = 0;
+            //    while (true) {
+            //        await Task.Delay(TimeSpan.FromSeconds(5));
 
-                    if (hub == null)
-                        continue;
+            //        if (hub == null)
+            //            continue;
 
-                    i++;
-                    await hub.BroadcastAsync("__all", new ServerSentEventsMessage {
-                        Event = "tick",
-                        Payload = $"tick #{i} @ {DateTime.UtcNow:O}"
-                    });
-                }
-            });
+            //        i++;
+            //        await hub.BroadcastAsync("__all", new ServerSentEventsMessage {
+            //            Event = "tick",
+            //            Payload = $"tick #{i} @ {DateTime.UtcNow:O}"
+            //        });
+            //    }
+            //});
 
             //server.MapControllers<SubController>("/api");
             //server.MapController<HomeController>("/");
@@ -304,6 +315,7 @@ namespace example.rewrite {
                     ValidateExp = false,
                     ValidateNbf = false,
                 };
+                options.SessionTimeout = TimeSpan.FromMinutes(10);
             });
             //server.ConfigureTelemetry(options => {
             //    options.IncludeStackTrace = true;
@@ -312,16 +324,21 @@ namespace example.rewrite {
 
             //openTelemetryObserver("SimpleW*");
 
+            server.OnStarted(s => {
+                Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
+            });
+            server.OnStopped(s => {
+                Console.WriteLine("server stopped");
+            });
+
             // start non blocking background server
             CancellationTokenSource cts = new();
             Console.CancelKeyPress += (_, e) => {
                 e.Cancel = true;
                 cts.Cancel();
             };
-
-            Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
             await server.RunAsync(cts.Token);
-            Console.WriteLine("server stopped");
+
         }
 
         static async Task Raw() {
