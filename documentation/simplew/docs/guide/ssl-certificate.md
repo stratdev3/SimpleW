@@ -40,7 +40,9 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             await server.RunAsync();
         }
@@ -98,7 +100,9 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             await server.RunAsync();
         }

@@ -77,7 +77,9 @@ namespace Sample {
                 options.CacheTimeout = TimeSpan.FromDays(1);
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             await server.RunAsync();
         }
@@ -216,7 +218,9 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             // start a blocking background server
             await server.RunAsync();

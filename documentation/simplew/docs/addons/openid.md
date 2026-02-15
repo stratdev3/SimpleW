@@ -24,7 +24,7 @@ This module is **not based on ASP.NET**, does not rely on any hidden framework b
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-beta.20260215-1450
+$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-beta.20260216-1463
 ```
 
 

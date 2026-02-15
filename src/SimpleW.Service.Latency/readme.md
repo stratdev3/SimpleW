@@ -39,7 +39,9 @@ namespace Sample {
                 options.Rules.Add(new LatencyRule("/api/*", TimeSpan.FromSeconds(2)));
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             // start a blocking background server
             await server.RunAsync();

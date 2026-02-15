@@ -125,6 +125,9 @@ export default defineConfig({
                     ]
                 },
                 {
+                    text: 'Templates', link: '/addons/templates'
+                },
+                {
                     text: 'JsonEngines',
                     items: [
                         { text: 'Newtonsoft', link: '/addons/newtonsoft' },

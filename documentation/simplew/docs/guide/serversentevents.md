@@ -232,7 +232,9 @@ class Program {
             };
         });
 
-        Console.WriteLine("server started at http://localhost:{server.Port}/");
+        server.OnStarted(s => {
+            Console.WriteLine("server started at http://localhost:{server.Port}/");
+        });
         await server.RunAsync();
     }
 }

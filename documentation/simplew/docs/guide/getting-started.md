@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the nuget package, always prefer the last version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-beta.20260215-1450
+$ dotnet add package SimpleW --version 26.0.0-beta.20260216-1463
 ```
 
 ::: tip NOTE
@@ -45,7 +45,10 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            // register callbacks
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             // start a blocking background server
             await server.RunAsync();
@@ -82,7 +85,10 @@ namespace Sample {
             // find all classes based on Controller class, and serve on the "/api" endpoint
             server.MapControllers<Controller>("/api");
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            // register callbacks
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             // start a blocking background server
             await server.RunAsync();
@@ -149,7 +155,10 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            // register callbacks
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             // start a blocking background server
             await server.RunAsync();
@@ -207,7 +216,10 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            // register callbacks
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             // start a blocking background server
             await server.RunAsync();

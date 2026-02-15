@@ -114,22 +114,31 @@ public bool IsStarted { get; private set; }
 public bool IsStopping { get; private set; } = false;
 ```
 
-### Events
+## Callbacks
 
-There are also some events you can subscribe to track server state :
+There are also some callbacks you can subscribe to monitor server state :
 
 ```csharp
 /// <summary>
-/// Raised when the server has started listening and is ready to accept connections
+/// Register a callback invoked right after the server starts listening.
 /// </summary>
-public event EventHandler? OnStarted;
+public SimpleWServer OnStarted(Action<SimpleWServer> callback);
+
+/// <summary>
+/// Register an async callback invoked right after the server starts listening.
+/// </summary>
+public SimpleWServer OnStarted(Func<SimpleWServer, Task> callback):
 ```
 
 ```csharp
 /// <summary>
-/// Raised when the server has fully stopped and all resources have been released
+/// Register a callback invoked after the server has fully stopped.
 /// </summary>
-public event EventHandler? OnStopped;
+public SimpleWServer OnStopped(Action<SimpleWServer> callback);
+/// <summary>
+/// Register an async callback invoked after the server has fully stopped.
+/// </summary>
+public SimpleWServer OnStopped(Func<SimpleWServer, Task> callback);
 ```
 
 
