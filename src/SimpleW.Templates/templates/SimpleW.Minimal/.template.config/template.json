@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "SimpleW",
+  "classifications": [ "SimpleW", "Web", "Server" ],
+  "name": "SimpleW Minimal",
+  "identity": "SimpleW.Templates.Minimal",
+  "shortName": "simplew-minimal",
+  "sourceName": "ModuleName",
+  "description": "A project template to host a minimal REST API using the SimpleW webserver",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net9.0;net10.0;</TargetFrameworks>
+
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+
+    <!-- no useless ref -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SimpleW" Version="26.0.0-beta.20260215-1450" />
+  </ItemGroup>
+
+</Project>

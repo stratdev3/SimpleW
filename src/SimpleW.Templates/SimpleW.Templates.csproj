@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0;</TargetFrameworks>
+    <PackageType>Template</PackageType>
+
+    <!-- nuget metadata -->
+    <Authors>Christophe CHATEAU</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>dotnet templates for SimpleW.</Description>
+    <PackageTags>simplew;templates;</PackageTags>
+    <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
+    <PackageIcon>logo-transparent.png</PackageIcon>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Stratdev3/SimpleW</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- templates options -->
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IsPackable>true</IsPackable>
+
+    <!-- versioning -->
+    <AssemblyVersion>26.0.0</AssemblyVersion>
+    <FileVersion>26.0.0</FileVersion>
+    <Version>26.0.0-beta</Version>
+
+    <!-- ci/cd -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+
+    <!-- no useless ref -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Tous tes templates -->
+    <Content Include="templates\**\*" Pack="true" PackagePath="content" />
+    <None Include="logo-transparent.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="readme.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <Compile Remove="**\*" />
+  </ItemGroup>
+
+</Project>
