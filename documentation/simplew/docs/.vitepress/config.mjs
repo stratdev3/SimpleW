@@ -113,6 +113,7 @@ export default defineConfig({
                         { text: 'Chaos', link: '/addons/chaos' },
                         { text: 'Firewall', link: '/addons/firewall' },
                         { text: 'Latency', link: '/addons/latency' },
+                        { text: 'OpenID', link: '/addons/openid' },
                     ]
                 },
                 {
@@ -124,7 +125,7 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'JsonEngine',
+                    text: 'JsonEngines',
                     items: [
                         { text: 'Newtonsoft', link: '/addons/newtonsoft' },
                     ]
