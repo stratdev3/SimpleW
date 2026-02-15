@@ -29,6 +29,7 @@
     <ProjectReference Include="..\SimpleW.Service.Latency\SimpleW.Service.Latency.csproj" />
     <ProjectReference Include="..\SimpleW.Helper.Razor\SimpleW.Helper.Razor.csproj" />
     <ProjectReference Include="..\SimpleW.Helper.Swagger\SimpleW.Helper.Swagger.csproj" />
+    <ProjectReference Include="..\SimpleW.Service.OpenID\SimpleW.Service.OpenID.csproj" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
   </ItemGroup>
 
