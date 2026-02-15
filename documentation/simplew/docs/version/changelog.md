@@ -66,7 +66,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md). But for sho
 | Documentation                                         | ✅                                              | ✅ [simplew.net](https://simplew.net/v26/)                  |
 | Tests                                                          | ✅                                             | ✅ (more tests)  |
 | Support                                                     | ❌                                              | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                  |
-| Addons                                                    | ❌                                              | ✅ Chaos, Firewall, Hosting, Latency, Razor, Swagger       |
+| Addons                                                    | ❌                                              | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger       |
 
 
 
