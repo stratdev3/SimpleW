@@ -13,9 +13,9 @@ It is designed to :
 This module does **not** add any runtime dependency to SimpleW.
 
 
-## What This Module Does
+## Features
 
-The Templates module allows you to :
+It allows you to :
 - Generate ready-to-use SimpleW modules
 - Create consistent project layouts
 - Preconfigure `.csproj` files for SimpleW

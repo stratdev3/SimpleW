@@ -7,9 +7,9 @@ It allows SimpleW applications to authenticate users using external identity pro
 This module is **not based on ASP.NET**, does not rely on any hidden framework behavior, and integrates directly with SimpleW routing, sessions, and user model.
 
 
-## What this package does
+## Features
 
-`SimpleW.Service.OpenID` allows you to :
+It allows you to :
 - Authenticate users via OpenID Connect (OIDC)
 - Use external identity providers (Google, Apple, Azure AD, Keycloak, etc.)
 - Handle the full Authorization Code flow
@@ -21,6 +21,13 @@ This module is **not based on ASP.NET**, does not rely on any hidden framework b
 - Keep full control over routing, cookies, and sessions
 
 
+## Requirements
+
+- .NET 8.0
+- SimpleW (core server)
+- Microsoft.IdentityModel.Protocols.OpenIdConnect 8.x (automatically included)
+
+
 ## Installation
 
 ```sh
@@ -28,9 +35,53 @@ $ dotnet add package SimpleW.Service.OpenID --version 26.0.0-beta.20260216-1463
 ```
 
 
-## Basic Usage
+## Configuration options
 
-### Minimal Example
+### OpenIDMultiOptions (global / multi-provider)
+
+| Option | Default | Description |
+|------|---------|-------------|
+| BasePath | `/auth/oidc` | Base path for all OpenID routes (`/login/{provider}`, `/callback/{provider}`, `/logout`). |
+| DefaultProvider | `null` | Default provider used when calling `/auth/oidc/login` without specifying a provider. |
+| CookieName | `simplew_oidc` | Name of the authentication cookie shared across all providers. |
+| CookieSecure | `true` | Marks the authentication cookie as Secure (HTTPS only). |
+| CookieSameSite | `Lax` | SameSite policy for the authentication cookie. |
+| Add(name, configure) | — | Registers a new OpenID provider with its own OpenIDOptions. |
+
+### OpenIDOptions (per provider)
+
+| Option | Default | Description |
+|------|---------|-------------|
+| Authority* | — | OpenID provider base URL (e.g. `https://accounts.google.com`). |
+| ClientId* | — | OAuth2 / OpenID client identifier. |
+| ClientSecret* | — | Client secret used to authenticate against the token endpoint. |
+| PublicBaseUrl* | — | Public base URL of the application (used to build redirect URIs). |
+| RedirectUri | `null` | Explicit redirect URI. Overrides PublicBaseUrl if set. |
+| Scopes | `openid profile email` | Scopes requested during authentication. |
+| RequireHttpsMetadata | `true` | Requires HTTPS when retrieving OIDC discovery metadata. |
+| StateTtlMinutes | `10` | Lifetime of the temporary authentication state (state + nonce). |
+| SessionTtlMinutes | `480` | Default session lifetime when the provider does not specify one. |
+| ClockSkewSeconds | `60` | Allowed clock skew when validating token timestamps. |
+| CleanupEveryNRequests | `256` | Number of requests between cleanup passes (no background timers). |
+| CookieName | inherited | Cookie name (usually inherited from OpenIDMultiOptions). |
+| CookieSecure | inherited | Marks the authentication cookie as Secure. |
+| CookieSameSite | inherited | SameSite policy for the authentication cookie. |
+| SaveTokens | `false` | Stores provider tokens (id_token, access_token) in memory. |
+| Prompt | `null` | Optional OIDC prompt parameter (e.g. `select_account`). |
+| LoginHint | `null` | Enables support for the login_hint query parameter. |
+| ClientAuthentication | `Basic` | Client authentication method (Basic or PostBody). |
+| HttpClient | `null` | Custom HttpClient used for OIDC requests. |
+| UserFactory | default | Maps an OpenID session to a SimpleW user instance. |
+
+### ClientAuthMode
+
+| Value | Description |
+|------|-------------|
+| Basic | Uses HTTP Basic authentication (`Authorization: Basic base64(client_id:client_secret)`). |
+| PostBody | Sends client_secret in the POST body (supported by some providers). |
+
+
+## Minimal Example
 
 ```csharp
 server.UseOpenIDModule(options => {
@@ -166,52 +217,6 @@ options.Add("google", o => {
 - ID tokens are fully validated
 - Cookies support Secure and SameSite settings
 - Open redirects are explicitly prevented
-
-
-## Configuration options
-
-### OpenIDMultiOptions (global / multi-provider)
-
-| Option | Default | Description |
-|------|---------|-------------|
-| BasePath | `/auth/oidc` | Base path for all OpenID routes (`/login/{provider}`, `/callback/{provider}`, `/logout`). |
-| DefaultProvider | `null` | Default provider used when calling `/auth/oidc/login` without specifying a provider. |
-| CookieName | `simplew_oidc` | Name of the authentication cookie shared across all providers. |
-| CookieSecure | `true` | Marks the authentication cookie as Secure (HTTPS only). |
-| CookieSameSite | `Lax` | SameSite policy for the authentication cookie. |
-| Add(name, configure) | — | Registers a new OpenID provider with its own OpenIDOptions. |
-
-### OpenIDOptions (per provider)
-
-| Option | Default | Description |
-|------|---------|-------------|
-| Authority* | — | OpenID provider base URL (e.g. `https://accounts.google.com`). |
-| ClientId* | — | OAuth2 / OpenID client identifier. |
-| ClientSecret* | — | Client secret used to authenticate against the token endpoint. |
-| PublicBaseUrl* | — | Public base URL of the application (used to build redirect URIs). |
-| RedirectUri | `null` | Explicit redirect URI. Overrides PublicBaseUrl if set. |
-| Scopes | `openid profile email` | Scopes requested during authentication. |
-| RequireHttpsMetadata | `true` | Requires HTTPS when retrieving OIDC discovery metadata. |
-| StateTtlMinutes | `10` | Lifetime of the temporary authentication state (state + nonce). |
-| SessionTtlMinutes | `480` | Default session lifetime when the provider does not specify one. |
-| ClockSkewSeconds | `60` | Allowed clock skew when validating token timestamps. |
-| CleanupEveryNRequests | `256` | Number of requests between cleanup passes (no background timers). |
-| CookieName | inherited | Cookie name (usually inherited from OpenIDMultiOptions). |
-| CookieSecure | inherited | Marks the authentication cookie as Secure. |
-| CookieSameSite | inherited | SameSite policy for the authentication cookie. |
-| SaveTokens | `false` | Stores provider tokens (id_token, access_token) in memory. |
-| Prompt | `null` | Optional OIDC prompt parameter (e.g. `select_account`). |
-| LoginHint | `null` | Enables support for the login_hint query parameter. |
-| ClientAuthentication | `Basic` | Client authentication method (Basic or PostBody). |
-| HttpClient | `null` | Custom HttpClient used for OIDC requests. |
-| UserFactory | default | Maps an OpenID session to a SimpleW user instance. |
-
-### ClientAuthMode
-
-| Value | Description |
-|------|-------------|
-| Basic | Uses HTTP Basic authentication (`Authorization: Basic base64(client_id:client_secret)`). |
-| PostBody | Sends client_secret in the POST body (supported by some providers). |
 
 
 ## Limitations

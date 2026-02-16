@@ -2,6 +2,9 @@
 
 The [`SimpleW.Service.Chaos`](https://www.nuget.org/packages/SimpleW.Service.Chaos) package provides a [**chaos engineering module**](https://en.wikipedia.org/wiki/Chaos_engineering) for the SimpleW web server.
 
+
+## Features
+
 It allows you to **intentionally inject failures** into your API :
 - HTTP errors (`403`, `404`, `500`...)
 - artificial latency
@@ -25,9 +28,25 @@ $ dotnet add package SimpleW.Service.Chaos --version 26.0.0-beta.20260202-1339
 ```
 
 
-## Basic Usage
+## Configuration options
 
-### Minimal Example
+| Option name | Default value | Description |
+|------------|---------------|-------------|
+| Enabled | `false` | Enables or disables the chaos module globally. When disabled, requests are never sabotaged. |
+| Prefix | `"/api"` | Applies chaos only to requests whose path starts with this prefix. The prefix is normalized internally. |
+| Methods | `null` | Limits chaos to specific HTTP methods (e.g. `GET`, `POST`). If null or empty, all methods are allowed. |
+| Probability | `0.0` | Probability (between 0 and 1) that a matching request will be sabotaged. |
+| CloseConnectionProbability | `0.0` | Among sabotaged requests, probability (between 0 and 1) to drop the TCP connection without sending a response. |
+| AbortWithRst | `true` | If true, the connection is aborted using TCP RST (immediate reset). If false, the socket is closed gracefully. |
+| MinDelayMs | `0` | Minimum artificial latency (in milliseconds) added before sabotaging a request. |
+| MaxDelayMs | `0` | Maximum artificial latency (in milliseconds) added before sabotaging a request. If lower than `MinDelayMs`, it is adjusted automatically. |
+| FixedStatusCode | `null` | Forces a single HTTP status code for all sabotaged responses (e.g. `500`). Must be a valid HTTP status code. |
+| StatusWeights | `{ 500: 1 }` | Weighted HTTP status codes used when `FixedStatusCode` is not set. Keys are status codes, values are weights (>0). |
+| Seed | `null` | Optional random seed for deterministic and reproducible chaos behavior. |
+| BodyTemplate | `"CHAOS: simulated error {code} {text}"` | Response body template for HTTP errors. `{code}` and `{text}` placeholders are replaced. If null or empty, no body is sent. |
+
+
+## Minimal Example
 
 ```csharp
 using System.Net;

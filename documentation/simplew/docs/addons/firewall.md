@@ -4,9 +4,9 @@
 It provides **fast IP filtering and rate limiting**, implemented as a SimpleW middleware.
 
 
-## What this package does
+## Features
 
-`SimpleW.Service.Firewall` allows you to :
+It allows you to :
 - Allow or deny requests based on **client IP**
 - Allow or deny requests based on **client country** (GeoIP2 / MaxMind, optional)
 - Define rules globally or **per-path**
@@ -17,20 +17,14 @@ It provides **fast IP filtering and rate limiting**, implemented as a SimpleW mi
 - Automatically clean internal state using **TTL + hard caps**
 - Protect sensitive endpoints with minimal overhead
 
-It **does not** :
-- inspect headers or request bodies
-- try to detect attacks heuristically
-- replace a real network firewall or reverse proxy
-- add any dependency outside SimpleW
-
 
 ## Requirements
 
 - .NET 8.0
 - SimpleW (core server)
+- MaxMind.GeoIP2 (automatically included)
 
 Optional dependency if you enable GeoIP country filtering :
-- MaxMind.GeoIP2 (NuGet)
 - a MaxMind `.mmdb` database (ex: GeoLite2-Country.mmdb)
 
 
@@ -41,9 +35,36 @@ $ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260216-146
 ```
 
 
-## Basic Usage
+## Configuration options
 
-### Minimal Example
+| Option | Default | Description |
+|---|---|---|
+| ClientIpResolver | `session => session.Socket.RemoteEndPoint as IPEndPoint ? ep.Address : null` | Resolves the client IP address from the `HttpSession` (used for IP rules + rate limiting keys). |
+| PathRules | `[]` | Path-based overrides (**first match wins**). Each rule targets a URL prefix and can define its own allow/deny/country/rate-limit rules. |
+| AllowRules | `[]` | Global allow list by IP/CIDR. **If not empty:** everything not matching an allow rule is **denied by default**. |
+| DenyRules | `[]` | Global deny list by IP/CIDR (checked against the resolved client IP). |
+| GlobalRateLimit | `null` | Global rate limit policy. `null` disables global rate limiting. |
+| StateTtl | `10 minutes` | Retention for inactive IP state (used for internal tracking / cleanup). Must be `> 0`. |
+| MaxTrackedIps | `50000` | Safety cap on how many IPs can be tracked internally. Must be `> 0`. |
+| CleanupEveryNRequests | `10000` | Opportunistic cleanup frequency (every N requests). Must be `> 0`. |
+| EnableTelemetry | `false` | Enables module telemetry (note: the underlying `SimpleWServer.Telemetry` must also be enabled). |
+| MaxMindCountryDbPath | `null` | Optional MaxMind GeoIP2 country database path (`.mmdb`). If `null`/empty, country rules can’t be evaluated (treated as unknown). |
+| TreatUnknownCountryAsMatchable | `true` | If `true`, unresolved country can match `CountryRule.Unknown()`. If `false`, unknown country never matches country rules. |
+| CountryCacheTtl | `null` | Cache duration for IP -> country resolution. If `null`, the module uses `StateTtl`. Must be `> 0` when set. |
+| AllowCountries | `[]` | Global allow list by country (ISO2 like `"FR"`, `"US"`). **If not empty:** default deny for non-matching countries (same behavior as `AllowRules`). |
+| DenyCountries | `[]` | Global deny list by country (ISO2 like `"FR"`, `"US"`). |
+| PathRule.Prefix | `"/"` | Prefix to match (normalized prefix). Used to apply per-path overrides. |
+| PathRule.Allow | `[]` | Allow list by IP/CIDR for this path. **If not empty:** default deny for this path if no allow match. |
+| PathRule.Deny | `[]` | Deny list by IP/CIDR for this path. |
+| PathRule.AllowCountries | `[]` | Allow list by country for this path. **If not empty:** default deny for this path if no allow match. |
+| PathRule.DenyCountries | `[]` | Deny list by country for this path. |
+| PathRule.RateLimit | `null` | Rate limit policy for this path. `null` disables per-path rate limiting. |
+| RateLimitOptions.Limit | `100` | Max number of requests allowed within the window. Must be `> 0` (practically). |
+| RateLimitOptions.Window | `10 seconds` | Time window for rate limiting. Must be `> 0`. |
+| RateLimitOptions.SlidingWindow | `false` | `false` = fixed window counter. `true` = sliding-ish window (stores timestamps). |
+
+
+## Minimal Example
 
 ```csharp
 using System.Net;

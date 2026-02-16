@@ -8,8 +8,7 @@ This module is designed to feel familiar to ASP.NET MVC developers, while stayin
 
 ## Features
 
-Features
-
+It allows you to :
 - **Razor View Engine** : powered by RazorLight (compile + render)
 - **Controller integration** : RazorController provides a `View()` helper
 - **Models** : pass a DTO or an anonymous object
@@ -37,7 +36,22 @@ $ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260216-1463
 ```
 
 
-## Basic Usage
+## Configuration options
+
+| Option | Default | Description |
+|---|---|---|
+| Enabled | `true` | Enables or disables the Razor module. When disabled, no Razor views are rendered. |
+| ViewsPath | `"Views"` | Root directory where Razor view files are located. Relative paths are resolved from the application base directory. |
+| Layout | `"_Layout"` | Default Razor layout name used when a view does not explicitly specify one. |
+| ReloadOnChange | `false` | When enabled, Razor views are reloaded automatically when files change on disk (useful for development). |
+| CacheCompiledViews | `true` | Enables caching of compiled Razor views. Disabling this forces recompilation on each request (debug / dev only). |
+| FileExtensions | `[".cshtml"]` | List of file extensions treated as Razor views. |
+| ModelTypeResolver | `null` | Optional delegate used to resolve the model type for a given view at runtime. If `null`, the default resolution logic is used. |
+| OnBeforeRender | `null` | Optional hook executed before rendering a Razor view. Can be used to mutate the model or inject data into the view context. |
+| OnAfterRender | `null` | Optional hook executed after rendering a Razor view. Useful for logging, metrics, or post-processing the output. |
+
+
+## Minimal Example
 
 ### 1. Folder Structure
 

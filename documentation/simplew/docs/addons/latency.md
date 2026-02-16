@@ -2,6 +2,9 @@
 
 The [`SimpleW.Service.Latency`](https://www.nuget.org/packages/SimpleW.Service.Latency) package provides a **latency injection module** for the SimpleW web server.
 
+
+## Features
+
 It allows you to **artificially delay HTTP responses** in a controlled and deterministic way, without modifying your application code.
 
 This module is designed to :
@@ -26,9 +29,18 @@ $ dotnet add package SimpleW.Service.Latency --version 26.0.0-beta.20260216-1463
 ```
 
 
-## Basic Usage
+## Configuration options
 
-### Minimal Example
+| Option | Default | Description |
+|---|---|---|
+| Enabled | `true` | Enables/disables the module. When `false`, no artificial delay is applied. |
+| GlobalLatency | `null` | Fallback latency applied when no rule matches. `null` means “no global latency”. Must be `>= 0` when set. |
+| Rules | `[]` | Ordered list of latency rules. Supports exact paths (`/api/foo`), prefix rules (`/api/*` or `/api/`), and catch-all (`*`). Exact rules are checked first; then prefix rules (most specific/longest prefix first); then optional `*`; then `GlobalLatency`. Rules with `Latency == 0` are ignored. |
+| LatencyRule.Path* | - | Rule path selector. Must be non-empty. Supported forms: exact (`/api/foo`), prefix (`/api/*` or `/api/`), or `*` (match everything). Paths are normalized (leading `/`, repeated `//` collapsed). |
+| LatencyRule.Latency* | - | Artificial delay for the rule. Must be `>= 0`. `TimeSpan.Zero` rules are dropped (ignored). |
+
+
+## Minimal Example
 
 ```csharp
 using System.Net;

@@ -11,22 +11,15 @@ you decide **where**, **how**, and **under which** security rules it is served.
 This package works **without ASP.NET, without annotations**, and **without modifying the SimpleW core**.
 
 
-## What this package does
+## Features
 
-`SimpleW.Helper.Swagger` allows you to :
+It allows you to :
 - Generate an **OpenAPI 3.0 JSON document** automatically
 - Infer **paths, HTTP methods, and parameters** from registered routes
 - Detect **path parameters**
 - Support **both controller-based** and **delegate-based** routes
 - Serve a built-in **Swagger UI** directly from SimpleW
 - Filter which routes appear in the documentation
-
-It **does not** :
-- require ASP.NET Core
-- rely on Swagger attributes
-- modify route definitions
-- introduce background services or timers
-- add external runtime dependencies
 
 
 ## Requirements
@@ -44,11 +37,21 @@ $ dotnet add package SimpleW.Helper.Swagger --version 26.0.0-beta.20260202-1339
 ```
 
 
-## Basic Usage
+## Configuration options
 
-Minimal exemple
+| Option | Default | Description |
+|---|---|---|
+| Title | `"SimpleW API"` | OpenAPI document title (`info.title`). Empty or whitespace values are normalized back to the default. |
+| Version | `"v1"` | OpenAPI version string (`info.version`). Empty or whitespace values are normalized back to the default. |
+| Description | `null` | Optional OpenAPI description (`info.description`). |
+| RouteFilter | `null` | Optional predicate used to filter which routes are included in the generated OpenAPI document. `null` means all registered routes are included. |
+| ScanControllersForParameters | `true` | When enabled, controller methods are scanned to infer query parameter types (best-effort reflection). |
+| UiHtmlFactory | `null` | Optional factory to fully customize the Swagger UI HTML page. Receives the generated OpenAPI JSON string and must return the final HTML. If `null`, the built-in Swagger UI template is used. |
 
-```csharp [Controller Based]
+
+## Minimal Example
+
+```csharp
 using System.Net;
 using SimpleW;
 using SimpleW.Helper.Swagger;
@@ -150,32 +153,6 @@ server.MapGet("/swagger", static (HttpSession session) => {
 ```
 
 
-## Configuration options
-
-```csharp
-Swagger.Json(session, options => {
-
-    options.Title = "My API";
-    options.Version = "v1";
-    options.Description = "Public API documentation";
-
-    // Only expose /api routes
-    options.RouteFilter = r => r.Path.StartsWith("/api", StringComparison.Ordinal);
-});
-```
-
-### Available options
-
-| Option                         | Description                                         |
-| ------------------------------ | --------------------------------------------------- |
-| `Title`                        | OpenAPI document title                              |
-| `Version`                      | OpenAPI version string                              |
-| `Description`                  | Optional document description                       |
-| `RouteFilter`                  | Predicate to filter visible routes                  |
-| `ScanControllersForParameters` | Enable controller parameter inference               |
-| `UiHtmlFactory`                | Custom Swagger UI HTML renderer                     |
-
-
 ## OpenAPI generation behavior
 
 - OpenAPI version : **3.0.3**
@@ -186,26 +163,3 @@ Swagger.Json(session, options => {
   - Complex request/response schemas are not generated automatically (by design)
 
 The goal is **accurate route documentation**, not full schema generation.
-
-
-## Design philosophy
-
-- No magic
-- No annotations
-- No ASP.NET dependency
-- No impact on request handling
-- Best-effort reflection, never required configuration
-
-If the helper cannot infer something reliably, it simply omits it instead of guessing.
-
-
-## What this module is NOT
-
-This package intentionally does **not** :
-- generate full DTO schemas
-- replace a full OpenAPI authoring tool
-- validate requests or responses
-- enforce API contracts
-- require Swagger attributes everywhere
-
-It documents **what SimpleW actually routes**, nothing more.

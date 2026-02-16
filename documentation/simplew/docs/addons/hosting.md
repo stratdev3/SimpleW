@@ -14,25 +14,20 @@ This package is only a thin adapter layer.
 :::
 
 
-## What this package does
+## Features
 
-`SimpleW.Helper.Hosting` allows you to :
+It allows you to :
 - Start and stop `SimpleWServer` as a hosted service
 - Configure SimpleW using the Generic Host (`HostApplicationBuilder`)
 - Override the listening URL from configuration or code
 - Integrate SimpleW into existing .NET hosting environments
-
-It **does not** :
-- add ASP.NET Core
-- impose any DI model on SimpleW
-- change how SimpleW routes or handles requests
 
 
 ## Requirements
 
 - .NET 8.0
 - SimpleW (core server)
-- Microsoft.Extensions.Hosting (8.x)
+- Microsoft.Extensions.Hosting 8.x or higher (automatically included)
 
 
 ## Installation
@@ -43,19 +38,8 @@ Install the package from NuGet:
 $ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260216-1463
 ```
 
-This package targets .NET 8 and depends on :
 
-```xml
-<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-
-```
-
-Higher versions (9.x, 10.x) are supported automatically through NuGet resolution.
-
-
-## Basic usage
-
-### Minimal Program.cs
+## Minimal Example
 
 ```csharp
 using Microsoft.Extensions.Hosting;
