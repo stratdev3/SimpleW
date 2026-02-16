@@ -42,7 +42,10 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
+            // register callbacks
+            server.OnStarted(s => {
+                Console.WriteLine("server started at http://localhost:{server.Port}/");
+            });
 
             // start a blocking background server
             await server.RunAsync();
