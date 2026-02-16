@@ -113,11 +113,8 @@ namespace SimpleW {
             IsStarted = true;
             _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
 
-            // notify listeners (don't let user code break start)
-            try {
-                OnStarted?.Invoke(this, EventArgs.Empty);
-            }
-            catch { }
+            // notify subscribers
+            FireStartedCallbacks();
 
             // not blocking
             return Task.CompletedTask;
@@ -213,23 +210,103 @@ namespace SimpleW {
                 _lifetimeCts = null;
                 _lifetimeTask = null;
 
-                // notify listeners (don't let user code break stop)
-                try {
-                    OnStopped?.Invoke(this, EventArgs.Empty);
+                // notify subscribers
+                await FireStoppedCallbacksAsync().ConfigureAwait(false);
+            }
+        }
+
+        #region callbacks
+
+        // fluent callbacks
+        private Action<SimpleWServer>? _onStarted;
+        private Func<SimpleWServer, Task>? _onStartedAsync;
+        private Action<SimpleWServer>? _onStopped;
+        private Func<SimpleWServer, Task>? _onStoppedAsync;
+
+        /// <summary>
+        /// Register a callback invoked right after the server starts listening.
+        /// </summary>
+        public SimpleWServer OnStarted(Action<SimpleWServer> callback) {
+            ArgumentNullException.ThrowIfNull(callback);
+            _onStarted += callback;
+            return this;
+        }
+
+        /// <summary>
+        /// Register an async callback invoked right after the server starts listening.
+        /// </summary>
+        public SimpleWServer OnStarted(Func<SimpleWServer, Task> callback) {
+            ArgumentNullException.ThrowIfNull(callback);
+            _onStartedAsync += callback;
+            return this;
+        }
+
+        /// <summary>
+        /// Register a callback invoked after the server has fully stopped.
+        /// </summary>
+        public SimpleWServer OnStopped(Action<SimpleWServer> callback) {
+            ArgumentNullException.ThrowIfNull(callback);
+            _onStopped += callback;
+            return this;
+        }
+
+        /// <summary>
+        /// Register an async callback invoked after the server has fully stopped.
+        /// </summary>
+        public SimpleWServer OnStopped(Func<SimpleWServer, Task> callback) {
+            ArgumentNullException.ThrowIfNull(callback);
+            _onStoppedAsync += callback;
+            return this;
+        }
+
+        /// <summary>
+        /// Fire Started Callbacks
+        /// </summary>
+        private void FireStartedCallbacks() {
+            // fluent sync
+            if (_onStarted != null) {
+                foreach (Action<SimpleWServer> cb in _onStarted.GetInvocationList()) {
+                    try {
+                        cb(this);
+                    }
+                    catch { }
                 }
-                catch { }
+            }
+            // fluent async (fire and forget: do not block StartAsync)
+            if (_onStartedAsync != null) {
+                foreach (Func<SimpleWServer, Task> cb in _onStartedAsync.GetInvocationList()) {
+                    _ = Task.Run(async () => {
+                        try {
+                            await cb(this).ConfigureAwait(false);
+                        }
+                        catch { }
+                    });
+                }
             }
         }
 
         /// <summary>
-        /// Raised when the server has started listening and is ready to accept connections
+        /// Fire Stopped Callbacks
         /// </summary>
-        public event EventHandler? OnStarted;
+        /// <returns></returns>
+        private async Task FireStoppedCallbacksAsync() {
+            // fluent sync
+            if (_onStopped != null) {
+                foreach (Action<SimpleWServer> cb in _onStopped.GetInvocationList()) {
+                    try { cb(this); }
+                    catch { }
+                }
+            }
+            // fluent async (await: StopAsync waits for full shutdown)
+            if (_onStoppedAsync != null) {
+                foreach (Func<SimpleWServer, Task> cb in _onStoppedAsync.GetInvocationList()) {
+                    try { await cb(this).ConfigureAwait(false); }
+                    catch { }
+                }
+            }
+        }
 
-        /// <summary>
-        /// Raised when the server has fully stopped and all resources have been released
-        /// </summary>
-        public event EventHandler? OnStopped;
+        #endregion callbacks
 
         #endregion actions
 
