@@ -50,6 +50,29 @@ public SimpleWServer(IPEndPoint endpoint)
 public WsServer(UnixDomainSocketEndPoint endpoint)
 ```
 
+
+## Endpoint
+
+```csharp
+/// <summary>
+/// Use IPAddress
+/// </summary>
+/// <param name="address"></param>
+/// <returns></returns>
+/// <exception cref="InvalidOperationException"></exception>
+public SimpleWServer UseAddress(IPAddress address)
+```
+
+```csharp
+/// <summary>
+/// Use Port
+/// </summary>
+/// <param name="port"></param>
+/// <returns></returns>
+public SimpleWServer UsePort(int port)
+```
+
+
 ## Configure
 
 ```csharp
