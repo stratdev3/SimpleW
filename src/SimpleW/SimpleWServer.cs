@@ -41,6 +41,27 @@ namespace SimpleW {
 
         #endregion constructor
 
+        #region endpoint
+
+        /// <summary>
+        /// Use IPAddress
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public SimpleWServer UseAddress(IPAddress address) {
+            if (IsStarted) {
+                throw new InvalidOperationException("IPAddress must be configured before starting the server (except during listener reload).");
+            }
+            if (Port == 0) {
+                throw new InvalidOperationException($"Unable to found the current port");
+            }
+            EndPoint = new IPEndPoint(address, Port);
+            return this;
+        }
+
+        #endregion endpoint
+
         #region actions
 
         /// <summary>
