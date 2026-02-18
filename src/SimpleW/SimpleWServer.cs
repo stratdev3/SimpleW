@@ -705,6 +705,19 @@ namespace SimpleW {
             return this;
         }
 
+        /// <summary>
+        /// Disable SslContext
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public SimpleWServer DisableHttps() {
+            if (IsStarted) {
+                throw new InvalidOperationException("SslContext must be configured before starting the server.");
+            }
+            SslContext = null;
+            return this;
+        }
+
         #endregion sslcontext
 
         #region session
