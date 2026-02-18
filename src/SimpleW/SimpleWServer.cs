@@ -60,6 +60,22 @@ namespace SimpleW {
             return this;
         }
 
+        /// <summary>
+        /// Use Port
+        /// </summary>
+        /// <param name="port"></param>
+        /// <returns></returns>
+        public SimpleWServer UsePort(int port) {
+            if (IsStarted) {
+                throw new InvalidOperationException("Port must be configured before starting the server (except during listener reload).");
+            }
+            if (Address == null) {
+                throw new InvalidOperationException($"Unable to found the current IPAddress");
+            }
+            EndPoint = new IPEndPoint(Address, port);
+            return this;
+        }
+
         #endregion endpoint
 
         #region actions
