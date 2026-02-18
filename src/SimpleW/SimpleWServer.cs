@@ -208,31 +208,11 @@ namespace SimpleW {
                 // normal
             }
             finally {
-                try {
-                    _listenSocket?.Close();
-                    _listenSocket?.Dispose();
-                }
-                catch { }
-                finally {
-                    _listenSocket = null;
-                }
-
-                // close all active connections
-                foreach (HttpSession session in Sessions.Values) {
-                    try { session.Dispose(); } catch { }
-                }
-                Sessions.Clear();
+                CloseAndDisposeSocket();
 
                 // stop idle timer
                 _sessionTimeoutTimer?.Dispose();
                 _sessionTimeoutTimer = null;
-
-                // acceptors
-                foreach (SocketAsyncEventArgs e in _acceptorEventArgs) {
-                    try { e.Completed -= OnAcceptSocketCompleted; } catch { }
-                    try { e.Dispose(); }  catch { }
-                }
-                _acceptorEventArgs.Clear();
 
                 // telemetry
                 try { Telemetry?.Dispose(); }
@@ -718,6 +698,37 @@ namespace SimpleW {
                 return;
             }
             ProcessAcceptSocket(e);
+        }
+
+        /// <summary>
+        /// Close listener + acceptor SAEA
+        /// </summary>
+        private void CloseAndDisposeSocket() {
+
+            try {
+                _listenSocket?.Close();
+                _listenSocket?.Dispose();
+            }
+            catch { }
+            finally {
+                _listenSocket = null;
+            }
+
+            // close all active connections
+            foreach (HttpSession session in Sessions.Values) {
+                try { session.Dispose(); }
+                catch { }
+            }
+            Sessions.Clear();
+
+            // dispose acceptor event args
+            foreach (SocketAsyncEventArgs e in _acceptorEventArgs) {
+                try { e.Completed -= OnAcceptSocketCompleted; }
+                catch { }
+                try { e.Dispose(); }
+                catch { }
+            }
+            _acceptorEventArgs.Clear();
         }
 
         #endregion network
