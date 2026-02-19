@@ -50,7 +50,7 @@ namespace SimpleW {
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
         public SimpleWServer UseAddress(IPAddress address) {
-            if (IsStarted) {
+            if (IsStarted && !IsListenerReloading) {
                 throw new InvalidOperationException("IPAddress must be configured before starting the server (except during listener reload).");
             }
             if (Port == 0) {
@@ -66,7 +66,7 @@ namespace SimpleW {
         /// <param name="port"></param>
         /// <returns></returns>
         public SimpleWServer UsePort(int port) {
-            if (IsStarted) {
+            if (IsStarted && !IsListenerReloading) {
                 throw new InvalidOperationException("Port must be configured before starting the server (except during listener reload).");
             }
             if (Address == null) {
@@ -94,6 +94,16 @@ namespace SimpleW {
         /// Is the server currently stopping?
         /// </summary>
         public bool IsStopping { get; private set; } = false;
+
+        /// <summary>
+        /// Is the listener currently reloading?
+        /// </summary>
+        public bool IsListenerReloading { get; private set; } = false;
+
+        /// <summary>
+        /// lock for ListenerReload
+        /// </summary>
+        private readonly SemaphoreSlim _listenerReloadLock = new(1, 1);
 
         /// <summary>
         /// Lifetime CTS (server internal)
@@ -209,6 +219,7 @@ namespace SimpleW {
             }
             finally {
                 CloseAndDisposeSocket();
+                CloseAllSessions();
 
                 // stop idle timer
                 _sessionTimeoutTimer?.Dispose();
@@ -229,6 +240,62 @@ namespace SimpleW {
 
                 // notify subscribers
                 await FireStoppedCallbacksAsync().ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Reload the listener socket (port and/or TLS) without stopping the server lifetime.
+        /// Does NOT close existing client sessions; only affects new incoming connections.
+        /// <example>
+        /// await server.ReloadListenerAsync(s => {
+        ///     s.DisableHttps();
+        ///     s.UsePort(80);
+        /// });
+        /// </example>
+        /// </summary>
+        public async Task ReloadListenerAsync(Action<SimpleWServer> reconfigure, CancellationToken cancellationToken = default) {
+            ArgumentNullException.ThrowIfNull(reconfigure);
+
+            if (!IsStarted) {
+                throw new InvalidOperationException("Server must be started to reload the listener.");
+            }
+            if (IsStopping) {
+                return;
+            }
+
+            await _listenerReloadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            EndPoint? oldEndPoint = EndPoint;
+            SslContext? oldSsl = SslContext;
+            try {
+                if (!IsStarted || IsStopping) {
+                    return;
+                }
+
+                IsListenerReloading = true;
+
+                try {
+                    // stop accepting new connections: close the listen socket and dispose acceptors
+                    CloseAndDisposeSocket();
+                    // callback
+                    reconfigure(this);
+                    // new listener + restart accept loop(s)
+                    ListenSocket();
+                }
+                catch {
+                    // rollback best effort
+                    try {
+                        CloseAndDisposeSocket();
+                        EndPoint = oldEndPoint;
+                        SslContext = oldSsl;
+                        ListenSocket();
+                    }
+                    catch { }
+                    throw;
+                }
+            }
+            finally {
+                IsListenerReloading = false;
+                _listenerReloadLock.Release();
             }
         }
 
@@ -714,13 +781,6 @@ namespace SimpleW {
                 _listenSocket = null;
             }
 
-            // close all active connections
-            foreach (HttpSession session in Sessions.Values) {
-                try { session.Dispose(); }
-                catch { }
-            }
-            Sessions.Clear();
-
             // dispose acceptor event args
             foreach (SocketAsyncEventArgs e in _acceptorEventArgs) {
                 try { e.Completed -= OnAcceptSocketCompleted; }
@@ -746,7 +806,7 @@ namespace SimpleW {
         /// <param name="sslContext"></param>
         /// <returns></returns>
         public SimpleWServer UseHttps(SslContext sslContext) {
-            if (IsStarted) {
+            if (IsStarted && !IsListenerReloading) {
                 throw new InvalidOperationException("SslContext must be configured before starting the server.");
             }
             SslContext = sslContext;
@@ -759,7 +819,7 @@ namespace SimpleW {
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
         public SimpleWServer DisableHttps() {
-            if (IsStarted) {
+            if (IsStarted && !IsListenerReloading) {
                 throw new InvalidOperationException("SslContext must be configured before starting the server.");
             }
             SslContext = null;
@@ -840,6 +900,17 @@ namespace SimpleW {
                 return;
             }
             session.MarkActivity();
+        }
+
+        /// <summary>
+        /// Close all actives Sessions
+        /// </summary>
+        public void CloseAllSessions() {
+            foreach (HttpSession session in Sessions.Values) {
+                try { session.Dispose(); }
+                catch { }
+            }
+            Sessions.Clear();
         }
 
         #region idle timeout
