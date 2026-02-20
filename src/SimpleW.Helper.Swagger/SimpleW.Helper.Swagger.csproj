@@ -9,7 +9,7 @@
     <Authors>Christophe CHATEAU</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>This package provides Swagger / OpenAPI support for SimpleW.</Description>
-    <PackageTags>simplew;swagger;openapi</PackageTags>
+    <PackageTags>simplew;swagger;openapi;api;documentation;swagger-ui</PackageTags>
     <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
