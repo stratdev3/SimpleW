@@ -1,4 +1,4 @@
-version: 43
+version: 44
 jobs:
 - name: CI
   steps:
@@ -24,18 +24,6 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.JsonEngine.Newtonsoft
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft/
-        dotnet build -c @param:build_configuration@ SimpleW.JsonEngine.Newtonsoft.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
     name: build SimpleW.Helper.Hosting
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -44,18 +32,6 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Hosting/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Hosting.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: build SimpleW.Service.Firewall
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Service.Firewall/
-        dotnet build -c @param:build_configuration@ SimpleW.Service.Firewall.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -84,6 +60,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.JsonEngine.Newtonsoft
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.JsonEngine.Newtonsoft/
+        dotnet build -c @param:build_configuration@ SimpleW.JsonEngine.Newtonsoft.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Service.Chaos
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -92,6 +80,18 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Chaos/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Chaos.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.Service.Firewall
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Firewall/
+        dotnet build -c @param:build_configuration@ SimpleW.Service.Firewall.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -182,20 +182,6 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.JsonEngine.Newtonsoft
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft
-        TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj
-        dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
     name: build SimpleW.Helper.Hosting
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -206,34 +192,6 @@ jobs:
         TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj
         dotnet pack -c Release SimpleW.Helper.Hosting.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: build SimpleW.Service.Firewall
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Service.Firewall
-        TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Firewall.csproj
-        dotnet pack -c Release SimpleW.Service.Firewall.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: build SimpleW.Helper.Razor
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Helper.Razor
-        TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Razor.csproj
-        dotnet pack -c Release SimpleW.Helper.Razor.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -252,6 +210,34 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.Razor
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Razor
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Razor.csproj
+        dotnet pack -c Release SimpleW.Helper.Razor.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.JsonEngine.Newtonsoft
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.JsonEngine.Newtonsoft
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj
+        dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Service.Chaos
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -262,6 +248,20 @@ jobs:
         TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Chaos.csproj
         dotnet pack -c Release SimpleW.Service.Chaos.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.Service.Firewall
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Firewall
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Firewall.csproj
+        dotnet pack -c Release SimpleW.Service.Firewall.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -280,20 +280,6 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Service.OpenID
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Service.OpenID
-        TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.OpenID.csproj
-        dotnet pack -c Release SimpleW.Service.OpenID.csproj
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
     name: build SimpleW.Service.LetsEncrypt
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -304,6 +290,20 @@ jobs:
         TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj
         dotnet pack -c Release SimpleW.Service.LetsEncrypt.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.Service.OpenID
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.OpenID
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.OpenID.csproj
+        dotnet pack -c Release SimpleW.Service.OpenID.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -328,20 +328,8 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
-    name: publish artifact SimpleW.JsonEngine.Newtonsoft
-    sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/Release/
-    artifacts: '*.*nupkg'
-    condition: SUCCESSFUL
-    optional: false
-  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
     sourcePath: src/SimpleW.Helper.Hosting/bin/Release/
-    artifacts: '*.*nupkg'
-    condition: SUCCESSFUL
-    optional: false
-  - type: PublishArtifactStep
-    name: publish artifact SimpleW.Service.Firewall
-    sourcePath: src/SimpleW.Service.Firewall/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -358,8 +346,20 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.JsonEngine.Newtonsoft
+    sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Chaos
     sourcePath: src/SimpleW.Service.Chaos/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Firewall
+    sourcePath: src/SimpleW.Service.Firewall/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -370,14 +370,14 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
-    name: publish artifact SimpleW.Service.OpenID
-    sourcePath: src/SimpleW.Service.OpenID/bin/Release/
+    name: publish artifact SimpleW.Service.LetsEncrypt
+    sourcePath: src/SimpleW.Service.LetsEncrypt/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
-    name: publish artifact SimpleW.Service.LetsEncrypt
-    sourcePath: src/SimpleW.Service.LetsEncrypt/bin/Release/
+    name: publish artifact SimpleW.Service.OpenID
+    sourcePath: src/SimpleW.Service.OpenID/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -400,18 +400,6 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: deploy SimpleW.JsonEngine.Newtonsoft to nuget.org
-    runInContainer: true
-    image: docksdev/band:8.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
-        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
     name: deploy SimpleW.Helper.Hosting to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
@@ -419,18 +407,6 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Hosting/bin/Release
-        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: deploy SimpleW.Service.Firewall to nuget.org
-    runInContainer: true
-    image: docksdev/band:8.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Service.Firewall/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -448,6 +424,30 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: deploy SimpleW.Helper.Swagger to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Swagger/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.JsonEngine.Newtonsoft to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: deploy SimpleW.Service.Chaos to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
@@ -460,13 +460,13 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: deploy SimpleW.Helper.Swagger to nuget.org
+    name: deploy SimpleW.Service.Firewall to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
     interpreter:
       type: DefaultInterpreter
       commands: |
-        cd src/SimpleW.Helper.Swagger/bin/Release
+        cd src/SimpleW.Service.Firewall/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -484,18 +484,6 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: deploy SimpleW.Service.OpenID to nuget.org
-    runInContainer: true
-    image: docksdev/band:8.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/SimpleW.Service.OpenID/bin/Release
-        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
     name: deploy SimpleW.Service.LetsEncrypt to nuget.org
     runInContainer: true
     image: docksdev/band:8.0
@@ -503,6 +491,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.LetsEncrypt/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Service.OpenID to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
