@@ -24,6 +24,7 @@ using SimpleW.Service.Chaos;
 using SimpleW.Service.Firewall;
 using SimpleW.Service.Latency;
 using SimpleW.Service.OpenID;
+using SimpleW.Service.LetsEncrypt;
 
 
 namespace example.rewrite {
@@ -77,12 +78,22 @@ namespace example.rewrite {
 
             #endregion https
 
-            //server.MapGet("/", (HttpSession session) => {
-            //    return "Hello World !";
-            //});
+            server.MapGet("/", (HttpSession session) => {
+                return "Hello World !";
+            });
 
-            //server.MapGet("/api/test/hello", object (HttpSession session) => {
-            //    return new { message = $"Hello World !" };
+            server.MapGet("/api/test/hello", object (HttpSession session) => {
+                return new { message = $"Hello World !" };
+            });
+
+            //server.UseLetsEncryptModule(o => {
+            //    o.Email = "admin@simplew.net";
+            //    o.Domains = ["dev.simplew.net"];
+            //    o.StoragePath = @"C:\www\toto\acme\";
+            //    o.UseStaging = false;
+            //    o.RenewBefore = TimeSpan.FromDays(30);
+            //    o.HttpPort = server.Port;
+            //    o.HttpsPort = 4443;
             //});
 
             // OpenID
@@ -317,15 +328,20 @@ namespace example.rewrite {
                 };
                 options.SessionTimeout = TimeSpan.FromMinutes(10);
             });
-            //server.ConfigureTelemetry(options => {
-            //    options.IncludeStackTrace = true;
-            //});
-            //server.EnableTelemetry();
+            server.ConfigureTelemetry(options => {
+                options.IncludeStackTrace = true;
+            });
+            server.EnableTelemetry();
 
-            //openTelemetryObserver("SimpleW*");
+            openTelemetryObserver("SimpleW*");
 
-            server.OnStarted(s => {
+            server.OnStarted(async s => {
                 Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
+                //await Task.Delay(5_000);
+                //await server.ReloadListenerAsync(s => {
+                //    s.UsePort(8081);
+                //    Console.WriteLine($"server reload at http://localhost:{server.Port}/api/test/hello");
+                //});
             });
             server.OnStopped(s => {
                 Console.WriteLine("server stopped");
