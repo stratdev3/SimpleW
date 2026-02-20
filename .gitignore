@@ -50,3 +50,14 @@ storage/
 #
 logs
 *.log
+
+#
+# vitepress
+#
+**/.vitepress/cache/
+
+#
+# other
+#
+zip.bat
+code_of_conduct.md
