@@ -9,7 +9,7 @@
     <Authors>Christophe CHATEAU</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>Provides IP-based filtering, rate limiting, connection rules and security policies to protect your server from unwanted or abusive traffic for SimpleW.</Description>
-    <PackageTags>simplew;firewall</PackageTags>
+    <PackageTags>simplew;firewall;security;ratelimit;rate-limiting;ip-filtering;cidr;ddos</PackageTags>
     <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
