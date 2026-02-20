@@ -9,7 +9,7 @@
     <Authors>Christophe CHATEAU</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>This package the Razor Template Engine for SimpleW.</Description>
-    <PackageTags>simplew;razor;view;template</PackageTags>
+    <PackageTags>simplew;razor;razorlight;views;templating;ssr;html</PackageTags>
     <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
