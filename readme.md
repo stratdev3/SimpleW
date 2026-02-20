@@ -44,7 +44,7 @@ namespace Sample {
 
             // register callbacks
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server
