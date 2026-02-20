@@ -108,6 +108,42 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Service.LetsEncrypt
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.LetsEncrypt/
+        dotnet build -c @param:build_configuration@ SimpleW.Service.LetsEncrypt.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.Service.OpenID
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.OpenID/
+        dotnet build -c @param:build_configuration@ SimpleW.Service.OpenID.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build SimpleW.Templates
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Templates/
+        dotnet build -c @param:build_configuration@ SimpleW.Templates.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: test
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
