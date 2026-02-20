@@ -9,7 +9,7 @@
     <Authors>Christophe CHATEAU</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>Latency module for SimpleW that introduces artificial delays in HTTP responses for testing and debugging.</Description>
-    <PackageTags>simplew;latency;</PackageTags>
+    <PackageTags>simplew;latency;testing;debugging;chaos;resilience</PackageTags>
     <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
