@@ -36,7 +36,7 @@ You can find a [complete list of features](https://simplew.net/version/changelog
 - NET8 but should consider NET9/NET10 for better perfs and RAM usage under heady load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
 - Middleware
 - Modules
-- Extensibility : midlleware, module, callback, subclass
+- Extensibility : middleware, module, callback, subclass
 - Response Builder : status, contentType, contentLength, headers, body, cookies, compression
 - Handler (Expression Tree): sync and async + RequestAborted
 - Routing : minimal, attribute, querystring, path, wildcard
