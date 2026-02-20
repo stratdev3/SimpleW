@@ -847,22 +847,22 @@ namespace SimpleW {
         private async Task CreateSessionAsync(Socket socket) {
 
             // context
-            HttpSession connection = new(this, socket, _bufferPool, Router);
-            RegisterSession(connection);
+            HttpSession session = new(this, socket, _bufferPool, Router);
+            RegisterSession(session);
 
             try {
                 if (SslContext != null) {
-                    await connection.UseHttps(SslContext).ConfigureAwait(false);
+                    await session.UseHttps(SslContext).ConfigureAwait(false);
                 }
-                connection.Connect();                                       // receive data
-                await connection.ProcessAsync().ConfigureAwait(false);      // handle data
+                session.Connect();                                       // receive data
+                await session.ProcessAsync().ConfigureAwait(false);      // handle data
             }
             catch (Exception ex) {
                 Console.WriteLine($"[HTTP] Connection error: {ex.Message}");
             }
             finally {
-                UnregisterSession(connection.Id);
-                connection.Dispose();
+                UnregisterSession(session.Id);
+                session.Dispose();
             }
         }
 
