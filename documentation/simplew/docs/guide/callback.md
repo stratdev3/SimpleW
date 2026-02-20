@@ -70,18 +70,6 @@ This approach keeps :
 - Shared behavior centralized
 
 
-## Excluding Base Controllers from Routing
-
-A base controller may itself define route methods.
-
-If you do not want this class to be registered as a controller, you must explicitly exclude it when mapping controllers.
-
-This avoids unintended routes being exposed.
-
-```csharp
-server.MapControllers<BaseController>("/", exclude: new[] { typeof(BaseController) });
-```
-
 ### Shared Routes via Base Controllers
 
 If a base controller **does define routes**, those routes are inherited by subclasses.

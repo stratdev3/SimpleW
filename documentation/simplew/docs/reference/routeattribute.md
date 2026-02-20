@@ -35,7 +35,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.MapControllers<Controller>("/api");
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
             await server.RunAsync();
         }
@@ -91,7 +91,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.MapControllers<Controller>("/api");
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
             await server.RunAsync();
         }

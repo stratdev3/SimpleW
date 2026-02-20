@@ -4,7 +4,7 @@ The `SimpleWServer` is the main class used to instantiate and configure the web 
 
 This class exposes a **fluent API**, which means you can chain all its methods :
 
-```csharp:line-numbers
+```csharp
 // instanciate
 var server = new SimpleWServer(IPAddress.Any, 2015);
 // configure & run
@@ -14,6 +14,7 @@ await server.UseHttps(sslContext)
             })
             .RunAsync();
 ```
+
 
 ## Constructor
 
@@ -121,6 +122,14 @@ public async Task RunAsync(CancellationToken cancellationToken = default)
 /// Stop Server
 /// </summary>
 public async Task StopAsync()
+```
+
+```csharp
+/// <summary>
+/// Reload the listener socket (port and/or TLS) without stopping the server lifetime.
+/// Does NOT close existing client sessions; only affects new incoming connections.
+/// </summary>
+public async Task ReloadListenerAsync(Action<SimpleWServer> reconfigure, CancellationToken cancellationToken = default)
 ```
 
 ```csharp
@@ -449,6 +458,17 @@ new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
 ```
 
 :::
+
+
+```csharp
+/// <summary>
+/// Disable SslContext
+/// </summary>
+/// <returns></returns>
+/// <exception cref="InvalidOperationException"></exception>
+public SimpleWServer DisableHttps() {
+```
+
 
 See an [example](../guide/ssl-certificate.md#example-for-local-test).
 

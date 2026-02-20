@@ -41,7 +41,7 @@ namespace Sample {
             });
 
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             await server.RunAsync();
@@ -101,7 +101,7 @@ namespace Sample {
             });
 
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             await server.RunAsync();
@@ -132,3 +132,29 @@ var context = new SslContext(
     }
 );
 ```
+
+
+## Disable Certificate
+
+You can disable a certificate while the server is running.
+This is a special method `ReloadListenerAsync` to allow a such config change.
+
+```csharp
+await server.ReloadListenerAsync(s => {
+    s.DisableHttps();
+    s.UsePort(80);
+});
+```
+
+::: info
+You can use the same logic to `UseHttps()` after you already started you server without.
+
+:::
+
+
+## Let's Encrypt
+
+There is an [`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) addon that provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**.
+
+Just follow the documentation of the [Let's Encrypt Module](../addons/letsencrypt.md).
+

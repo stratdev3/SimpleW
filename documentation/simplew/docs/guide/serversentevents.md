@@ -9,7 +9,7 @@ Server-Sent Events (SSE) is a server push technology enabling a client to receiv
 
 ### 1) A Single SSE Endpoint
 
-The module exposes a **SSE endpoint**, configured via `ServerSentEventsOptions.Prefix` (default: `/ws`).
+The module exposes a **SSE endpoint**, configured via `ServerSentEventsOptions.Prefix` (default: `/sse`).
 
 Even if you map `/sse/*`, the handler enforces **strict match**, so anything under `/sse/xxx` will return **404**.
 

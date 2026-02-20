@@ -16,19 +16,6 @@ They usually :
 Typical use cases include authentication, logging, caching, monitoring, or background tasks.
 
 
-## JsonEngines
-
-**JsonEngine addons** add new JSON engine implementations.
-
-They allow SimpleW to support different JSON serializers/deserializers, depending on performance needs, features, or external dependencies.
-
-Each JsonEngine addon provides :
-- A concrete implementation of a JSON engine
-- A consistent API that integrates with SimpleW’s configuration
-
-This makes it easy to switch or extend JSON handling without impacting the rest of the system.
-
-
 ## Helpers
 
 **Helper addons** add utility features without introducing a full service.
@@ -40,3 +27,28 @@ They are generally :
 
 Helpers do not participate directly in the service lifecycle but provide reusable building blocks for applications and other addons.
 Typical examples include utilities, helpers for request handling, configuration helpers, or small abstractions.
+
+
+## Templates
+
+**Template addons** provide .NET project templates to quickly bootstrap SimpleW-based applications or addons.
+
+Templates allow developers to:
+
+- Start a new SimpleW project in seconds
+- Create addons with the correct layout and conventions
+- Avoid repetitive setup and boilerplate code
+- Ensure consistency across projects
+
+
+## JsonEngines
+
+**JsonEngine addons** add new JSON engine implementations.
+
+They allow SimpleW to support different JSON serializers/deserializers, depending on performance needs, features, or external dependencies.
+
+Each JsonEngine addon provides :
+- A concrete implementation of a JSON engine
+- A consistent API that integrates with SimpleW’s configuration
+
+This makes it easy to switch or extend JSON handling without impacting the rest of the system.

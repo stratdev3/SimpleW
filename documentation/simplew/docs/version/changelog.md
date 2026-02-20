@@ -11,7 +11,6 @@ Notes :
 ## Roadmap - _(2026)_
 
 - docker template
-- dotnet template
 - captcha module
 - HTTP/3 quic
 
@@ -26,7 +25,7 @@ This version is a major release :
 
 ### breakingChange
 
-There is a [complete migration guide](../guide/migrate-from-v16.md). But for short : even if some high level classes/methods has been renamed, your understanding of their role remains quite the same and the bump version should not be a pain. I've migrated a full project (thirty controllers / four hundred methods) on a couple of hours.
+There is a [complete migration guide](../guide/migrate-from-v16.md).
 
 ### feature / comparison
 
@@ -40,18 +39,18 @@ There is a [complete migration guide](../guide/migrate-from-v16.md). But for sho
 | Performance                                         | ✅ (very high)                        | ✅  (very high)  |
 | Middleware                                          | ❌                                                | ✅   |
 | Modules                                                | ❌                                              | ✅  |
-| Extensibility                                          | ⚠️ (callback, subclass)              | ✅ midlleware, module, callback, subclass     |
+| Extensibility                                          | ⚠️ (callback, subclass)              | ✅ middleware, module, callback, subclass     |
 | Response Builder                                   | ✅(status, contentType, headers, body, cookies)                                               | ✅    (status, contentType, contentLength, headers, body, cookies, compression)                       |
 | Handler (Expression Tree)                   | ✅ sync  ❌async                        | ✅ sync ✅ async + RequestAborted   |
 | Routing                                                | ✅ (minimal, attribute, querystring, regexp, path, wildcard)               | ✅ (minimal, attribute, querystring, path, wildcard) |
-| Minimal API                                           | ✅                                               | ✅                           |
-| Controllers                                            | ✅                                                | ✅                             |
-| SSL / HTTPS                                           | ✅ (SslContext)                            | ✅  (SslContext, mutual authentication)  |
-| WebSocket                                              | ✅(full broadcast)                      | ✅ (smart broadcast using "rooms")   |
-| Server-Sent Events (SSE)                            | ✅                                          | ✅                               |
-| Basic Auth                                                 | ❌                                          | ✅                                 |
-| JWT auth                                                 | ✅                                             | ✅                               |
-| Unix socket                                            | ✅                                               | ✅                               |
+| Minimal API                                           | ✅                                      | ✅                           |
+| Controllers                                            | ✅                                     | ✅                             |
+| SSL / HTTPS                                           | ✅ (SslContext)                         | ✅  (SslContext, mutual authentication)  |
+| WebSocket                                              | ✅(full broadcast)                     | ✅ (smart broadcast using "rooms")   |
+| Server-Sent Events (SSE)                                ✅                                      | ✅ (smart broadcast using "rooms")   |
+| Basic Auth                                                 | ❌                                 | ✅                           |
+| JWT auth                                                 | ✅                                   | ✅                          |
+| Unix socket                                            | ✅                                     | ✅                          |
 | Static files                                               | ✅ (Cache, FileWatcher)            | ✅ (Cache, FileWatcher, Last-Modified, Etag) |
 | Cross-Origin Resource Sharing (CORS)  | ✅                                               | ✅                             |
 | Body parsing (JSON)                               | ✅                                             | ✅                               |
@@ -66,7 +65,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md). But for sho
 | Documentation                                         | ✅                                              | ✅ [simplew.net](https://simplew.net/v26/)                  |
 | Tests                                                          | ✅                                             | ✅ (more tests)  |
 | Support                                                     | ❌                                              | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                  |
-| Addons                                                    | ❌                                              | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger       |
+| Addons                                                    | ❌                                              | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger, LetsEncrypt       |
 
 
 

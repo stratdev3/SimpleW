@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the nuget package, always prefer the last version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-beta.20260216-1463
+$ dotnet add package SimpleW --version 26.0.0-beta.20260221-1486
 ```
 
 ::: tip NOTE
@@ -47,7 +47,7 @@ namespace Sample {
 
             // register callbacks
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server
@@ -62,6 +62,10 @@ namespace Sample {
 
 
 It uses the [`MapGet`](../reference/simplewserver.md#map) and [`MapPost`](../reference/simplewserver.md#map) methods, which are quite the same as asp.net core.
+
+::: info
+See the [Templates](../addons/templates.md#simplew-minimal) addons to quicky create a minimal project.
+:::
 
 
 ## Rest API Example
@@ -87,7 +91,7 @@ namespace Sample {
 
             // register callbacks
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server
@@ -157,7 +161,7 @@ namespace Sample {
 
             // register callbacks
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server
@@ -218,7 +222,7 @@ namespace Sample {
 
             // register callbacks
             server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{server.Port}/");
+                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server

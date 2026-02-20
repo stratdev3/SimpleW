@@ -32,7 +32,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260216-1463
+$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260221-1486
 ```
 
 

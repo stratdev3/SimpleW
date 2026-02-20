@@ -64,6 +64,7 @@ export default defineConfig({
                 {
                     text: 'Framework',
                     items: [
+                        { text: 'Server', link: '/guide/server' },
                         { text: 'Handler', link: '/guide/handler' },
                         { text: 'Routing', link: '/guide/routing' },
                         { text: 'Response', link: '/guide/response' },
@@ -113,6 +114,7 @@ export default defineConfig({
                         { text: 'Chaos', link: '/addons/chaos' },
                         { text: 'Firewall', link: '/addons/firewall' },
                         { text: 'Latency', link: '/addons/latency' },
+                        { text: 'LetsEncrypt', link: '/addons/letsencrypt' },
                         { text: 'OpenID', link: '/addons/openid' },
                     ]
                 },
@@ -125,7 +127,10 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'Templates', link: '/addons/templates'
+                    text: 'Templates',
+                    items: [
+                        { text: 'SimpleW', link: '/addons/templates' },
+                    ]
                 },
                 {
                     text: 'JsonEngines',

@@ -8,7 +8,7 @@ It is designed for developers who are used to the .NET *Generic Host* model and 
 - clean startup / shutdown handling (SIGTERM, Ctrl+C, systemd, Windows Service)
 - zero changes to the SimpleW core server
 
-::: warning
+::: info
 **SimpleW itself does NOT depend on Microsoft Hosting.**
 This package is only a thin adapter layer.
 :::
@@ -35,7 +35,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260216-1463
+$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260221-1486
 ```
 
 

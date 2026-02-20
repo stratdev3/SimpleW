@@ -45,7 +45,7 @@ Evaluate request on a single text file `message.txt` which contains `hello world
 -->
 
 ::: tip NOTE
-The bombardier command is run three times, then keep the best result.
+The bombardier command is run three times, and the best result is kept.
 :::
 
 

@@ -25,10 +25,16 @@ It allows you to :
 
 ## Installation
 
-Install the templates package using:
+Install the templates package using :
 
 ```bash
 dotnet new install SimpleW.Templates
+```
+
+You can browse all the available templates :
+
+```bash
+dotnet new list simplew
 ```
 
 
@@ -37,4 +43,16 @@ dotnet new install SimpleW.Templates
 ### simplew-minimal
 
 The `simplew-minimal` template generates a **minimal SimpleW application** with the smallest possible setup.
+It's based on the [getting started](../guide/getting-started.md#minimal-example) example.
 
+
+**Create a project**
+
+```bash
+# creates a new folder "MySimpleWApp" with the minimal template
+dotnet new simplew-minimal -n MySimpleWApp
+cd MySimpleWApp
+
+# run it
+dotnet run
+```
