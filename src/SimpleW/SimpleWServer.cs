@@ -155,7 +155,7 @@ namespace SimpleW {
             IsStopping = false;
 
             ListenSocket();
-            StartSessionTimeoutTimer();
+            StartSessionTimeoutLoop(_lifetimeCts.Token);
 
             IsStarted = true;
             _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
@@ -222,8 +222,12 @@ namespace SimpleW {
                 CloseAllSessions();
 
                 // stop idle timer
-                _sessionTimeoutTimer?.Dispose();
-                _sessionTimeoutTimer = null;
+                Task? t = _sessionTimeoutTask;
+                _sessionTimeoutTask = null;
+                if (t != null) {
+                    try { await t.ConfigureAwait(false); }
+                    catch { }
+                }
 
                 // telemetry
                 try { Telemetry?.Dispose(); }
@@ -916,49 +920,64 @@ namespace SimpleW {
         #region idle timeout
 
         /// <summary>
-        /// Timer for Idel timeout
+        /// Task for Idle Timeout
         /// </summary>
-        private Timer? _sessionTimeoutTimer;
+        private Task? _sessionTimeoutTask;
 
         /// <summary>
-        /// Start Session Timeout Timer
+        /// Start Session Timeout Task
         /// </summary>
-        private void StartSessionTimeoutTimer() {
+        /// <param name="token"></param>
+        private void StartSessionTimeoutLoop(CancellationToken token) {
             if (Options.SessionTimeout == TimeSpan.MinValue) {
                 return;
             }
-            if (_sessionTimeoutTimer != null) {
+            if (_sessionTimeoutTask != null) {
                 return;
             }
 
-            double seconds = Math.Min(5, Options.SessionTimeout.TotalSeconds / 2);
-            TimeSpan period = TimeSpan.FromSeconds(seconds);
-            _sessionTimeoutTimer = new Timer(CheckSessionTimeout, null, period, period);
+            double periodSeconds = Math.Min(5, Options.SessionTimeout.TotalSeconds / 2);
+            TimeSpan period = TimeSpan.FromSeconds(Math.Max(0.1, periodSeconds));
+
+            _sessionTimeoutTask = Task.Run(async () => {
+                try {
+                    // small delay
+                    await Task.Delay(period, token).ConfigureAwait(false);
+
+                    while (!token.IsCancellationRequested) {
+                        try {
+                            CheckSessionTimeoutCore();
+                        }
+                        catch (Exception ex) {
+                            Console.WriteLine($"[SimpleW] CheckSessionTimeout error: {ex.Message}");
+                        }
+
+                        await Task.Delay(period, token).ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException) {
+                    // normal
+                }
+            }, CancellationToken.None);
         }
 
         /// <summary>
-        /// Close and Remote Session Timeout
+        /// Close and Remove Session Timeout
         /// </summary>
-        /// <param name="state"></param>
-        private void CheckSessionTimeout(object? state) {
+        private void CheckSessionTimeoutCore() {
             if (!IsStarted || IsStopping) {
                 return;
             }
 
-            try {
-                long now = Environment.TickCount64;
-                long timeoutMs = (long)Options.SessionTimeout.TotalMilliseconds;
+            long now = Environment.TickCount64;
+            long timeoutMs = (long)Options.SessionTimeout.TotalMilliseconds;
 
-                foreach (KeyValuePair<Guid, HttpSession> kvp in Sessions) {
-                    HttpSession? session = kvp.Value;
-                    if (now - session.LastActivityTick > timeoutMs) {
-                        UnregisterSession(session.Id);
-                        session.Dispose();
-                    }
+            foreach (KeyValuePair<Guid, HttpSession> kvp in Sessions) {
+                HttpSession session = kvp.Value;
+                if (now - session.LastActivityTick > timeoutMs) {
+                    UnregisterSession(session.Id);
+                    session.Dispose();
                 }
-            }
-            catch (Exception ex) {
-                Console.WriteLine($"[SimpleW] CheckSessionTimeout error: {ex.Message}");
             }
         }
 
