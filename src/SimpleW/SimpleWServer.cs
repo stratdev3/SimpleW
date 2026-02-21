@@ -861,8 +861,7 @@ namespace SimpleW {
                 Console.WriteLine($"[HTTP] Connection error: {ex.Message}");
             }
             finally {
-                UnregisterSession(session.Id);
-                session.Dispose();
+                CloseSession(session);
             }
         }
 
@@ -886,12 +885,18 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Unregister session by Id
+        /// Close and Unregister Session
         /// </summary>
-        /// <param name="id">Session Id</param>
-        internal void UnregisterSession(Guid id) {
-            if (Sessions.TryRemove(id, out _)) {
-                Telemetry?.ActiveSessionDecrement();
+        /// <param name="session"></param>
+        internal void CloseSession(HttpSession session) {
+            if (Sessions.TryRemove(session.Id, out _)) {
+                try {
+                    session.Dispose();
+                }
+                catch { }
+                finally {
+                    Telemetry?.ActiveSessionDecrement();
+                }
             }
         }
 
@@ -910,11 +915,9 @@ namespace SimpleW {
         /// Close all actives Sessions
         /// </summary>
         public void CloseAllSessions() {
-            foreach (HttpSession session in Sessions.Values) {
-                try { session.Dispose(); }
-                catch { }
+            foreach (var session in Sessions.Values.ToArray()) {
+                CloseSession(session);
             }
-            Sessions.Clear();
         }
 
         #region idle timeout
@@ -975,8 +978,7 @@ namespace SimpleW {
             foreach (KeyValuePair<Guid, HttpSession> kvp in Sessions) {
                 HttpSession session = kvp.Value;
                 if (now - session.LastActivityTick > timeoutMs) {
-                    UnregisterSession(session.Id);
-                    session.Dispose();
+                    CloseSession(session);
                 }
             }
         }
