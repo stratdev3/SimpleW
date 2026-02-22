@@ -27,6 +27,9 @@ namespace Sample {
 
         static async Task Main() {
 
+            // debug log
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+
             // start listening to all IPs port 80
             var server = new SimpleWServer(IPAddress.Any, 80);
 
@@ -43,13 +46,8 @@ namespace Sample {
                 options.HttpsPort = 443; // default value
             });
 
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
-            });
-
             // start a blocking background server
             await server.RunAsync();
-
         }
     }
 

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Certes;                   // ACME (Certes) dotnet add package Certes
@@ -41,6 +42,11 @@ namespace SimpleW.Service.LetsEncrypt {
         /// LetsEncrypt Options
         /// </summary>
         public sealed class LetsEncryptOptions {
+
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private static readonly ILogger _log = new Logger<LetsEncryptOptions>();
 
             /// <summary>
             /// Domains to include in the certificate (CN + SAN)
@@ -138,15 +144,19 @@ namespace SimpleW.Service.LetsEncrypt {
             /// </summary>
             public LetsEncryptOptions ValidateAndNormalize() {
                 if (Domains == null || Domains.Length == 0 || Domains.Any(string.IsNullOrWhiteSpace)) {
-                    throw new ArgumentException($"{nameof(LetsEncryptOptions)}.{nameof(Domains)} must contain at least one domain.");
+                    ArgumentException ex = new($"{nameof(Domains)} must contain at least one domain.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
-                StoragePath = Path.GetFullPath(StoragePath);
-
                 if (HttpPort < 1 || HttpPort > 65535) {
-                    throw new ArgumentException($"{nameof(LetsEncryptOptions)}.{nameof(HttpPort)} invalid port.");
+                    ArgumentException ex = new($"{nameof(HttpPort)} invalid port.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (HttpsPort < 1 || HttpsPort > 65535) {
-                    throw new ArgumentException($"{nameof(LetsEncryptOptions)}.{nameof(HttpsPort)} invalid port.");
+                    ArgumentException ex = new($"{nameof(HttpsPort)} invalid port.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (RenewBefore <= TimeSpan.Zero) {
                     RenewBefore = TimeSpan.FromDays(30);
@@ -154,6 +164,8 @@ namespace SimpleW.Service.LetsEncrypt {
                 if (CheckEvery <= TimeSpan.Zero) {
                     CheckEvery = TimeSpan.FromHours(12);
                 }
+                StoragePath = Path.GetFullPath(StoragePath);
+
                 return this;
             }
 
@@ -163,6 +175,11 @@ namespace SimpleW.Service.LetsEncrypt {
         /// LetsEncrypt Module (HTTP-01) for SimpleW
         /// </summary>
         private sealed class LetsEncryptModule : IHttpModule, IDisposable {
+
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private static readonly ILogger _log = new Logger<LetsEncryptModule>();
 
             /// <summary>
             /// Options
@@ -196,11 +213,12 @@ namespace SimpleW.Service.LetsEncrypt {
             /// <param name="server"></param>
             /// <exception cref="InvalidOperationException"></exception>
             public void Install(SimpleWServer server) {
-                ArgumentNullException.ThrowIfNull(server);
-
                 if (server.IsStarted) {
-                    throw new InvalidOperationException("LetsEncryptModule must be installed before server start.");
+                    InvalidOperationException ex = new("LetsEncryptModule must be installed before server start.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
+                _log.Info("LetsEncryptModule installing...");
 
                 _server = server;
 
@@ -219,7 +237,7 @@ namespace SimpleW.Service.LetsEncrypt {
                     }
                     catch (Exception ex) {
                         // don't crash server lifetime
-                        Console.WriteLine($"[LetsEncrypt] Startup ensure failed: {ex}");
+                        _log.Error("startup ensure certificate failed", ex);
                     }
                 });
 
@@ -227,6 +245,8 @@ namespace SimpleW.Service.LetsEncrypt {
                     try { await StopBackgroundLoopAsync().ConfigureAwait(false); }
                     catch { }
                 });
+
+                _log.Info("LetsEncryptModule installed");
             }
 
             /// <summary>
@@ -307,7 +327,7 @@ namespace SimpleW.Service.LetsEncrypt {
                         // normal
                     }
                     catch (Exception ex) {
-                        Console.WriteLine($"[LetsEncrypt] Renewal loop error: {ex}");
+                        _log.Error("renewal loop error", ex);
                         // small backoff to avoid log spam if something is broken
                         try { await Task.Delay(TimeSpan.FromMinutes(2), ct).ConfigureAwait(false); }
                         catch { }
@@ -328,7 +348,9 @@ namespace SimpleW.Service.LetsEncrypt {
             /// <exception cref="InvalidOperationException"></exception>
             private async Task EnsureCertificateAsync(bool force, CancellationToken ct) {
                 if (_server == null) {
-                    throw new InvalidOperationException("Module not installed.");
+                    InvalidOperationException ex = new ("module not installed");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
 
                 // ensure gauges are registered when server telemetry is enabled
@@ -341,8 +363,7 @@ namespace SimpleW.Service.LetsEncrypt {
 
                     // 2) return on error
                     if (!force && status == CertLoadStatus.LoadError) {
-                        Console.WriteLine($"[LetsEncrypt] ERROR: Existing certificate file exists but cannot be loaded: {PfxPath}");
-                        Console.WriteLine($"[LetsEncrypt] ERROR details: {loadError}");
+                        _log.Error($"existing certificate file exists but cannot be loaded '{PfxPath}' due to {loadError}");
                         return;
                     }
 
@@ -354,19 +375,19 @@ namespace SimpleW.Service.LetsEncrypt {
                             if (_options.AutoConfigureHttps) {
                                 await SwitchToHttpsAsync(ct).ConfigureAwait(false);
                             }
-                            Console.WriteLine($"[LetsEncrypt] Certificate OK. Expires in {remaining.TotalDays:F1} days.");
+                            _log.Info($"certificate ok, expires in {remaining.TotalDays:F1} days");
                             return;
                         }
 
-                        Console.WriteLine($"[LetsEncrypt] Certificate expiring soon ({remaining.TotalDays:F1} days). Renewing...");
+                        _log.Info($"certificate expiring soon ({remaining.TotalDays:F1} days), renewing...");
                     }
 
                     // 4) no certificate or force : create or renew
                     if (status == CertLoadStatus.NoCertificate) {
-                        Console.WriteLine("[LetsEncrypt] No existing certificate found. Issuing a new certificate...");
+                        _log.Info("no existing certificate found, issuing a new certificate...");
                     }
 
-                    Console.WriteLine("[LetsEncrypt] Switching to HTTP for HTTP-01 challenge...");
+                    _log.Info("switching to HTTP for HTTP-01 challenge...");
                     await SwitchToHttpAsync(ct).ConfigureAwait(false);
 
                     try {
@@ -410,9 +431,7 @@ namespace SimpleW.Service.LetsEncrypt {
                     Volatile.Write(ref _certNotAfterUtcTicks, notAfterUtc.Ticks);
                     Volatile.Write(ref _certLoaded, 1);
 
-                    Console.WriteLine($"[LetsEncrypt] Subject: {cert.Subject}");
-                    Console.WriteLine($"[LetsEncrypt] NotAfter: {cert.NotAfter:O}");
-                    Console.WriteLine($"[LetsEncrypt] HasPrivateKey: {cert.HasPrivateKey}");
+                    _log.Info($"certificate : Subject = {cert.Subject}, NotAfter = {cert.NotAfter:O}, HasPrivateKey = {cert.HasPrivateKey}");
 
                     SslContext ssl = _options.SslContextFactory?.Invoke(cert) ?? new SslContext(_options.Protocols, cert);
 
@@ -422,10 +441,10 @@ namespace SimpleW.Service.LetsEncrypt {
                         s.UseHttps(ssl);
                     }, ct).ConfigureAwait(false);
 
-                    Console.WriteLine("[LetsEncrypt] HTTPS listener configured.");
+                    _log.Info("HTTPS listener configured");
                 }
                 catch (Exception ex) {
-                    Console.WriteLine($"[LetsEncrypt] Failed to configure HTTPS: {ex}");
+                    _log.Error("failed to configure HTTPS", ex);
                 }
             }
 
@@ -444,7 +463,7 @@ namespace SimpleW.Service.LetsEncrypt {
                     s.UsePort(_options.HttpPort);
                 }, ct).ConfigureAwait(false);
 
-                Console.WriteLine("[LetsEncrypt] Listener switched to HTTP.");
+                _log.Info("listener switched to HTTP");
             }
 
             private async Task IssueOrRenewWithHttp01Async(CancellationToken ct) {
@@ -501,7 +520,7 @@ namespace SimpleW.Service.LetsEncrypt {
                         _http01Store[token] = keyAuth;
                         activatedTokens.Add(token);
 
-                        Console.WriteLine($"[LetsEncrypt] HTTP-01 armed for token: {token}");
+                        _log.Info($"HTTP-01 armed for token: {token}");
 
                         // ask CA to validate
                         await httpChallenge.Validate().ConfigureAwait(false);
@@ -517,7 +536,9 @@ namespace SimpleW.Service.LetsEncrypt {
                             break;
                         }
                         if (o.Status == OrderStatus.Invalid) {
-                            throw new InvalidOperationException("ACME order became invalid (check port 80 reachability and domain DNS).");
+                            InvalidOperationException ex = new("ACME order became invalid (check port 80 reachability and domain DNS).");
+                            _log.Warn(ex.Message, ex);
+                            throw ex;
                         }
 
                         // pending / ready / processing
@@ -550,7 +571,7 @@ namespace SimpleW.Service.LetsEncrypt {
                     await File.WriteAllBytesAsync(tmp, pfx, ct).ConfigureAwait(false);
                     File.Move(tmp, PfxPath, overwrite: true);
 
-                    Console.WriteLine("[LetsEncrypt] New certificate written to tls.pfx");
+                    _log.Info("new certificate written to tls.pfx");
 
 #if NET9_0_OR_GREATER
                     X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(PfxPath, pass, _options.KeyStorageFlags);
@@ -571,11 +592,11 @@ namespace SimpleW.Service.LetsEncrypt {
                             s.UseHttps(ssl);
                         }, ct).ConfigureAwait(false);
 
-                        Console.WriteLine("[LetsEncrypt] Listener switched back to HTTPS.");
+                        _log.Info("listener switched back to HTTPS");
                     }
                 }
                 catch (Exception ex) {
-                    Console.WriteLine($"[LetsEncrypt] Failed to load fresh certificate after issuance: {ex}");
+                    _log.Error("failed to load fresh certificate after issuance", ex);
                     Volatile.Write(ref _certNotAfterUtcTicks, 0);
                     Volatile.Write(ref _certLoaded, 0);
                 }
@@ -643,7 +664,9 @@ namespace SimpleW.Service.LetsEncrypt {
                 }
 
                 if (File.Exists(PfxPath)) {
-                    throw new InvalidOperationException($"PFX exists but password file is missing: {PfxPasswordPath}");
+                    InvalidOperationException ex = new($"PFX exists but password file is missing: {PfxPasswordPath}");
+                    _log.Error(ex.Message, ex);
+                    throw ex;
                 }
 
                 string pass = Convert.ToBase64String(Guid.NewGuid().ToByteArray()) + Convert.ToBase64String(Guid.NewGuid().ToByteArray());
