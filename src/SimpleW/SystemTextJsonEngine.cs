@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
+using SimpleW.Observability;
 
 
 namespace SimpleW {
@@ -11,6 +12,8 @@ namespace SimpleW {
     /// Implement with IJsonEngine using System.Text.Json
     /// </summary>
     public class SystemTextJsonEngine : IJsonEngine {
+
+        private static readonly ILogger _log = new Logger<SystemTextJsonEngine>();
 
         /// <summary>
         /// Options Builder
@@ -85,7 +88,9 @@ namespace SimpleW {
         public T Deserialize<T>(string json) {
             T? value = JsonSerializer.Deserialize<T>(json, DeserializeOptionsCache);
             if (value == null) {
-                throw new JsonException($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
+                JsonException ex = new($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             return value;
         }
@@ -99,7 +104,9 @@ namespace SimpleW {
         public T DeserializeAnonymous<T>(string json, T model) {
             T? value = JsonSerializer.Deserialize<T>(json, DeserializeAnonymousOptionsCache);
             if (value == null) {
-                throw new JsonException($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
+                JsonException ex = new($"Deserialization returned null for type '{typeof(T).FullName}'. JSON might be 'null' or incompatible.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             return value;
         }

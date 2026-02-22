@@ -16,6 +16,11 @@ namespace SimpleW {
     public class SimpleWServer {
 
         /// <summary>
+        /// Logger
+        /// </summary>
+        private static readonly ILogger _log = new Logger<SimpleWServer>();
+
+        /// <summary>
         /// Router
         /// </summary>
         public Router Router { get; private set; }
@@ -44,6 +49,26 @@ namespace SimpleW {
         #region endpoint
 
         /// <summary>
+        /// Listen Endpoint
+        /// </summary>
+        public EndPoint EndPoint { get; private set; }
+
+        /// <summary>
+        /// Is this server listening on a Unix Domain Socket?
+        /// </summary>
+        public bool IsUnixDomainSocket => EndPoint is UnixDomainSocketEndPoint;
+
+        /// <summary>
+        /// Listen Address
+        /// </summary>
+        public IPAddress? Address => (EndPoint as IPEndPoint)?.Address;
+
+        /// <summary>
+        /// Listen Port
+        /// </summary>
+        public int Port => (EndPoint as IPEndPoint)?.Port ?? 0;
+
+        /// <summary>
         /// Use IPAddress
         /// </summary>
         /// <param name="address"></param>
@@ -51,10 +76,14 @@ namespace SimpleW {
         /// <exception cref="InvalidOperationException"></exception>
         public SimpleWServer UseAddress(IPAddress address) {
             if (IsStarted && !IsListenerReloading) {
-                throw new InvalidOperationException("IPAddress must be configured before starting the server (except during listener reload).");
+                InvalidOperationException ex = new("IPAddress must be configured before starting the server (except during listener reload).");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             if (Port == 0) {
-                throw new InvalidOperationException($"Unable to found the current port");
+                InvalidOperationException ex = new("Unable to found the current port.");
+                _log.Error(ex.Message, ex);
+                throw ex;
             }
             EndPoint = new IPEndPoint(address, Port);
             return this;
@@ -67,14 +96,23 @@ namespace SimpleW {
         /// <returns></returns>
         public SimpleWServer UsePort(int port) {
             if (IsStarted && !IsListenerReloading) {
-                throw new InvalidOperationException("Port must be configured before starting the server (except during listener reload).");
+                InvalidOperationException ex = new("Port must be configured before starting the server (except during listener reload).");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             if (Address == null) {
-                throw new InvalidOperationException($"Unable to found the current IPAddress");
+                InvalidOperationException ex = new("Unable to found the current IPAddress.");
+                _log.Error(ex.Message, ex);
+                throw ex;
             }
             EndPoint = new IPEndPoint(Address, port);
             return this;
         }
+
+        /// <summary>
+        /// listen url
+        /// </summary>
+        private string _listenUrl => $"http{(SslContext != null ? "s" : "")}://{Address?.ToString()}{((SslContext != null && Port == 443) || (SslContext == null && Port == 80) ? "" : $":{Port}")}";
 
         #endregion endpoint
 
@@ -131,7 +169,9 @@ namespace SimpleW {
             ArgumentNullException.ThrowIfNull(configure);
 
             if (IsStarted) {
-                throw new InvalidOperationException("Server options must be configured before starting the server.");
+                InvalidOperationException ex = new("Server options must be configured before starting the server.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
 
             configure(Options);
@@ -148,6 +188,7 @@ namespace SimpleW {
                 return Task.CompletedTask;
             }
 
+            _log.Info($"server starting...");
             Options.ValidateAndNormalize();
 
             _lifetimeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -159,6 +200,7 @@ namespace SimpleW {
 
             IsStarted = true;
             _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
+            _log.Info($"server started at {_listenUrl}");
 
             // notify subscribers
             FireStartedCallbacks();
@@ -190,6 +232,7 @@ namespace SimpleW {
                 return;
             }
 
+            _log.Info($"server stopping {_listenUrl} ...");
             IsStopping = true;
 
             try {
@@ -203,6 +246,7 @@ namespace SimpleW {
                 }
                 catch { }
             }
+            _log.Info($"server stopped {_listenUrl}");
         }
 
         /// <summary>
@@ -261,7 +305,9 @@ namespace SimpleW {
             ArgumentNullException.ThrowIfNull(reconfigure);
 
             if (!IsStarted) {
-                throw new InvalidOperationException("Server must be started to reload the listener.");
+                InvalidOperationException ex = new("server must be started to reload the listener.");
+                _log.Error(ex.Message, ex);
+                throw ex;
             }
             if (IsStopping) {
                 return;
@@ -276,6 +322,7 @@ namespace SimpleW {
                 }
 
                 IsListenerReloading = true;
+                _log.Info($"server reloading {_listenUrl}...");
 
                 try {
                     // stop accepting new connections: close the listen socket and dispose acceptors
@@ -284,17 +331,23 @@ namespace SimpleW {
                     reconfigure(this);
                     // new listener + restart accept loop(s)
                     ListenSocket();
+                    _log.Warn($"server reloaded at {_listenUrl}");
                 }
-                catch {
+                catch (Exception ex) {
+                    _log.Warn($"server failed to reload at {_listenUrl}", ex);
                     // rollback best effort
                     try {
                         CloseAndDisposeSocket();
                         EndPoint = oldEndPoint;
                         SslContext = oldSsl;
+                        _log.Warn($"server restoring at {_listenUrl}", ex);
                         ListenSocket();
+                        _log.Warn($"server restored at {_listenUrl}");
                     }
-                    catch { }
-                    throw;
+                    catch (Exception exx) {
+                        _log.Fatal($"server failed to restore at {_listenUrl}", exx);
+                        throw;
+                    }
                 }
             }
             finally {
@@ -626,26 +679,6 @@ namespace SimpleW {
         private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
 
         /// <summary>
-        /// Listen Endpoint
-        /// </summary>
-        public EndPoint EndPoint { get; private set; }
-
-        /// <summary>
-        /// Is this server listening on a Unix Domain Socket?
-        /// </summary>
-        public bool IsUnixDomainSocket => EndPoint is UnixDomainSocketEndPoint;
-
-        /// <summary>
-        /// Listen Address
-        /// </summary>
-        public IPAddress? Address => (EndPoint as IPEndPoint)?.Address;
-
-        /// <summary>
-        /// Listen Port
-        /// </summary>
-        public int Port => (EndPoint as IPEndPoint)?.Port ?? 0;
-
-        /// <summary>
         /// Listen Socket
         /// </summary>
         private Socket? _listenSocket;
@@ -811,7 +844,9 @@ namespace SimpleW {
         /// <returns></returns>
         public SimpleWServer UseHttps(SslContext sslContext) {
             if (IsStarted && !IsListenerReloading) {
-                throw new InvalidOperationException("SslContext must be configured before starting the server.");
+                InvalidOperationException ex = new("SslContext must be configured before starting the server.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             SslContext = sslContext;
             return this;
@@ -824,7 +859,9 @@ namespace SimpleW {
         /// <exception cref="InvalidOperationException"></exception>
         public SimpleWServer DisableHttps() {
             if (IsStarted && !IsListenerReloading) {
-                throw new InvalidOperationException("SslContext must be configured before starting the server.");
+                InvalidOperationException ex = new("SslContext must be configured before starting the server.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             SslContext = null;
             return this;
@@ -858,7 +895,7 @@ namespace SimpleW {
                 await session.ProcessAsync().ConfigureAwait(false);      // handle data
             }
             catch (Exception ex) {
-                Console.WriteLine($"[HTTP] Connection error: {ex.Message}");
+                _log.Warn("session error", ex);
             }
             finally {
                 CloseSession(session);
@@ -952,7 +989,7 @@ namespace SimpleW {
                             CheckSessionTimeoutCore();
                         }
                         catch (Exception ex) {
-                            Console.WriteLine($"[SimpleW] CheckSessionTimeout error: {ex.Message}");
+                            _log.Warn("session check timeout error", ex);
                         }
 
                         await Task.Delay(period, token).ConfigureAwait(false);
@@ -1001,7 +1038,9 @@ namespace SimpleW {
         /// <returns></returns>
         public SimpleWServer ConfigureJsonEngine(IJsonEngine jsonEngine) {
             if (IsStarted) {
-                throw new InvalidOperationException("JsonEngine must be configured before starting the server.");
+                InvalidOperationException ex = new("JsonEngine must be configured before starting the server.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             JsonEngine = jsonEngine;
             return this;
@@ -1034,7 +1073,9 @@ namespace SimpleW {
         public SimpleWServer ConfigureTelemetry(Action<TelemetryOptions> configure) {
             ArgumentNullException.ThrowIfNull(configure);
             if (Telemetry != null) {
-                throw new InvalidOperationException("Telemetry must be configured before being enabled.");
+                InvalidOperationException ex = new("Telemetry must be configured before being enabled.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
             }
             TelemetryOptions TelemetryOptions = new();
             configure(TelemetryOptions);
@@ -1135,6 +1176,11 @@ namespace SimpleW {
     /// SimpleWSServer Options
     /// </summary>
     public sealed class SimpleWSServerOptions {
+
+        /// <summary>
+        /// Logger
+        /// </summary>
+        private static readonly ILogger _log = new Logger<SimpleWSServerOptions>();
 
         #region security
 
@@ -1251,28 +1297,42 @@ namespace SimpleW {
 
             // basic ranges
             if (MaxRequestHeaderSize <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(MaxRequestHeaderSize), "Must be > 0.");
+                ArgumentOutOfRangeException ex = new(nameof(MaxRequestHeaderSize), "Must be > 0.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
             if (MaxRequestBodySize <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(MaxRequestBodySize), "Must be > 0.");
+                ArgumentOutOfRangeException ex = new(nameof(MaxRequestBodySize), "Must be > 0.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
             if (ListenBacklog <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(ListenBacklog), "Must be > 0.");
+                ArgumentOutOfRangeException ex = new(nameof(ListenBacklog), "Must be > 0.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
             if (ReceiveBufferSize <= 0) {
-                throw new ArgumentOutOfRangeException(nameof(ReceiveBufferSize), "Must be > 0.");
+                ArgumentOutOfRangeException ex = new(nameof(ReceiveBufferSize), "Must be > 0.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
 
             // sanity checks
             if (ReuseAddress && ExclusiveAddressUse) {
-                throw new ArgumentException($"{nameof(ReuseAddress)} and {nameof(ExclusiveAddressUse)} are mutually exclusive.");
+                ArgumentException ex = new($"{nameof(ReuseAddress)} and {nameof(ExclusiveAddressUse)} are mutually exclusive.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
             if (ReusePort) {
                 if (!OperatingSystem.IsLinux()) {
-                    throw new PlatformNotSupportedException($"{nameof(ReusePort)} is only supported on Linux.");
+                    PlatformNotSupportedException ex = new($"{nameof(ReusePort)} is only supported on Linux.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (!AcceptPerCore) {
-                    throw new ArgumentException($"{nameof(ReusePort)} is only useful on Linux when {nameof(AcceptPerCore)} is enabled.");
+                    ArgumentException ex = new($"{nameof(ReusePort)} is only useful on Linux when {nameof(AcceptPerCore)} is enabled.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
             }
 
@@ -1281,7 +1341,9 @@ namespace SimpleW {
             // - MinValue => disabled (do not change)
             // - Negative other than MinValue => not allowed
             if (SessionTimeout != TimeSpan.MinValue && SessionTimeout < TimeSpan.Zero) {
-                throw new ArgumentOutOfRangeException(nameof(SessionTimeout), "Must be >= 0 or TimeSpan.MinValue to disable.");
+                ArgumentOutOfRangeException ex = new(nameof(SessionTimeout), "Must be >= 0 or TimeSpan.MinValue to disable.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
 
             return this;

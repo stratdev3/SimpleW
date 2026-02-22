@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using SimpleW.Observability;
 
 
 namespace SimpleW {
@@ -9,9 +10,20 @@ namespace SimpleW {
     /// </summary>
     internal static class SocketExtensions {
 
+        private static readonly ILogger _log = new Logger("SocketExtensions");
+
         private const int SOL_SOCKET = 1;
         private const int SO_REUSEPORT = 15;
 
+        /// <summary>
+        /// Linux PInvoke
+        /// </summary>
+        /// <param name="sockfd"></param>
+        /// <param name="level"></param>
+        /// <param name="optname"></param>
+        /// <param name="optval"></param>
+        /// <param name="optlen"></param>
+        /// <returns></returns>
         [DllImport("libc", SetLastError = true)]
         private static extern int setsockopt(int sockfd, int level, int optname, ref int optval, uint optlen);
 
@@ -39,11 +51,12 @@ namespace SimpleW {
 
             if (result != 0) {
                 int errno = Marshal.GetLastWin32Error();
-                Console.WriteLine($"[SimpleW] Warning: SO_REUSEPORT failed with errno {errno}");
-                throw new SocketException(errno);
+                SocketException ex = new (errno);
+                _log.Warn("SO_REUSEPORT failed", ex);
+                throw ex;
             }
             else {
-                Console.WriteLine("[SimpleW] SO_REUSEPORT enabled");
+                _log.Info("SO_REUSEPORT enabled");
             }
         }
     }
