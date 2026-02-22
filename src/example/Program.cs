@@ -25,6 +25,7 @@ using SimpleW.Service.Firewall;
 using SimpleW.Service.Latency;
 using SimpleW.Service.OpenID;
 using SimpleW.Service.LetsEncrypt;
+using SimpleW.Observability;
 
 
 namespace example.rewrite {
@@ -48,7 +49,10 @@ namespace example.rewrite {
 
         static async Task Rewrite() {
 
+            Log.SetSink(Log.ConsoleWriteLine);
+
             SimpleWServer server = new(IPAddress.Any, 8080);
+            Log.MinimumLevel = LogLevel.Trace;
 
             #region https
 
@@ -336,7 +340,7 @@ namespace example.rewrite {
             openTelemetryObserver("SimpleW*");
 
             server.OnStarted(async s => {
-                Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
+                //Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
                 //await Task.Delay(5_000);
                 //await server.ReloadListenerAsync(s => {
                 //    s.UsePort(8081);
@@ -344,7 +348,7 @@ namespace example.rewrite {
                 //});
             });
             server.OnStopped(s => {
-                Console.WriteLine("server stopped");
+                //Console.WriteLine("server stopped");
             });
 
             // start non blocking background server
