@@ -38,6 +38,11 @@ namespace SimpleW.Service.Firewall {
         public sealed class FirewallOptions {
 
             /// <summary>
+            /// Logger
+            /// </summary>
+            private readonly ILogger _log = new Logger<FirewallOptions>();
+
+            /// <summary>
             /// Client IP Resolver
             /// </summary>
             public Func<HttpSession, IPAddress?> ClientIpResolver { get; set; } = (HttpSession session) => {
@@ -125,16 +130,24 @@ namespace SimpleW.Service.Firewall {
             public FirewallOptions ValidateAndNormalize() {
 
                 if (StateTtl <= TimeSpan.Zero) {
-                    throw new ArgumentException($"{nameof(FirewallOptions)}.{nameof(StateTtl)} must be > 0.", nameof(StateTtl));
+                    ArgumentException ex = new($"{nameof(StateTtl)} must be > 0.", nameof(StateTtl));
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (MaxTrackedIps <= 0) {
-                    throw new ArgumentException($"{nameof(FirewallOptions)}.{nameof(MaxTrackedIps)} must be > 0.", nameof(MaxTrackedIps));
+                    ArgumentException ex = new($"{nameof(MaxTrackedIps)} must be > 0.", nameof(MaxTrackedIps));
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (CleanupEveryNRequests <= 0) {
-                    throw new ArgumentException($"{nameof(FirewallOptions)}.{nameof(CleanupEveryNRequests)} must be > 0.", nameof(CleanupEveryNRequests));
+                    ArgumentException ex = new($"{nameof(CleanupEveryNRequests)} must be > 0.", nameof(CleanupEveryNRequests));
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (CountryCacheTtl != null && CountryCacheTtl <= TimeSpan.Zero) {
-                    throw new ArgumentException($"{nameof(FirewallOptions)}.{nameof(CountryCacheTtl)} must be > 0.", nameof(CountryCacheTtl));
+                    ArgumentException ex = new($"{nameof(CountryCacheTtl)} must be > 0.", nameof(CountryCacheTtl));
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
 
                 return this;
@@ -146,6 +159,11 @@ namespace SimpleW.Service.Firewall {
         /// FirewallModule
         /// </summary>
         private sealed class FirewallModule : IHttpModule {
+
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private readonly ILogger _log = new Logger<FirewallModule>();
 
             /// <summary>
             /// Options
@@ -222,8 +240,11 @@ namespace SimpleW.Service.Firewall {
             /// <exception cref="InvalidOperationException"></exception>
             public void Install(SimpleWServer server) {
                 if (server.IsStarted) {
-                    throw new InvalidOperationException("FirewallModule must be installed before server start.");
+                    InvalidOperationException ex = new("FirewallModule must be installed before server start.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
+                _log.Info("FirewallModule installing...");
 
                 // sort path rules : longest prefix first => most specific wins
                 _options.PathRules.Sort(static (a, b) => b.Prefix.Length.CompareTo(a.Prefix.Length));
@@ -428,6 +449,7 @@ namespace SimpleW.Service.Firewall {
                     await next();
                 });
 
+                _log.Info("FirewallModule installed");
             }
 
             #region telemetry
