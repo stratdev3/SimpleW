@@ -1,4 +1,5 @@
 using SimpleW.Modules;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Service.Latency {
@@ -31,6 +32,11 @@ namespace SimpleW.Service.Latency {
     public class LatencyOptions {
 
         /// <summary>
+        /// Logger
+        /// </summary>
+        private readonly ILogger _log = new Logger<LatencyOptions>();
+
+        /// <summary>
         /// Enable/Disable module
         /// </summary>
         public bool Enabled { get; set; } = true;
@@ -56,15 +62,21 @@ namespace SimpleW.Service.Latency {
         /// <exception cref="ArgumentException"></exception>
         internal void Validate() {
             if (GlobalLatency < TimeSpan.Zero) {
-                throw new ArgumentOutOfRangeException(nameof(GlobalLatency));
+                ArgumentOutOfRangeException ex = new(nameof(GlobalLatency));
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
 
             foreach (var r in Rules) {
                 if (string.IsNullOrWhiteSpace(r.Path)) {
-                    throw new ArgumentException("LatencyRule.Path cannot be empty.", nameof(Rules));
+                    ArgumentException ex = new($"{nameof(Path)} cannot be empty.", nameof(Path));
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (r.Latency < TimeSpan.Zero) {
-                    throw new ArgumentOutOfRangeException(nameof(Rules), "Latency must be >= 0.");
+                    ArgumentOutOfRangeException ex = new(nameof(Rules), "Latency must be >= 0.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
             }
         }
@@ -74,6 +86,11 @@ namespace SimpleW.Service.Latency {
     /// LatencyModule
     /// </summary>
     internal sealed class LatencyModule : IHttpModule {
+
+        /// <summary>
+        /// Logger
+        /// </summary>
+        private readonly ILogger _log = new Logger<LatencyModule>();
 
         /// <summary>
         /// Options
@@ -112,6 +129,12 @@ namespace SimpleW.Service.Latency {
         /// </summary>
         /// <param name="server"></param>
         public void Install(SimpleWServer server) {
+            if (server.IsStarted) {
+                InvalidOperationException ex = new("LatencyModule must be installed before server start.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
+            _log.Info("LatencyModule installing...");
 
             server.UseMiddleware(async (session, next) => {
 
@@ -125,6 +148,8 @@ namespace SimpleW.Service.Latency {
 
                 await next().ConfigureAwait(false);
             });
+
+            _log.Info("LatencyModule installed");
         }
 
         private TimeSpan? ResolveLatency(string path) {
