@@ -5,6 +5,7 @@ using RazorLight;
 using RazorLight.Compilation;
 using RazorLight.Razor;
 using SimpleW.Modules;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Helper.Razor {
@@ -75,6 +76,11 @@ namespace SimpleW.Helper.Razor {
     public sealed class RazorModule : IHttpModule {
 
         /// <summary>
+        /// Logger
+        /// </summary>
+        private readonly ILogger _log = new Logger<RazorModule>();
+
+        /// <summary>
         /// Options
         /// </summary>
         private readonly RazorOptions _options;
@@ -100,8 +106,11 @@ namespace SimpleW.Helper.Razor {
         /// <exception cref="InvalidOperationException"></exception>
         public void Install(SimpleWServer server) {
             if (server.IsStarted) {
-                throw new InvalidOperationException("RazorModule must be installed before server start.");
+                InvalidOperationException ex = new("RazorModule must be installed before server start.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
             }
+            _log.Info("RazorModule installing...");
 
             // init engine once
             _engine = new RazorLightEngineBuilder()
@@ -122,6 +131,8 @@ namespace SimpleW.Helper.Razor {
 
                 await next(session, result).ConfigureAwait(false);
             });
+
+            _log.Info("RazorModule installed");
         }
 
         /// <summary>

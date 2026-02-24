@@ -27,6 +27,9 @@ namespace Sample {
 
         static async Task Main() {
 
+            // debug log
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
@@ -57,11 +60,8 @@ namespace Sample {
                 //o.ViewsPath = "Views";
             });
 
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
-
             // start a blocking background server
             await server.RunAsync();
-
         }
     }
 
