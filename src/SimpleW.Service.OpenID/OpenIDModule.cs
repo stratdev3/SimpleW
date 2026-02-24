@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using SimpleW.Modules;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Service.OpenID {
@@ -38,6 +39,11 @@ namespace SimpleW.Service.OpenID {
         /// Multi configuration (providers + defaults)
         /// </summary>
         public sealed class OpenIDMultiOptions {
+
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private readonly ILogger _log = new Logger<OpenIDMultiOptions>();
 
             /// <summary>
             /// Providers
@@ -80,7 +86,9 @@ namespace SimpleW.Service.OpenID {
             /// </summary>
             public void Add(string provider, Action<OpenIDOptions> configure) {
                 if (string.IsNullOrWhiteSpace(provider)) {
-                    throw new ArgumentException("Provider name is required.", nameof(provider));
+                    ArgumentException ex = new("Provider name is required.", nameof(provider));
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
 
                 OpenIDOptions o = new();
@@ -95,7 +103,9 @@ namespace SimpleW.Service.OpenID {
             /// <exception cref="ArgumentException"></exception>
             public OpenIDMultiOptions Validate() {
                 if (_providers.Count == 0) {
-                    throw new ArgumentException("At least one OpenID provider must be configured.");
+                    ArgumentException ex = new("At least one OpenID provider must be configured.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
 
                 foreach (var kv in _providers) {
@@ -103,7 +113,9 @@ namespace SimpleW.Service.OpenID {
                 }
 
                 if (!BasePath.StartsWith("/", StringComparison.Ordinal)) {
-                    throw new ArgumentException("BasePath must start with '/'.");
+                    ArgumentException ex = new("BasePath must start with '/'.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
 
                 return this;
@@ -115,6 +127,11 @@ namespace SimpleW.Service.OpenID {
         /// Provider options (same as your current OpenIDOptions, but WITHOUT fixed Login/Callback paths)
         /// </summary>
         public sealed class OpenIDOptions {
+
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private readonly ILogger _log = new Logger<OpenIDOptions>();
 
             /// <summary>
             /// Provider authority
@@ -261,16 +278,24 @@ namespace SimpleW.Service.OpenID {
             /// <exception cref="ArgumentException"></exception>
             public OpenIDOptions Validate() {
                 if (string.IsNullOrWhiteSpace(Authority)) {
-                    throw new ArgumentException("Authority is required.");
+                    ArgumentException ex = new("Authority is required.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (string.IsNullOrWhiteSpace(ClientId)) {
-                    throw new ArgumentException("ClientId is required.");
+                    ArgumentException ex = new("ClientId is required.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (string.IsNullOrWhiteSpace(ClientSecret)) {
-                    throw new ArgumentException("ClientSecret is required.");
+                    ArgumentException ex = new("ClientSecret is required.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
                 if (string.IsNullOrWhiteSpace(RedirectUri) && string.IsNullOrWhiteSpace(PublicBaseUrl)) {
-                    throw new ArgumentException("Either RedirectUri or PublicBaseUrl must be set.");
+                    ArgumentException ex = new("Either RedirectUri or PublicBaseUrl must be set.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
 
                 return this;
@@ -282,6 +307,11 @@ namespace SimpleW.Service.OpenID {
         /// Internal OpenID module (multi-provider)
         /// </summary>
         private sealed class OpenIDModule : IHttpModule {
+
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private readonly ILogger _log = new Logger<OpenIDModule>();
 
             /// <summary>
             /// Options
@@ -324,8 +354,11 @@ namespace SimpleW.Service.OpenID {
             /// <param name="server"></param>
             public void Install(SimpleWServer server) {
                 if (server.IsStarted) {
-                    throw new InvalidOperationException("OpenIDModule must be installed before server start.");
+                    InvalidOperationException ex = new("OpenIDModule must be installed before server start.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
+                _log.Info("OpenIDModule installing...");
 
                 // register middleware: restore user from cookie
                 server.Router.UseMiddleware(async (session, next) => {
@@ -360,6 +393,8 @@ namespace SimpleW.Service.OpenID {
                 server.Router.MapGet($"{basePath}/login/:provider", (HttpSession session, string provider) => LoginHandler(session, provider));
                 server.Router.MapGet($"{basePath}/callback/:provider", (HttpSession session, string provider) => CallbackHandler(session, provider));
                 server.Router.MapGet($"{basePath}/logout", (HttpSession s) => LogoutHandler(s));
+
+                _log.Info("OpenIDModule installed");
             }
 
             /// <summary>
