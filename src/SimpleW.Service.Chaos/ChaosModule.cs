@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using SimpleW.Modules;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Service.Chaos {
@@ -45,6 +46,11 @@ namespace SimpleW.Service.Chaos {
         /// ChaosOptions
         /// </summary>
         public sealed class ChaosOptions {
+
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private readonly ILogger _log = new Logger<ChaosOptions>();
 
             /// <summary>Enable/disable chaos</summary>
             public bool Enabled { get; set; } = false;
@@ -147,7 +153,9 @@ namespace SimpleW.Service.Chaos {
                 }
 
                 if (FixedStatusCode.HasValue && (FixedStatusCode.Value < 100 || FixedStatusCode.Value > 999)) {
-                    throw new ArgumentException($"{nameof(ChaosOptions)}.{nameof(FixedStatusCode)} must be a valid HTTP status code.");
+                    ArgumentException ex = new ($"{nameof(FixedStatusCode)} must be a valid HTTP status code.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
 
                 if (StatusWeights == null || StatusWeights.Count == 0) {
@@ -197,6 +205,11 @@ namespace SimpleW.Service.Chaos {
         private sealed class ChaosModule : IHttpModule {
 
             /// <summary>
+            /// Logger
+            /// </summary>
+            private readonly ILogger _log = new Logger<ChaosModule>();
+
+            /// <summary>
             /// Options
             /// </summary>
             private readonly ChaosOptions _options;
@@ -218,11 +231,16 @@ namespace SimpleW.Service.Chaos {
             /// <exception cref="InvalidOperationException"></exception>
             public void Install(SimpleWServer server) {
                 if (server.IsStarted) {
-                    throw new InvalidOperationException("ChaosModule must be installed before server start.");
+                    InvalidOperationException ex = new("ChaosModule must be installed before server start.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
                 }
+                _log.Info("ChaosModule installing...");
 
                 // Middleware = before routing -> affects everything under Prefix (API)
                 server.UseMiddleware(InvokeAsync);
+
+                _log.Info("ChaosModule installed");
             }
 
             /// <summary>
