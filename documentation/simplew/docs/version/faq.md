@@ -11,11 +11,15 @@ Because I strongly believe in open source, and I use open-source software every 
 
 > How to contribute ?
 
-Github is just a mirror. Open an issue or a PR, ping me, if your code is interesting and still MIT license, I will pull from your repo.
+Github is just a mirror. Ping me, if your code is interesting and still MIT license, I will pull from your repo.
 
 > Why do you hate ASP.NET Core ?
 
 I don't hate it, but I don't like it (see the paragraph about [Why this library exists](../guide/what-is-simplew.md#why-this-library)).
+
+> Do you like Kestrel ?
+
+Kestrel is an awesome server. I just want a serious alternative to its hegemony.
 
 > What is the primary goal of SimpleW ?
 

@@ -31,7 +31,7 @@ Optional dependency if you enable GeoIP country filtering :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260221-1486
+$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260304-1501
 ```
 
 
@@ -335,20 +335,20 @@ These defaults are safe for most deployments and can be tuned if needed.
 
 ## Client IP resolution
 
-By default, the firewall uses the TCP remote endpoint :
+By default, the firewall uses :
 
 ```csharp
-session.Socket.RemoteEndPoint
+session.ClientIpAddress
 ```
 
-You can override this behavior if needed :
+You can override this behavior if needed with [`ConfigureClientIPResolver`](../reference/simplewserver.md#configureclientipresolver) :
 
 ```csharp
-options.ClientIpResolver = (HttpSession session) => {
+server.ConfigureClientIPResolver(session => {
 
     // 1. look for any X-Real-IP header (note: you should check this value come from a trust proxy)
-    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? XRealIp)) {
-        return IPEndPoint.Parse(XRealIp).Address;
+    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) && xRealIp != null) {
+        return IPAddress.Parse(xRealIp);
     }
 
     // 2. client ip (fallback)
@@ -356,7 +356,7 @@ options.ClientIpResolver = (HttpSession session) => {
         return null;
     }
     return ep.Address;
-};
+});
 ```
 
 This is useful when integrating with reverse proxies or custom transports.

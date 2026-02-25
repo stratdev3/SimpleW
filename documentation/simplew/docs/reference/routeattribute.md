@@ -32,11 +32,9 @@ namespace Sample {
 
     class Program {
         static async Task Main() {
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.MapControllers<Controller>("/api");
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
-            });
             await server.RunAsync();
         }
     }
@@ -88,11 +86,9 @@ namespace Sample {
 
     class Program {
         static async Task Main() {
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
             var server = new SimpleWServer(IPAddress.Any, 2015);
             server.MapControllers<Controller>("/api");
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
-            });
             await server.RunAsync();
         }
     }

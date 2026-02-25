@@ -32,7 +32,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260221-1486
+$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260304-1501
 ```
 
 
@@ -180,7 +180,7 @@ namespace Sample {
 
 To use a layout, set `Layout` at the top of your view (similar to ASP.NET Core):
 
-```cshtml
+```cs
 @{
     Layout = "_Layout";
     ViewBag.Title = "Home";
@@ -194,7 +194,7 @@ To use a layout, set `Layout` at the top of your view (similar to ASP.NET Core):
 
 Create the layout file in `Views/Shared/_Layout.cshtml` (default `LayoutsPath = "Shared"`):
 
-```cshtml
+```
 <!doctype html>
 <html>
 <head>
@@ -222,7 +222,7 @@ Partials follow the usual underscore convention. Create a partial such as:
 
 `Views/Partials/_Header.cshtml` (default `PartialsPath = "Partials"`)
 
-```cshtml
+```html
 <header>
     <h2>SimpleW</h2>
 </header>
@@ -230,7 +230,7 @@ Partials follow the usual underscore convention. Create a partial such as:
 
 Render it from a view or layout:
 
-```cshtml
+```csharp
 @await Html.PartialAsync("Header")
 ```
 
@@ -296,7 +296,7 @@ SimpleW injects an `Html` helper into `ViewBag` (from `RazorModule`):
 
 To be able to write **ASP.NET Core-style** calls:
 
-```cshtml
+```csharp
 @await Html.PartialAsync("Header")
 ```
 
@@ -332,7 +332,7 @@ imports.Insert(0, new TextSourceRazorProjectItem(
 
 After that, every view/layout/partial can use:
 
-```cshtml
+```csharp
 @await Html.PartialAsync("Header")
 ```
 
@@ -342,7 +342,7 @@ without repeating anything in each template.
 
 If you do not want the base-class approach, you can define `Html` at the top of each template:
 
-```cshtml
+```
 @{
     dynamic Html = ViewBag.Html;
 }
@@ -350,7 +350,7 @@ If you do not want the base-class approach, you can define `Html` at the top of 
 
 Then use:
 
-```cshtml
+```csharp
 @await Html.PartialAsync("Header")
 ```
 

@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the nuget package, always prefer the last version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-beta.20260221-1486
+$ dotnet add package SimpleW --version 26.0.0-beta.20260304-1501
 ```
 
 ::: tip NOTE
@@ -37,17 +37,15 @@ namespace Sample {
 
         static async Task Main() {
 
+            // debug log
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // minimal api
             server.MapGet("/api/test", () => {
                 return new { message = "Hello World !" };
-            });
-
-            // register callbacks
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server
@@ -64,7 +62,7 @@ namespace Sample {
 It uses the [`MapGet`](../reference/simplewserver.md#map) and [`MapPost`](../reference/simplewserver.md#map) methods, which are quite the same as asp.net core.
 
 ::: info
-See the [Templates](../addons/templates.md#simplew-minimal) addons to quicky create a minimal project.
+See the [Templates](../addons/templates.md#simplew-minimal) addons to quickly create a minimal project.
 :::
 
 
@@ -83,16 +81,14 @@ namespace Sample {
 
         static async Task Main() {
 
+            // debug
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+
             // listen to all IPs on port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
             // find all classes based on Controller class, and serve on the "/api" endpoint
             server.MapControllers<Controller>("/api");
-
-            // register callbacks
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
-            });
 
             // start a blocking background server
             await server.RunAsync();
@@ -148,6 +144,9 @@ namespace Sample {
 
         static async Task Main() {
 
+            // debug log
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
@@ -157,11 +156,6 @@ namespace Sample {
                 options.Prefix = "/";                           // to "/" endpoint
                 options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
-            });
-
-            // register callbacks
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server
@@ -206,6 +200,9 @@ namespace Sample {
 
         static async Task Main() {
 
+            // debug log
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+
             // listen to all IPs port 2015
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
@@ -218,11 +215,6 @@ namespace Sample {
                 options.Prefix = "/";                           // to "/" endpoint
                 options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
-            });
-
-            // register callbacks
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
             // start a blocking background server

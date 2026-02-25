@@ -31,7 +31,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-beta.20260221-1486
+$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-beta.20260304-1501
 ```
 
 

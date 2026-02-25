@@ -469,7 +469,6 @@ new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
 public SimpleWServer DisableHttps() {
 ```
 
-
 See an [example](../guide/ssl-certificate.md#example-for-local-test).
 
 
@@ -511,6 +510,34 @@ This property defines the User Resolver used in handler. The default user resolv
 /// <returns></returns>
 public SimpleWServer ConfigureUserResolver(WebUserResolver userResolver)
 ```
+
+
+## ConfigureClientIPResolver
+
+```csharp
+/// <summary>
+/// Client IP Resolver
+/// </summary>
+internal Func<HttpSession, IPAddress?> ClientIpResolver { get; private set; } = (session) => {
+    if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+        return null;
+    }
+    return ep.Address;
+}
+```
+
+This property defines the Client IPAddress Resolver. The default client IPAddress resolver is the current `Socket.RemoteEndPoint.Address`.
+
+```csharp
+/// <summary>
+/// Configure the ClientIPResolver
+/// </summary>
+/// <param name="clientIPResolver"></param>
+/// <returns></returns>
+public SimpleWServer ConfigureClientIPResolver(Func<HttpSession, IPAddress?> clientIPResolver)
+```
+
+See an [example](../guide/observability.md#custom-client-ip-resolution).
 
 
 ## Telemetry

@@ -103,6 +103,7 @@ export default defineConfig({
                         { text: 'Static Files', link: '/guide/staticfiles' },
                         { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                         { text: 'Observability', link: '/guide/observability' },
+                        { text: 'Logging', link: '/guide/logging' },
                     ]
                 },
             ],
@@ -177,6 +178,7 @@ export default defineConfig({
                         { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
                         { text: 'IHttpModule', link: '/reference/ihttpmodule' },
                         { text: 'IWebUser', link: '/reference/iwebuser' },
+                        { text: 'Logger', link: '/reference/logger' },
                         { text: 'TelemetryOptions', link: '/reference/telemetryoptions' },
                     ]
                 },

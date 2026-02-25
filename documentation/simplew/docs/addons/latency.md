@@ -25,7 +25,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Latency --version 26.0.0-beta.20260221-1486
+$ dotnet add package SimpleW.Service.Latency --version 26.0.0-beta.20260304-1501
 ```
 
 

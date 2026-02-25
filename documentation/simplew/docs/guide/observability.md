@@ -24,103 +24,8 @@ Telemetry is based on :
 - OpenTelemetry semantic conventions
 
 
+## Traces
 
-## Logging (Local Development)
-
-Logs are extremely useful during development to understand request flow and timings.
-
-The following example shows how to :
-- Enable SimpleW telemetry
-- Subscribe to all SimpleW OpenTelemetry events
-- Log each HTTP request to the console using a custom ActivityProcessor
-
-::: warning
- This approach is for local debugging only. Do not use it in production.
-:::
-
-```csharp:line-numbers
-using System;
-using System.Net;
-using System.Diagnostics;
-using System.Diagnostics.Metrics;
-using OpenTelemetry;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using SimpleW;
-
-namespace Sample {
-    class Program {
-
-        private static TracerProvider? _tracerProvider;
-
-        static async Task Main() {
-
-            // subscribe to all SimpleW events
-            openTelemetryObserver("SimpleW*");
-
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // enable telemetry
-            server.EnableTelemetry();
-
-            server.MapControllers<Controller>("/api");
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
-            });
-            await server.RunAsync();
-        }
-
-        static void openTelemetryObserver(string source) {
-            _tracerProvider = Sdk.CreateTracerProviderBuilder()
-                                 .AddSource(source)
-                                 .AddProcessor(new LogProcessor()) // custom log processor
-                                 .SetResourceBuilder(
-                                     ResourceBuilder
-                                         .CreateEmpty()
-                                         .AddService(serviceName: "Sample", serviceVersion: "0.1")
-                                 ).Build();
-        }
-
-        // custom log processor for opentelemetry
-        class LogProcessor : BaseProcessor<Activity> {
-            // write log to console
-            public override void OnEnd(Activity activity) {
-                // WARNING : use for local debug only not production
-                Console.WriteLine(
-                    $"{activity.GetTagItem("http.request.method")} " +
-                    $"\"{activity.GetTagItem("url.path")}\" " +
-                    $"{activity.GetTagItem("http.response.status_code")} " +
-                    $"{(int)activity.Duration.TotalMilliseconds}ms " +
-                    $"session-{activity.GetTagItem("session_id")} " +
-                    $"{activity.GetTagItem("client.address")} " +
-                    $"\"{activity.GetTagItem("user_agent.original")}\""
-                );
-            }
-        }
-
-    }
-
-    public class SomeController : Controller {
-        [Route("GET", "/test")]
-        public object SomePublicMethod() {
-            return new {
-                message = "Hello World !"
-            };
-        }
-    }
-
-}
-```
-
-The above example shows how to :
-- [`EnableTelemetry `](../reference/simplewserver#telemetry)
-- subscribe to all SimpleW `Event` with `openTelemetryObserver()`
-- log each request to console with `LogProcessor` (do not use for production).
-
-
-## Traces (Production)
-
-For production, logs alone aren't enougth - we need a full trace for every `Event`.
 The most reliable approach is to leverage battle-tested solutions for collecting and managing telemetry data.
 
 The team behind [Uptrace](https://uptrace.dev/) has built an impressive open-source, self-hosted observability platform.
@@ -163,9 +68,7 @@ namespace Sample {
             server.EnableTelemetry();
 
             server.MapControllers<Controller>("/api");
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
-            });
+
             await server.RunAsync();
         }
 
@@ -276,7 +179,6 @@ If `InstanceId` is not set, telemetry remains functional but instance-level corr
 :::
 
 
-
 ## Telemetry Customization
 
 When generating traces and metrics, SimpleW collects metadata from the request and connection.
@@ -286,15 +188,11 @@ You can do this using [`SimpleWServer.ConfigureTelemetry()`](../reference/simple
 
 ### Example : Trusting Reverse Proxy Headers
 
-```csharp:line-numbers
+```csharp
 // configure telemetry
 server.ConfigureTelemetry(options => {
     options.IncludeStackTrace = true;
     options.EnrichWithHttpSession = (activity, session) => {
-        // override client.address with the X-Real-IP header (set by a trusted reverse proxy)
-        if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) {
-            activity.SetTag("client.address", xRealIp);
-        }
         // override host with the X-Forwarded-Host header (set by a trusted reverse proxy)
         if (session.Request.Headers.TryGetValue("X-Forwarded-Host", out string? host) {
             activity.SetTag("url.host", host);
@@ -307,7 +205,33 @@ This hook runs **after** the response is generated and allows full access to :
 - The active `Activity`
 - The complete `HttpSession`
 
-
 ::: tip NOTE
 As header can be forged on client side, you should only accept X-Headers if the underlying reverse proxy is under control and configured with a proper header policy.
 :::
+
+
+## Custom Client IP Resolution
+
+By default, SimpleW determines the client IP address directly from the underlying TCP socket
+(`Socket.RemoteEndPoint`).
+
+To support these scenarios, SimpleW allows you to **fully customize how the client IP address
+is resolved** by configuring a custom `ClientIpResolver`.
+
+You can override this behavior using [`ConfigureClientIPResolver`](../reference/simplewserver.md#configureclientipresolver) :
+
+```csharp
+server.ConfigureClientIPResolver(session => {
+
+    // 1. look for any X-Real-IP header (note: you should check this value come from a trust proxy)
+    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) && xRealIp != null) {
+        return IPAddress.Parse(xRealIp);
+    }
+
+    // 2. client ip (fallback)
+    if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+        return null;
+    }
+    return ep.Address;
+});
+```

@@ -35,7 +35,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260221-1486
+$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260304-1501
 ```
 
 
@@ -123,6 +123,9 @@ Priority order
 2. `SimpleW:Url` (configuration)
 3. Default value (if provided)
 
+::: info
+Unlike kestrel, SimpleW can listen to only one port at the same time. To listen to another port, just create a new instance of SimpleW.
+:::
 
 ## Configuring the SimpleW server
 

@@ -29,43 +29,44 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 
 ### feature / comparison
 
-| Feature / Aspect                                   | SimpleW v16 (old) | SimpleW v26 (new) |
-|----------------------------------------------------|-------------------------|-----------------------------|
-| NET runtime                                 | NET8 | NET8 but should consider NET9/NET10 for better perfs and RAM usage under heady load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
-| Core architecture                                  | ⚠️ (tied to NetCoreServer) | ✅ from scratch (custom, simple, clean) |
-| Code readability                                   | ⚠️                                        | ✅                           |
-| Overall design philosophy                    | ⚠️ wrapper                           | ✅ minimal, custom, fast     |
-| Long-term maintainability                    | ⚠️ harder                               | ✅ much easier               |
-| Performance                                         | ✅ (very high)                        | ✅  (very high)  |
-| Middleware                                          | ❌                                                | ✅   |
-| Modules                                                | ❌                                              | ✅  |
-| Extensibility                                          | ⚠️ (callback, subclass)              | ✅ middleware, module, callback, subclass     |
-| Response Builder                                   | ✅(status, contentType, headers, body, cookies)                                               | ✅    (status, contentType, contentLength, headers, body, cookies, compression)                       |
-| Handler (Expression Tree)                   | ✅ sync  ❌async                        | ✅ sync ✅ async + RequestAborted   |
-| Routing                                                | ✅ (minimal, attribute, querystring, regexp, path, wildcard)               | ✅ (minimal, attribute, querystring, path, wildcard) |
-| Minimal API                                           | ✅                                      | ✅                           |
-| Controllers                                            | ✅                                     | ✅                             |
-| SSL / HTTPS                                           | ✅ (SslContext)                         | ✅  (SslContext, mutual authentication)  |
-| WebSocket                                              | ✅(full broadcast)                     | ✅ (smart broadcast using "rooms")   |
-| Server-Sent Events (SSE)                                ✅                                      | ✅ (smart broadcast using "rooms")   |
-| Basic Auth                                                 | ❌                                 | ✅                           |
-| JWT auth                                                 | ✅                                   | ✅                          |
-| Unix socket                                            | ✅                                     | ✅                          |
-| Static files                                               | ✅ (Cache, FileWatcher)            | ✅ (Cache, FileWatcher, Last-Modified, Etag) |
-| Cross-Origin Resource Sharing (CORS)  | ✅                                               | ✅                             |
-| Body parsing (JSON)                               | ✅                                             | ✅                               |
-| Body parsing (form-urlencoded)            | ✅                                                | ✅                            |
-| Body parsing (multipart/form-data)       | ✅                                                | ✅                             |
-| WebUser / Identity                                    | ✅                                              | ✅                             |
-| Custom JSON engine                                | ✅                                             | ✅                              |
-| HTTP pipelining                                       | ❌                                              | ✅                               |
-| Idle Timeout                                             | ❌                                             | ✅                               |
-| Request Protection                                   | ❌                                              | ✅(malformed)          |
-| Observability                                             | ✅ (traces) & global to all processes       | ✅  (traces, metrics, enrich)  per SimpleWServer instance           |
-| Documentation                                         | ✅                                              | ✅ [simplew.net](https://simplew.net/v26/)                  |
-| Tests                                                          | ✅                                             | ✅ (more tests)  |
-| Support                                                     | ❌                                              | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                  |
-| Addons                                                    | ❌                                              | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger, LetsEncrypt       |
+| Feature / Aspect                     | SimpleW v16 (old) | SimpleW v26 (new) |
+|--------------------------------------|-------------------------|-----------------------------|
+| NET runtime                          | NET8                       | NET8 but should consider NET9/NET10 for better perfs and RAM usage under heady load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
+| Core architecture                    | ⚠️ (tied to NetCoreServer)| ✅ from scratch (custom, simple, clean) |
+| Code readability                     | ⚠️                        | ✅                           |
+| Overall design philosophy            | ⚠️ wrapper                | ✅ minimal, custom, fast     |
+| Long-term maintainability            | ⚠️ harder                 | ✅ much easier               |
+| Performance                          | ✅ (very high)            | ✅  (very high)              |
+| Middleware                           | ❌                        | ✅                           |
+| Modules                              | ❌                        | ✅                           |
+| Extensibility                        | ⚠️ (callback, subclass)   | ✅ middleware, module, callback, subclass     |
+| Response Builder                     | ✅(status, contentType, headers, body, cookies)   | ✅    (status, contentType, contentLength, headers, body, cookies, compression)  |
+| Handler (Expression Tree)            | ✅ sync  ❌async         | ✅ sync ✅ async + RequestAborted   |
+| Routing                              | ✅ (minimal, attribute, querystring, regexp, path, wildcard) | ✅ (minimal, attribute, querystring, path, wildcard) |
+| Minimal API                          | ✅                       | ✅                             |
+| Controllers                          | ✅                       | ✅                             |
+| SSL / HTTPS                          | ✅ (SslContext)          | ✅  (SslContext, mutual authentication)  |
+| WebSocket                            | ✅ (full broadcast)      | ✅ (smart broadcast using "rooms")   |
+| Server-Sent Events (SSE)             | ✅                       | ✅ (smart broadcast using "rooms")   |
+| Basic Auth                           | ❌                       | ✅                                   |
+| JWT auth                             | ✅                       | ✅                                   |
+| Unix socket                          | ✅                       | ✅                                   |
+| Static files                         | ✅ (Cache, FileWatcher)  | ✅ (Cache, FileWatcher, Last-Modified, Etag) |
+| Cross-Origin Resource Sharing (CORS) | ✅                       | ✅                                   |
+| Body parsing (JSON)                  | ✅                       | ✅                                   |
+| Body parsing (form-urlencoded)       | ✅                       | ✅                                   |
+| Body parsing (multipart/form-data)   | ✅                       | ✅                                   |
+| WebUser / Identity                   | ✅                       | ✅                                   |
+| Custom JSON engine                   | ✅                       | ✅                                   |
+| HTTP pipelining                      | ❌                       | ✅                                   |
+| Idle Timeout                         | ❌                       | ✅                                   |
+| Request Protection                   | ❌                       | ✅(malformed)                        |
+| Observability                        | ✅ (traces) & global to all processes  | ✅  (traces, metrics, enrich)  per SimpleWServer instance   |
+| Logging                              | ❌                                     | ✅                                                          |
+| Documentation                        | ✅                                     | ✅ [simplew.net](https://simplew.net/v26/)                  |
+| Tests                                | ✅                                     | ✅ (more tests)                                             |
+| Support                              | ❌                                     | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                 |
+| Addons                               | ❌                                     | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger, LetsEncrypt  |
 
 
 
