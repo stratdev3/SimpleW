@@ -1151,6 +1151,30 @@ namespace SimpleW {
 
         #endregion jwt
 
+        #region client ip resolver
+
+        /// <summary>
+        /// Client IP Resolver
+        /// </summary>
+        internal Func<HttpSession, IPAddress?> ClientIpResolver { get; private set; } = (session) => {
+            if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+                return null;
+            }
+            return ep.Address;
+        };
+
+        /// <summary>
+        /// Configure the ClientIPResolver
+        /// </summary>
+        /// <param name="clientIPResolver"></param>
+        /// <returns></returns>
+        public SimpleWServer ConfigureClientIPResolver(Func<HttpSession, IPAddress?> clientIPResolver) {
+            ClientIpResolver = clientIPResolver;
+            return this;
+        }
+
+        #endregion client ip resolver
+
         #region user
 
         /// <summary>

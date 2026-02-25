@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -889,6 +890,16 @@ namespace SimpleW {
         }
 
         #endregion helper
+
+        #region ip
+
+        /// <summary>
+        /// Client IPAddress
+        /// </summary>
+        /// <returns></returns>
+        public IPAddress? ClientIpAddress => Server.ClientIpResolver.Invoke(this);
+
+        #endregion ip
 
         #region telemetry
 

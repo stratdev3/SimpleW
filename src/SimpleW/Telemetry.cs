@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using System.Net;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -98,7 +97,7 @@ namespace SimpleW.Observability {
                     //activity.SetTag("http.request.route", request.Uri.AbsolutePath);
                     activity.SetTag("http.request.body.size", session.Request.Headers.ContentLengthRaw);
 
-                    activity.SetTag("client.address", (session.Socket?.RemoteEndPoint as IPEndPoint)?.Address.ToString());
+                    activity.SetTag("client.address", session.ClientIpAddress?.ToString());
                     activity.SetTag("user_agent.original", session.Request.Headers.UserAgent);
 
                     string? login = session.Request?.User?.Login;
