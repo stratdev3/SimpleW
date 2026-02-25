@@ -43,16 +43,6 @@ namespace SimpleW.Service.Firewall {
             private readonly ILogger _log = new Logger<FirewallOptions>();
 
             /// <summary>
-            /// Client IP Resolver
-            /// </summary>
-            public Func<HttpSession, IPAddress?> ClientIpResolver { get; set; } = (HttpSession session) => {
-                if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
-                    return null;
-                }
-                return ep.Address;
-            };
-
-            /// <summary>
             /// Path-based overrides (first match wins)
             /// </summary>
             public List<PathRule> PathRules { get; } = new();
@@ -254,7 +244,7 @@ namespace SimpleW.Service.Firewall {
                     long _ts0 = Stopwatch.GetTimestamp();
                     FirewallTelemetry? _mt = EnsureTelemetry(_options.EnableTelemetry, session.Server);
 
-                    IPAddress? ip = _options.ClientIpResolver(session);
+                    IPAddress? ip = session.ClientIpAddress;
                     if (ip == null) {
                         if (_mt != null) {
                             TagList tags = default;
