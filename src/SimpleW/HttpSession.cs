@@ -46,6 +46,11 @@ namespace SimpleW {
         private readonly Router _router;
 
         /// <summary>
+        /// IsObservability
+        /// </summary>
+        private bool IsObservability => Server.IsTelemetryEnabled || Log.IsEnabledFor(LogLevel.Error);
+
+        /// <summary>
         /// Flag to avoid multiple Connect() call
         /// </summary>
         private bool _receiving;
@@ -442,7 +447,7 @@ namespace SimpleW {
                 Server.MarkSession(this);
 
                 // first byte timing: start request watch when we receive data for a new request
-                if (Server.IsTelemetryEnabled && !_requestTimingStarted) {
+                if (IsObservability && !_requestTimingStarted) {
                     _requestStartWatch = Telemetry.GetWatch();
                     _requestTimingStarted = true;
                 }
@@ -479,7 +484,7 @@ namespace SimpleW {
                             // reset response
                             _response.Reset();
 
-                            if (Server.IsTelemetryEnabled && !_requestTimingStarted) {
+                            if (IsObservability && !_requestTimingStarted) {
                                 _requestStartWatch = Telemetry.GetWatch();
                                 _requestTimingStarted = true;
                             }
@@ -491,8 +496,10 @@ namespace SimpleW {
                                 return;
                             }
 
-                            if (Server.IsTelemetryEnabled) {
+                            if (IsObservability) {
                                 _responseStartWatch = Telemetry.GetWatch();
+                            }
+                            if (Server.IsTelemetryEnabled) {
                                 _currentActivity = Server.Telemetry?.StartActivity(this);
                             }
 
@@ -553,6 +560,16 @@ namespace SimpleW {
                                     // if no response was sent, it's can be an issue
                                     if (!_response.Sent) {
                                         Server.Telemetry?.UpdateActivityAddNoResponse(_currentActivity, this);
+                                        if (Log.IsEnabledFor(LogLevel.Warning)) {
+                                            _log.Warn(
+                                                $"{Request.Method} " +
+                                                $"\"{Request.Path}\" " +
+                                                $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
+                                                $"session-{Id} " +
+                                                $"{ClientIpAddress} " +
+                                                $"\"{Request.Headers.UserAgent}\""
+                                            );
+                                        }
                                     }
                                     // we must close telemetry here in this flow !! closing into NotifyResponseSent() will leak memory !!
                                     CloseAndResetTelemetryWatches();
@@ -961,12 +978,34 @@ namespace SimpleW {
             else {
                 await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
             }
+            if (Log.IsEnabledFor(LogLevel.Error)) {
+                _log.Error(
+                    $"{Request.Method} " +
+                    $"\"{Request.Path}\" " +
+                    $"{statusCode} " +
+                    $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
+                    $"session-{Id} " +
+                    $"{ClientIpAddress} " +
+                    $"\"{Request.Headers.UserAgent}\""
+                );
+            }
         }
 
         /// <summary>
         /// Notify Response Sent
         /// </summary>
         public void NotifyResponseSent() {
+            if (Log.IsEnabledFor(LogLevel.Information)) {
+                _log.Info(
+                    $"{Request.Method} " +
+                    $"\"{Request.Path}\" " +
+                    $"{Response.StatusCode} " +
+                    $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
+                    $"session-{Id} " +
+                    $"{ClientIpAddress} " +
+                    $"\"{Request.Headers.UserAgent}\""
+                );
+            }
             if (!Server.IsTelemetryEnabled) {
                 return;
             }
@@ -981,6 +1020,15 @@ namespace SimpleW {
         }
 
         #endregion telemetry
+
+        #region logging
+
+        /// <summary>
+        /// Logger
+        /// </summary>
+        private static readonly ILogger _log = new Logger<HttpSession>();
+
+        #endregion logging
 
     }
 
