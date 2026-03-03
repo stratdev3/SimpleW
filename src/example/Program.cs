@@ -49,10 +49,9 @@ namespace example.rewrite {
 
         static async Task Rewrite() {
 
-            Log.SetSink(Log.ConsoleWriteLine);
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Trace);
 
             SimpleWServer server = new(IPAddress.Any, 8080);
-            Log.MinimumLevel = LogLevel.Trace;
 
             #region https
 
@@ -81,6 +80,21 @@ namespace example.rewrite {
 #pragma warning restore CS0162 // Code inaccessible détecté
 
             #endregion https
+
+            //server.ConfigureClientIPResolver(session => IPAddress.Parse("4.3.2.1"));
+
+            server.ConfigureClientIPResolver(session => {
+                // override client.address with the X-Real-IP header (set by a trusted reverse proxy)
+                if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) && xRealIp != null) {
+                    return IPAddress.Parse(xRealIp);
+                }
+                // fallback default socket remote endpoint
+                if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+                    return null;
+                }
+                return ep.Address;
+            });
+
 
             server.MapGet("/", (HttpSession session) => {
                 return "Hello World !";
