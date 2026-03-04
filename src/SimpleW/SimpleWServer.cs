@@ -918,6 +918,7 @@ namespace SimpleW {
         internal void RegisterSession(HttpSession session) {
             if (Sessions.TryAdd(session.Id, session)) {
                 Telemetry?.ActiveSessionIncrement();
+                _log.Debug(() => $"create session {session.Id}");
             }
         }
 
@@ -932,6 +933,7 @@ namespace SimpleW {
                 }
                 catch { }
                 finally {
+                    _log.Debug(() => $"close session {session.Id}");
                     Telemetry?.ActiveSessionDecrement();
                 }
             }
@@ -1015,6 +1017,7 @@ namespace SimpleW {
             foreach (KeyValuePair<Guid, HttpSession> kvp in Sessions) {
                 HttpSession session = kvp.Value;
                 if (now - session.LastActivityTick > timeoutMs) {
+                    _log.Debug(() => $"timeout session {session.Id}");
                     CloseSession(session);
                 }
             }
