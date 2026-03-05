@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Threading.Tasks;
 using SimpleW;
+using SimpleW.Observability;
 
 
 namespace ModuleName {
@@ -14,6 +15,11 @@ namespace ModuleName {
         /// </summary>
         /// <param name="args"></param>
         static async Task Main(string[] args) {
+
+#if DEBUG
+            // log for debug
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Trace);
+#endif
 
             // server
             SimpleWServer server = new(IPAddress.Any, 2015);
@@ -33,15 +39,10 @@ namespace ModuleName {
 
             // subscribe to events
             server.OnStarted += (object? sender, EventArgs e) => {
-                string url = $"http://localhost:{server.Port}";
-                Console.WriteLine($"server started at {url}");
                 Process.Start(new ProcessStartInfo {
-                    FileName = url,
+                    FileName = $"http://localhost:{server.Port}",
                     UseShellExecute = true
                 });
-            };
-            server.OnStopped += (object? sender, EventArgs e) => {
-                Console.WriteLine("server stopped");
             };
 
             // run and block
