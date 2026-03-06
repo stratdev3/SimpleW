@@ -86,7 +86,7 @@ public int? MaxAgeSeconds { get; set; }
 
 ## Example
 
-```csharp:line-numbers
+```csharp
 server.UseCorsModule(options => {
     o.Prefix = "/api";
     o.AllowedOrigins = new[] { "http://localhost:2015" };

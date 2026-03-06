@@ -63,7 +63,7 @@ public string DefaultDocument { get; set; } = "index.html";
 
 ## Example
 
-```csharp:line-numbers
+```csharp
 // serve statics files
 server.UseStaticFilesModule(options => {
     options.Path = @"C:\www\";                      // serve your files located here

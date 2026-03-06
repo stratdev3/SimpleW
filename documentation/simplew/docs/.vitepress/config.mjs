@@ -123,7 +123,9 @@ export default defineConfig({
                     text: 'Helpers',
                     items: [
                         { text: 'Hosting', link: '/addons/hosting' },
+                        { text: 'Log4net', link: '/addons/log4net' },
                         { text: 'Razor', link: '/addons/razor' },
+                        { text: 'Serilog', link: '/addons/serilog' },
                         { text: 'Swagger', link: '/addons/swagger' },
                     ]
                 },
@@ -151,6 +153,7 @@ export default defineConfig({
                         { text: 'HttpRequest', link: '/reference/httprequest' },
                         { text: 'HttpResponse', link: '/reference/httpresponse' },
                         { text: 'HttpHeaders', link: '/reference/httpheaders' },
+                        { text: 'HttpBag', link: '/reference/httpbag' },
                     ]
                 },
                 {

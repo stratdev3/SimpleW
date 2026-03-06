@@ -15,7 +15,7 @@ If your app is built around SimpleW’s request pipeline and authentication conv
 
 ### Example
 
-```csharp:line-numbers
+```csharp
 class Program {
     static async Task Main() {
 
@@ -71,7 +71,7 @@ This is exactly the purpore of `Request.JwtToken` and `Request.JwtError`.
 
 ### Example
 
-```csharp:line-numbers
+```csharp
 class Program {
 
     static async Task Main() {

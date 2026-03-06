@@ -55,7 +55,7 @@ public Func<string, string, bool>? CredentialValidator { get; set; }
 
 ## Example
 
-```csharp:line-numbers
+```csharp
 server.UseBasicAuthModule(options => {
     o.Prefix = "/api/admin";
     o.Realm = "Admin";

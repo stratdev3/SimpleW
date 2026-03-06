@@ -1,7 +1,6 @@
 # Firewall
 
-[`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.Firewall) is an optional **application-level firewall module** for the SimpleW web server.
-It provides **fast IP filtering and rate limiting**, implemented as a SimpleW middleware.
+The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.Firewall) package provides an **application-level firewall module** for the SimpleW web server. It is implemented as a SimpleW middleware.
 
 
 ## Features
@@ -31,7 +30,7 @@ Optional dependency if you enable GeoIP country filtering :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW.Service.Firewall --version 26.0.0-beta.20260307-1526
 ```
 
 

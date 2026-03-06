@@ -1,6 +1,6 @@
 # LetsEncrypt
 
-[`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**.
+The [`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) package provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**. It is implemented as a SimpleW middleware.
 
 Its goal is simple: enable HTTPS with real certificates, keep them renewed automatically, and stay minimal and predictable — fully aligned with SimpleW's philosophy.
 
@@ -29,7 +29,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Letsencrypt --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW.Service.Letsencrypt --version 26.0.0-beta.20260307-1526
 ```
 
 

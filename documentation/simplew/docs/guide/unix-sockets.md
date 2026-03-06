@@ -6,7 +6,7 @@ They are supported on : **Linux**, **MacOS**, **Android**... and even **Windows*
 With just a small change, the [basic api example](./getting-started.md#minimal-example) can also be served over a Unix socket.
 
 
-```csharp:line-numbers{13}
+```csharp{13}
 using System;
 using System.Net;
 using System.Net.Sockets;

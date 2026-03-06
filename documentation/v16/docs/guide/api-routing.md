@@ -11,7 +11,7 @@ Each URL is a concatenation of :
 
 `Route` attribute must be set to target the methods which will be called depending on url.
 
-```csharp:line-numbers{20,26}
+```csharp{20,26}
 using System;
 using System.Net;
 using SimpleW;
@@ -50,7 +50,7 @@ namespace Sample {
 When all your methods share the same prefix, you can defined a `Route` attribute on controller class.
 Thus, we can rewrite the previous example :
 
-```csharp:line-numbers{17,21,27}
+```csharp{17,21,27}
 using System;
 using System.Net;
 using SimpleW;
@@ -91,7 +91,7 @@ When a controller defines a route prefix, every method in that controller automa
 However, by setting `isAbsolutePath: true` on a `Route` method, you can override this behavior and 
 treat the specified URL as an absolute path.
 
-```csharp:line-numbers{27}
+```csharp{27}
 using System;
 using System.Net;
 using SimpleW;
@@ -137,7 +137,7 @@ namespace Sample {
 Methods can also have multiple `Route` attributes like in the following with the `Delete()` method
 and its 2 differents routes.
 
-```csharp:line-numbers{35,36}
+```csharp{35,36}
 using System;
 using System.Net;
 using SimpleW;
@@ -189,7 +189,7 @@ namespace Sample {
 
 `Route` can support regular expressions when the server property `Router.RegExpEnabled` is true.
 
-```csharp:line-numbers{12,27}
+```csharp{12,27}
 using System;
 using System.Net;
 using SimpleW;
@@ -235,7 +235,7 @@ The property `RegExpEnabled` is global to all controllers and must be set before
 Query String parameters are also supported in a similar way.
 The library will map query string parameter to the method parameter.
 
-```csharp:line-numbers{25,36,45}
+```csharp{25,36,45}
 using System;
 using System.Net;
 using SimpleW;
@@ -320,7 +320,7 @@ Notes :
 When a `{parameter}` is declared in the path, it's possible to set parameters in `Route` path and retrieve their value in the method.<br />
 The library will map them according to their names.
 
-```csharp:line-numbers{25,35}
+```csharp{25,35}
 using System;
 using System.Net;
 using SimpleW;
@@ -377,7 +377,7 @@ Note :
 
 You can setup a maintenance page to catch all api call by using the wildcard in a `Route` attribute.
 
-```csharp:line-numbers{32}
+```csharp{32}
 using System;
 using System.Net;
 using SimpleW;
@@ -427,7 +427,7 @@ level or deprecating period.
 
 The **first public release of an API must be versionned**. For example :
 
-```csharp:line-numbers{12}
+```csharp{12}
 using System;
 using System.Net;
 using SimpleW;
@@ -468,7 +468,7 @@ namespace Sample {
 I’m planning to add new features to `TestController` that may introduce breaking changes, 
 but i need to keep the previous version intact so existing clients can continue using it.
 
-```csharp:line-numbers{12}
+```csharp{12}
 using System;
 using System.Net;
 using SimpleW;

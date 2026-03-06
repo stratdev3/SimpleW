@@ -1,6 +1,6 @@
 # Hosting
 
-[`SimpleW.Helper.Hosting`](https://www.nuget.org/packages/SimpleW.Helper.Hosting) is an optional integration package that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
+The [`SimpleW.Helper.Hosting`](https://www.nuget.org/packages/SimpleW.Helper.Hosting) package provides an helper that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
 
 It is designed for developers who are used to the .NET *Generic Host* model and want :
 - standard application lifecycle management
@@ -35,7 +35,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260307-1526
 ```
 
 

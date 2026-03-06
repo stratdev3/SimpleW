@@ -47,7 +47,7 @@ public void UseModule(IHttpModule module) {
 
 ## Example: Simple Module
 
-```csharp:line-numbers
+```csharp
 public class TestModule : IHttpModule {
     public void Install(SimpleWServer server) {
         server.MapGet("/api/test/hello", () => {
@@ -67,7 +67,7 @@ server.UseModule(new TestModule());
 
 For a more fluent and expressive API, it is recommended to expose modules via extension methods :
 
-```csharp:line-numbers
+```csharp
 public static class TestModuleExtensions {
     public static SimpleWServer UseTestModule(this SimpleWServer server) {
         server.UseModule(new TestModule());

@@ -40,7 +40,7 @@ $ dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
 
 And see the following example, especially the `openTelemetryObserver()`
 
-```csharp:line-numbers
+```csharp
 using System;
 using System.Net;
 using System.Diagnostics;

@@ -1,6 +1,7 @@
 # OpenID
 
-[`SimpleW.Service.OpenID`](https://www.nuget.org/packages/SimpleW.Service.OpenID) is an OpenID Connect (OIDC) authentication module for the SimpleW web server.
+The [`SimpleW.Service.OpenID`](https://www.nuget.org/packages/SimpleW.Service.OpenID) package provides an OpenID Connect (OIDC) authentication for the SimpleW web server.
+It is implemented as a SimpleW middleware.
 
 It allows SimpleW applications to authenticate users using external identity providers such as **Google, Apple, Azure AD**, or **Keycloak**, using the standard **Authorization Code flow**.
 
@@ -31,7 +32,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-beta.20260307-1526
 ```
 
 

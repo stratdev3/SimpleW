@@ -1,6 +1,7 @@
 # Latency
 
 The [`SimpleW.Service.Latency`](https://www.nuget.org/packages/SimpleW.Service.Latency) package provides a **latency injection module** for the SimpleW web server.
+ It is implemented as a SimpleW middleware.
 
 
 ## Features
@@ -25,7 +26,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Latency --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW.Service.Latency --version 26.0.0-beta.20260307-1526
 ```
 
 

@@ -23,7 +23,7 @@ RouteAttribute(string method, string path, bool queryStringMappingEnabled = true
 
 Example, i want the `Home()` method of the `TestController` class be called when client send a request to http://localhost:2015/api/test/index.
 
-```csharp:line-numbers{19}
+```csharp{19}
 using System;
 using System.Net;
 using SimpleW;
@@ -77,7 +77,7 @@ RouteAttribute(string path)
 Example, i want all callable method of my `TestController` have the same prefix like /test.
 
 
-```csharp:line-numbers{17}
+```csharp{17}
 using System;
 using System.Net;
 using SimpleW;

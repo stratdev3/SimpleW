@@ -116,4 +116,4 @@ SimpleW logging can easily be connected to **external logging frameworks or moni
 
 This is done by registering a **sink** that forwards `LogEntry` objects to another system, see example above.
 
-See [Addons](../addons/addons.md) to find all the available logging helper to integrate famous solution like Serilog or Log4net.
+See Addons to find all the available logging helper to integrate famous solution like [Serilog](../addons/serilog.md) or [Log4net](../addons/log4net.md).

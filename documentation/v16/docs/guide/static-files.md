@@ -36,13 +36,13 @@ SimpleW can handle multiple directories as soon as they are declared under diffe
 You can change some settings before server start.
 
 To change the default document `index.html` by your own page
-```csharp:line-numbers
+```csharp
 server.DefaultDocument = "maintenance.html";
 ```
 
 To add custom mime types
 
-```csharp:line-numbers
+```csharp
 server.AddMimeTypes(".vue", "text/html");
 ```
 
@@ -54,7 +54,7 @@ To enable cache, set the `timeout` property to anything but null.<br />
 
 The following example enable cache for 1 day :
 
-```csharp:line-numbers
+```csharp
 // serve statics files
 server.AddStaticContent(
     @"C:\www\",             // under C:\www or its subdirectories

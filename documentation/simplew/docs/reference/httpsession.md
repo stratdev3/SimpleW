@@ -53,6 +53,15 @@ Before `HttpSession` call the Dispatcher to execute the underlying handler of th
 You should always used the `Response` to send data to a client.
 :::
 
+## Bag
+
+```csharp
+/// <summary>
+/// Per-request transient storage shared across middlewares/handlers.
+/// </summary>
+public HttpBag Bag;
+```
+
 ## SendAsync
 
 ::: warning

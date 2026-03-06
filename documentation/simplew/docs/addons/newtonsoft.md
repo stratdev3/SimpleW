@@ -1,6 +1,6 @@
 # Newtonsoft
 
-[`SimpleW.JsonEngine.Newtonsoft`](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) is an optional integration package that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
+The [`SimpleW.JsonEngine.Newtonsoft`](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) is an optional integration package that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
 
 
 ## Using Newtonsoft.Json
@@ -9,10 +9,18 @@ Some projects require features or behaviors that are specific to [Newtonsoft.Jso
 
 For this reason, SimpleW provides an official alternative engine via the `SimpleW.JsonEngine.Newtonsoft` package.
 
+
+## Requirements
+
+- .NET 8.0
+- SimpleW (core server)
+- Newtonsoft.Json package (automatically included)
+
+
 #### Installation
 
 ```sh
-$ dotnet add package SimpleW.JsonEngine.Newtonsoft --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW.JsonEngine.Newtonsoft --version 26.0.0-beta.20260307-1526
 ```
 
 

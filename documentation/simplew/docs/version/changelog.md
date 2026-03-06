@@ -56,6 +56,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 | Body parsing (JSON)                  | ✅                       | ✅                                   |
 | Body parsing (form-urlencoded)       | ✅                       | ✅                                   |
 | Body parsing (multipart/form-data)   | ✅                       | ✅                                   |
+| Bag                                  | ❌                       | ✅ (share data between middleware)   |
 | WebUser / Identity                   | ✅                       | ✅                                   |
 | Custom JSON engine                   | ✅                       | ✅                                   |
 | HTTP pipelining                      | ❌                       | ✅                                   |

@@ -26,13 +26,11 @@ It allows you to :
 - SimpleW (core server)
 - RazorLight package (automatically included)
 
-No external dependencies.
-
 
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260307-1526
 ```
 
 

@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the nuget package, always prefer the last version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-beta.20260304-1501
+$ dotnet add package SimpleW --version 26.0.0-beta.20260307-1526
 ```
 
 ::: tip NOTE
@@ -27,7 +27,7 @@ The following minimal example can be used for rapid prototyping :
 
 ::: code-group
 
-```csharp:line-numbers [Program.cs]
+```csharp [Program.cs]
 using System;
 using System.Net;
 using SimpleW;
@@ -72,7 +72,7 @@ The following example build a REST API with a clear routing and controller/metho
 
 ::: code-group
 
-```csharp:line-numbers [Program.cs]
+```csharp [Program.cs]
 using System.Net;
 using SimpleW;
 
@@ -98,7 +98,7 @@ namespace Sample {
 }
 ```
 
-```csharp:line-numbers [TestController.cs]
+```csharp [TestController.cs]
 using System.Net;
 using SimpleW;
 
@@ -133,7 +133,7 @@ The following example serve statics files in your `c:\www` directory.
 
 ::: code-group
 
-```csharp:line-numbers [Program.cs]
+```csharp [Program.cs]
 using System;
 using System.Net;
 using SimpleW;
@@ -189,7 +189,7 @@ The following example will serve both static files in your `c:\www` directory an
 
 ::: code-group
 
-```csharp:line-numbers [Program.cs]
+```csharp [Program.cs]
 using System;
 using System.Net;
 using SimpleW;
@@ -225,7 +225,7 @@ namespace Sample {
 }
 ```
 
-```csharp:line-numbers [TestController.cs]
+```csharp [TestController.cs]
 using System;
 using System.Net;
 using SimpleW;

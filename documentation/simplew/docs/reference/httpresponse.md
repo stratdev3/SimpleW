@@ -7,7 +7,7 @@ and it will be sent async to the client.
 
 This class exposes a **fluent API**, which means you can chain all its methods :
 
-```csharp:line-numbers
+```csharp
 Response.Status(200)
         .AddHeader("key", "value")
         .Text("Hello World");

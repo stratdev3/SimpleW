@@ -53,7 +53,7 @@ The bombardier command is run three times, and the best result is kept.
 
 To get the best performance, enable the following options :
 
-```csharp:line-numbers
+```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
 server.Configure(options => {
     // Always beneficial socket options

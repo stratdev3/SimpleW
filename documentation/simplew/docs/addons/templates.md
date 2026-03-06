@@ -1,7 +1,7 @@
 # Templates
 
 
-The [`SimpleW.Templates`](https://www.nuget.org/packages/SimpleW.Templates) provides a simple and efficient way to scaffold new
+The [`SimpleW.Templates`](https://www.nuget.org/packages/SimpleW.Templates) package provides a simple and efficient way to scaffold new
 SimpleW modules, services, or projects using `dotnet new` templates.
 
 It is designed to :
