@@ -48,6 +48,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.Serilog
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Serilog/
+        dotnet build -c @param:build_configuration@ SimpleW.Helper.Serilog.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Helper.Swagger
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -260,6 +272,20 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.Serilog
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Serilog
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj
+        dotnet pack -c Release SimpleW.Helper.Serilog.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.JsonEngine.Newtonsoft
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -376,6 +402,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Serilog
+    sourcePath: src/SimpleW.Helper.Serilog/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Swagger
     sourcePath: src/SimpleW.Helper.Swagger/bin/Release/
     artifacts: '*.*nupkg'
@@ -455,6 +487,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Razor/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.Serilog to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Serilog/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
