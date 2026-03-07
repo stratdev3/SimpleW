@@ -96,6 +96,20 @@ namespace SimpleW {
         private readonly HttpResponse _response;
 
         /// <summary>
+        /// Per-request transient storage shared across middlewares/handlers.
+        /// Lazy allocated to keep fast path clean when unused.
+        /// </summary>
+        private HttpBag? _bag;
+
+        /// <summary>
+        /// Per-request transient storage shared across middlewares/handlers.
+        /// </summary>
+        public HttpBag Bag {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _bag ??= new HttpBag();
+        }
+
+        /// <summary>
         /// Expose the underlying Socket
         /// </summary>
         public Socket Socket => _socket;
@@ -483,6 +497,8 @@ namespace SimpleW {
                         try {
                             // reset response
                             _response.Reset();
+                            // reset bag
+                            _bag?.Clear();
 
                             if (IsObservability && !_requestTimingStarted) {
                                 _requestStartWatch = Telemetry.GetWatch();
