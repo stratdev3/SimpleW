@@ -36,6 +36,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.Log4net
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Log4net/
+        dotnet build -c @param:build_configuration@ SimpleW.Helper.Log4net.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Helper.Razor
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -244,6 +256,20 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.Log4net
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Log4net
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj
+        dotnet pack -c Release SimpleW.Helper.Log4net.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Helper.Swagger
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -396,6 +422,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Log4net
+    sourcePath: src/SimpleW.Helper.Log4net/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Razor
     sourcePath: src/SimpleW.Helper.Razor/bin/Release/
     artifacts: '*.*nupkg'
@@ -475,6 +507,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Hosting/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.Log4net to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.Log4net/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
