@@ -43,8 +43,7 @@ dotnet new list simplew
 ### simplew-minimal
 
 The `simplew-minimal` template generates a **minimal SimpleW application** with the smallest possible setup.
-It's based on the [getting started](../guide/getting-started.md#minimal-example) example.
-
+It's based on the [getting started](../guide/getting-started.md#minimal-example) minimum example.
 
 **Create a project**
 
@@ -54,5 +53,38 @@ dotnet new simplew-minimal -n MySimpleWApp
 cd MySimpleWApp
 
 # run it
-dotnet run
+dotnet run MySimpleWApp.csproj --framework net10.0
+```
+
+
+### simplew-controller
+
+The `simplew-controller` template generates a **SimpleW application with controllers**.
+It's based on the [getting started](../guide/getting-started.md#controller-example) controller example.
+
+**Create a project**
+
+```bash
+# creates a new folder "MySimpleWAppController" with the controller template
+dotnet new simplew-controller -n MySimpleWAppController
+cd MySimpleWAppController
+
+# run it
+dotnet run MySimpleWAppController.csproj --framework net10.0
+```
+
+
+### simplew-aspnetcore
+
+The `simplew-aspnetcore` template generates a **SimpleW application similar to AspNet Core**.
+
+**Create a project**
+
+```bash
+# creates a new folder "MySimpleWAppNetCore" with the aspnetcore template
+dotnet new simplew-aspnetcore -n MySimpleWAppNetCore
+cd MySimpleWAppNetCore
+
+# run it
+dotnet run MySimpleWAppNetCore.csproj --framework net10.0
 ```

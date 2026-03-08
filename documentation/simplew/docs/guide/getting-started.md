@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the nuget package, always prefer the last version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-beta.20260307-1526
+$ dotnet add package SimpleW --version 26.0.0-rc.20260309-1542
 ```
 
 ::: tip NOTE
@@ -66,7 +66,7 @@ See the [Templates](../addons/templates.md#simplew-minimal) addons to quickly cr
 :::
 
 
-## Rest API Example
+## Controller Example
 
 The following example build a REST API with a clear routing and controller/method structured class.
 

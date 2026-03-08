@@ -15,7 +15,7 @@ Notes :
 - HTTP/3 quic
 
 
-## v26.0.0-beta - _(2026-??-??)_
+## v26.0.0-rc - _(2026-03-??)_
 
 This version is a major release :
 - a **complete rewrite** of the project (start from scratch no more netcoreserver override)
@@ -67,7 +67,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 | Documentation                        | ✅                                     | ✅ [simplew.net](https://simplew.net/v26/)                  |
 | Tests                                | ✅                                     | ✅ (more tests)                                             |
 | Support                              | ❌                                     | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                 |
-| Addons                               | ❌                                     | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger, LetsEncrypt  |
+| Addons                               | ❌                                     | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger, LetsEncrypt, Templates, Serilog, Log4net |
 
 
 

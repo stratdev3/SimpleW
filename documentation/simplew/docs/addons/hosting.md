@@ -35,7 +35,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-beta.20260307-1526
+$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-rc.20260309-1542
 ```
 
 
@@ -163,6 +163,49 @@ Host.CreateApplicationBuilder(args)
 ```
 
 No changes are required in SimpleW itself.
+
+
+## Bridging SimpleW logging with Microsoft.Extensions.Logging
+
+When using `SimpleW.Helper.Hosting`, you can forward the [**SimpleW internal logger**](../guide/logging.md) to the **Microsoft.Extensions.Logging** pipeline.
+
+This allows SimpleW logs to be handled by the same logging providers used by the Generic Host (console, Serilog, OpenTelemetry, etc.).
+
+To enable it, call the extension method `UseMicrosoftLogging()` on the `SimpleWHostApplicationBuilder`.
+
+```csharp
+using Microsoft.Extensions.Hosting;
+using SimpleW;
+using SimpleW.Helper.Hosting;
+
+var builder = SimpleWHost.CreateApplicationBuilder(args)
+                         .UseMicrosoftLogging();
+
+builder.ConfigureSimpleW(server => {
+    server.MapGet("/", () => {
+        return new { message = "Hello world" };
+    });
+});
+
+var host = builder.Build();
+await host.RunAsync();
+```
+
+### What this does
+
+The bridge forwards every log produced by the SimpleW logging system to the `Microsoft.Extensions.Logging infrastructure`.
+
+This means :
+- SimpleW logs appear in the **same output** as your application logs
+- All configured logging providers are used automatically
+- The **minimum log level configured in Microsoft logging is respected**
+
+For example, with the default host configuration, logs will appear in the console :
+
+```
+info: SimpleW.Server[0]
+      Listening on http://0.0.0.0:8080
+```
 
 
 

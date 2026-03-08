@@ -30,7 +30,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-beta.20260307-1526
+$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-rc.20260309-1542
 ```
 
 
@@ -120,7 +120,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 8080);
 
             server.UseRazorModule(options => {
-                options.Views = "Views" // path of your views folder
+                options.ViewsPath = "Views"; // path of your views folder
             });
             server.MapControllers<RazorController>("/api");
 
