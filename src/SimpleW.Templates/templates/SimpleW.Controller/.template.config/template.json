@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "SimpleW",
+  "classifications": [ "SimpleW", "Web", "Server" ],
+  "name": "SimpleW Controller",
+  "identity": "SimpleW.Templates.Controller",
+  "shortName": "simplew-controller",
+  "sourceName": "ModuleName",
+  "description": "A project template to host a controller REST API using the SimpleW webserver",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}

@@ -32,15 +32,13 @@ namespace ModuleName {
                 options.AcceptPerCore = true;
             });
 
-            // default handler
-            server.MapGet("/", () => {
-                return new { message = "Hello World !" };
-            });
+            // find all classes based on Controller class, and serve on the "/api" endpoint
+            server.MapControllers<Controller>("/api");
 
             // subscribe to events
             server.OnStarted(s => {
                 Process.Start(new ProcessStartInfo {
-                    FileName = $"http://localhost:{s.Port}",
+                    FileName = $"http://localhost:{s.Port}/api/test/hello?name=Chris",
                     UseShellExecute = true
                 });
             });

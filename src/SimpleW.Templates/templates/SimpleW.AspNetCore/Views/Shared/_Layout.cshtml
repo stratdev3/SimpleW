@@ -1,0 +1,24 @@
+@{
+    // add Html into template
+    dynamic Html = ViewBag.Html;
+}
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewBag.Title</title>
+</head>
+<body>
+
+    @await Html.PartialAsync("Header")
+
+    <main>
+        @RenderBody()
+    </main>
+
+    @await Html.PartialAsync("Footer")
+
+    @RenderSection("Scripts", required: false)
+
+</body>
+</html>

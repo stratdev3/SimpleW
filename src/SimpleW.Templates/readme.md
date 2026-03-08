@@ -18,6 +18,29 @@ Dotnet templates based on SimpleW.
 
 To check out docs, visit [simplew.net](https://simplew.net).
 
+Install the templates package using :
+
+```sh
+dotnet new install SimpleW.Templates
+```
+
+You can browse all the available templates :
+
+```sh
+dotnet new list simplew
+```
+
+Create the minimal template :
+
+```sh
+# creates a new folder "MySimpleWApp" with the minimal template
+dotnet new simplew-minimal -n MySimpleWApp
+cd MySimpleWApp
+
+# run it
+dotnet run
+```
+
 ## Changelog
 
 Detailed changes for each release are documented in the [CHANGELOG](https://github.com/stratdev3/SimpleW/blob/master/release.md).

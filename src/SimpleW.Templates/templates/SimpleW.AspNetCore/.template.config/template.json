@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "SimpleW",
+  "classifications": [ "SimpleW", "Web", "Server" ],
+  "name": "SimpleW AspNetCore",
+  "identity": "SimpleW.Templates.AspNetCore",
+  "shortName": "simplew-aspnetcore",
+  "sourceName": "ModuleName",
+  "description": "A project template for a web application using the SimpleW webserver like AspNetCore",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  }
+}
