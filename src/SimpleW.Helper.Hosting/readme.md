@@ -19,16 +19,18 @@ This package is an integration layer between SimpleW and Microsoft.Extensions.Ho
 The minimal API
 
 ```cs
+using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
-using SimpleW;
 using SimpleW.Helper.Hosting;
+using SimpleW.Helper.Razor;
 
 namespace Sample {
     class Program {
 
         static async Task Main() {
 
-            var builder = SimpleWHost.CreateApplicationBuilder(args);
+            var builder = SimpleWHost.CreateApplicationBuilder(args)
+                                     .UseMicrosoftLogging();
 
             builder.ConfigureSimpleW(server => {
                 server.MapGet("/api/test", () => {
