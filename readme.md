@@ -28,6 +28,7 @@ The minimal API
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 
 namespace Sample {
     class Program {
