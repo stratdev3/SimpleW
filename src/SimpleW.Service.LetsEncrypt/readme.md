@@ -20,6 +20,7 @@ The minimal API
 
 ```cs
 using SimpleW;
+using SimpleW.Observability;
 using SimpleW.Service.LetsEncrypt;
 
 namespace Sample {
