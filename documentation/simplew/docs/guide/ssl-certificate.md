@@ -10,6 +10,7 @@ using System.Net;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using SimpleW;
+using SimpleW.Observability;
 
 namespace Sample {
     class Program {
@@ -66,6 +67,7 @@ using System.Net;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using SimpleW;
+using SimpleW.Observability;
 
 namespace Sample {
     class Program {

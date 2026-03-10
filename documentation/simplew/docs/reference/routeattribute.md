@@ -27,6 +27,7 @@ Example, i want the `Home()` method of the `TestController` class be called when
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 
 namespace Sample {
 
@@ -81,6 +82,7 @@ Example, i want all callable method of my `TestController` have the same prefix 
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 
 namespace Sample {
 

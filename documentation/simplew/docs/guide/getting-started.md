@@ -27,10 +27,11 @@ The following minimal example can be used for rapid prototyping :
 
 ::: code-group
 
-```csharp [Program.cs]
+```csharp [Program.cs]sfgf
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 
 namespace Sample {
     class Program {
@@ -75,6 +76,7 @@ The following example build a REST API with a clear routing and controller/metho
 ```csharp [Program.cs]
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 
 namespace Sample {
     class Program {
@@ -137,6 +139,7 @@ The following example serve statics files in your `c:\www` directory.
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 using SimpleW.Modules;
 
 namespace Sample {
@@ -193,6 +196,7 @@ The following example will serve both static files in your `c:\www` directory an
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 using SimpleW.Modules;
 
 namespace Sample {

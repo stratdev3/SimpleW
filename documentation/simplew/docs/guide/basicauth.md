@@ -27,6 +27,7 @@ Internally:
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 using SimpleW.Modules;
 
 namespace Sample {

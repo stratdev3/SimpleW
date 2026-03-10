@@ -55,6 +55,7 @@ SimpleW can handle multiple directories as soon as they are declared under diffe
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 using SimpleW.Modules;
 
 namespace Sample {
@@ -200,6 +201,7 @@ Now, we will server this directory using the `StaticFilesModule` module of Simpl
 using System;
 using System.Net;
 using SimpleW;
+using SimpleW.Observability;
 using SimpleW.Modules;
 
 namespace Sample {
