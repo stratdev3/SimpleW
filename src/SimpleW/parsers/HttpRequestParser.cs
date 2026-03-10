@@ -159,7 +159,7 @@ namespace SimpleW.Parsers {
                 }
             }
             // check header
-            if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && headers.Host == null) {
+            if (request.Protocol.Equals("HTTP/1.1", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(headers.Host)) {
                 throw new HttpRequestException("Missing Host header (HTTP/1.1).", 400);
             }
             request.ParserSetHeaders(headers);
