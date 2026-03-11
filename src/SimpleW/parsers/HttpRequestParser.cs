@@ -72,7 +72,7 @@ namespace SimpleW.Parsers {
             if (!TryFindHeaderEndStrict(buffer, out var headerEndPos, out int headerBytesLen)) {
                 // check in case we need more data but the header is already too large
                 if (buffer.Length > _maxHeaderSize) {
-                    throw new HttpRequestException($"Request headers too large: {buffer.Length} bytes (limit: {_maxHeaderSize}).", 413);
+                    throw new HttpRequestException($"Request headers too large: {buffer.Length} bytes (limit: {_maxHeaderSize}).", 431);
                 }
                 return false; // need more data
             }
@@ -235,7 +235,7 @@ namespace SimpleW.Parsers {
                 }
 
                 if (reader.Consumed > _maxHeaderSize) {
-                    throw new HttpRequestException($"Request headers too large: {reader.Consumed} bytes (limit: {_maxHeaderSize}).", 413);
+                    throw new HttpRequestException($"Request headers too large: {reader.Consumed} bytes (limit: {_maxHeaderSize}).", 431);
                 }
 
                 // strict line endings
