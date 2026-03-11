@@ -457,23 +457,111 @@ namespace SimpleW.Parsers {
 
             try {
                 while (true) {
-                    // read chunk size line
+                    // Read chunk-size line
                     if (!reader.TryReadTo(out ReadOnlySequence<byte> sizeLineSeq, Crlf, advancePastDelimiter: true)) {
                         return false;
                     }
 
                     ReadOnlySpan<byte> sizeLineSpan = ToSpanOrPooled(sizeLineSeq, out var pooledLine);
-                    bool ok = TryParseHexInt(sizeLineSpan, out int chunkSize);
-                    if (pooledLine != null) {
-                        _bufferPool.Return(pooledLine);
+                    int chunkSize;
+
+                    try {
+                        if (!TryParseHexInt(sizeLineSpan, out chunkSize)) {
+                            throw new HttpRequestException("Invalid chunk size.", 400);
+                        }
+                    }
+                    finally {
+                        if (pooledLine != null) {
+                            _bufferPool.Return(pooledLine);
+                        }
                     }
 
-                    if (!ok) {
+                    if (chunkSize < 0) {
                         throw new HttpRequestException("Invalid chunk size.", 400);
                     }
 
                     if (chunkSize == 0) {
-                        break;
+                        // End of chunks.
+                        // Then we have either:
+                        // - an immediate CRLF => no trailers
+                        // - or trailer header lines terminated by an empty line
+
+                        if (reader.Remaining < 2) {
+                            return false;
+                        }
+
+                        var nextTwo = reader.Sequence.Slice(reader.Position, 2);
+                        Span<byte> tmp = stackalloc byte[2];
+                        nextTwo.CopyTo(tmp);
+
+                        // Immediate CRLF => no trailers
+                        if (tmp[0] == (byte)'\r' && tmp[1] == (byte)'\n') {
+                            reader.Advance(2);
+                            totalConsumed = reader.Consumed;
+
+                            if (written == 0) {
+                                if (rented != null) {
+                                    _bufferPool.Return(rented);
+                                }
+
+                                pooledBuffer = null;
+                                body = ReadOnlySequence<byte>.Empty;
+                            }
+                            else {
+                                if (rented == null) {
+                                    throw new InvalidOperationException("Internal error: chunk buffer is null while written > 0.");
+                                }
+
+                                pooledBuffer = rented;
+                                body = new ReadOnlySequence<byte>(rented, 0, written);
+                            }
+
+                            return true;
+                        }
+
+                        // Otherwise read trailers until empty line
+                        while (true) {
+                            if (!reader.TryReadTo(out ReadOnlySequence<byte> trailerLineSeq, Crlf, advancePastDelimiter: true)) {
+                                return false;
+                            }
+
+                            // Empty line => end of trailer section
+                            if (trailerLineSeq.Length == 0) {
+                                totalConsumed = reader.Consumed;
+
+                                if (written == 0) {
+                                    if (rented != null) {
+                                        _bufferPool.Return(rented);
+                                    }
+
+                                    pooledBuffer = null;
+                                    body = ReadOnlySequence<byte>.Empty;
+                                }
+                                else {
+                                    if (rented == null) {
+                                        throw new InvalidOperationException("Internal error: chunk buffer is null while written > 0.");
+                                    }
+
+                                    pooledBuffer = rented;
+                                    body = new ReadOnlySequence<byte>(rented, 0, written);
+                                }
+
+                                return true;
+                            }
+
+                            // Validate trailer header syntax
+                            ReadOnlySpan<byte> trailerSpan = ToSpanOrPooled(trailerLineSeq, out var pooledTrailer);
+                            try {
+                                if (!TryParseHeaderLine(trailerSpan, out string? trailerName, out string? trailerValue) || trailerName == null) {
+                                    throw new HttpRequestException("Invalid trailer header.", 400);
+                                }
+                            }
+                            finally {
+                                if (pooledTrailer != null) {
+                                    _bufferPool.Return(pooledTrailer);
+                                }
+                            }
+                        }
                     }
 
                     long newTotal = (long)written + chunkSize;
@@ -481,17 +569,18 @@ namespace SimpleW.Parsers {
                         throw new HttpRequestException($"Request body too large (chunked): {newTotal} bytes (limit: {_maxBodySize}).", 413, "Payload Too Large", "HTTP parse");
                     }
 
-                    // need chunk bytes + CRLF
+                    // Need chunk bytes + trailing CRLF
                     if (reader.Remaining < chunkSize + Crlf.Length) {
                         return false;
                     }
 
-                    // ensure buffer capacity
+                    // Ensure capacity
                     if (rented == null) {
                         int initial = Math.Max(chunkSize, 4096);
                         rented = _bufferPool.Rent(initial);
                         rentedSize = rented.Length;
                     }
+
                     if (written + chunkSize > rentedSize) {
                         int newSize = rentedSize * 2;
                         int required = written + chunkSize;
@@ -503,49 +592,25 @@ namespace SimpleW.Parsers {
                         Buffer.BlockCopy(rented, 0, newBuf, 0, written);
                         _bufferPool.Return(rented);
                         rented = newBuf;
-                        rentedSize = newSize;
+                        rentedSize = newBuf.Length;
                     }
 
-                    // copy chunk (may be multi-segment)
-                    var chunkSeq = reader.Sequence.Slice(reader.Position, chunkSize);
-                    CopySequenceTo(chunkSeq, rented.AsSpan(written));
+                    // Copy chunk data (can span multiple segments)
+                    ReadOnlySequence<byte> chunkData = reader.Sequence.Slice(reader.Position, chunkSize);
+                    CopySequenceTo(chunkData, rented.AsSpan(written));
                     written += chunkSize;
 
                     reader.Advance(chunkSize);
 
-                    // expect CRLF after chunk data
-                    if (!reader.TryRead(out byte b1) || !reader.TryRead(out byte b2)) {
+                    // Expect CRLF after chunk data
+                    if (!reader.TryRead(out byte cr) || !reader.TryRead(out byte lf)) {
                         return false;
                     }
 
-                    if (b1 != (byte)'\r' || b2 != (byte)'\n') {
-                        throw new InvalidOperationException("Invalid chunk terminator.");
+                    if (cr != (byte)'\r' || lf != (byte)'\n') {
+                        throw new HttpRequestException("Invalid chunk terminator.", 400);
                     }
                 }
-
-                // trailers end with CRLFCRLF
-                if (!reader.TryReadTo(out ReadOnlySequence<byte> _, HeaderTerminator, advancePastDelimiter: true)) {
-                    return false;
-                }
-
-                totalConsumed = reader.Consumed;
-
-                if (written == 0) {
-                    if (rented != null) {
-                        _bufferPool.Return(rented);
-                    }
-                    pooledBuffer = null;
-                    body = ReadOnlySequence<byte>.Empty;
-                }
-                else {
-                    if (rented == null) {
-                        throw new InvalidOperationException("Internal error: chunk buffer is null while written > 0.");
-                    }
-                    pooledBuffer = rented;
-                    body = new ReadOnlySequence<byte>(rented, 0, written);
-                }
-
-                return true;
             }
             catch {
                 if (rented != null) {
