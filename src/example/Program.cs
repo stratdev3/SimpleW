@@ -43,6 +43,7 @@ namespace example.rewrite {
         /// </summary>
         /// <param name="args"></param>
         static async Task Main(string[] args) {
+            //await ParserTest();
             await Rewrite();
             //await Raw();
         }
@@ -83,18 +84,17 @@ namespace example.rewrite {
 
             //server.ConfigureClientIPResolver(session => IPAddress.Parse("4.3.2.1"));
 
-            server.ConfigureClientIPResolver(session => {
-                // override client.address with the X-Real-IP header (set by a trusted reverse proxy)
-                if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) && xRealIp != null) {
-                    return IPAddress.Parse(xRealIp);
-                }
-                // fallback default socket remote endpoint
-                if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
-                    return null;
-                }
-                return ep.Address;
-            });
-
+            //server.ConfigureClientIPResolver(session => {
+            //    // override client.address with the X-Real-IP header (set by a trusted reverse proxy)
+            //    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) && xRealIp != null) {
+            //        return IPAddress.Parse(xRealIp);
+            //    }
+            //    // fallback default socket remote endpoint
+            //    if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+            //        return null;
+            //    }
+            //    return ep.Address;
+            //});
 
             server.MapGet("/", (HttpSession session) => {
                 return "Hello World !";
@@ -353,18 +353,6 @@ namespace example.rewrite {
 
             openTelemetryObserver("SimpleW*");
 
-            server.OnStarted(async s => {
-                //Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
-                //await Task.Delay(5_000);
-                //await server.ReloadListenerAsync(s => {
-                //    s.UsePort(8081);
-                //    Console.WriteLine($"server reload at http://localhost:{server.Port}/api/test/hello");
-                //});
-            });
-            server.OnStopped(s => {
-                //Console.WriteLine("server stopped");
-            });
-
             // start non blocking background server
             CancellationTokenSource cts = new();
             Console.CancelKeyPress += (_, e) => {
@@ -373,6 +361,50 @@ namespace example.rewrite {
             };
             await server.RunAsync(cts.Token);
 
+        }
+
+        static async Task ParserTest() {
+
+            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Trace);
+
+            var server = new SimpleWServer(IPAddress.Any, 8080);
+
+            // default
+            server.MapGet("/", () => "OK");
+            server.Map("HEAD", "/", () => "OK");
+            server.Map("OPTIONS", "/", (HttpSession session) => {
+                return session.Response.AddHeader("Allow", "GET, HEAD, POST, OPTIONS")
+                                       .Text("OK");
+            });
+
+            // post
+            server.MapPost("/", (HttpSession session) => session.Response.Text(session.Request.BodyString));
+
+            // echo
+            server.MapGet("/echo", (HttpSession session) => Echo(session));
+            server.MapPost("/echo", (HttpSession session) => Echo(session));
+
+            // cookie
+            server.MapGet("/cookie", (HttpSession session) => ParseCookies(session));
+            server.MapPost("/cookie", (HttpSession session) => ParseCookies(session));
+
+            static HttpResponse Echo(HttpSession session) {
+                var sb = new System.Text.StringBuilder();
+                foreach (var h in session.Request.Headers.EnumerateAll()) {
+                    sb.AppendLine($"{h.Key}: {h.Value}");
+                }
+                return session.Response.Text(sb.ToString());
+            }
+
+            static HttpResponse ParseCookies(HttpSession session) {
+                var sb = new System.Text.StringBuilder();
+                foreach (var pair in session.Request.Headers.EnumerateCookies()) {
+                    sb.AppendLine($"{pair.Key}={pair.Value}");
+                }
+                return session.Response.Text(sb.ToString());
+            }
+
+            await server.RunAsync();
         }
 
         static async Task Raw() {
