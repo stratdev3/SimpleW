@@ -106,7 +106,7 @@ namespace SimpleW.Parsers {
             request.ParserSetPath(path);
             request.ParserSetProtocol(protocol);
             request.ParserSetQueryString(queryString);
-            HttpRequestParser.ParseQueryString(querySpan, request.Query);
+            ParseQueryString(querySpan, request.Query);
 
 
             // 3. headers
@@ -395,14 +395,13 @@ namespace SimpleW.Parsers {
             if (!IsValidHeaderNameToken(nameSpan)) {
                 return false;
             }
-            
+
             // value
             ReadOnlySpan<byte> valueSpan = TrimAsciiWhitespace(lineSpan.Slice(colonIndex + 1));
 
             // set
             name = Ascii.GetString(nameSpan);
             value = valueSpan.Length > 0 ? Ascii.GetString(valueSpan) : string.Empty;
-
 
             return true;
         }
@@ -731,9 +730,15 @@ namespace SimpleW.Parsers {
             return t;
         }
 
+        /// <summary>
+        /// Check if a header has a valid name
+        /// </summary>
+        /// <param name="nameSpan"></param>
+        /// <returns></returns>
         private static bool IsValidHeaderNameToken(ReadOnlySpan<byte> nameSpan) {
-            if (nameSpan.Length == 0)
+            if (nameSpan.Length == 0) {
                 return false;
+            }
 
             foreach (byte b in nameSpan) {
                 if (b >= 128) {
