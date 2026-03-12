@@ -331,6 +331,7 @@ namespace SimpleW.Parsers {
 
             ReadOnlySpan<byte> methodSpan = lineSpan.Slice(0, firstSpace);
             ReadOnlySpan<byte> targetSpan = lineSpan.Slice(firstSpace + 1, secondSpace - firstSpace - 1);
+            CheckRawRequestTarget(targetSpan);
             ReadOnlySpan<byte> protocolSpan = TrimAsciiWhitespace(lineSpan.Slice(secondSpace + 1));
 
             if (protocolSpan.Length == 0) {
@@ -339,13 +340,6 @@ namespace SimpleW.Parsers {
 
             method = Ascii.GetString(methodSpan);
             protocol = Ascii.GetString(protocolSpan);
-
-            if (targetSpan.Length == 0) {
-                throw new HttpRequestException("Empty request-target.", 400);
-            }
-            if (targetSpan[0] != (byte)'/') {
-                throw new HttpRequestException("Unsupported request-target form.", 400);
-            }
 
             // find '?'
             int qIndex = targetSpan.IndexOf((byte)'?');
@@ -769,6 +763,31 @@ namespace SimpleW.Parsers {
                 }
             }
             return true;
+        }
+
+        /// <summary>
+        /// Check Request RawTarget
+        /// </summary>
+        /// <param name="targetSpan"></param>
+        /// <returns></returns>
+        /// <exception cref="HttpRequestException"></exception>
+        private static void CheckRawRequestTarget(ReadOnlySpan<byte> targetSpan) {
+            if (targetSpan.Length == 0) {
+                throw new HttpRequestException("Empty request-target.", 400);
+            }
+            if (targetSpan[0] != (byte)'/') {
+                throw new HttpRequestException("Unsupported request-target form.", 400);
+            }
+            foreach (byte b in targetSpan) {
+                // reject controls
+                if (b <= 0x1F || b == 0x7F) {
+                    throw new HttpRequestException("Invalid request-target.", 400);
+                }
+                // reject non-ASCII raw bytes
+                if (b >= 0x80) {
+                    throw new HttpRequestException("Invalid request-target.", 400);
+                }
+            }
         }
 
         private static bool IsAsciiWhitespace(byte b) => b == (byte)' ' || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n';
