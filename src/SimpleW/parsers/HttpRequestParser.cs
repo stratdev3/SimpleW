@@ -20,6 +20,7 @@ namespace SimpleW.Parsers {
         private const string HeaderHost = "Host";
         private const string HeaderContentLength = "Content-Length";
         private const string HeaderTransferEncoding = "Transfer-Encoding";
+        private const string headerCookie = "Cookie";
 
         private static readonly Encoding Ascii = Encoding.ASCII;
 
@@ -155,6 +156,11 @@ namespace SimpleW.Parsers {
                         throw new HttpRequestException("Duplicate Host header (HTTP/1.1).", 400);
                     }
                     hostSeen = true;
+                }
+                else if (name.Equals(headerCookie, StringComparison.OrdinalIgnoreCase)) {
+                    if (!IsValidCookieContent(value)) {
+                        throw new HttpRequestException("Invalid Cookie (HTTP/1.1).", 400);
+                    }
                 }
 
                 if (pooled2 != null) {
@@ -746,6 +752,20 @@ namespace SimpleW.Parsers {
                 }
                 if (TCharTable[b] == 0) {
                     return false; // also rejects space/tab/ctl
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Check if cookie contains invalid char
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private static bool IsValidCookieContent(string value) {
+            foreach (char c in value) {
+                if (c <= 0x1F || c == 0x7F) {
+                    return false;
                 }
             }
             return true;
