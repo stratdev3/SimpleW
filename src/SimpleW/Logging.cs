@@ -611,7 +611,7 @@ namespace SimpleW.Observability {
         public static Action<LogEntry> ConsoleWriteLine {
             get {
                 Console.OutputEncoding = System.Text.Encoding.UTF8;
-                return (log) => Console.WriteLine($"{log.LocalTime:HH:mm:ss.fff} [{log.LevelSmiley}|{log.LevelName3Len}] {log.Source} {log.Message}");
+                return (log) => Console.WriteLine($"{log.LocalTime:HH:mm:ss.fff} [{log.LevelSmiley}|{log.LevelName3Len}] {log.Source} {log.Message} {log.Exception?.Message} {log.Exception?.Source}");
             }
         }
 
