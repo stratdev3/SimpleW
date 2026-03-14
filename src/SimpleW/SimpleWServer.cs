@@ -1222,6 +1222,38 @@ namespace SimpleW {
         public long MaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
 
         /// <summary>
+        /// Maximum time allowed to receive a complete HTTP request header block
+        /// Protects against slowloris attacks that send headers very slowly.
+        /// Use <see cref="TimeSpan.MinValue"/> to disable this protection.
+        /// Default recommended value: 5 seconds.
+        /// </summary>
+        public TimeSpan RequestHeadersTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+        internal long RequestHeadersTimeoutMs { get; private set; }
+
+        /// <summary>
+        /// Minimum sustained body receive rate, in bytes per second,
+        /// required after <see cref="RequestBodyGracePeriod"/> has elapsed.
+        /// If the request body progresses slower than this rate, the connection
+        /// is considered too slow and will be closed.
+        /// Set 0 to disable this protection.
+        /// Default: 256 bytes/s.
+        /// </summary>
+        public int MinRequestBodyDataRateBytesPerSecond { get; set; } = 256;
+
+        /// <summary>
+        /// Grace period applied before enforcing
+        /// <see cref="MinRequestBodyDataRateBytesPerSecond"/>.
+        /// This gives the client a short time window before the minimum body
+        /// receive rate check begins.
+        /// Set <see cref="TimeSpan.Zero"/> for no grace period.
+        /// Default: 5 seconds.
+        /// </summary>
+        public TimeSpan RequestBodyGracePeriod { get; set; } = TimeSpan.FromSeconds(5);
+
+        internal long RequestBodyGracePeriodMs { get; private set; }
+
+        /// <summary>
         /// JwtOptions
         /// </summary>
         public JwtOptions? JwtOptions { get; set; }
@@ -1333,6 +1365,21 @@ namespace SimpleW {
                 _log.Fatal(ex.Message, ex);
                 throw ex;
             }
+            if (RequestHeadersTimeout != TimeSpan.MinValue && RequestHeadersTimeout <= TimeSpan.Zero) {
+                ArgumentOutOfRangeException ex = new(nameof(RequestHeadersTimeout), "Must be > 0 or TimeSpan.MinValue to disable.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
+            if (MinRequestBodyDataRateBytesPerSecond < 0) {
+                ArgumentOutOfRangeException ex = new(nameof(MinRequestBodyDataRateBytesPerSecond), "Must be >= 0.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
+            if (RequestBodyGracePeriod != TimeSpan.MinValue && RequestBodyGracePeriod <= TimeSpan.Zero) {
+                ArgumentOutOfRangeException ex = new(nameof(RequestBodyGracePeriod), "Must be = 0 or TimeSpan.MinValue to disable.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
             if (ListenBacklog <= 0) {
                 ArgumentOutOfRangeException ex = new(nameof(ListenBacklog), "Must be > 0.");
                 _log.Fatal(ex.Message, ex);
@@ -1340,6 +1387,11 @@ namespace SimpleW {
             }
             if (ReceiveBufferSize <= 0) {
                 ArgumentOutOfRangeException ex = new(nameof(ReceiveBufferSize), "Must be > 0.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
+            if (SessionTimeout != TimeSpan.MinValue && SessionTimeout < TimeSpan.Zero) {
+                ArgumentOutOfRangeException ex = new(nameof(SessionTimeout), "Must be >= 0 or TimeSpan.MinValue to disable.");
                 _log.Fatal(ex.Message, ex);
                 throw ex;
             }
@@ -1363,15 +1415,9 @@ namespace SimpleW {
                 }
             }
 
-            // normalize cache/timeout-like values
-            // (keep your existing convention)
-            // - MinValue => disabled (do not change)
-            // - Negative other than MinValue => not allowed
-            if (SessionTimeout != TimeSpan.MinValue && SessionTimeout < TimeSpan.Zero) {
-                ArgumentOutOfRangeException ex = new(nameof(SessionTimeout), "Must be >= 0 or TimeSpan.MinValue to disable.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
+            // optimize properties
+            RequestHeadersTimeoutMs = RequestHeadersTimeout == TimeSpan.MinValue ? 0 : (long)RequestHeadersTimeout.TotalMilliseconds;
+            RequestBodyGracePeriodMs = RequestBodyGracePeriod == TimeSpan.MinValue ? 0 : (long)RequestBodyGracePeriod.TotalMilliseconds;
 
             return this;
         }

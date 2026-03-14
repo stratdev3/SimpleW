@@ -402,6 +402,7 @@ namespace SimpleW {
         ///  - BlockCopy in _parseBuffer
         ///  - Parse with HttpRequestParserState
         ///  - HttpRouter Dispatch
+        ///  - Enforce request header/body receive deadlines to mitigate slowloris
         /// </summary>
         public async Task ProcessAsync() {
 
@@ -413,6 +414,18 @@ namespace SimpleW {
                 #region read
 
                 if (IsTransportOwned) {
+                    return;
+                }
+
+                // slow request protection : headers use an absolute timeout
+                long nowTick = Environment.TickCount64;
+                if (IsReceiveDeadlineExpired(nowTick)) {
+                    await SendRequestTimeoutAndAbortAsync("Request headers timeout.").ConfigureAwait(false);
+                    return;
+                }
+                // slow request protection : body uses a minimum sustained receive rate
+                if (IsBodyReceiveRateTooSlow(nowTick)) {
+                    await SendRequestTimeoutAndAbortAsync("Request body too slow.").ConfigureAwait(false);
                     return;
                 }
 
@@ -466,6 +479,15 @@ namespace SimpleW {
                     _requestTimingStarted = true;
                 }
 
+                // slow request protection : first bytes of a new request => start header deadline
+                if (_requestReceivePhase == RequestReceivePhase.None) {
+                    StartHeadersReceiveDeadline();
+                }
+                // slow request protection : if we are already in body phase, count the newly received body bytes
+                if (_requestReceivePhase == RequestReceivePhase.Body) {
+                    AddBodyBytesReceived(bytesRead);
+                }
+
                 // byte operations
                 EnsureParseBufferCapacity(bytesRead);
                 Buffer.BlockCopy(_recvBuffer, 0, _parseBuffer, _parseBufferCount, bytesRead);
@@ -485,12 +507,17 @@ namespace SimpleW {
                             return;
                         }
 
-                        if (!_parser.TryReadHttpRequest(new ReadOnlySequence<byte>(_parseBuffer, offset, _parseBufferCount - offset), _request, out long consumed)) {
+                        if (!_parser.TryReadHttpRequest(new ReadOnlySequence<byte>(_parseBuffer, offset, _parseBufferCount - offset), _request, out long consumed, out bool foundHeaderEnd)) {
+                            // slow request protection : request incomplete => detect whether we are waiting for headers or body
+                            RefreshReceiveStateFromCurrentBuffer(offset, foundHeaderEnd);
                             // need/wait for more data
                             break;
                         }
 
                         offset += (int)consumed;
+
+                        // slow request protection : current request is complete, clear deadline
+                        ResetReceiveDeadline();
 
                         // PER-REQUEST SCOPE
                         bool hasCatched = false;
@@ -594,10 +621,20 @@ namespace SimpleW {
 
                             _request.ReturnPooledBodyBuffer();
                         }
+
+                        // slow request protection : if another pipelined request is already buffered, arm header deadline for it
+                        if (offset < _parseBufferCount) {
+                            StartHeadersReceiveDeadline();
+                        }
                     }
 
                     // compress buffer
                     CompressParseBuffer(offset);
+
+                    // slow request protection:  if buffer is empty after compression, no in-flight request remains
+                    if (_parseBufferCount == 0) {
+                        ResetReceiveDeadline();
+                    }
                 }
                 catch (HttpRequestException ex) {
                     await UpdateActivityOnExceptionAsync(ex, ex.StatusCode, ex.StatusText, ex.DisplayName);
@@ -647,6 +684,173 @@ namespace SimpleW {
             }
             return CloseAfterResponse;
         }
+
+        #region slow request protection
+
+        /// <summary>
+        /// Receive phase for the current in-flight HTTP request.
+        /// </summary>
+        private enum RequestReceivePhase {
+            None = 0,
+            Headers = 1,
+            Body = 2
+        }
+
+        /// <summary>
+        /// Current receive phase for the in-flight HTTP request.
+        /// None   = no request currently being assembled.
+        /// Headers = waiting for the full header block.
+        /// Body    = headers received, waiting for the full body.
+        /// </summary>
+        private RequestReceivePhase _requestReceivePhase;
+
+        /// <summary>
+        /// Absolute deadline (Environment.TickCount64) for the current receive phase.
+        /// If current tick is greater than this value, the request must be aborted.
+        /// </summary>
+        private long _requestReceiveDeadlineTick;
+
+        /// <summary>
+        /// Tick value (Environment.TickCount64) marking when the request body
+        /// reception started.
+        /// </summary>
+        private long _requestBodyStartTick;
+
+        /// <summary>
+        /// Total number of body bytes received since <see cref="_requestBodyStartTick"/>.
+        /// </summary>
+        private long _requestBodyBytesReceived;
+
+        /// <summary>
+        /// Start the deadline for receiving HTTP request headers.
+        /// </summary>
+        private void StartHeadersReceiveDeadline() {
+            _requestReceivePhase = RequestReceivePhase.Headers;
+
+            if (Server.Options.RequestHeadersTimeoutMs == 0) {
+                _requestReceiveDeadlineTick = 0;
+                return;
+            }
+
+            _requestReceiveDeadlineTick = Environment.TickCount64 + Server.Options.RequestHeadersTimeoutMs;
+        }
+
+        /// <summary>
+        /// Enter body receive phase and initialize body rate tracking.
+        /// </summary>
+        private void StartBodyReceiveRateTracking() {
+            _requestReceivePhase = RequestReceivePhase.Body;
+            _requestReceiveDeadlineTick = 0;
+
+            _requestBodyStartTick = Environment.TickCount64;
+            _requestBodyBytesReceived = 0;
+        }
+
+        /// <summary>
+        /// Clear current request receive tracking.
+        /// </summary>
+        private void ResetReceiveDeadline() {
+            _requestReceivePhase = RequestReceivePhase.None;
+            _requestReceiveDeadlineTick = 0;
+            _requestBodyStartTick = 0;
+            _requestBodyBytesReceived = 0;
+        }
+
+        /// <summary>
+        /// Return true when the active header receive deadline is expired.
+        /// </summary>
+        /// <param name="nowTick"></param>
+        /// <returns></returns>
+        private bool IsReceiveDeadlineExpired(long nowTick) {
+            return _requestReceiveDeadlineTick != 0 && nowTick > _requestReceiveDeadlineTick;
+        }
+
+        /// <summary>
+        /// Refresh the current receive state based on buffered bytes.
+        /// If headers are complete, switch to body rate tracking.
+        /// Otherwise stay in header timeout mode.
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <param name="foundHeaderEnd"></param>
+        private void RefreshReceiveStateFromCurrentBuffer(int offset, bool foundHeaderEnd) {
+            int available = _parseBufferCount - offset;
+            if (available <= 0) {
+                ResetReceiveDeadline();
+                return;
+            }
+            if (foundHeaderEnd) {
+                if (_requestReceivePhase != RequestReceivePhase.Body) {
+                    StartBodyReceiveRateTracking();
+                }
+            }
+            else {
+                if (_requestReceivePhase != RequestReceivePhase.Headers) {
+                    StartHeadersReceiveDeadline();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Add newly received body bytes to the current body rate tracker.
+        /// </summary>
+        /// <param name="bytesRead"></param>
+        private void AddBodyBytesReceived(int bytesRead) {
+            if (bytesRead <= 0) {
+                return;
+            }
+
+            _requestBodyBytesReceived += bytesRead;
+        }
+
+        /// <summary>
+        /// Return true when the current body receive rate is too slow.
+        /// </summary>
+        /// <param name="nowTick"></param>
+        /// <returns></returns>
+        private bool IsBodyReceiveRateTooSlow(long nowTick) {
+            if (_requestReceivePhase != RequestReceivePhase.Body) {
+                return false;
+            }
+
+            if (Server.Options.MinRequestBodyDataRateBytesPerSecond <= 0) {
+                return false;
+            }
+
+            long elapsedMs = nowTick - _requestBodyStartTick;
+            long effectiveMs = elapsedMs - Server.Options.RequestBodyGracePeriodMs;
+
+            if (effectiveMs <= 0) {
+                return false;
+            }
+
+            long minimumExpectedBytes = (effectiveMs * Server.Options.MinRequestBodyDataRateBytesPerSecond) / 1000;
+
+            return _requestBodyBytesReceived < minimumExpectedBytes;
+        }
+
+        /// <summary>
+        /// Send a 408 Request Timeout response and abort the current session.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        private async Task SendRequestTimeoutAndAbortAsync(string message) {
+            try {
+                CloseAfterResponse = true;
+                await _response.Status(408)
+                               .AddHeader("Connection", "close")
+                               .Text(message)
+                               .SendAsync().ConfigureAwait(false);
+                _log.Error($"close connection because {message}");
+            }
+            catch {
+                // ignore send failure, transport may already be broken
+            }
+            finally {
+                Abort();
+            }
+        }
+
+        #endregion slow request protection
 
         #endregion Process
 

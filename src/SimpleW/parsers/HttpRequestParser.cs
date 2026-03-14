@@ -59,10 +59,12 @@ namespace SimpleW.Parsers {
         /// <param name="buffer"></param>
         /// <param name="request"></param>
         /// <param name="consumedBytes"></param>
+        /// <param name="foundHeaderEnd"></param>
         /// <exception cref="HttpRequestException"></exception>
-        public bool TryReadHttpRequest(in ReadOnlySequence<byte> buffer, HttpRequest request, out long consumedBytes) {
+        public bool TryReadHttpRequest(in ReadOnlySequence<byte> buffer, HttpRequest request, out long consumedBytes, out bool foundHeaderEnd) {
             request.Reset();
             consumedBytes = 0;
+            foundHeaderEnd = false;
 
             if (buffer.IsEmpty) {
                 return false;
@@ -77,6 +79,7 @@ namespace SimpleW.Parsers {
                 }
                 return false; // need more data
             }
+            foundHeaderEnd = true;
             ReadOnlySequence<byte> headerBlock = buffer.Slice(0, headerEndPos); // header block includes the final CRLFCRLF
 
 
