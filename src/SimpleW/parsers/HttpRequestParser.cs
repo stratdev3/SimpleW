@@ -689,6 +689,11 @@ namespace SimpleW.Parsers {
             }
         }
 
+        /// <summary>
+        /// TrimAsciiWhitespace
+        /// </summary>
+        /// <param name="span"></param>
+        /// <returns></returns>
         private static ReadOnlySpan<byte> TrimAsciiWhitespace(ReadOnlySpan<byte> span) {
             int start = 0;
             int end = span.Length - 1;
@@ -793,8 +798,19 @@ namespace SimpleW.Parsers {
             }
         }
 
+        /// <summary>
+        /// IsAsciiWhitespace
+        /// </summary>
+        /// <param name="b"></param>
+        /// <returns></returns>
         private static bool IsAsciiWhitespace(byte b) => b == (byte)' ' || b == (byte)'\t' || b == (byte)'\r' || b == (byte)'\n';
 
+        /// <summary>
+        /// TryParseHexInt
+        /// </summary>
+        /// <param name="span"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
         private static bool TryParseHexInt(ReadOnlySpan<byte> span, out int value) {
             value = 0;
 
@@ -886,6 +902,31 @@ namespace SimpleW.Parsers {
             catch {
                 return s;
             }
+        }
+
+        /// <summary>
+        /// Convert byte to string
+        /// </summary>
+        /// <param name="seq"></param>
+        /// <returns></returns>
+        private static string DumpBytes(ReadOnlySequence<byte> seq) {
+            byte[] arr = seq.ToArray();
+            StringBuilder sb = new();
+
+            for (int i = 0; i < arr.Length; i++) {
+                if (i > 0 && i % 16 == 0) {
+                    sb.AppendLine();
+                }
+                sb.Append(arr[i].ToString("X2")).Append(' ');
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("ASCII:");
+            foreach (var b in arr) {
+                sb.Append(b >= 32 && b <= 126 ? (char)b : '.');
+            }
+
+            return sb.ToString();
         }
 
         #endregion
