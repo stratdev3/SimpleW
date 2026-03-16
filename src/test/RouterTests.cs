@@ -546,7 +546,7 @@ namespace test {
         }
         [Route("/test")]
         public class Router_MapControllerGet_AbsoluteUrl_200_Controller : Controller {
-            [Route("GET", "/absolute/url/hello", isAbsolutePath: true)]
+            [Route("GET", "/absolute/url/hello", IsAbsolutePath = true)]
             public object Hello() {
                 return new { message = "Hello World !" };
             }
@@ -574,7 +574,7 @@ namespace test {
         }
         [Route("/test")]
         public class Router_MapControllerGet_AbsoluteUrl_404_Controller : Controller {
-            [Route("GET", "/absolute/url/hello", isAbsolutePath: true)]
+            [Route("GET", "/absolute/url/hello", IsAbsolutePath = true)]
             public object Hello() {
                 return new { message = "Hello World !" };
             }
@@ -667,7 +667,7 @@ namespace test {
         }
         [Route("/test")]
         public class Route_MapController_Wildcard_Absolute_200_Controller : Controller {
-            [Route("GET", "/*", isAbsolutePath: true)]
+            [Route("GET", "/*", IsAbsolutePath = true)]
             public object HelloWorld() {
                 return new { message = "Hello World !" };
             }

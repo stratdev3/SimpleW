@@ -201,7 +201,7 @@
             Route route = new(
                 string.IsNullOrWhiteSpace(host)
                     ? new RouteAttribute(method, path)
-                    : new RouteAttribute(method, host!, path),
+                    : new RouteAttribute(method, path) { Host = host },
                 executor
             );
 
@@ -284,7 +284,10 @@
                     }
                     // rewrite the route and add it to the host router
                     hostRouter.AddRouteLocal(new Route(
-                        new RouteAttribute(route.Attribute.Method, route.Attribute.Path, route.Attribute.IsAbsolutePath, route.Attribute.Description),
+                        new RouteAttribute(route.Attribute.Method, route.Attribute.Path) {
+                            IsAbsolutePath = route.Attribute.IsAbsolutePath,
+                            Description = route.Attribute.Description
+                        },
                         route.Executor
                     ));
                     return;

@@ -12,9 +12,9 @@
         public string Method { get; protected set; }
 
         /// <summary>
-        /// Host
+        /// Host (optional)
         /// </summary>
-        public string? Host { get; protected set; }
+        public string? Host { get; set; }
 
         /// <summary>
         /// Path
@@ -22,25 +22,23 @@
         public string Path { get; protected set; }
 
         /// <summary>
-        /// IsAbsolutePath
+        /// IsAbsolutePath (optional)
         /// </summary>
-        public bool IsAbsolutePath { get; protected set; }
+        public bool IsAbsolutePath { get; set; }
 
         /// <summary>
-        /// Description
+        /// Description (optional)
         /// </summary>
-        public string? Description { get; protected set; }
+        public string? Description { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RouteAttribute"/> class for Method.
         /// </summary>
         /// <param name="method">The method.</param>
         /// <param name="path">The path.</param>
-        /// <param name="isAbsolutePath"></param>
-        /// <param name="description">The string description for this route</param>
         /// <exception cref="ArgumentException">The argument 'verb' must be specified.</exception>
         /// <exception cref="ArgumentException">The argument 'path' must be specified.</exception>
-        public RouteAttribute(string method, string path, bool isAbsolutePath = false, string? description = null) {
+        public RouteAttribute(string method, string path) {
             if (string.IsNullOrWhiteSpace(method)) {
                 throw new ArgumentException($"The argument '{nameof(method)}' must be specified.");
             }
@@ -49,31 +47,7 @@
             }
 
             Method = method.ToUpperInvariant();
-            Host = null;
             Path = path;
-            IsAbsolutePath = isAbsolutePath;
-            Description = description;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="RouteAttribute"/> class for Method + Host.
-        /// </summary>
-        public RouteAttribute(string method, string host, string path, bool isAbsolutePath = false, string? description = null) {
-            if (string.IsNullOrWhiteSpace(method)) {
-                throw new ArgumentException($"The argument '{nameof(method)}' must be specified.");
-            }
-            if (string.IsNullOrWhiteSpace(host)) {
-                throw new ArgumentException($"The argument '{nameof(host)}' must be specified.");
-            }
-            if (string.IsNullOrWhiteSpace(path)) {
-                throw new ArgumentException($"The argument '{nameof(path)}' must be specified.");
-            }
-
-            Method = method.ToUpperInvariant();
-            Host = host;
-            Path = path;
-            IsAbsolutePath = isAbsolutePath;
-            Description = description;
         }
 
         /// <summary>
@@ -86,7 +60,6 @@
                 throw new ArgumentException($"The argument '{nameof(path)}' must be specified.");
             }
             Method = "*";
-            Host = null;
             Path = path;
         }
 
