@@ -1206,7 +1206,8 @@ namespace SimpleW {
                     $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
                     $"session-{Id} " +
                     $"{ClientIpAddress} " +
-                    $"\"{Request.Headers.UserAgent}\""
+                    $"\"{Request.Headers.UserAgent}\"",
+                    ex
                 );
             }
         }
