@@ -52,6 +52,9 @@ How to replace old class/method/property with the new one.
 
 - `webuser` => `User`
 
+### RouteAttribute
+
+- `isAbsolutePath` => `IsAbsolutePath`
 
 ### Extensions
 

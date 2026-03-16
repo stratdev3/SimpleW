@@ -42,7 +42,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 | Extensibility                        | ⚠️ (callback, subclass)   | ✅ middleware, module, callback, subclass     |
 | Response Builder                     | ✅(status, contentType, headers, body, cookies)   | ✅    (status, contentType, contentLength, headers, body, cookies, compression)  |
 | Handler (Expression Tree)            | ✅ sync  ❌async         | ✅ sync ✅ async + RequestAborted   |
-| Routing                              | ✅ (minimal, attribute, querystring, regexp, path, wildcard) | ✅ (minimal, attribute, querystring, path, wildcard) |
+| Routing                              | ✅ (minimal, attribute, querystring, regexp, path, wildcard) | ✅ (minimal, attribute, querystring, path, wildcard, host) |
 | Minimal API                          | ✅                       | ✅                             |
 | Controllers                          | ✅                       | ✅                             |
 | SSL / HTTPS                          | ✅ (SslContext)          | ✅  (SslContext, mutual authentication)  |

@@ -32,7 +32,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-rc.20260309-1542
+$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-rc.20260316-1560
 ```
 
 

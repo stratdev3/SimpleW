@@ -73,7 +73,7 @@ All method routes inside the controller inherit this prefix.
 A method route can opt out of the controller prefix :
 
 ```csharp
-[Route("GET", "/home", isAbsolutePath: true)]
+[Route("GET", "/home", IsAbsolutePath =true)]
 ```
 
 This route is evaluated from the root, ignoring the controller prefix.
@@ -124,6 +124,80 @@ If conversion fails, the handler execution fails.
 ### Mental Model
 
 > A path parameter is part of the route identity, not optional input.
+
+
+## Host-Based Routing
+
+SimpleW supports **routing by HTTP host** in addition to method and path.
+
+This allows a single server instance to serve **multiple virtual hosts** with different route sets.
+
+Typical use cases include :
+- Multi-tenant applications
+- Public API + Admin API separation
+- Multiple domains served by the same process
+- Internal vs external endpoints
+
+Example :
+
+::: code-group
+
+```csharp [handler based]
+server.MapGet("api.example.com", "/users", () => {
+    return new { source = "public api" };
+});
+server.MapGet("admin.example.com", "/users", () => {
+    return new { source = "admin api" };
+});
+```
+
+```csharp [controller based]
+[Route("/admin", Host = "admin.example.com")]
+public class AdminController : Controller {
+
+    [Route("GET", "/dashboard")]
+    public object Dashboard() {
+        ...
+    }
+}
+```
+
+:::
+
+Requests are resolved using both **Host** and **Path** :
+
+```
+GET api.example.com   /users   -> public API
+GET admin.example.com /users   -> admin API
+```
+
+Each host maintains its own independent route table.
+
+
+### Host Routing Priority
+
+When a request arrives, SimpleW resolves routes using the following order :
+
+1. **Host-specific routes**
+2. **Global routes** (routes without a host)
+3. **Fallback handler**
+4. **404 Not Found**
+
+Example :
+
+```csharp
+server.MapGet("api.example.com", "/status", () => "API status");
+server.MapGet("/status", () => "global status");
+```
+
+Requests behave as follows :
+
+```
+GET api.example.com /status -> API status
+GET otherhost.com  /status -> global status
+```
+
+Host routes therefore **override global routes** when both exist.
 
 
 ## Catch-All Routes (Wildcards)

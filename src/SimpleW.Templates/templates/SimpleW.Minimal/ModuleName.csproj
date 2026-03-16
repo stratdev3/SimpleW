@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SimpleW" Version="26.0.0-rc.20260309-1542" />
+    <PackageReference Include="SimpleW" Version="26.0.0-rc.20260316-1560" />
   </ItemGroup>
 
 </Project>

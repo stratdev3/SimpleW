@@ -3,27 +3,46 @@
 The primary goal of the `Route` attribut is to target method and add them to the [`Router`](./router).
 
 
-## RouteAttribute()
-
-### Method
+## Properties
 
 ```csharp
 /// <summary>
-/// Route Attribut for Method
+/// Host (optional)
+/// </summary>
+public string? Host { get; set; }
+```
+
+```csharp
+/// <summary>
+/// IsAbsolutePath (optional)
+/// </summary>
+public bool IsAbsolutePath { get; set; }
+```
+
+```csharp
+/// <summary>
+/// Description (optional)
+/// </summary>
+public string? Description { get; set; }
+```
+
+
+## Method
+
+```csharp
+/// <summary>
+/// Initializes a new instance of the <see cref="RouteAttribute"/> class for Method.
 /// </summary>
 /// <param name="method">The method.</param>
 /// <param name="path">The path.</param>
-/// <param name="queryStringMappingEnabled">The queryStringMappingEnabled.</param>
-/// <param name="isAbsolutePath">The absolutePath.</param>
-/// <param name="description">The string description for this route</param>
 /// <exception cref="ArgumentException">The argument 'verb' must be specified.</exception>
 /// <exception cref="ArgumentException">The argument 'path' must be specified.</exception>
-RouteAttribute(string method, string path, bool queryStringMappingEnabled = true, bool isAbsolutePath = false, string description = null)
+public RouteAttribute(string method, string path)
 ```
 
 Example, i want the `Home()` method of the `TestController` class be called when client send a request to http://localhost:2015/api/test/index.
 
-```csharp{19}
+```csharp{20}
 using System;
 using System.Net;
 using SimpleW;
@@ -64,7 +83,7 @@ namespace Sample {
 ```
 
 
-### Controller
+## Controller
 
 ```csharp
 /// <summary>
