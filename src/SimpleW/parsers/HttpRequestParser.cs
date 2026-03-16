@@ -70,6 +70,10 @@ namespace SimpleW.Parsers {
                 return false;
             }
 
+            ReadOnlySpan<byte> span = buffer.FirstSpan;
+            if (span.Length >= 3 && span[0] == 0x16 && span[1] == 0x03) {
+                throw new HttpRequestException($"TLS handshake on HTTP port.", 400);
+            }
 
             // 1. find header end (CRLF CRLF)
             if (!TryFindHeaderEndStrict(buffer, out var headerEndPos, out int headerBytesLen)) {
