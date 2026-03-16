@@ -627,6 +627,7 @@ namespace SimpleW {
             // RouteAttribut
             RouteAttribute? classRoute = controllerType.GetCustomAttribute<RouteAttribute>(inherit: true);
             string controllerPrefix = classRoute?.Path ?? string.Empty;
+            string? classHost = classRoute?.Host;
 
             foreach (MethodInfo method in controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
 
@@ -638,7 +639,7 @@ namespace SimpleW {
                 foreach (RouteAttribute attr in methodRoutes.Where(a => !string.IsNullOrWhiteSpace(a.Method) && a.Method != "*")) {
                     HttpRouteExecutor handlerDelegate = Create(controllerType, method);
                     string fullPath = BuildFullPath(basePrefix ?? string.Empty, controllerPrefix, attr);
-                    router.Map(attr.Method, fullPath, handlerDelegate);
+                    router.Map(attr.Method, (!string.IsNullOrWhiteSpace(attr.Host) ? attr.Host : classHost), fullPath, handlerDelegate);
                 }
             }
         }

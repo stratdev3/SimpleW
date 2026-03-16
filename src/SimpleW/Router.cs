@@ -5,6 +5,45 @@
     /// </summary>
     public sealed class Router {
 
+        #region constructor
+
+        /// <summary>
+        /// Is Root Router
+        /// </summary>
+        private readonly bool _isRootRouter;
+
+        /// <summary>
+        /// Global Router
+        /// </summary>
+        private readonly Router? _globalRouter;
+
+        /// <summary>
+        /// Host Routers
+        /// </summary>
+        private readonly Dictionary<string, Router>? _hostRouters;
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        public Router() : this(isRootRouter: true) { }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="isRootRouter"></param>
+        private Router(bool isRootRouter) {
+            _isRootRouter = isRootRouter;
+
+            if (isRootRouter) {
+                _globalRouter = new Router(isRootRouter: false);
+                _globalRouter._resultHandler = _resultHandler;
+
+                _hostRouters = new Dictionary<string, Router>(StringComparer.Ordinal);
+            }
+        }
+
+        #endregion constructor
+
         #region route exact
 
         /// <summary>
@@ -79,6 +118,9 @@
         /// </example>
         public void UseMiddleware(HttpMiddleware middleware) {
             ArgumentNullException.ThrowIfNull(middleware);
+            if (!_isRootRouter) {
+                throw new InvalidOperationException("Middlewares must be registered on the root router only.");
+            }
             _middlewares.Add(middleware);
         }
 
@@ -110,14 +152,29 @@
 
         #region ResultHandler
 
+        private HttpResultHandler _resultHandler = HttpResultHandlers.SendJsonResult;
+
         /// <summary>
         /// Action to do on the non null Result of any handler (Delegate).
         /// </summary>
-        public HttpResultHandler ResultHandler { get; set; } = HttpResultHandlers.SendJsonResult;
+        public HttpResultHandler ResultHandler {
+            get => _resultHandler;
+            set {
+                _resultHandler = value;
+
+                if (_isRootRouter) {
+                    _globalRouter!._resultHandler = value;
+
+                    foreach (Router child in _hostRouters!.Values) {
+                        child._resultHandler = value;
+                    }
+                }
+            }
+        }
 
         #endregion ResultHandler
 
-        #region Map Method Path Delegate
+        #region Map Method
 
         /// <summary>
         /// Map Method/Path to a HttpRouteExecutor
@@ -126,12 +183,40 @@
         /// <param name="path"></param>
         /// <param name="executor"></param>
         public void Map(string method, string path, HttpRouteExecutor executor) {
+            Map(method, host: null, path, executor);
+        }
+
+        /// <summary>
+        /// Map Method/Host/Path to a HttpRouteExecutor
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="executor"></param>
+        public void Map(string method, string? host, string path, HttpRouteExecutor executor) {
             ArgumentNullException.ThrowIfNull(method);
             ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(executor);
 
-            Route route = new(new RouteAttribute(method, path), executor);
+            Route route = new(
+                string.IsNullOrWhiteSpace(host)
+                    ? new RouteAttribute(method, path)
+                    : new RouteAttribute(method, host!, path),
+                executor
+            );
 
             AddRouteInternal(route);
+        }
+
+        /// <summary>
+        /// Map Method/Host/Path to a Delegate
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        public void Map(string method, string? host, string path, Delegate handler) {
+            Map(method, host, path, RouteExecutorFactory.Create(handler));
         }
 
         /// <summary>
@@ -141,7 +226,7 @@
         /// <param name="path"></param>
         /// <param name="handler"></param>
         public void Map(string method, string path, Delegate handler) {
-            Map(method, path, RouteExecutorFactory.Create(handler));
+            Map(method, host: null, path, handler);
         }
 
         /// <summary>
@@ -150,9 +235,29 @@
         public void MapGet(string path, Delegate handler) => Map("GET", path, handler);
 
         /// <summary>
+        /// Map GET/Host/Path to a Delegate
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        public void MapGet(string host, string path, Delegate handler) => Map("GET", host, path, handler);
+
+        /// <summary>
         /// Map POST/Path to a Delegate
         /// </summary>
         public void MapPost(string path, Delegate handler) => Map("POST", path, handler);
+
+        /// <summary>
+        /// Map POST/Host/Path to a Delegate
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        public void MapPost(string host, string path, Delegate handler) => Map("POST", host, path, handler);
+
+        #endregion Map Method
+
+        #region Add Route
 
         /// <summary>
         /// AddRouteInternal
@@ -160,9 +265,43 @@
         /// <param name="route"></param>
         private void AddRouteInternal(Route route) {
             string p = route.Attribute.Path;
-
             ValidateRoutePath(p);
 
+            if (_isRootRouter) {
+                string? host = NormalizeHost(route.Attribute.Host);
+
+                // global router
+                if (host == null) {
+                    _globalRouter!.AddRouteLocal(route);
+                    return;
+                }
+                // host router
+                else {
+                    // create if not exists
+                    if (!_hostRouters!.TryGetValue(host, out Router? hostRouter)) {
+                        hostRouter = new Router(isRootRouter: false) { _resultHandler = _resultHandler };
+                        _hostRouters[host] = hostRouter;
+                    }
+                    // rewrite the route and add it to the host router
+                    hostRouter.AddRouteLocal(new Route(
+                        new RouteAttribute(route.Attribute.Method, route.Attribute.Path, route.Attribute.IsAbsolutePath, route.Attribute.Description),
+                        route.Executor
+                    ));
+                    return;
+                }
+            }
+
+            AddRouteLocal(route);
+        }
+
+        /// <summary>
+        /// AddRouteLocal depending on
+        ///     - exact route
+        ///     - pattern route
+        /// </summary>
+        /// <param name="route"></param>
+        private void AddRouteLocal(Route route) {
+            string p = route.Attribute.Path;
             bool isPattern = p.IndexOf('*') >= 0 || p.IndexOf(':') >= 0;
 
             if (!isPattern) {
@@ -215,58 +354,115 @@
             }
         }
 
-        #endregion Map Method Path Delegate
+        /// <summary>
+        /// Normalize Host
+        /// </summary>
+        /// <param name="host"></param>
+        /// <returns></returns>
+        private static string? NormalizeHost(string? host) {
+            if (string.IsNullOrWhiteSpace(host)) {
+                return null;
+            }
+
+            host = host.Trim();
+
+            // IPv6 bracket form: [::1]:8080
+            if (host.Length > 0 && host[0] == '[') {
+                int endBracket = host.IndexOf(']');
+                if (endBracket > 0) {
+                    return host.Substring(0, endBracket + 1).ToLowerInvariant();
+                }
+
+                return host.ToLowerInvariant();
+            }
+
+            // host:port
+            int colonIndex = host.LastIndexOf(':');
+            if (colonIndex > 0) {
+                host = host.Substring(0, colonIndex);
+            }
+
+            return host.ToLowerInvariant();
+        }
+
+        #endregion Add Route
+
+        #region Dispatch Route
 
         /// <summary>
-        /// A.) Find Handler from Method/Path with the following priority :
-        ///     1. find exact route for GET/POST method, O(1) complexity, goto B
-        ///     2. if not found, find exact route for other methods, O(n) complexity, goto B
-        ///     3. if not found, find pattern route for GET/POST method, goto B
-        ///     4. if not found, find pattern route for other methods, goto B
-        ///     5. if not found, execute fallback handler
-        ///     6. if not fallback handler, send a 404 response
-        ///     
-        /// B.) Once the Handler is found, Execute with the following pipeline :
+        /// Main Dispatch :
+        ///     1. try find the route in a host router, and Execute
+        ///     2. try find the route in the global router, and Execute
+        ///     3. else fallback, and Execute
+        ///     4. 404 and Execute
+        ///
+        /// The Execute is the following :
         ///     1. fast path if no middleware : execute Handler
         ///     2. loop to all middleware until next()
         /// </summary>
         /// <param name="session"></param>
         /// <returns></returns>
         public ValueTask DispatchAsync(HttpSession session) {
-            ValueTask task;
-
-            // exact routes
-            if (TryDispatchExact(session, out task)) {
-                return task;
+            if (!_isRootRouter) {
+                throw new InvalidOperationException("DispatchAsync must be called on the root router only.");
             }
 
-            // pattern routes (params + wildcard)
-            if (TryDispatchPattern(session, out task)) {
-                return task;
+            string? host = NormalizeHost(session.Request.Headers.Host);
+
+            // 1. host routes
+            if (host != null
+                && _hostRouters!.TryGetValue(host, out Router? hostRouter)
+                && hostRouter.TryResolveLocal(session, out HttpRouteExecutor? hostExecutor) && hostExecutor != null
+            ) {
+                return ExecutePipelineAsync(session, hostExecutor);
             }
 
-            // fallback
+            // 2. global routes
+            if (_globalRouter!.TryResolveLocal(session, out HttpRouteExecutor? globalExecutor) && globalExecutor != null) {
+                return ExecutePipelineAsync(session, globalExecutor);
+            }
+
+            // 3. fallback
             if (_fallback != null) {
                 session.Request.ParserSetRouteTemplate(":fallback");
                 return ExecutePipelineAsync(session, _fallback);
             }
 
-            // at last, return a 404
+            // 4. at last, return a 404
             session.Request.ParserSetRouteTemplate(":notfound");
-            return ExecutePipelineAsync(
-                session,
-                RouteExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync())
-            );
+            return ExecutePipelineAsync(session,_notFoundExecutor);
         }
 
         /// <summary>
-        /// Find Handler in route exact
+        /// Find Handler from Method/Path
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="task"></param>
+        /// <param name="executor"></param>
         /// <returns></returns>
-        private bool TryDispatchExact(HttpSession session, out ValueTask task) {
-            task = default;
+        private bool TryResolveLocal(HttpSession session, out HttpRouteExecutor? executor) {
+            executor = null;
+
+            if (TryResolveLocalExact(session, out executor)) {
+                return true;
+            }
+
+            if (TryResolveLocalPattern(session, out executor)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Find Handler from Method/Path with exact route, with the following priority :
+        ///     1. find exact route for GET/POST method, O(1) complexity
+        ///     2. if not found, find exact route for other methods, O(n) complexity
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="executor"></param>
+        /// <returns></returns>
+        private bool TryResolveLocalExact(HttpSession session, out HttpRouteExecutor? executor) {
+            executor = null;
 
             Route? route;
 
@@ -279,7 +475,7 @@
             // GET / POST exact
             if (dict != null && dict.TryGetValue(session.Request.Path, out route)) {
                 session.Request.ParserSetRouteTemplate(route.Attribute.Path);
-                task = ExecutePipelineAsync(session, route.Executor);
+                executor = route.Executor;
                 return true;
             }
 
@@ -289,7 +485,7 @@
                 && otherDict.TryGetValue(session.Request.Path, out route)
             ) {
                 session.Request.ParserSetRouteTemplate(route.Attribute.Path);
-                task = ExecutePipelineAsync(session, route.Executor);
+                executor = route.Executor;
                 return true;
             }
 
@@ -297,13 +493,15 @@
         }
 
         /// <summary>
-        /// Find Handler in route pattern
+        /// Find Handler from Method/Path with pattern route, with the following priority :
+        ///     1. find pattern route for GET/POST method, O(n) complexity
+        ///     2. if not found, find pattern route for other methods, O(n) complexity
         /// </summary>
         /// <param name="session"></param>
-        /// <param name="task"></param>
+        /// <param name="executor"></param>
         /// <returns></returns>
-        private bool TryDispatchPattern(HttpSession session, out ValueTask task) {
-            task = default;
+        private bool TryResolveLocalPattern(HttpSession session, out HttpRouteExecutor? executor) {
+            executor = null;
 
             // router owns this data
             session.Request.ParserSetRouteValues(null);
@@ -321,17 +519,13 @@
             RouteMatcher? best = null;
             Dictionary<string, string>? bestValues = null;
 
-            string path = session.Request.Path;
-
-            for (int i = 0; i < matchers.Count; i++) {
-                RouteMatcher m = matchers[i];
-
-                if (!m.TryMatch(path, out Dictionary<string, string>? values)) {
+            foreach (RouteMatcher matcher in matchers) {
+                if (!matcher.TryMatch(session.Request.Path, out Dictionary<string, string>? values)) {
                     continue;
                 }
 
-                if (best == null || m.Specificity > best.Specificity) {
-                    best = m;
+                if (best == null || matcher.Specificity > best.Specificity) {
+                    best = matcher;
                     bestValues = values;
                 }
             }
@@ -342,9 +536,13 @@
 
             session.Request.ParserSetRouteValues(bestValues);
             session.Request.ParserSetRouteTemplate(best.Route.Attribute.Path);
-            task = ExecutePipelineAsync(session, best.Route.Executor);
+            executor = best.Route.Executor;
             return true;
         }
+
+        #endregion Dispatch Route
+
+        #region fallback
 
         /// <summary>
         /// Fallback Handler
@@ -357,8 +555,19 @@
         /// <param name="handler"></param>
         public void MapFallback(Delegate handler) {
             ArgumentNullException.ThrowIfNull(handler);
+            if (!_isRootRouter) {
+                throw new InvalidOperationException("Fallback must be registered on the root router only.");
+            }
             _fallback = RouteExecutorFactory.Create(handler);
         }
+
+        #endregion fallback
+
+        #region not found
+
+        private static readonly HttpRouteExecutor _notFoundExecutor = RouteExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync());
+
+        #endregion not found
 
         #region RouteMatcher
 
@@ -543,6 +752,8 @@
 
         #endregion RouteMatcher
 
+        #region list/export Routes
+
         /// <summary>
         /// All declared Routes
         /// </summary>
@@ -550,53 +761,96 @@
             get {
                 List<RouteInfo> routes = new();
 
-                static RouteInfo ToInfo(Route r, bool isPattern) => new(
-                    r.Attribute.Method,
-                    r.Attribute.Path,
-                    r.Attribute.IsAbsolutePath,
-                    r.Attribute.Description,
-                    isPattern
-                );
-
-                // exact routes
-                foreach (Route r in _get.Values) {
-                    routes.Add(ToInfo(r, isPattern: false));
-                }
-                foreach (Route r in _post.Values) {
-                    routes.Add(ToInfo(r, isPattern: false));
-                }
-                foreach (Dictionary<string, Route> dict in _others.Values) {
-                    foreach (Route r in dict.Values) {
-                        routes.Add(ToInfo(r, isPattern: false));
+                if (_isRootRouter) {
+                    // global routes
+                    if (_globalRouter != null) {
+                        foreach (RouteInfo route in _globalRouter.GetLocalRoutes(host: null)) {
+                            routes.Add(route);
+                        }
                     }
-                }
 
-                // pattern routes
-                foreach (RouteMatcher m in _getMatchers) {
-                    routes.Add(ToInfo(m.Route, isPattern: true));
-                }
-                foreach (RouteMatcher m in _postMatchers) {
-                    routes.Add(ToInfo(m.Route, isPattern: true));
-                }
-                foreach (List<RouteMatcher> list in _otherMatchers.Values) {
-                    foreach (RouteMatcher m in list) {
-                        routes.Add(ToInfo(m.Route, isPattern: true));
+                    // host routes
+                    if (_hostRouters != null) {
+                        foreach (KeyValuePair<string, Router> kv in _hostRouters) {
+                            string host = kv.Key;
+                            Router hostRouter = kv.Value;
+
+                            foreach (RouteInfo route in hostRouter.GetLocalRoutes(host)) {
+                                routes.Add(route);
+                            }
+                        }
                     }
+
+                    return routes;
                 }
 
-                return routes;
+                // child/global router: only local routes
+                return GetLocalRoutes(host: null);
             }
+        }
+
+        /// <summary>
+        /// Get local routes from the current router only
+        /// </summary>
+        /// <param name="host"></param>
+        /// <returns></returns>
+        private List<RouteInfo> GetLocalRoutes(string? host) {
+            List<RouteInfo> routes = [];
+
+            RouteInfo ToInfo(Route r, bool isPattern) => new(
+                r.Attribute.Method,
+                host,
+                r.Attribute.Path,
+                r.Attribute.IsAbsolutePath,
+                r.Attribute.Description,
+                isPattern
+            );
+
+            // exact routes
+            foreach (Route r in _get.Values) {
+                routes.Add(ToInfo(r, isPattern: false));
+            }
+
+            foreach (Route r in _post.Values) {
+                routes.Add(ToInfo(r, isPattern: false));
+            }
+
+            foreach (Dictionary<string, Route> dict in _others.Values) {
+                foreach (Route r in dict.Values) {
+                    routes.Add(ToInfo(r, isPattern: false));
+                }
+            }
+
+            // pattern routes
+            foreach (RouteMatcher m in _getMatchers) {
+                routes.Add(ToInfo(m.Route, isPattern: true));
+            }
+
+            foreach (RouteMatcher m in _postMatchers) {
+                routes.Add(ToInfo(m.Route, isPattern: true));
+            }
+
+            foreach (List<RouteMatcher> list in _otherMatchers.Values) {
+                foreach (RouteMatcher m in list) {
+                    routes.Add(ToInfo(m.Route, isPattern: true));
+                }
+            }
+
+            return routes;
         }
 
         /// <summary>
         /// Route Info
         /// </summary>
         /// <param name="Method"></param>
+        /// <param name="Host"></param>
         /// <param name="Path"></param>
         /// <param name="IsAbsolutePath"></param>
         /// <param name="Description"></param>
         /// <param name="IsPattern"></param>
-        public sealed record RouteInfo(string Method, string Path, bool IsAbsolutePath, string? Description, bool IsPattern);
+        public sealed record RouteInfo(string Method, string? Host, string Path, bool IsAbsolutePath, string? Description, bool IsPattern);
+
+        #endregion list/export Routes
 
     }
 

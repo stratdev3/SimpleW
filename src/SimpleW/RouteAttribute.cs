@@ -12,6 +12,11 @@
         public string Method { get; protected set; }
 
         /// <summary>
+        /// Host
+        /// </summary>
+        public string? Host { get; protected set; }
+
+        /// <summary>
         /// Path
         /// </summary>
         public string Path { get; protected set; }
@@ -44,6 +49,28 @@
             }
 
             Method = method.ToUpperInvariant();
+            Host = null;
+            Path = path;
+            IsAbsolutePath = isAbsolutePath;
+            Description = description;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RouteAttribute"/> class for Method + Host.
+        /// </summary>
+        public RouteAttribute(string method, string host, string path, bool isAbsolutePath = false, string? description = null) {
+            if (string.IsNullOrWhiteSpace(method)) {
+                throw new ArgumentException($"The argument '{nameof(method)}' must be specified.");
+            }
+            if (string.IsNullOrWhiteSpace(host)) {
+                throw new ArgumentException($"The argument '{nameof(host)}' must be specified.");
+            }
+            if (string.IsNullOrWhiteSpace(path)) {
+                throw new ArgumentException($"The argument '{nameof(path)}' must be specified.");
+            }
+
+            Method = method.ToUpperInvariant();
+            Host = host;
             Path = path;
             IsAbsolutePath = isAbsolutePath;
             Description = description;
@@ -59,6 +86,7 @@
                 throw new ArgumentException($"The argument '{nameof(path)}' must be specified.");
             }
             Method = "*";
+            Host = null;
             Path = path;
         }
 

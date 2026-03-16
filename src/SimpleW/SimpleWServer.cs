@@ -556,6 +556,19 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Add handler for Method/Host/Path
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleWServer Map(string method, string host, string path, Delegate handler) {
+            Router.Map(method, host, path, handler);
+            return this;
+        }
+
+        /// <summary>
         /// Add handler for GET request
         /// alias for Map("GET", path, handler)
         /// </summary>
@@ -608,6 +621,19 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Add handler for GET request
+        /// alias for Map("GET", host, path, handler)
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleWServer MapGet(string host, string path, Delegate handler) {
+            Router.MapGet(host, path, handler);
+            return this;
+        }
+
+        /// <summary>
         /// Add handler for POST request
         /// alias for Map("POST", path, handler)
         /// </summary>
@@ -615,6 +641,19 @@ namespace SimpleW {
         /// <param name="handler"></param>
         public SimpleWServer MapPost(string path, Delegate handler) {
             Router.MapPost(path, handler);
+            return this;
+        }
+
+        /// <summary>
+        /// Add handler for POST request
+        /// alias for Map("POST", host, path, handler)
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        public SimpleWServer MapPost(string host, string path, Delegate handler) {
+            Router.MapPost(host, path, handler);
             return this;
         }
 
