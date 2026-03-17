@@ -183,6 +183,10 @@ namespace SimpleW.Parsers {
                     throw new HttpRequestException("Invalid Host header (HTTP/1.1).", 400);
                 }
             }
+            // reject ambiguous framing: both Transfer-Encoding: chunked and Content-Length
+            if (isChunked && contentLengthSeen) {
+                throw new HttpRequestException("Both Transfer-Encoding: chunked and Content-Length are present.", 400);
+            }
             request.ParserSetHeaders(headers);
 
 
