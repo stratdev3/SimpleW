@@ -71,11 +71,9 @@ Server :
 ```csharp [program.cs]
 class Program {
     static async Task Main() {
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
         var server = new SimpleWServer(IPAddress.Any, 2015);
         server.MapControllers<Controller>("/api");
-        server.OnStarted(s => {
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
-        });
         await server.RunAsync();
     }
 }
@@ -137,11 +135,9 @@ Server :
 ```csharp [program.cs]
 class Program {
     static async Task Main() {
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
         var server = new SimpleWServer(IPAddress.Any, 2015);
         server.MapControllers<Controller>("/api");
-        server.OnStarted(s => {
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
-        });
         await server.RunAsync();
     }
 }
@@ -247,11 +243,9 @@ Server :
 ```csharp [program.cs]
 class Program {
     static async Task Main() {
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
         var server = new SimpleWServer(IPAddress.Any, 2015);
         server.MapControllers<Controller>("/api");
-        server.OnStarted(s => {
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
-        });
         await server.RunAsync();
     }
 }
@@ -320,11 +314,9 @@ Key characteristics :
 ```csharp [program.cs]
 class Program {
     static async Task Main() {
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
         var server = new SimpleWServer(IPAddress.Any, 2015);
         server.MapControllers<Controller>("/api");
-        server.OnStarted(s => {
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
-        });
         await server.RunAsync();
     }
 }
@@ -407,12 +399,10 @@ public class UserController : Controller {
 [`Request.Jwt`](../reference/httprequest.md#jwt) returns the jwt encoded a string.
 
 ```csharp
+Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
 var server = new SimpleWServer(IPAddress.Any, 2015);
 server.MapGet("/api/test/hello", object (HttpSession session) => {
     return $"the token is {session.Request.Jwt}";
-});
-server.OnStarted(s => {
-    Console.WriteLine("server started at http://localhost:{server.Port}/");
 });
 await server.RunAsync();
 ```

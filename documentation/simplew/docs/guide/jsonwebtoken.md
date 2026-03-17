@@ -19,6 +19,9 @@ If your app is built around SimpleW’s request pipeline and authentication conv
 class Program {
     static async Task Main() {
 
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Trace);
+        var _log = new Logger<Program>();
+
         var server = new SimpleWServer(IPAddress.Any, 2015);
         server.Configure(options => {
             // configure with "Azerty0123456789!" as password
@@ -48,8 +51,8 @@ class Program {
             return new { message = $"{session.Request.User.FullName}, Hello World !" };
         });
 
-        Console.WriteLine("1. get a jwt : http://localhost:2015/api/jwt/forge");
-        Console.WriteLine("2. access secure endpoint : http://localhost:2015/api/test/hello");
+        _log.Info($"1. get a jwt : http://localhost:{server.Port}/api/jwt/forge");
+        _log.Info($"2. access secure endpoint : http://localhost:{server.Port}/api/test/hello");
         await server.RunAsync();
 
     }
@@ -75,6 +78,9 @@ This is exactly the purpore of `Request.JwtToken` and `Request.JwtError`.
 class Program {
 
     static async Task Main() {
+
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+        var _log = new Logger<Program>();
 
         var server = new SimpleWServer(IPAddress.Any, 2015);
         server.Configure(options => {
@@ -108,8 +114,8 @@ class Program {
             return new { message = $"{payload.Name}, Hello World !" };
         });
 
-        Console.WriteLine("1. get a jwt : http://localhost:2015/api/jwt/forge");
-        Console.WriteLine("2. access secure endpoint : http://localhost:2015/api/test/hello");
+        _log.Info($"1. get a jwt : http://localhost:{server.Port}/api/jwt/forge");
+        _log.Info($"2. access secure endpoint : http://localhost:{server.Port}/api/test/hello");
         await server.RunAsync();
     }
 

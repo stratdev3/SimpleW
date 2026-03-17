@@ -211,6 +211,7 @@ This helps :
 ```csharp [program.cs]
 class Program {
     static async Task Main() {
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
         var server = new SimpleWServer(IPAddress.Any, 2015);
 
         // setup static files modules to server the index.html
@@ -232,9 +233,6 @@ class Program {
             };
         });
 
-        server.OnStarted(s => {
-            Console.WriteLine("server started at http://localhost:{server.Port}/");
-        });
         await server.RunAsync();
     }
 }

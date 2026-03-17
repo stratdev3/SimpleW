@@ -17,4 +17,4 @@ public static SimpleWServer UseServerSentEventsModule(this SimpleWServer server,
 
 ## Example
 
-See [examples](../guide/serversentevents.md.md) of use.
+See [examples](../guide/serversentevents.md) of use.

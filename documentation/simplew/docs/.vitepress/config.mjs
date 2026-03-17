@@ -169,7 +169,7 @@ export default defineConfig({
                     items: [
                         { text: 'StaticFilesModule', link: '/reference/staticfilesmodule' },
                         { text: 'CorsModule', link: '/reference/corsmodule' },
-                        { text: 'SseModule', link: '/reference/ssemodule' },
+                        { text: 'SseModule', link: '/reference/serversenteventsmodule' },
                         { text: 'WebsocketModule', link: '/reference/websocketmodule' },
                     ]
                 },
