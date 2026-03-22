@@ -134,6 +134,79 @@ var context = new SslContext(
 ```
 
 
+## Accessing the client certificate
+
+After a successful TLS handshake, the client certificate is available on the session:
+
+```csharp
+var cert = session.ClientCertificate;
+```
+
+This property returns an `X509Certificate2` or `null` if no client certificate was provided.
+
+
+## Mapping mTLS to HttpPrincipal
+
+mTLS only validates the connection.
+To integrate with the SimpleW authentication model, you should map the client certificate to a [`HttpPrincipal`](./principal.md).
+There is two approaches to resolve the principal at request time :
+
+::: code-group
+
+```csharp [PrincipalResolver Approach]
+server.ConfigurePrincipalResolver(session => {
+    var cert = session.ClientCertificate;
+
+    if (cert == null) {
+        return null;
+    }
+
+    return new HttpPrincipal(new HttpIdentity(
+        isAuthenticated: true,
+        authenticationType: "MutualTLS",
+        identifier: cert.Thumbprint,
+        name: cert.GetNameInfo(X509NameType.SimpleName, false) ?? cert.Subject,
+        email: cert.GetNameInfo(X509NameType.EmailName, false),
+        roles: Array.Empty<string>(),
+        properties: [
+            new IdentityProperty("auth_scheme", "mTLS"),
+            new IdentityProperty("x509.subject", cert.Subject),
+            new IdentityProperty("x509.thumbprint", cert.Thumbprint ?? string.Empty)
+        ]
+    ));
+});
+```
+
+```csharp [Middleware Approach]
+server.UseMiddleware(async (session, next) => {
+    var cert = session.ClientCertificate;
+
+    if (cert != null) {
+        session.Principal = new HttpPrincipal(new HttpIdentity(
+            isAuthenticated: true,
+            authenticationType: "MutualTLS",
+            identifier: cert.Thumbprint,
+            name: cert.GetNameInfo(X509NameType.SimpleName, false) ?? cert.Subject,
+            email: cert.GetNameInfo(X509NameType.EmailName, false),
+            roles: Array.Empty<string>(),
+            properties: [
+                new IdentityProperty("auth_scheme", "mTLS"),
+                new IdentityProperty("x509.subject", cert.Subject),
+                new IdentityProperty("x509.thumbprint", cert.Thumbprint ?? string.Empty),
+                new IdentityProperty("x509.serial_number", cert.SerialNumber ?? string.Empty)
+            ]
+        ));
+    }
+
+    await next();
+});
+```
+
+:::
+
+
+
+
 ## Disable Certificate
 
 You can disable a certificate while the server is running.
@@ -156,5 +229,5 @@ You can use the same logic to `UseHttps()` after you already started you server 
 
 There is an [`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) addon that provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**.
 
-Just follow the documentation of the [Let's Encrypt Module](../addons/letsencrypt.md).
+Just follow the documentation of the [Let's Encrypt Module](../addons/service-letsencrypt.md.md).
 

@@ -98,6 +98,8 @@ If something is missing, open an issue instead of reimplementing it.
 
 ```csharp
 Console.WriteLine(...);
+// or
+Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
 ```
 
 This is **extremely slow** under load.

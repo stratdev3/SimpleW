@@ -42,6 +42,30 @@ This property can be used to return a response object which will be send to clie
 It's initialized as an empty Response instance. See the [HttpResponse](./httpresponse) class for uses.
 
 
+## Principal
+
+```csharp
+/// <summary>
+/// Gets the current resolved user.
+/// </summary>
+public HttpPrincipal Principal => Session.Principal;
+```
+
+This property can be used to define security. See the [HttpPrincipal](./httpprincipal.md) class for uses.
+
+
+## Bag
+
+```csharp
+/// <summary>
+/// Gets the current HttpBag
+/// </summary>
+public HttpBag Bag => Session.Bag;
+```
+
+This property can be used to pass data between middleware. See the [HttpBag](./httpbag.md.md) class for uses.
+
+
 ## OnBeforeMethod
 
 This [callback](../guide/callback#onbeforemethod) is defined as

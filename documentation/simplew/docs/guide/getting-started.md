@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the nuget package, always prefer the last version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-rc.20260317-1568
+$ dotnet add package SimpleW --version 26.0.0-rc.20260323-1589
 ```
 
 ::: tip NOTE
@@ -63,7 +63,7 @@ namespace Sample {
 It uses the [`MapGet`](../reference/simplewserver.md#map) and [`MapPost`](../reference/simplewserver.md#map) methods, which are quite the same as asp.net core.
 
 ::: info
-See the [Templates](../addons/templates.md#simplew-minimal) addons to quickly create a minimal project.
+See the [Templates](../addons/template-templates.md#simplew-minimal) addons to quickly create a minimal project.
 :::
 
 

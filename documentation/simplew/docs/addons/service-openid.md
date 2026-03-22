@@ -17,7 +17,7 @@ It allows you to :
 - Validate ID tokens (issuer, audience, lifetime, signature, nonce)
 - Create secure, cookie-based authentication sessions
 - Automatically restore authenticated users on each request
-- Map OpenID claims to SimpleW users (`IWebUser`, `WebUser`, `TokenWebUser`)
+- Map OpenID claims to SimpleW Principal (`HttpPrincipal`, `HttpIdentity`)
 - Support multiple identity providers
 - Keep full control over routing, cookies, and sessions
 
@@ -32,7 +32,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-rc.20260317-1568
+$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-rc.20260323-1589
 ```
 
 
@@ -72,7 +72,7 @@ $ dotnet add package SimpleW.Service.OpenID --version 26.0.0-rc.20260317-1568
 | LoginHint | `null` | Enables support for the login_hint query parameter. |
 | ClientAuthentication | `Basic` | Client authentication method (Basic or PostBody). |
 | HttpClient | `null` | Custom HttpClient used for OIDC requests. |
-| UserFactory | default | Maps an OpenID session to a SimpleW user instance. |
+| PrincipalFactory | default | Maps an OpenID session to a SimpleW Principal instance. |
 
 ### ClientAuthMode
 
@@ -150,65 +150,83 @@ Example :
 7. User is redirected back to the original page
 
 
-## User session handling
+## Principal session handling
 
 After authentication :
 
 - A secure cookie is stored on the client
 - Session data is stored in memory on the server
-- On each request, the module:
+- On each request, the module :
   - Reads the cookie
   - Restores the session
-  - Injects the authenticated user into `HttpSession.Request.User`
+  - Injects the authenticated user into `HttpSession.Principal`
 
 ```csharp
-if (session.Request.User.Identity) {
+if (session.Principal.IsAuthencated) {
     // user is authenticated
 }
 ```
 
+::: info
+See more info about [Principal](../guide/principal.md)
+:::
 
-## Accessing the authenticated user
+
+## Accessing the authenticated principal
 
 Example API endpoint :
 
 ```csharp
 server.Router.MapGet("/api/me", (HttpSession session) => {
-    if (!session.Request.User.Identity) {
+    if (!session.Principal.IsAuthenticated) {
         return session.Response
                       .Unauthorized()
                       .SendAsync();
     }
 
     return session.Response.Json(new {
-        session.Request.User.Id,
-        session.Request.User.Login,
-        session.Request.User.Mail,
-        session.Request.User.FullName,
-        session.Request.User.Roles
+        session.Principal
     }).SendAsync();
 });
 ```
 
 
-## User mapping (`UserFactory`)
+## Principal mapping (`PrincipalFactory`)
 
-By default, OpenID claims are mapped to `WebUser` or `TokenWebUser`.
+By default, OpenID claims are mapped to a `HttpPrincipal`.
 
 You can fully customize this behavior :
 
 ```csharp
 options.Add("google", o => {
-    o.UserFactory = auth => {
-        var user = new WebUser {
-            Identity = true,
-            Login = auth.Claims.FirstOrDefault(c => c.Type == "email")?.Value
-        };
+    o.PrincipalFactory = auth => {
 
-        return user;
+        string? Claim(string type) => auth.Claims.FirstOrDefault(c => c.Type == type)?.Value;
+
+        var identity = new HttpIdentity(
+            isAuthenticated: true,
+            authenticationType: "OpenID",
+            identifier: Claim("sub"),
+            name: Claim("name") ?? Claim("preferred_username"),
+            email: Claim("email"),
+            roles: auth.Claims .Where(c => c.Type == "role" || c.Type == "roles" || c.Type == "groups")
+                               .Select(c => c.Value)
+                               .Distinct()
+                               .ToArray(),
+            properties: auth.Claims.Select(c => new IdentityProperty(c.Type, c.Value))
+        );
+
+        return new HttpPrincipal(identity);
     };
 });
 ```
+
+Notes :
+- `auth.Claims` contains all claims returned by the OpenID provider.
+- `PrincipalFactory` is executed:
+  - After successful authentication
+  - When restoring the session from the authentication cookie
+- If not specified, a default implementation is used.
 
 
 ## Security considerations

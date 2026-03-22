@@ -24,6 +24,12 @@ HttpPrincipal
             └── Properties (IdentityProperty[])
 ```
 
+::: info
+The `HttpPrincipal` here is quite the same in AspNet Core except that :
+- it contains only one `HttpIdentity`
+- `Claims` are renamed as `IdentityProperty`
+:::
+
 
 ## HttpPrincipal
 
@@ -169,35 +175,14 @@ public class UserController : Controller {
 
 ## Setting the Principal
 
-There are **two ways** to define the principal.
-
-### 1. Direct assignment (manual)
-
-You can directly set the user on the session.
-
-```csharp
-session.Principal = new HttpPrincipal(new HttpIdentity(
-    isAuthenticated: true,
-    authenticationType: "Custom",
-    identifier: "user-123",
-    name: "John",
-    email: null,
-    roles: new[] { "admin" },
-    properties: null
-));
-```
-
-When to use :
-- manual authentication
-- test scenarios
-- custom pipelines
+There are **two ways** to define the principal :
+1. ConfigurePrincipalResolver _(recommended)_
+2. Direct assignment _(manual)_
 
 
-### 2. ConfigurePrincipalResolver (recommended)
+::: code-group
 
-The recommended approach is to define a **resolver** at the server level.
-
-```csharp
+```csharp [ConfigurePrincipalResolver]
 server.ConfigurePrincipalResolver(session => {
 
     string? token = session.Request.Headers.Authorization;
@@ -214,6 +199,20 @@ server.ConfigurePrincipalResolver(session => {
 });
 ```
 
+```csharp [Direct assignment]
+session.Principal = new HttpPrincipal(new HttpIdentity(
+    isAuthenticated: true,
+    authenticationType: "Custom",
+    identifier: "user-123",
+    name: "John",
+    email: null,
+    roles: new[] { "admin" },
+    properties: null
+));
+```
+
+:::
+
 ::: info
 The principal is resolved only when needed by lazy loading.
 This avoids unnecessary work and improves performance.
@@ -222,3 +221,11 @@ This avoids unnecessary work and improves performance.
 **Mental Model**
 
 > PrincipalResolver = "how the server builds the user from the request"
+
+
+## Real Example of Principal integration
+
+Examples of `HttpPrincipal` integration :
+- [Jwt](../addons/helper-jwt.md#minimal-example)
+- [BasicAuth](./basicauth.md#authentication-result-httpprincipal)
+- [SSL Client Certificate](./ssl-certificate.md#mapping-mtls-to-httpprincipal)

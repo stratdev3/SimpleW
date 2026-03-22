@@ -45,4 +45,4 @@ This makes it possible to :
 ## Available Json Engine
 
 See [Addons](../addons/addons.md) to find all the available json engines.
-The most famous, `Newtonsoft`, has its [wrapper](../addons/newtonsoft.md).
+The most famous, `Newtonsoft`, has its [wrapper](../addons/jsonengine-newtonsoft.md).

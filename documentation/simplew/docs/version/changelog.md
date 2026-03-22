@@ -43,31 +43,30 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 | Response Builder                     | ✅(status, contentType, headers, body, cookies)   | ✅    (status, contentType, contentLength, headers, body, cookies, compression)  |
 | Handler (Expression Tree)            | ✅ sync  ❌async         | ✅ sync ✅ async + RequestAborted   |
 | Routing                              | ✅ (minimal, attribute, querystring, regexp, path, wildcard) | ✅ (minimal, attribute, querystring, path, wildcard, host) |
-| Minimal API                          | ✅                       | ✅                             |
-| Controllers                          | ✅                       | ✅                             |
-| SSL / HTTPS                          | ✅ (SslContext)          | ✅  (SslContext, mutual authentication)  |
-| WebSocket                            | ✅ (full broadcast)      | ✅ (smart broadcast using "rooms")   |
-| Server-Sent Events (SSE)             | ✅                       | ✅ (smart broadcast using "rooms")   |
-| Basic Auth                           | ❌                       | ✅                                   |
-| JWT auth                             | ✅                       | ✅                                   |
-| Unix socket                          | ✅                       | ✅                                   |
+| Minimal API                          | ✅                       | ✅                                           |
+| Controllers                          | ✅                       | ✅                                           |
+| SSL / HTTPS                          | ✅ (SslContext)          | ✅  (SslContext, mutual authentication)      |
+| WebSocket                            | ✅ (full broadcast)      | ✅ (smart broadcast using "rooms")           |
+| Server-Sent Events (SSE)             | ✅                       | ✅ (smart broadcast using "rooms")           |
+| Basic Auth                           | ❌                       | ✅                                           |
+| Unix socket                          | ✅                       | ✅                                           |
 | Static files                         | ✅ (Cache, FileWatcher)  | ✅ (Cache, FileWatcher, Last-Modified, Etag) |
-| Cross-Origin Resource Sharing (CORS) | ✅                       | ✅                                   |
-| Body parsing (JSON)                  | ✅                       | ✅                                   |
-| Body parsing (form-urlencoded)       | ✅                       | ✅                                   |
-| Body parsing (multipart/form-data)   | ✅                       | ✅                                   |
-| Bag                                  | ❌                       | ✅ (share data between middleware)   |
-| WebUser / Identity                   | ✅                       | ✅                                   |
-| Custom JSON engine                   | ✅                       | ✅                                   |
-| HTTP pipelining                      | ❌                       | ✅                                   |
-| Idle Timeout                         | ❌                       | ✅                                   |
-| Request Protection                   | ❌                       | ✅(malformed)                        |
+| Cross-Origin Resource Sharing (CORS) | ✅                       | ✅                                           |
+| Body parsing (JSON)                  | ✅                       | ✅                                           |
+| Body parsing (form-urlencoded)       | ✅                       | ✅                                           |
+| Body parsing (multipart/form-data)   | ✅                       | ✅                                           |
+| Bag                                  | ❌                       | ✅ (share data between middleware)           |
+| Auth                                 | ⚠️ custom IWebUser       | ✅ Principal / Identity                      |
+| Custom JSON engine                   | ✅                       | ✅                                           |
+| HTTP pipelining                      | ❌                       | ✅                                           |
+| Idle Timeout                         | ❌                       | ✅                                           |
+| Request Protection                   | ❌                       | ✅(malformed)                                |
 | Observability                        | ✅ (traces) & global to all processes  | ✅  (traces, metrics, enrich)  per SimpleWServer instance   |
 | Logging                              | ❌                                     | ✅                                                          |
 | Documentation                        | ✅                                     | ✅ [simplew.net](https://simplew.net/v26/)                  |
 | Tests                                | ✅                                     | ✅ (more tests)                                             |
 | Support                              | ❌                                     | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                 |
-| Addons                               | ❌                                     | ✅ Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger, LetsEncrypt, Templates, Serilog, Log4net |
+| Addons                               | ❌                                     | ✅ Chaos, Firewall, Hosting, Jwt, Latency, Log4net, OpenID, Razor, Swagger, LetsEncrypt, Templates, Serilog, Log4net |
 
 
 

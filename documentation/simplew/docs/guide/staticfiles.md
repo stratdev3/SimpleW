@@ -9,7 +9,7 @@ That's the goal of the [`StaticFilesModule`](../reference/staticfilesmodule.md).
 
 To serve statics files with very few lines of code :
 
-```csharp{4,15-20}
+```csharp
 using System;
 using System.Net;
 using SimpleW;
@@ -52,7 +52,7 @@ Note : on Windows, the Firewall can block this simple console app even if expose
 
 SimpleW can handle multiple directories as soon as they are declared under different endpoints.
 
-```csharp{4,15-24}
+```csharp
 using System;
 using System.Net;
 using SimpleW;
@@ -198,7 +198,7 @@ $ pwd
 
 Now, we will server this directory using the `StaticFilesModule` module of SimpleW :
 
-```csharp{15}
+```csharp
 using System;
 using System.Net;
 using SimpleW;

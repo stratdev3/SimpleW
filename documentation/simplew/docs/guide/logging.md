@@ -15,8 +15,9 @@ The [`logging`](../reference/logger.md) system is intentionally simple and is de
 A logger is typically declared as a **static readonly property** in a class.
 
 ```csharp
+// custom string
 private static readonly ILogger _log = new Logger("MyClass");
-// or
+// or Class
 private static readonly ILogger _log = new Logger<MyClass>();
 ```
 
@@ -116,4 +117,4 @@ SimpleW logging can easily be connected to **external logging frameworks or moni
 
 This is done by registering a **sink** that forwards `LogEntry` objects to another system, see example above.
 
-See Addons to find all the available logging helper to integrate famous solution like [Serilog](../addons/serilog.md) or [Log4net](../addons/log4net.md).
+See Addons to find all the available logging helper to integrate famous solution like [Serilog](../addons/helper-serilog.md) or [Log4net](../addons/helper-log4net.md).

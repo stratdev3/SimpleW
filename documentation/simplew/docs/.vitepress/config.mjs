@@ -112,33 +112,34 @@ export default defineConfig({
                 {
                     text: 'Services',
                     items: [
-                        { text: 'Chaos', link: '/addons/chaos' },
-                        { text: 'Firewall', link: '/addons/firewall' },
-                        { text: 'Latency', link: '/addons/latency' },
-                        { text: 'LetsEncrypt', link: '/addons/letsencrypt' },
-                        { text: 'OpenID', link: '/addons/openid' },
+                        { text: 'Chaos', link: '/addons/service-chaos' },
+                        { text: 'Firewall', link: '/addons/service-firewall' },
+                        { text: 'Latency', link: '/addons/service-latency' },
+                        { text: 'LetsEncrypt', link: '/addons/service-letsencrypt' },
+                        { text: 'OpenID', link: '/addons/service-openid' },
                     ]
                 },
                 {
                     text: 'Helpers',
                     items: [
-                        { text: 'Hosting', link: '/addons/hosting' },
-                        { text: 'Log4net', link: '/addons/log4net' },
-                        { text: 'Razor', link: '/addons/razor' },
-                        { text: 'Serilog', link: '/addons/serilog' },
-                        { text: 'Swagger', link: '/addons/swagger' },
+                        { text: 'Hosting', link: '/addons/helper-hosting' },
+                        { text: 'Jwt', link: '/addons/helper-jwt' },
+                        { text: 'Log4net', link: '/addons/helper-log4net' },
+                        { text: 'Razor', link: '/addons/helper-razor' },
+                        { text: 'Serilog', link: '/addons/helper-serilog' },
+                        { text: 'Swagger', link: '/addons/helper-swagger' },
                     ]
                 },
                 {
                     text: 'Templates',
                     items: [
-                        { text: 'SimpleW', link: '/addons/templates' },
+                        { text: 'SimpleW', link: '/addons/template-templates' },
                     ]
                 },
                 {
                     text: 'JsonEngines',
                     items: [
-                        { text: 'Newtonsoft', link: '/addons/newtonsoft' },
+                        { text: 'Newtonsoft', link: '/addons/jsonengine-newtonsoft' },
                     ]
                 },
             ],
@@ -153,7 +154,13 @@ export default defineConfig({
                         { text: 'HttpRequest', link: '/reference/httprequest' },
                         { text: 'HttpResponse', link: '/reference/httpresponse' },
                         { text: 'HttpHeaders', link: '/reference/httpheaders' },
+                        { text: 'HttpPrincipal', link: '/reference/httpprincipal' },
+                        { text: 'HttpIdentity', link: '/reference/httpidentity' },
                         { text: 'HttpBag', link: '/reference/httpbag' },
+                        { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
+                        { text: 'IHttpModule', link: '/reference/ihttpmodule' },
+                        { text: 'IJsonEngine', link: '/reference/ijsonengine' },
+                        { text: 'IdentityProperty', link: '/reference/identityproperty' },
                     ]
                 },
                 {
@@ -177,12 +184,6 @@ export default defineConfig({
                     text: 'Helpers',
                     items: [
                         { text: 'SimpleWExtension', link: '/reference/simplewextension' },
-                        { text: 'IJsonEngine', link: '/reference/ijsonengine' },
-                        { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
-                        { text: 'IHttpModule', link: '/reference/ihttpmodule' },
-                        { text: 'HttpPrincipal', link: '/reference/httpprincipal' },
-                        { text: 'HttpIdentity', link: '/reference/httpidentity' },
-                        { text: 'IdentityProperty', link: '/reference/identityproperty' },
                         { text: 'Logger', link: '/reference/logger' },
                         { text: 'TelemetryOptions', link: '/reference/telemetryoptions' },
                     ]

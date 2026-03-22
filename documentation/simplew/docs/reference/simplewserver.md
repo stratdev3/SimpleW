@@ -96,7 +96,7 @@ server.Configure(options => {
 });
 ```
 
-See [`SimpleWSServerOptions`](./simplewserveroptions.md) for more information on all options.
+See [`SimpleWSServerOptions`](./simplewserveroptions.md) for more information on all options and an [example](../guide/server#configuration)
 
 
 ## Control
@@ -172,6 +172,8 @@ public SimpleWServer OnStopped(Action<SimpleWServer> callback);
 /// </summary>
 public SimpleWServer OnStopped(Func<SimpleWServer, Task> callback);
 ```
+
+See an [example](../guide/server.md#optional-lifecycle-callbacks-fluent).
 
 
 ## Router
@@ -275,19 +277,6 @@ The handler can take multiple types of parameters, no order required :
   - route path parameters
   - special type [`HttpSession`](./httpsession.md) can be mapped inside the delegate.
 :::
-
-
-## ConfigureResultHandler
-
-```csharp
-/// <summary>
-/// Override ResultHandler, Action to do for the non nulls returns
-/// </summary>
-/// <param name="handler"></param>
-public SimpleWServer ConfigureResultHandler(HttpResultHandler handler)
-```
-
-See more [example](../guide/resulthandler.md).
 
 
 ## UseMiddleware
@@ -472,44 +461,37 @@ public SimpleWServer DisableHttps() {
 See an [example](../guide/ssl-certificate.md#example-for-local-test).
 
 
-## ConfigureJwtResolver
+## ConfigureResultHandler
 
 ```csharp
 /// <summary>
-/// Get the JwtResolver
+/// Override ResultHandler, Action to do for the non nulls returns
 /// </summary>
-public JwtResolver JwtResolver
+/// <param name="handler"></param>
+public SimpleWServer ConfigureResultHandler(HttpResultHandler handler)
+```
+
+See more [example](../guide/resulthandler.md).
+
+
+## ConfigurePrincipalResolver
+
+```csharp
+/// <summary>
+/// Resolve the current principal for each request.
+/// Return null to use HttpPrincipal.Anonymous.
+/// </summary>
+public HttpPrincipalResolver? PrincipalResolver { get; private set; }
 ```
 
 ```csharp
 /// <summary>
-/// Configure the JwtResolver
+/// Configure the principal resolver.
 /// </summary>
-/// <param name="jwtResolver"></param>
-/// <returns></returns>
-public SimpleWServer ConfigureJwtResolver(JwtResolver jwtResolver)
+public SimpleWServer ConfigurePrincipalResolver(HttpPrincipalResolver resolver)
 ```
 
-
-## ConfigureUserResolver
-
-```csharp
-/// <summary>
-/// Get the UserResolver
-/// </summary>
-internal WebUserResolver UserResolver { get; private set; } = WebUserResolvers.TokenWebUser;
-```
-
-This property defines the User Resolver used in handler. The default user resolver is TokenWebUser.
-
-```csharp
-/// <summary>
-/// Configure the UserResolver
-/// </summary>
-/// <param name="userResolver"></param>
-/// <returns></returns>
-public SimpleWServer ConfigureUserResolver(WebUserResolver userResolver)
-```
+See an [example](../guide/principal.md).
 
 
 ## ConfigureClientIPResolver

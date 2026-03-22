@@ -16,6 +16,7 @@ public readonly SimpleWServer Server;
 
 This property can be used to control [`Server`](./simplewserver.md) from any [`Controller`](./controller.md) class.
 
+
 ## JsonEngine
 
 ```csharp
@@ -38,6 +39,7 @@ public HttpRequest Request;
 When `HttpSession` receive data from a client, it parses its content into a [`HttpRequest`](./httprequest.md) object and set the `Request` property.
 It supports http pipelining.
 
+
 ## Response
 
 ```csharp
@@ -53,6 +55,19 @@ Before `HttpSession` call the Dispatcher to execute the underlying handler of th
 You should always used the `Response` to send data to a client.
 :::
 
+
+## Principal
+
+```csharp
+/// <summary>
+/// Principal
+/// </summary>
+public HttpPrincipal Principal
+```
+
+The current [`HttpPrincipal`](../reference/httpprincipal.md) use for this session. See 
+
+
 ## Bag
 
 ```csharp
@@ -61,6 +76,16 @@ You should always used the `Response` to send data to a client.
 /// </summary>
 public HttpBag Bag;
 ```
+
+## ClientCertificate
+
+```csharp
+/// <summary>
+/// ClientCertificate if exists in sslStream
+/// </summary>
+public X509Certificate2? ClientCertificate
+```
+
 
 ## SendAsync
 
@@ -110,27 +135,4 @@ public async ValueTask SendAsync(ArraySegment<byte> header, ArraySegment<byte> b
 /// <returns></returns>
 /// <exception cref="InvalidOperationException"></exception>
 public async ValueTask SendAsync(ArraySegment<byte> buffer)
-```
-
-
-## jwt
-
-```csharp
-/// <summary>
-/// JWT
-/// </summary>
-public string jwt { get; set; }
-```
-
-
-## webuser
-
-```csharp
-/// <summary>
-/// <para>Get Current IWebUser</para>
-/// <para>set by the underlying Controller.webuser
-///       The only use case to have a webuser
-///       property here is for logging</para>
-/// </summary>
-public IWebUser webuser { get; set; }
 ```
