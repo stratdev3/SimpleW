@@ -22,14 +22,14 @@ namespace SimpleW {
         public HttpResponse Response => Session.Response;
 
         /// <summary>
+        /// Gets the current resolved user.
+        /// </summary>
+        public HttpPrincipal Principal => Session.Principal;
+
+        /// <summary>
         /// Gets the current HttpBag
         /// </summary>
         public HttpBag Bag => Session.Bag;
-
-        /// <summary>
-        /// Gets the current User
-        /// </summary>
-        public IWebUser User => Session.Request.User;
 
         /// <summary>
         /// Called before any Controller.Method()

@@ -994,7 +994,7 @@ namespace SimpleW {
         /// </summary>
         /// <returns></returns>
         public HttpResponse Access() {
-            if (!_session.Request.User?.Identity ?? true) {
+            if (!_session.Principal.IsAuthenticated) {
                 return Unauthorized();
             }
             return Forbidden();

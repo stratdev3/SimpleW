@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using NFluent;
@@ -364,6 +365,182 @@ namespace test {
         }
 
         #endregion MapPost
+
+        #region RequestAborted
+
+        [Fact]
+        public async Task RequestAborted_Should_Be_Cancelled_When_Client_Disconnects_During_Async_Handler() {
+
+            // settings
+            int port = PortManager.GetFreePort();
+            var handlerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var requestAbortedCancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+
+            server.Configure(options => {
+                options.SocketDisconnectPollInterval = TimeSpan.FromMilliseconds(25);
+            });
+
+            server.MapGet("/api/abort", async (HttpSession session) => {
+                CancellationToken token = session.RequestAborted;
+
+                handlerStarted.TrySetResult(true);
+
+                try {
+                    await Task.Delay(TimeSpan.FromSeconds(5), token);
+                }
+                catch (OperationCanceledException) {
+                    requestAbortedCancelled.TrySetResult(true);
+                    return;
+                }
+
+                // si jamais ça n'a pas cancel, on le note quand même
+                if (token.IsCancellationRequested) {
+                    requestAbortedCancelled.TrySetResult(true);
+                }
+            });
+
+            await server.StartAsync();
+
+            // client socket raw pour pouvoir fermer brutalement
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, port);
+
+            using NetworkStream stream = client.GetStream();
+
+            string request =
+                "GET /api/abort HTTP/1.1\r\n" +
+                $"Host: {server.Address}:{server.Port}\r\n" +
+                "Connection: keep-alive\r\n" +
+                "\r\n";
+
+            byte[] requestBytes = System.Text.Encoding.ASCII.GetBytes(request);
+            await stream.WriteAsync(requestBytes);
+
+            // attendre que le handler soit bien entré
+            await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            // fermeture client => le serveur doit annuler RequestAborted
+            client.Client.Shutdown(SocketShutdown.Both);
+            client.Close();
+
+            bool cancelled = await requestAbortedCancelled.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            // asserts
+            Check.That(cancelled).IsTrue();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(port);
+        }
+
+        [Fact]
+        public async Task RequestAborted_Should_Not_Be_Cancelled_If_Client_Stays_Connected() {
+
+            // settings
+            int port = PortManager.GetFreePort();
+            var tokenState = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+
+            server.Configure(options => {
+                options.SocketDisconnectPollInterval = TimeSpan.FromMilliseconds(25);
+            });
+
+            server.MapGet("/api/not-aborted", async (HttpSession session) => {
+                CancellationToken token = session.RequestAborted;
+
+                await Task.Delay(150);
+
+                tokenState.TrySetResult(token.IsCancellationRequested);
+
+                await session.Response.Text("OK").SendAsync();
+            });
+
+            await server.StartAsync();
+
+            // client
+            using var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/api/not-aborted");
+            string content = await response.Content.ReadAsStringAsync();
+
+            bool isCancelled = await tokenState.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            // asserts
+            Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+            Check.That(content).IsEqualTo("OK");
+            Check.That(isCancelled).IsFalse();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(port);
+        }
+
+        [Fact]
+        public async Task ThrowIfAborted_Should_Throw_When_Client_Disconnects() {
+
+            // settings
+            int port = PortManager.GetFreePort();
+            var throwDetected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var handlerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+
+            server.Configure(options => {
+                options.SocketDisconnectPollInterval = TimeSpan.FromMilliseconds(25);
+            });
+
+            server.MapGet("/api/throw-if-aborted", async (HttpSession session) => {
+                _ = session.RequestAborted;
+                handlerStarted.TrySetResult(true);
+
+                try {
+                    while (true) {
+                        session.ThrowIfAborted();
+                        await Task.Delay(25);
+                    }
+                }
+                catch (OperationCanceledException) {
+                    throwDetected.TrySetResult(true);
+                }
+            });
+
+            await server.StartAsync();
+
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, port);
+
+            using NetworkStream stream = client.GetStream();
+
+            string request =
+                "GET /api/throw-if-aborted HTTP/1.1\r\n" +
+                $"Host: {server.Address}:{server.Port}\r\n" +
+                "Connection: keep-alive\r\n" +
+                "\r\n";
+
+            byte[] requestBytes = System.Text.Encoding.ASCII.GetBytes(request);
+            await stream.WriteAsync(requestBytes);
+
+            await handlerStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            client.Client.Shutdown(SocketShutdown.Both);
+            client.Close();
+
+            bool thrown = await throwDetected.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            // asserts
+            Check.That(thrown).IsTrue();
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(port);
+        }
+
+        #endregion RequestAborted
 
     }
 

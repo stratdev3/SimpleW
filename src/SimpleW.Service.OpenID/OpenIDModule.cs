@@ -228,9 +228,9 @@ namespace SimpleW.Service.OpenID {
             public HttpClient? HttpClient { get; set; }
 
             /// <summary>
-            /// Map an AuthSession to SimpleW.IWebUser implementation.
+            /// Map an AuthSession to a HttpPrincipal.
             /// </summary>
-            public Func<AuthSession, IWebUser> UserFactory { get; set; } = (auth) => {
+            public Func<AuthSession, HttpPrincipal> PrincipalFactory { get; set; } = (auth) => {
 
                 string? Claim(string type) => auth.Claims.FirstOrDefault(c => c.Type == type)?.Value;
 
@@ -251,25 +251,23 @@ namespace SimpleW.Service.OpenID {
 
                 string sub = Claim("sub") ?? Guid.NewGuid().ToString();
 
-                var user = auth.Tokens != null ? new TokenWebUser() : new WebUser();
-                user.Identity = true;
-                user.Id = GuidFromSub(sub);
-                user.Login = Claim("preferred_username") ?? Claim("email") ?? sub;
-                user.Mail = Claim("email");
-                user.FullName = Claim("name");
-                user.Profile = Claim("iss"); // provider
-                user.Roles = ClaimsArray("roles")
+                HttpIdentity identity = new(
+                    isAuthenticated: true,
+                    authenticationType: "Bearer",
+                    identifier: GuidFromSub(sub).ToString(),
+                    name: Claim("name"),
+                    email: Claim("email"),
+                    roles: ClaimsArray("roles")
                                 .Concat(ClaimsArray("role"))
                                 .Concat(ClaimsArray("groups"))
                                 .Distinct()
-                                .ToArray();
+                                .ToArray(),
+                    properties: [
+                        new IdentityProperty("login", Claim("preferred_username") ?? Claim("email") ?? sub)
+                    ]
+                );
 
-                if (user is TokenWebUser twu && auth.Tokens?.IdToken != null) {
-                    twu.Token = auth.Tokens.IdToken;
-                    twu.Refresh = false;
-                }
-
-                return user;
+                return new HttpPrincipal(identity);
             };
 
             /// <summary>
@@ -372,7 +370,7 @@ namespace SimpleW.Service.OpenID {
                         ) {
                             // pick provider from stored session
                             var opt = GetRuntime(auth.Provider).Options;
-                            session.Request.User = opt.UserFactory(auth);
+                            session.Principal = opt.PrincipalFactory(auth);
                         }
                     }
                     catch {

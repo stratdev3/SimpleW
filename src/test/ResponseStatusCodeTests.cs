@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Security.Principal;
 using System.Text.Json;
 using NFluent;
 using SimpleW;
@@ -161,7 +162,15 @@ namespace test {
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
             server.MapGet("/", (HttpSession session) => {
-                session.Request.User = new WebUser() { Identity = true };
+                session.Principal = new(new HttpIdentity(
+                    isAuthenticated: true,
+                    authenticationType: null,
+                    identifier: null,
+                    name: null,
+                    email: null,
+                    roles: null,
+                    properties: null
+                ));
                 return session.Response.Access();
             });
             await server.StartAsync();

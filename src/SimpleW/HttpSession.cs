@@ -96,6 +96,33 @@ namespace SimpleW {
         private readonly HttpResponse _response;
 
         /// <summary>
+        /// Principal
+        /// </summary>
+        private HttpPrincipal _principal = HttpPrincipal.Anonymous;
+
+        /// <summary>
+        /// flag for principal resolution
+        /// </summary>
+        private bool _principalResolved;
+
+        /// <summary>
+        /// Principal
+        /// </summary>
+        public HttpPrincipal Principal {
+            get {
+                if (!_principalResolved) {
+                    _principal = Server.PrincipalResolver?.Invoke(this) ?? HttpPrincipal.Anonymous;
+                    _principalResolved = true;
+                }
+                return _principal;
+            }
+            set {
+                _principal = value ?? HttpPrincipal.Anonymous;
+                _principalResolved = true;
+            }
+        }
+
+        /// <summary>
         /// Per-request transient storage shared across middlewares/handlers.
         /// Lazy allocated to keep fast path clean when unused.
         /// </summary>
@@ -144,7 +171,7 @@ namespace SimpleW {
             _parseBuffer = _bufferPool.Rent(server.Options.ReceiveBufferSize);
             _parseBufferCount = 0;
 
-            _request = new HttpRequest(_bufferPool, server.JsonEngine, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize, server.JwtResolver, server.Options.JwtOptions, server.UserResolver);
+            _request = new HttpRequest(_bufferPool, server.JsonEngine, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
             _parser = new HttpRequestParser(_bufferPool, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
             _response = new HttpResponse(this, _bufferPool);
 
@@ -522,10 +549,7 @@ namespace SimpleW {
                         // PER-REQUEST SCOPE
                         bool hasCatched = false;
                         try {
-                            // reset response
-                            _response.Reset();
-                            // reset bag
-                            _bag?.Clear();
+                            PerRequestReset();
 
                             if (IsObservability && !_requestTimingStarted) {
                                 _requestStartWatch = Telemetry.GetWatch();
@@ -683,6 +707,19 @@ namespace SimpleW {
                 return _response.Connection.IndexOf("close", StringComparison.OrdinalIgnoreCase) >= 0;
             }
             return CloseAfterResponse;
+        }
+
+        /// <summary>
+        /// Per Request Reset properties
+        /// </summary>
+        private void PerRequestReset() {
+            // reset response
+            _response.Reset();
+            // reset bag
+            _bag?.Clear();
+            // reset principal
+            _principal = HttpPrincipal.Anonymous;
+            _principalResolved = false;
         }
 
         #region slow request protection

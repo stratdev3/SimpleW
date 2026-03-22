@@ -5,7 +5,6 @@ using System.Net.Sockets;
 using System.Reflection;
 using SimpleW.Modules;
 using SimpleW.Observability;
-using SimpleW.Security;
 
 
 namespace SimpleW {
@@ -1146,52 +1145,24 @@ namespace SimpleW {
 
         #endregion telemetry
 
-        #region jwt
+        #region principal
 
         /// <summary>
-        /// Get the JwtResolver, by priority :
-        ///    1. Request url querystring "jwt"
-        ///    2. Request http header "Authorization: bearer "
-        ///    3. SecWebSocketProtocol "bearer, TOKEN" (websocket only)
+        /// Resolve the current principal for each request.
+        /// Return null to use HttpPrincipal.Anonymous.
         /// </summary>
-        public JwtResolver JwtResolver { get; private set; } = (request) => {
-
-            // 1. Request url querystring "jwt"
-            if (request.Query.TryGetValue("jwt", out string? qs_jwt) && !string.IsNullOrWhiteSpace(qs_jwt)) {
-                return qs_jwt;
-            }
-
-            // 2. Request http header "Authorization: bearer "
-            if (request.Headers.Authorization?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ?? false) {
-                return request.Headers.Authorization["Bearer ".Length..];
-            }
-
-            // 3. SecWebSocketProtocol "bearer, TOKEN" (websocket only)
-            if (request.Headers.SecWebSocketVersion == "13"
-                && (request.Headers.SecWebSocketProtocol?.StartsWith("Bearer, ", StringComparison.OrdinalIgnoreCase) ?? false)
-            ) {
-                return request.Headers.SecWebSocketProtocol["Bearer, ".Length..];
-            }
-
-            return null;
-        };
+        public HttpPrincipalResolver? PrincipalResolver { get; private set; }
 
         /// <summary>
-        /// Configure the JwtResolver
+        /// Configure the principal resolver.
         /// </summary>
-        /// <param name="jwtResolver"></param>
-        /// <returns></returns>
-        /// <example>
-        /// server.ConfigureJwtResolver(request => {
-        ///     options.IncludeStackTrace = true;
-        /// });
-        /// </example>
-        public SimpleWServer ConfigureJwtResolver(JwtResolver jwtResolver) {
-            JwtResolver = jwtResolver;
+        public SimpleWServer ConfigurePrincipalResolver(HttpPrincipalResolver resolver) {
+            ArgumentNullException.ThrowIfNull(resolver);
+            PrincipalResolver = resolver;
             return this;
         }
 
-        #endregion jwt
+        #endregion principal
 
         #region client ip resolver
 
@@ -1216,25 +1187,6 @@ namespace SimpleW {
         }
 
         #endregion client ip resolver
-
-        #region user
-
-        /// <summary>
-        /// Get the UserResolver
-        /// </summary>
-        internal WebUserResolver UserResolver { get; private set; } = WebUserResolvers.TokenWebUser;
-
-        /// <summary>
-        /// Configure the UserResolver
-        /// </summary>
-        /// <param name="userResolver"></param>
-        /// <returns></returns>
-        public SimpleWServer ConfigureUserResolver(WebUserResolver userResolver) {
-            UserResolver = userResolver;
-            return this;
-        }
-
-        #endregion user
 
     }
 
@@ -1291,11 +1243,6 @@ namespace SimpleW {
         public TimeSpan RequestBodyGracePeriod { get; set; } = TimeSpan.FromSeconds(5);
 
         internal long RequestBodyGracePeriodMs { get; private set; }
-
-        /// <summary>
-        /// JwtOptions
-        /// </summary>
-        public JwtOptions? JwtOptions { get; set; }
 
         #endregion security
 

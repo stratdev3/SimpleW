@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Text;
-using SimpleW.Security;
 
 
 namespace SimpleW {
@@ -109,130 +108,6 @@ namespace SimpleW {
         /// </summary>
         public string? RouteTemplate { get; private set; }
 
-        #region jwt
-
-        /// <summary>
-        /// _jwt already initialized ?
-        /// </summary>
-        private bool _jwtInitialized;
-
-        /// <summary>
-        /// Store the jwt value
-        /// </summary>
-        private string? _jwt;
-
-        /// <summary>
-        /// Jwt (raw string)
-        /// </summary>
-        public string? Jwt {
-            get {
-                if (_jwtInitialized) {
-                    return _jwt;
-                }
-                _jwtInitialized = true;
-                _jwt = JwtResolver(this);
-                return _jwt;
-            }
-        }
-
-        /// <summary>
-        /// JwtResolver
-        /// </summary>
-        private readonly JwtResolver JwtResolver;
-
-        /// <summary>
-        /// JwtOptions
-        /// </summary>
-        public readonly JwtOptions? JwtOptions;
-
-        /// <summary>
-        /// _jwtToken already initialized ?
-        /// </summary>
-        private bool _jwtTokenInitialized;
-
-        /// <summary>
-        /// Store the JwtToken value
-        /// </summary>
-        private JwtToken? _jwtToken;
-
-        /// <summary>
-        /// JwtToken
-        /// </summary>
-        public JwtToken? JwtToken {
-            get {
-                if (!_jwtTokenInitialized) {
-                    _jwtTokenInitialized = true;
-                    if (string.IsNullOrWhiteSpace(Jwt)) {
-                        JwtError = Security.JwtError.InvalidBase64;
-                    }
-                    else if (JwtOptions == null) {
-                        JwtError = Security.JwtError.InvalidJsonOptions;
-                    }
-                    else if (!Security.Jwt.TryDecodeAndValidate(JsonEngine, Jwt, JwtOptions, out JwtToken? jwtToken, out JwtError err)) {
-                        JwtError = err;
-                    }
-                    else {
-                        _jwtToken = jwtToken;
-                    }
-                }
-                return _jwtToken;
-            } 
-            set {
-                _jwtTokenInitialized = true;
-                _jwtToken = value;
-                JwtError = Security.JwtError.None;
-            }
-        }
-
-        /// <summary>
-        /// JwtError
-        /// </summary>
-        public JwtError? JwtError { get; internal set; } = Security.JwtError.None;
-
-        #endregion jwt
-
-        #region user
-
-        /// <summary>
-        /// _user already initialized ?
-        /// </summary>
-        private bool _userInitialized;
-
-        /// <summary>
-        /// cache for webuser property
-        /// </summary>
-        private IWebUser _user = new WebUser();
-
-        /// <summary>
-        /// WebUserResolver
-        /// </summary>
-        private readonly WebUserResolver? _userResolver;
-
-        /// <summary>
-        /// User (lazy) resolved from the current request.
-        /// Can be overridden by :
-        ///     - setting it (e.g: in a middleware)
-        ///     OR
-        ///     - override the SimpleWServer.ConfigureUserResolver()
-        /// </summary>
-        public IWebUser User {
-            get {
-                if (!_userInitialized) {
-                    _userInitialized = true;
-                    if (_userResolver != null) {
-                        _user = _userResolver(this);
-                    }
-                }
-                return _user;
-            }
-            set {
-                _userInitialized = true;
-                _user = value;
-            }
-        }
-
-        #endregion user
-
         /// <summary>
         /// Constructor
         /// </summary>
@@ -240,17 +115,11 @@ namespace SimpleW {
         /// <param name="jsonEngine"></param>
         /// <param name="maxRequestHeaderSize"></param>
         /// <param name="maxRequestBodySize"></param>
-        /// <param name="jwtResolver"></param>
-        /// <param name="jwtOptions"></param>
-        /// <param name="userResolver"></param>
-        internal HttpRequest(ArrayPool<byte> bufferPool, IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize, JwtResolver jwtResolver, JwtOptions? jwtOptions, WebUserResolver? userResolver) {
+        internal HttpRequest(ArrayPool<byte> bufferPool, IJsonEngine jsonEngine, int maxRequestHeaderSize, long maxRequestBodySize) {
             _bufferPool = bufferPool;
             JsonEngine = jsonEngine;
             MaxRequestHeaderSize = maxRequestHeaderSize;
             MaxRequestBodySize = maxRequestBodySize;
-            JwtResolver = jwtResolver;
-            JwtOptions = jwtOptions;
-            _userResolver = userResolver;
         }
 
         /// <summary>
@@ -270,16 +139,6 @@ namespace SimpleW {
 
             RouteValues = null;
             RouteTemplate = null;
-
-            _jwtInitialized = false;
-            _jwt = null;
-
-            _jwtTokenInitialized = false;
-            _jwtToken = null;
-            JwtError = Security.JwtError.None;
-
-            _userInitialized = false;
-            _user = new WebUser();
         }
 
         #region buffer
@@ -378,44 +237,6 @@ namespace SimpleW {
         }
 
         #endregion helpers
-
-    }
-
-    /// <summary>
-    /// JwtResolver
-    /// </summary>
-    /// <param name="request"></param>
-    /// <returns></returns>
-    public delegate string? JwtResolver(HttpRequest request);
-
-    /// <summary>
-    /// WebUserResolver
-    /// </summary>
-    /// <param name="request"></param>
-    /// <returns></returns>
-    public delegate IWebUser WebUserResolver(HttpRequest request);
-
-    /// <summary>
-    /// Examples of WebUserResolver
-    /// </summary>
-    public static class WebUserResolvers {
-
-        /// <summary>
-        /// TokenWebUser as IWebUser
-        /// </summary>
-        public static readonly WebUserResolver TokenWebUser = (request) => {
-            if (request.JwtToken == null) {
-                return new WebUser();
-            }
-            try {
-                TokenWebUser twu = request.JsonEngine.Deserialize<TokenWebUser>(request.JwtToken.RawPayload);
-                twu.Token = request.Jwt;
-                return twu;
-            }
-            catch {
-                return new WebUser();
-            }
-        };
 
     }
 

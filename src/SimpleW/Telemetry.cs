@@ -100,10 +100,9 @@ namespace SimpleW.Observability {
                     activity.SetTag("client.address", session.ClientIpAddress?.ToString());
                     activity.SetTag("user_agent.original", session.Request.Headers.UserAgent);
 
-                    string? login = session.Request?.User?.Login;
-                    if (login != null) {
-                        activity.SetTag("user.id", session.Request?.User?.Id);
-                        activity.SetTag("user.login", session.Request?.User?.Login);
+                    if (session.Principal.IsAuthenticated) {
+                        activity.SetTag("user.id", session.Principal.Identity?.Identifier);
+                        activity.SetTag("user.login", session.Principal.Identity?.Email);
                     }
                 }
             }

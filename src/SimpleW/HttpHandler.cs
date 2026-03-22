@@ -58,6 +58,16 @@
 
     #endregion special handlers
 
+    #region principal resolver
+
+    /// <summary>
+    /// Resolve the current user principal for the request.
+    /// Return null to indicate anonymous user.
+    /// </summary>
+    public delegate HttpPrincipal? HttpPrincipalResolver(HttpSession session);
+
+    #endregion principal resolver
+
     #region middleware
 
     /// <summary>
