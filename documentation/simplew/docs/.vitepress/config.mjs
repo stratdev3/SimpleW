@@ -84,7 +84,7 @@ export default defineConfig({
                 {
                     text: 'Security',
                     items: [
-                        { text: 'Json Web Token', link: '/guide/jsonwebtoken' },
+                        { text: 'Principal', link: '/guide/principal' },
                         { text: 'Cross-Origin Resource Sharing', link: '/guide/cors' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
                         { text: 'Basic Auth', link: '/guide/basicauth' },
@@ -180,7 +180,9 @@ export default defineConfig({
                         { text: 'IJsonEngine', link: '/reference/ijsonengine' },
                         { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
                         { text: 'IHttpModule', link: '/reference/ihttpmodule' },
-                        { text: 'IWebUser', link: '/reference/iwebuser' },
+                        { text: 'HttpPrincipal', link: '/reference/httpprincipal' },
+                        { text: 'HttpIdentity', link: '/reference/httpidentity' },
+                        { text: 'IdentityProperty', link: '/reference/identityproperty' },
                         { text: 'Logger', link: '/reference/logger' },
                         { text: 'TelemetryOptions', link: '/reference/telemetryoptions' },
                     ]

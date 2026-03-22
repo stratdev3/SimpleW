@@ -27,7 +27,7 @@ The following minimal example can be used for rapid prototyping :
 
 ::: code-group
 
-```csharp [Program.cs]sfgf
+```csharp [Program.cs]
 using System;
 using System.Net;
 using SimpleW;
