@@ -88,6 +88,11 @@ namespace SimpleW.Modules {
             public Func<string, string, bool>? CredentialValidator { get; set; }
 
             /// <summary>
+            ///  Optional PrincipalFactory. Convert BasicAuth to Principal
+            /// </summary>
+            public Func<BasicAuthContext, HttpPrincipal>? PrincipalFactory { get; set; }
+
+            /// <summary>
             /// Validate and normalize
             /// </summary>
             /// <returns></returns>
@@ -146,6 +151,19 @@ namespace SimpleW.Modules {
                 public static readonly BasicUserUsernameComparer Instance = new();
                 public bool Equals(BasicUser? x, BasicUser? y) => StringComparer.OrdinalIgnoreCase.Equals(x?.Username, y?.Username);
                 public int GetHashCode(BasicUser obj) => StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Username ?? string.Empty);
+            }
+
+            /// <summary>
+            /// BasicAuthContext
+            /// </summary>
+            public sealed class BasicAuthContext {
+
+                public required string Username { get; init; }
+                public required string Password { get; init; }
+                public required string Prefix { get; init; }
+                public required string Realm { get; init; }
+                public required HttpSession Session { get; init; }
+
             }
 
         }
@@ -217,6 +235,27 @@ namespace SimpleW.Modules {
                     return Challenge(session, rule.Realm);
                 }
 
+                session.Principal = rule.PrincipalFactory?.Invoke(new BasicAuthContext {
+                                        Username = username,
+                                        Password = password,
+                                        Prefix = rule.Prefix,
+                                        Realm = rule.Realm,
+                                        Session = session
+                                    }) ?? new HttpPrincipal(new HttpIdentity(
+                                        isAuthenticated: true,
+                                        authenticationType: "Basic",
+                                        identifier: username,
+                                        name: username,
+                                        email: null,
+                                        roles: null,
+                                        properties: [
+                                            new IdentityProperty("login", username),
+                                            new IdentityProperty("auth_scheme", "Basic"),
+                                            new IdentityProperty("realm", rule.Realm),
+                                            new IdentityProperty("auth_time", DateTime.UtcNow.ToString("O"))
+                                        ]
+                                    ));
+
                 // challenge ok, follow next in the pipeline
                 return next();
             }
@@ -235,6 +274,11 @@ namespace SimpleW.Modules {
                               .SendAsync();
             }
 
+            /// <summary>
+            /// Escape Realm
+            /// </summary>
+            /// <param name="realm"></param>
+            /// <returns></returns>
             private static string EscapeRealm(string realm) {
                 if (realm.IndexOfAny(['"', '\\']) < 0) {
                     return realm;
@@ -302,6 +346,7 @@ namespace SimpleW.Modules {
                     ArrayPool<byte>.Shared.Return(b64Bytes);
                 }
             }
+
         }
 
         #region registry / ruleset
@@ -314,8 +359,14 @@ namespace SimpleW.Modules {
         /// <param name="BypassOptionsRequests"></param>
         /// <param name="Users"></param>
         /// <param name="Validator"></param>
-        private sealed record Rule(string Prefix, string Realm, bool BypassOptionsRequests, Dictionary<string, string> Users, Func<string, string, bool>? Validator) {
+        /// <param name="PrincipalFactory"></param>
+        private sealed record Rule(string Prefix, string Realm, bool BypassOptionsRequests, Dictionary<string, string> Users, Func<string, string, bool>? Validator, Func<BasicAuthContext, HttpPrincipal>? PrincipalFactory) {
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="o"></param>
+            /// <returns></returns>
             public static Rule FromOptions(BasicAuthOptions o) {
                 Dictionary<string, string> dict = new(StringComparer.OrdinalIgnoreCase);
                 foreach (BasicUser u in o.Users) {
@@ -327,7 +378,8 @@ namespace SimpleW.Modules {
                     Realm: o.Realm,
                     BypassOptionsRequests: o.BypassOptionsRequests,
                     Users: dict,
-                    Validator: o.CredentialValidator
+                    Validator: o.CredentialValidator,
+                    PrincipalFactory: o.PrincipalFactory
                 );
             }
 
@@ -343,17 +395,24 @@ namespace SimpleW.Modules {
 
                 return Users.TryGetValue(username, out var expected) && string.Equals(expected, password, StringComparison.Ordinal);
             }
+
         }
 
         /// <summary>
         /// RuleSet
         /// </summary>
         private sealed class RuleSet {
+
             public static readonly RuleSet Empty = new(Array.Empty<string>(), new Dictionary<string, Rule>(StringComparer.Ordinal));
 
             public string[] Prefixes { get; }
             public Dictionary<string, Rule> ByPrefix { get; }
 
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="prefixes"></param>
+            /// <param name="byPrefix"></param>
             public RuleSet(string[] prefixes, Dictionary<string, Rule> byPrefix) {
                 Prefixes = prefixes;
                 ByPrefix = byPrefix;
