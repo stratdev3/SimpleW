@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using SimpleW.Observability;
 using SimpleW.Parsers;
 
@@ -354,6 +355,21 @@ namespace SimpleW {
         /// SslStream
         /// </summary>
         private SslStream? _sslStream;
+
+        /// <summary>
+        /// ClientCertificate if exists in sslStream
+        /// </summary>
+        public X509Certificate2? ClientCertificate {
+            get {
+                if (_sslStream?.RemoteCertificate is X509Certificate2 x509) {
+                    return x509;
+                }
+                if (_sslStream?.RemoteCertificate is X509Certificate cert) {
+                    return new X509Certificate2(cert);
+                }
+                return null;
+            }
+        }
 
         /// <summary>
         /// Add SslContext
