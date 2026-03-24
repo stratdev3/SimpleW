@@ -226,6 +226,7 @@ This avoids unnecessary work and improves performance.
 ## Real Example of Principal integration
 
 Examples of `HttpPrincipal` integration :
-- [Jwt](../addons/helper-jwt.md#minimal-example)
-- [BasicAuth](./basicauth.md#authentication-result-httpprincipal)
-- [SSL Client Certificate](./ssl-certificate.md#mapping-mtls-to-httpprincipal)
+- [SimpleW.Service.BasicAuth](./basicauth.md#authentication-result-httpprincipal)
+- [SimpleW.Service.OpenID](../addons/service-openid.md#principal-mapping-principalfactory)
+- [SimpleW.Helper.Jwt](../addons/helper-jwt.md#minimal-example)
+- [TLS Client Certificate](./ssl-certificate.md#mapping-mtls-to-httpprincipal)
