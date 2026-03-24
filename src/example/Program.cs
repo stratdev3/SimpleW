@@ -19,7 +19,6 @@ using SimpleW.Helper.Razor;
 using SimpleW.Helper.Swagger;
 using SimpleW.JsonEngine.Newtonsoft;
 using SimpleW.Modules;
-using SimpleW.Security;
 using SimpleW.Service.Chaos;
 using SimpleW.Service.Firewall;
 using SimpleW.Service.Latency;
@@ -98,6 +97,11 @@ namespace example.rewrite {
 
             server.MapGet("/", (HttpSession session) => {
                 return "Hello World !";
+            });
+
+            server.MapGet("/task", Task (HttpSession session) => {
+                session.Response.Status(204);
+                return Task.CompletedTask;
             });
 
             server.MapGet("/api/test/hello", object (HttpSession session) => {
@@ -340,10 +344,6 @@ namespace example.rewrite {
                 options.TcpKeepAlive = true;
                 options.AcceptPerCore = true;
                 //options.SocketDisconnectPollInterval = TimeSpan.Zero;
-                options.JwtOptions = new JwtOptions("azertyuiopqsdfghjklmwxcvbn") {
-                    ValidateExp = false,
-                    ValidateNbf = false,
-                };
                 options.SessionTimeout = TimeSpan.FromMinutes(10);
             });
             server.ConfigureTelemetry(options => {
