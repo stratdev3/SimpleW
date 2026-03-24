@@ -637,23 +637,13 @@ namespace SimpleW {
                             throw;
                         }
                         finally {
-                            if (Server.IsTelemetryEnabled && _currentActivity != null) {
-                                Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
-                                if (!hasCatched) {
-                                    // if no response was sent, it's can be an issue
-                                    if (!_response.Sent) {
-                                        Server.Telemetry?.UpdateActivityAddNoResponse(_currentActivity, this);
-                                        if (Log.IsEnabledFor(LogLevel.Warning)) {
-                                            _log.Warn(
-                                                $"{Request.Method} " +
-                                                $"\"{Request.Path}\" " +
-                                                $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
-                                                $"session-{Id} " +
-                                                $"{ClientIpAddress} " +
-                                                $"\"{Request.Headers.UserAgent}\""
-                                            );
-                                        }
-                                    }
+                            if (!hasCatched) {
+                                if (!IsTransportOwned && !_response.Sent) {
+                                    Exception ex = new("The request pipeline completed without sending a response. A fallback 500 Internal Server Error response has been automatically generated.");
+                                    await HandleErrorResponseAsync(ex, 500, "Internal Server Error", "HTTP process");
+                                }
+                                else if (Server.IsTelemetryEnabled && _currentActivity != null) {
+                                    Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
                                     // we must close telemetry here in this flow !! closing into NotifyResponseSent() will leak memory !!
                                     CloseAndResetTelemetryWatches();
                                 }
@@ -677,11 +667,11 @@ namespace SimpleW {
                     }
                 }
                 catch (HttpRequestException ex) {
-                    await UpdateActivityOnExceptionAsync(ex, ex.StatusCode, ex.StatusText, ex.DisplayName);
+                    await HandleErrorResponseAsync(ex, ex.StatusCode, ex.StatusText, ex.DisplayName);
                     return;
                 }
                 catch (Exception ex) {
-                    await UpdateActivityOnExceptionAsync(ex, 500, "Internal Server Error", "HTTP process");
+                    await HandleErrorResponseAsync(ex, 500, "Internal Server Error", "HTTP process");
                     return;
                 }
                 #endregion parse & process
@@ -731,6 +721,8 @@ namespace SimpleW {
         private void PerRequestReset() {
             // reset response
             _response.Reset();
+            // reset exception
+            _pendingResponseException = null;
             // reset bag
             _bag?.Clear();
             // reset principal
@@ -1227,14 +1219,20 @@ namespace SimpleW {
         private Activity? _currentActivity;
 
         /// <summary>
-        /// UpdateActivityOnExceptionAsync
+        /// Pending Response Exception
+        /// </summary>
+        private Exception? _pendingResponseException;
+
+        /// <summary>
+        /// Handle Error Response Async
         /// </summary>
         /// <param name="ex"></param>
         /// <param name="statusCode"></param>
         /// <param name="statusText"></param>
         /// <param name="displayName"></param>
         /// <returns></returns>
-        private async ValueTask UpdateActivityOnExceptionAsync(Exception ex, int statusCode, string statusText, string displayName) {
+        private async ValueTask HandleErrorResponseAsync(Exception ex, int statusCode, string statusText, string displayName) {
+            _pendingResponseException = ex;
             CloseAfterResponse = true;
             if (Server.IsTelemetryEnabled) {
                 if (!_requestTimingStarted) {
@@ -1251,33 +1249,37 @@ namespace SimpleW {
             else {
                 await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
             }
-            if (Log.IsEnabledFor(LogLevel.Error)) {
-                _log.Error(
-                    $"{Request.Method} " +
-                    $"\"{Request.Path}\" " +
-                    $"{statusCode} " +
-                    $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
-                    $"session-{Id} " +
-                    $"{ClientIpAddress} " +
-                    $"\"{Request.Headers.UserAgent}\"",
-                    ex
-                );
-            }
         }
 
         /// <summary>
         /// Notify Response Sent
         /// </summary>
         public void NotifyResponseSent() {
-            if (Log.IsEnabledFor(LogLevel.Information)) {
-                _log.Info(
-                    $"{Request.Method} " +
-                    $"\"{Request.Path}\" " +
-                    $"{Response.StatusCode} " +
+            if (_pendingResponseException == null) {
+                if (Log.IsEnabledFor(LogLevel.Information)) {
+                    _log.Info(
+                        $"{_request.Method} " +
+                        $"\"{_request.Path}\" " +
+                        $"{_response.StatusCode} " +
+                        $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
+                        $"session-{Id} " +
+                        $"{ClientIpAddress} " +
+                        $"\"{_request.Headers.UserAgent}\""
+                    );
+                }
+            }
+            else if (Log.IsEnabledFor(LogLevel.Error)) {
+                Exception? pendingEx = _pendingResponseException;
+                _pendingResponseException = null;
+                _log.Error(
+                    $"{_request.Method} " +
+                    $"\"{_request.Path}\" " +
+                    $"{_response.StatusCode} " +
                     $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
                     $"session-{Id} " +
                     $"{ClientIpAddress} " +
-                    $"\"{Request.Headers.UserAgent}\""
+                    $"\"{_request.Headers.UserAgent}\"",
+                    pendingEx
                 );
             }
             if (!Server.IsTelemetryEnabled) {

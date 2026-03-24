@@ -542,6 +542,39 @@ namespace test {
 
         #endregion RequestAborted
 
+        #region Missing user Response
+
+        [Fact]
+        public async Task Handler_That_Completes_Without_Sending_Response_Should_Return_500() {
+
+            // server
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            server.MapGet("/api/missing-response", (HttpSession session) => {
+                // simulate a developer mistake:
+                // response is touched, but never actually sent
+                session.Response.Text("Hello World").Status(200);
+                return Task.CompletedTask;
+            });
+
+            await server.StartAsync();
+
+            // client
+            var client = new HttpClient();
+            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/api/missing-response");
+            var content = await response.Content.ReadAsStringAsync();
+
+            // asserts
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.InternalServerError);
+            Check.That(content).Contains("Internal Server Error");
+
+            // dispose
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        #endregion Missing user Response
+
     }
 
 }

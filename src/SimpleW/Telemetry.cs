@@ -141,27 +141,6 @@ namespace SimpleW.Observability {
         }
 
         /// <summary>
-        /// Update Activity When No Response
-        /// </summary>
-        /// <param name="activity"></param>
-        /// <param name="session"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void UpdateActivityAddNoResponse(Activity? activity, HttpSession session) {
-            if (activity == null) {
-                return;
-            }
-
-            activity.DisplayName = $"{session.Request.Method} {session.Request.RouteTemplate}";
-            activity.SetTag("http.route", session.Request.RouteTemplate);
-            activity.SetTag("http.target", session.Request.Path);
-
-            activity.SetStatus(ActivityStatusCode.Error, "Response Not Sent");
-
-            activity.SetTag("http.response.sent", false);
-            activity.SetTag("http.response.status_code", 0);
-        }
-
-        /// <summary>
         /// Update Activity Add Response
         /// </summary>
         /// <param name="activity"></param>
