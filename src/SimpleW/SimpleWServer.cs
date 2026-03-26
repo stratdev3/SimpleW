@@ -1054,6 +1054,14 @@ namespace SimpleW {
 
             foreach (KeyValuePair<Guid, HttpSession> kvp in Sessions) {
                 HttpSession session = kvp.Value;
+
+                // Do not check the timeout when IsTransportOwned,
+                // as responsibility is delegated to the underlying service
+                // (e.g., WebSocketModule).
+                if (session.IsTransportOwned) {
+                    continue;
+                }
+
                 if (now - session.LastActivityTick > timeoutMs) {
                     _log.Debug(() => $"timeout session {session.Id}");
                     CloseSession(session);
