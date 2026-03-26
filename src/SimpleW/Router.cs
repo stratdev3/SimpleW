@@ -453,6 +453,17 @@
                 return true;
             }
 
+            // implicit HEAD -> GET fallback
+            if (session.Request.Method == "HEAD") {
+                if (TryResolveLocalExact(session, out executor, "GET")) {
+                    return true;
+                }
+
+                if (TryResolveLocalPattern(session, out executor, "GET")) {
+                    return true;
+                }
+            }
+
             return false;
         }
 
@@ -463,13 +474,15 @@
         /// </summary>
         /// <param name="session"></param>
         /// <param name="executor"></param>
+        /// <param name="overrideRequestMethod"></param>
         /// <returns></returns>
-        private bool TryResolveLocalExact(HttpSession session, out HttpRouteExecutor? executor) {
+        private bool TryResolveLocalExact(HttpSession session, out HttpRouteExecutor? executor, string? overrideRequestMethod = null) {
             executor = null;
+            string method = overrideRequestMethod ?? session.Request.Method;
 
             Route? route;
 
-            Dictionary<string, Route>? dict = session.Request.Method switch {
+            Dictionary<string, Route>? dict = method switch {
                 "GET" => _get,
                 "POST" => _post,
                 _ => null
@@ -484,7 +497,7 @@
 
             // other methods exact
             if (dict == null
-                && _others.TryGetValue(session.Request.Method, out Dictionary<string, Route>? otherDict)
+                && _others.TryGetValue(method, out Dictionary<string, Route>? otherDict)
                 && otherDict.TryGetValue(session.Request.Path, out route)
             ) {
                 session.Request.ParserSetRouteTemplate(route.Attribute.Path);
@@ -502,17 +515,19 @@
         /// </summary>
         /// <param name="session"></param>
         /// <param name="executor"></param>
+        /// <param name="overrideMethod"></param>
         /// <returns></returns>
-        private bool TryResolveLocalPattern(HttpSession session, out HttpRouteExecutor? executor) {
+        private bool TryResolveLocalPattern(HttpSession session, out HttpRouteExecutor? executor, string? overrideMethod = null) {
             executor = null;
+            string method = overrideMethod ?? session.Request.Method;
 
             // router owns this data
             session.Request.ParserSetRouteValues(null);
 
-            List<RouteMatcher>? matchers = session.Request.Method switch {
+            List<RouteMatcher>? matchers = method switch {
                 "GET" => _getMatchers,
                 "POST" => _postMatchers,
-                _ => _otherMatchers.TryGetValue(session.Request.Method, out var l) ? l : null
+                _ => _otherMatchers.TryGetValue(method, out var l) ? l : null
             };
 
             if (matchers == null || matchers.Count == 0) {
