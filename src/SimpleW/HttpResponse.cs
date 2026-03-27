@@ -829,7 +829,7 @@ namespace SimpleW {
                     WriteCRLF(headerWriter);
 
                     // Vary: Accept-Encoding (avoid duplicates if caller already set it)
-                    if (!HasHeaderValueTokenIgnoreCase("Vary", "Accept-Encoding")) {
+                    if (!HasHeaderValueIgnoreCase("Vary", "Accept-Encoding")) {
                         WriteBytes(headerWriter, H_VARY);
                         WriteAscii(headerWriter, "Accept-Encoding");
                         WriteCRLF(headerWriter);
@@ -1526,13 +1526,14 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Return true if the current HttpResponse has header containing name
+        /// Return true if the current HttpResponse
+        /// has a specific headerName and headerValue
         /// </summary>
         /// <param name="headerName"></param>
-        /// <param name="token"></param>
+        /// <param name="headerValue"></param>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool HasHeaderValueTokenIgnoreCase(string headerName, string token) {
+        private bool HasHeaderValueIgnoreCase(string headerName, string headerValue) {
             for (int i = 0; i < _headerCount; i++) {
 #if NET9_0_OR_GREATER
                 ref readonly HeaderEntry h = ref _headers[i];
@@ -1541,7 +1542,7 @@ namespace SimpleW {
 #endif
                 if (!string.IsNullOrEmpty(h.Name) && h.Name.Equals(headerName, StringComparison.OrdinalIgnoreCase)) {
                     string v = h.Value ?? string.Empty;
-                    if (v.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0) {
+                    if (v.IndexOf(headerValue, StringComparison.OrdinalIgnoreCase) >= 0) {
                         return true;
                     }
                 }
