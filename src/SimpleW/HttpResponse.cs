@@ -740,10 +740,19 @@ namespace SimpleW {
             ArraySegment<byte> compressedSeg = default;
             NegotiatedEncoding negotiated = NegotiatedEncoding.None;
 
+            bool isMethodHead = _session.Request.Method == "HEAD";
+            bool statusForbidsBody = (_statusCode >= 100 && _statusCode < 200)
+                                     || _statusCode == 204
+                                     || _statusCode == 205
+                                     || _statusCode == 304;
+            _suppressContentLength = _suppressContentLength
+                                     || (_statusCode >= 100 && _statusCode < 200)
+                                     || _statusCode == 204;
+
             bool canCompressBody = bodyLength > 0
                                    && _bodyKind != BodyKind.File
                                    && !_customContentLength.HasValue
-                                   && (_statusCode != 204 && _statusCode != 304)
+                                   && !statusForbidsBody
                                    && !HasHeaderIgnoreCase("Content-Encoding")
                                    && IsCompressibleContentType(_contentType);
 
@@ -794,12 +803,10 @@ namespace SimpleW {
                 if (_customContentLength.HasValue && _customContentLength.Value != finalBodyLength) {
                     throw new InvalidOperationException($"Custom Header Content-Length ({_customContentLength.Value}) does not match actual body length ({finalBodyLength}).");
                 }
-                if (_statusCode is 204 or 304 && finalBodyLength > 0) {
-                    throw new InvalidOperationException($"204 and 304 must not have body.");
-                }
+
                 if (!_suppressContentLength) {
                     WriteBytes(headerWriter, H_CL);
-                    WriteLongAscii(headerWriter, _customContentLength ?? finalBodyLength);
+                    WriteLongAscii(headerWriter, statusForbidsBody && _statusCode != 304 ? 0 : (_customContentLength ?? finalBodyLength));
                     WriteCRLF(headerWriter);
                 }
 
@@ -864,7 +871,10 @@ namespace SimpleW {
                 ArraySegment<byte> headerSeg = new ArraySegment<byte>(headerWriter.Buffer, 0, headerWriter.Length);
 
                 // SEND STRATEGY
-                if (_bodyKind == BodyKind.File) {
+                if (isMethodHead || statusForbidsBody) {
+                    await _session.SendAsync(headerSeg).ConfigureAwait(false);
+                }
+                else if (_bodyKind == BodyKind.File) {
                     // header
                     await _session.SendAsync(headerSeg).ConfigureAwait(false);
                     // stream body file
