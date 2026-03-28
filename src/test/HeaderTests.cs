@@ -74,7 +74,7 @@ namespace test {
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
             server.MapGet("/", (HttpSession session) => {
                 return session.Response
-                              .AddHeader("Date", now.ToString("o"))
+                              .AddHeader("X-Custom", "X-Custom-Value")
                               .Json(new { message = "Hello World !" });
             });
             await server.StartAsync();
@@ -89,8 +89,8 @@ namespace test {
             Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
             Check.That(response.Content.Headers.ContentType?.MediaType).IsEqualTo("application/json");
             Check.That(response.Content.Headers.ContentType?.CharSet).IsEqualTo("utf-8");
-            Check.That(response.Headers.Contains("Date")).IsTrue();
-            Check.That(response.Headers.GetValues("Date").First()).IsEqualTo(now.ToString("o"));
+            Check.That(response.Headers.Contains("X-Custom")).IsTrue();
+            Check.That(response.Headers.GetValues("X-Custom").First()).IsEqualTo("X-Custom-Value");
 
             // dispose
             await server.StopAsync();

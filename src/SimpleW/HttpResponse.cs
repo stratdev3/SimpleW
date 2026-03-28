@@ -425,6 +425,9 @@ namespace SimpleW {
                 _connection = value;
                 return this;
             }
+            if (string.Equals(name, "Date", StringComparison.OrdinalIgnoreCase)) {
+                return this;
+            }
             if (_headerCount == _headers.Length) {
                 Array.Resize(ref _headers, _headers.Length * 2);
             }
@@ -835,6 +838,9 @@ namespace SimpleW {
                         WriteCRLF(headerWriter);
                     }
                 }
+
+                // Date
+                WriteBytes(headerWriter, GetCachedDateHeader());
 
                 // Connection (session decides keep-alive/close)
                 WriteBytes(headerWriter, H_CONN);
@@ -1864,6 +1870,35 @@ namespace SimpleW {
         }
 
         #endregion cookie write helpers
+
+        #region cache date header
+
+        private static long _dateHeaderUnixSeconds = -1;
+        private static byte[]? _dateHeaderBytes;
+
+        /// <summary>
+        /// Get Cache Date Header
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ReadOnlySpan<byte> GetCachedDateHeader() {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            byte[]? cached = Volatile.Read(ref _dateHeaderBytes);
+
+            if (cached != null && Volatile.Read(ref _dateHeaderUnixSeconds) == now) {
+                return cached;
+            }
+
+            string s = "Date: " + DateTimeOffset.FromUnixTimeSeconds(now).UtcDateTime.ToString("r", System.Globalization.CultureInfo.InvariantCulture) + "\r\n";
+            byte[] bytes = Encoding.ASCII.GetBytes(s);
+
+            Volatile.Write(ref _dateHeaderBytes, bytes);
+            Volatile.Write(ref _dateHeaderUnixSeconds, now);
+
+            return bytes;
+        }
+
+        #endregion cache date header
 
     }
 
