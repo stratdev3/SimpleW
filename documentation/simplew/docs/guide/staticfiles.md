@@ -122,6 +122,39 @@ It supports realtime file editing even when specific lock/write occurs.
 :::
 
 
+## Range Requests (Streaming Support)
+
+The `StaticFilesModule` automatically supports HTTP **Range requests** when serving files.
+This means that clients can request only a portion of a file instead of downloading it entirely.
+
+This feature is particularly important for video files such as `.mp4`.
+
+Modern browsers use Range requests to :
+- Start playback instantly
+- Jump (seek) to a specific timestamp
+- Avoid downloading the full file
+
+With SimpleW, this works out of the box :
+
+```csharp
+server.UseStaticFilesModule(options => {
+    options.Path = @"C:\videos\";
+    options.Prefix = "/videos/";
+});
+```
+
+Then :
+
+```
+http://localhost:2015/videos/movie.mp4
+```
+
+The video will :
+- Start immediately
+- Alow seeking
+- Use efficient partial downloads
+
+
 ## How to serve a Vue app
 
 This section shows how to server a vue.js application.

@@ -29,7 +29,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Letsencrypt --version 26.0.0-rc.20260326-1604
+$ dotnet add package SimpleW.Service.Letsencrypt --version 26.0.0-rc.20260329-1636
 ```
 
 

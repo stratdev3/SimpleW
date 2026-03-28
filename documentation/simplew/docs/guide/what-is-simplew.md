@@ -21,6 +21,16 @@ SimpleW’s architecture and motivations behind its core design choices :
 - **NuGet package available**, **no dependency**, easy to integrate
 
 
+## Philosophy
+
+I want to keep the core simple and lightweight so that :
+- The code can be reviewed by a developer in a few hours
+- Or fully ingested (and reasoned about) by an AI in a few seconds
+
+Addons are the place for everything that does not belong in the core.
+Also, a product is much easier to adopt when there is a healthy ecosystem around it.
+
+
 ## Why this library ?
 
 Most .NET web stacks are powerful but complex. I wanted a **minimal, hackable server** that could be dropped into any app, or used as a base for custom frameworks, game servers, or embedded tools — while still delivering very good performances.

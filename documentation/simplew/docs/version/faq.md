@@ -17,6 +17,14 @@ Github is just a mirror. Ping me, if your code is interesting and still MIT lice
 
 I don't hate it, but I don't like it (see the paragraph about [Why this library exists](../guide/what-is-simplew.md#why-this-library)).
 
+> Why there is no DI in SimpleW like in ASP.NET Core ?
+
+I really deeply hating how Depending Injection is working on ASP.NET Core. I hate how the framework resolves the full dependency graph recursively and instantiates everything through a DI container :
+
+- I’m not a fan of the _magic_ instantiation model where objects are created implicitly by the framework (except the controller itself)
+- It tends to hide the actual object graph, which can make the execution flow harder to understand and debug
+- It usually introduces a fair amount of boilerplate and configuration for relatively simple use cases
+
 > Do you like Kestrel ?
 
 Kestrel is an awesome server. I just want a serious alternative to its hegemony.
@@ -45,6 +53,8 @@ I want to keep the core simple and lightweight so that :
 
 Addons are the place for everything that does not belong in the core.
 Also, a product is much easier to adopt when there is a healthy ecosystem around it.
+
+That's my [philosphy](../guide/what-is-simplew.md#philosophy)
 
 > How to use SimpleW ?
 

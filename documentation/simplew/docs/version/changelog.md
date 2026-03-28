@@ -59,6 +59,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 | Auth                                 | ⚠️ custom IWebUser       | ✅ Principal / Identity                      |
 | Custom JSON engine                   | ✅                       | ✅                                           |
 | HTTP pipelining                      | ❌                       | ✅                                           |
+| Content Range                        | ❌                       | ✅                                           |
 | Idle Timeout                         | ❌                       | ✅                                           |
 | Request Protection                   | ❌                       | ✅(malformed)                                |
 | Observability                        | ✅ (traces) & global to all processes  | ✅  (traces, metrics, enrich)  per SimpleWServer instance   |

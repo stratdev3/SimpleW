@@ -25,11 +25,43 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Jwt --version 26.0.0-rc.20260326-1604
+$ dotnet add package SimpleW.Helper.Jwt --version 26.0.0-rc.20260329-1636
 ```
 
+## Configuration options
 
-### Creating a Token
+### JwtBearerOptions
+
+| Option           | Default    | Description                                                                              |
+| ---------------- | ---------- | ---------------------------------------------------------------------------------------- |
+| SecretKey*       | —          | Secret key used to sign and validate JWT tokens (HMAC). Must be strong and kept private. |
+| ExpectedIssuer   | `null`     | Expected `iss` claim. If set, the token must match this value.                           |
+| ExpectedAudience | `null`     | Expected `aud` claim. If set, the token must match this value.                           |
+| ClockSkew        | `1 minute` | Allowed clock drift when validating `exp` and `nbf`.                                     |
+| Algorithm        | `HS256`    | HMAC algorithm used to sign tokens (`HS256`, `HS384`, `HS512`).                          |
+
+### CreateToken options
+
+| Parameter             | Default                    | Description                                                                                  |
+| --------------------- | -------------------------- | -------------------------------------------------------------------------------------------- |
+| options*              | —                          | JWT configuration used for signing and default validation-related values.                    |
+| principal / identity* | —                          | Source object used to generate the JWT payload.                                              |
+| lifetime*             | —                          | Token validity duration. Used to compute `exp`.                                              |
+| issuer                | `options.ExpectedIssuer`   | Optional issuer written into the `iss` claim.                                                |
+| audience              | `options.ExpectedAudience` | Optional audience written into the `aud` claim.                                              |
+| nowUtc                | `DateTimeOffset.UtcNow`    | Optional UTC timestamp override used to compute `iat`, `nbf`, and `exp`. Useful for testing. |
+
+### TryValidateToken options
+
+| Parameter | Description                                                                                |
+| --------- | ------------------------------------------------------------------------------------------ |
+| options*  | JWT configuration used to validate signature, issuer, audience, clock skew, and algorithm. |
+| token*    | JWT string to validate. Must contain exactly 3 parts.                                      |
+| principal | Output principal rebuilt from the token when validation succeeds.                          |
+| error     | Output error message when validation fails.                                                |
+
+
+## Creating a Token
 
 A token is created from an identity.
 
@@ -38,7 +70,7 @@ var options = JwtBearerOptions.Create("secret");
 
 var identity = new HttpIdentity(
     isAuthenticated: true,
-    authenticationType: "Custom",
+    authenticationType: "Bearer",
     identifier: "user-1",
     name: "John",
     email: "john@doe.com",

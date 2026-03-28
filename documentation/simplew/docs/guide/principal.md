@@ -185,15 +185,15 @@ There are **two ways** to define the principal :
 ```csharp [ConfigurePrincipalResolver]
 server.ConfigurePrincipalResolver(session => {
 
-    string? token = session.Request.Headers.Authorization;
-
-    if (string.IsNullOrWhiteSpace(token)) {
-        return null;
-    }
-
-    if (!JwtBearerHelper.TryValidateToken(options, token, out HttpPrincipal? principal, out _)) {
-        return null;
-    }
+    var principal = new HttpPrincipal(new HttpIdentity(
+        isAuthenticated: true,
+        authenticationType: "Custom",
+        identifier: "user-123",
+        name: "John",
+        email: null,
+        roles: new[] { "admin" },
+        properties: null
+    ));
 
     return principal;
 });

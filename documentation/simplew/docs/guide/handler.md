@@ -91,11 +91,22 @@ A handler can declare parameters that are automatically resolved :
 
 Example :
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
 server.MapGet("/api/user/:id", (int id, string? filter = null) => {
     return new { id, filter };
 });
 ```
+
+```csharp [Controller Handler]
+[Route("GET", "/api/user/:id")]
+public object User(int id, string? filter = null) {
+    return new { id, filter };
+}
+```
+
+:::
 
 Resolution priority :
 
@@ -113,30 +124,67 @@ Handlers may return
 
 ### No Result
 
-```csharp
-server.MapGet("/ping", static () => { });
+::: code-group
+
+```csharp [Delegate Handler]
+server.MapGet("/ping", (HttpSession session) => {
+    _ = session.Response.Json(new { message = "pong !" }).SendAsync();
+});
 ```
+
+```csharp [Controller Handler]
+[Route("GET", "/ping")]
+public void Ping() {
+    _ = Session.Response.Json(new { message = "pong !" }).SendAsync();
+}
+```
+
+:::
+
 
 The request is considered handled, no automatic response is sent.
 
 ### Synchronous Result
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
 server.MapGet("/api/data", () => {
-    return new { message = "Hello World !" }
+    return new { message = "Hello World !" };
 });
 ```
+
+```csharp [Controller Handler]
+[Route("GET", "/ping")]
+public object Data() {
+    return new { message = "Hello World !" };
+}
+```
+
+:::
 
 The returned value is forwarded to the **Handler Result Processor**.
 
 ### Async (Task / ValueTask)
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
 server.MapGet("/async", async () => {
     await Task.Delay(100);
-    return "done";
+    return new { message = "Hello World !" };
 });
 ```
+
+```csharp [Controller Handler]
+[Route("GET", "/async")]
+public async ValueTask<object> Data() {
+    await Task.Delay(100);
+    return new { message = "Hello World !" };
+}
+```
+
+:::
 
 Supported forms: `ValueTask`, `ValueTask<T>`, `Task`, `Task<T>`.
 
@@ -167,7 +215,9 @@ Cancellation is **cooperative** and must be explicitly honored by your logic :
 
 **Example : cancellable Delay**
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
 server.MapGet("/delay", async (HttpSession session) => {
     try {
         Console.WriteLine($"[START] session={session.Id} t={Environment.TickCount64}");
@@ -184,6 +234,29 @@ server.MapGet("/delay", async (HttpSession session) => {
 });
 ```
 
+```csharp [Controller Handler]
+[Route("GET", "/delay")]
+public async ValueTask<object> Delay() {
+    try {
+        Console.WriteLine($"[START] session={Session.Id} t={Environment.TickCount64}");
+        await Task.Delay(TimeSpan.FromSeconds(30), Session.RequestAborted);
+        Console.WriteLine($"[END] session={Session.Id} t={Environment.TickCount64}");
+    }
+    catch (OperationCanceledException) when (Session.RequestAborted.IsCancellationRequested) {
+        Console.WriteLine($"[OperationCanceledException] session={Session.Id} t={Environment.TickCount64}");
+    }
+    catch (Exception ex) {
+        Console.WriteLine($"[Exception] session={Session.Id} t={Environment.TickCount64}");
+    }
+    return new { message = "Hello World!" };
+}
+```
+
+:::
+
+
+
+
 How to test :
 1. Open the URL in a browser.
 2. Wait 30 seconds to let the handler complete normally.
@@ -194,7 +267,9 @@ The handler will be canceled immediately when the client disconnects.
 
 **Example : cancellable PostgreSQL query**
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
 server.MapGet("/execute", async (HttpSession session) => {
     await using var conn = new Npgsql.NpgsqlConnection(connString);
     await conn.OpenAsync(session.RequestAborted);
@@ -206,12 +281,29 @@ server.MapGet("/execute", async (HttpSession session) => {
 });
 ```
 
+```csharp [Controller Handler]
+[Route("GET", "/execute")]
+public async ValueTask<object> Execute() {
+    await using var conn = new Npgsql.NpgsqlConnection(connString);
+    await conn.OpenAsync(Session.RequestAborted);
+
+    await using var cmd = new Npgsql.NpgsqlCommand("select pg_sleep(1800);", conn);
+    await cmd.ExecuteNonQueryAsync(Session.RequestAborted);
+
+    return "OK";
+}
+```
+
+:::
+
 If the client disconnects while the query is running, it will be automatically cancelled.
 
 
 **Example: CPU loop with cooperative cancellation**
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
 server.MapGet("/work", (HttpSession session) => {
     for (int i = 0; i < 10_000_000; i++) {
         session.ThrowIfAborted(); // stops if client is gone
@@ -221,6 +313,20 @@ server.MapGet("/work", (HttpSession session) => {
     return "DONE";
 });
 ```
+
+```csharp [Controller Handler]
+[Route("GET", "/work")]
+public object Work() {
+    for (int i = 0; i < 10_000_000; i++) {
+        Session.ThrowIfAborted(); // stops if client is gone
+        DoWork(i);
+    }
+
+    return "DONE";
+}
+```
+
+:::
 
 **Manual state check**
 
@@ -244,13 +350,26 @@ This allows exiting gracefully without throwing an exception.
 
 A handler may directly manipulate the response :
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
 server.MapGet("/raw", (HttpSession session) => {
     return session.Response
                   .Status(200)
                   .Text("Hello");
 });
 ```
+
+```csharp [Controller Handler]
+[Route("GET", "/raw")]
+public object Raw() {
+    return Session.Response
+                  .Status(200)
+                  .Text("Hello");
+}
+```
+
+:::
 
 If an `HttpResponse` is returned, SimpleW ensures it belongs to the current session.
 

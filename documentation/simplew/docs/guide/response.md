@@ -14,7 +14,21 @@ Returning a value from a handler is the simplest and fastest way to produce a re
 
 ### Example: Object Return
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
+server.MapGet("/test", () => {
+    return new {
+        message = "Hello World !",
+        current = DateTime.Now,
+        i = 0,
+        enable = true,
+        d = new Dictionary<string, string> { { "Foo", "Bar" } }
+    };
+});
+```
+
+```csharp [Controller Handler]
 [Route("GET", "/test")]
 public object Test() {
     return new {
@@ -26,6 +40,9 @@ public object Test() {
     };
 }
 ```
+
+:::
+
 
 Response:
 
@@ -84,16 +101,26 @@ When you need more control, you can return an explicit `HttpResponse` instance.
 - Control headers
 - Set cookies
 - Choose content type
-- Send files
+- Send files (with Content-Range support)
 - Control compression
 
 `HttpResponse` is accessible from :
 - `HttpSession.Response`
 - `Controller.Response`
 
-### Example
+Example 1 :
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
+server.MapGet("/json", (HttpSession session) => {
+    return session.Response.Json("<p>Hello, World</p>")
+                           .AddHeader("X-trace-id", "1234")
+                           .AddHeader("X-custom", "test");
+});
+```
+
+```csharp [Controller Handler]
 [Route("GET", "/json")]
 public object Json() {
     return Response.Json("<p>Hello, World</p>")
@@ -102,15 +129,54 @@ public object Json() {
 }
 ```
 
-Another example :
+:::
 
-```csharp
+Example 2 :
+
+::: code-group
+
+```csharp [Delegate Handler]
+server.MapGet("/plaintext", (HttpSession session) => {
+    return session.Response.Text("Hello World !")
+                           .SetCookie("mycookie", "myvalue", new HttpResponse.CookieOptions(secure: true, maxAgeSeconds: 900));
+});
+```
+
+```csharp [Controller Handler]
 [Route("GET", "/plaintext")]
 public object Plaintext() {
     return Response.Text("Hello World !")
                    .SetCookie("mycookie", "myvalue", new HttpResponse.CookieOptions(secure: true, maxAgeSeconds: 900));
 }
 ```
+
+:::
+
+Example 3 :
+
+::: code-group
+
+```csharp [Delegate Handler]
+server.MapGet("/mp4", (HttpSession session) => {
+    return session.Response.File("video.mp4");
+});
+```
+
+```csharp [Controller Handler]
+[Route("GET", "/mp4")]
+public object Plaintext() {
+    return Response.File("video.mp4");
+}
+```
+
+:::
+
+
+::: info
+`HttpResponse` supports HTTP Range requests out of the box when serving files.
+Range support is especially useful for video streaming (MP4, WebM...), audio streaming or large file downloads (resume support).
+:::
+
 
 ### Common Responses (Aliases)
 
@@ -140,12 +206,23 @@ Use this when HTTP semantics matter (status codes, headers, files, cookies).
 
 You can bypass `HttpResponse` entirely and send raw bytes directly to the client.
 
-```csharp
+::: code-group
+
+```csharp [Delegate Handler]
+server.MapGet("/raw", async ValueTask (HttpSession session) => {
+    await session.Response.SendAsync(BuildRawResponse());
+});
+```
+
+```csharp [Controller Handler]
 [Route("GET", "/raw")]
 public async ValueTask Raw() {
     await Session.SendAsync(BuildRawResponse());
 }
 ```
+
+:::
+
 This approach means :
 - You manually build the full HTTP response
 - You own headers, status line, encoding, and body
