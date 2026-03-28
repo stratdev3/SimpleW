@@ -158,10 +158,29 @@ namespace SimpleW.Modules {
             /// </summary>
             public sealed class BasicAuthContext {
 
+                /// <summary>
+                /// UserName
+                /// </summary>
                 public required string Username { get; init; }
+
+                /// <summary>
+                /// Password
+                /// </summary>
                 public required string Password { get; init; }
+
+                /// <summary>
+                /// Path Prefix
+                /// </summary>
                 public required string Prefix { get; init; }
+
+                /// <summary>
+                /// Realm
+                /// </summary>
                 public required string Realm { get; init; }
+
+                /// <summary>
+                /// Session
+                /// </summary>
                 public required HttpSession Session { get; init; }
 
             }

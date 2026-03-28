@@ -12,7 +12,6 @@ namespace SimpleW.Parsers {
         #region Constants & shared fields
 
         private static readonly byte[] Crlf = { (byte)'\r', (byte)'\n' };
-        private static readonly byte[] HeaderTerminator = { (byte)'\r', (byte)'\n', (byte)'\r', (byte)'\n' };
 
         private const byte SpaceByte = (byte)' ';
         private const byte ColonByte = (byte)':';
@@ -20,7 +19,7 @@ namespace SimpleW.Parsers {
         private const string HeaderHost = "Host";
         private const string HeaderContentLength = "Content-Length";
         private const string HeaderTransferEncoding = "Transfer-Encoding";
-        private const string headerCookie = "Cookie";
+        private const string HeaderCookie = "Cookie";
 
         private static readonly Encoding Ascii = Encoding.ASCII;
 
@@ -164,7 +163,7 @@ namespace SimpleW.Parsers {
                     }
                     hostSeen = true;
                 }
-                else if (name.Equals(headerCookie, StringComparison.OrdinalIgnoreCase)) {
+                else if (name.Equals(HeaderCookie, StringComparison.OrdinalIgnoreCase)) {
                     if (!IsValidCookieContent(value)) {
                         throw new HttpRequestException("Invalid Cookie (HTTP/1.1).", 400);
                     }
@@ -469,6 +468,8 @@ namespace SimpleW.Parsers {
             int written = 0;
 
             try {
+                Span<byte> tmp = stackalloc byte[2];
+
                 while (true) {
                     // Read chunk-size line
                     if (!reader.TryReadTo(out ReadOnlySequence<byte> sizeLineSeq, Crlf, advancePastDelimiter: true)) {
@@ -503,8 +504,7 @@ namespace SimpleW.Parsers {
                             return false;
                         }
 
-                        var nextTwo = reader.Sequence.Slice(reader.Position, 2);
-                        Span<byte> tmp = stackalloc byte[2];
+                        ReadOnlySequence<byte> nextTwo = reader.Sequence.Slice(reader.Position, 2);
                         nextTwo.CopyTo(tmp);
 
                         // Immediate CRLF => no trailers
