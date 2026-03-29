@@ -114,6 +114,13 @@ namespace SimpleW {
         private long _fileLength;
 
         /// <summary>
+        /// for BodyKind.File range support
+        /// </summary>
+        private bool _fileRangeEnabled;
+        private long _fileRangeStart;
+        private long _fileRangeLength;
+
+        /// <summary>
         /// owned body writer (ArrayPool)
         /// </summary>
         private PooledBufferWriter? _ownedBodyWriter;
@@ -170,8 +177,12 @@ namespace SimpleW {
             _bodyArray = null;
             _bodyOffset = 0;
             _bodyLength = 0;
+
             _filePath = null;
             _fileLength = 0;
+            _fileRangeEnabled = false;
+            _fileRangeStart = 0;
+            _fileRangeLength = 0;
 
             _cookieCount = 0;
 
@@ -706,6 +717,37 @@ namespace SimpleW {
             ReadOnlyMemory<byte> bodyMem = ReadOnlyMemory<byte>.Empty;
             long bodyLength = 0;
 
+            if (_bodyKind == BodyKind.File) {
+                AddHeader("Accept-Ranges", "bytes");
+                RangeDecision range = EvaluateRange();
+                switch (range.Kind) {
+
+                    case RangeDecisionKind.Ok:
+                        _fileRangeEnabled = true;
+                        _fileRangeStart = range.Start;
+                        _fileRangeLength = range.Length;
+
+                        _statusCode = 206;
+                        _statusText = DefaultStatusText(206);
+
+                        AddHeader("Content-Range", $"bytes {range.Start}-{(range.Start + range.Length - 1)}/{_fileLength}");
+                        break;
+
+                    case RangeDecisionKind.BadRequest:
+                        BuildRangeError(400, "Invalid Range header");
+                        break;
+
+                    case RangeDecisionKind.NotSatisfiable:
+                        BuildRangeError(416, "Requested range not satisfiable", _fileLength);
+                        break;
+
+                    case RangeDecisionKind.None:
+                    default:
+                        // full file
+                        break;
+                }
+            }
+
             switch (_bodyKind) {
                 case BodyKind.None:
                     bodyMem = ReadOnlyMemory<byte>.Empty;
@@ -733,8 +775,8 @@ namespace SimpleW {
                     break;
 
                 case BodyKind.File:
-                    bodyLength = _fileLength;
-                    // bodyMem reste vide, on stream après
+                    bodyLength = _fileRangeEnabled ? _fileRangeLength : _fileLength;
+                    // bodyMem remains empty, we stream after
                     break;
             }
 
@@ -893,14 +935,20 @@ namespace SimpleW {
                         bufferSize: FileChunkSize,
                         options: FileOptions.Asynchronous | FileOptions.SequentialScan
                     );
+                    long remaining = _fileRangeEnabled ? _fileRangeLength : _fileLength;
+                    if (_fileRangeEnabled && _fileRangeStart > 0) {
+                        fs.Seek(_fileRangeStart, SeekOrigin.Begin);
+                    }
                     byte[] buf = _bufferPool.Rent(FileChunkSize);
                     try {
-                        while (true) {
-                            int read = await fs.ReadAsync(buf.AsMemory(0, buf.Length)).ConfigureAwait(false);
+                        while (remaining > 0) {
+                            int toRead = remaining > buf.Length ? buf.Length : (int)remaining;
+                            int read = await fs.ReadAsync(buf.AsMemory(0, toRead)).ConfigureAwait(false);
                             if (read <= 0) {
                                 break;
                             }
                             await _session.SendAsync(new ArraySegment<byte>(buf, 0, read)).ConfigureAwait(false);
+                            remaining -= read;
                         }
                     }
                     finally {
@@ -1311,8 +1359,12 @@ namespace SimpleW {
             _bodyArray = null;
             _bodyOffset = 0;
             _bodyLength = 0;
+
             _filePath = null;
             _fileLength = 0;
+            _fileRangeEnabled = false;
+            _fileRangeStart = 0;
+            _fileRangeLength = 0;
         }
 
         #endregion Dispose
@@ -1713,6 +1765,153 @@ namespace SimpleW {
         }
 
         #endregion compression write helpers
+
+        #region range helpers
+
+        /// <summary>
+        /// EvaluateRange
+        /// </summary>
+        /// <returns></returns>
+        private RangeDecision EvaluateRange() {
+
+            if (_bodyKind != BodyKind.File) {
+                return new(RangeDecisionKind.None);
+            }
+            if (_statusCode != 200) {
+                return new(RangeDecisionKind.None);
+            }
+
+            if (_session.Request.Method != "GET" && _session.Request.Method != "HEAD") {
+                return new(RangeDecisionKind.None);
+            }
+
+            if (!_session.Request.Headers.TryGetValue("Range", out string? rawRange) || string.IsNullOrWhiteSpace(rawRange)) {
+                return new(RangeDecisionKind.None);
+            }
+
+            // try parse range
+            rawRange = rawRange.Trim();
+
+            if (_fileLength <= 0) {
+                return new(RangeDecisionKind.NotSatisfiable);
+            }
+            if (!rawRange.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase)) {
+                return new(RangeDecisionKind.BadRequest);
+            }
+
+            string spec = rawRange.Substring("bytes=".Length).Trim();
+
+            // unsupported multi-range
+            if (spec.AsSpan().IndexOf(',') >= 0) {
+                return new(RangeDecisionKind.BadRequest);
+            }
+
+            int dash = spec.IndexOf('-');
+            if (dash < 0) {
+                return new(RangeDecisionKind.BadRequest);
+            }
+
+            string startPart = spec.Substring(0, dash).Trim();
+            string endPart = spec.Substring(dash + 1).Trim();
+
+            // suffix: bytes=-500
+            if (startPart.Length == 0) {
+                if (!long.TryParse(endPart, out long suffixLength) || suffixLength <= 0) {
+                    return new(RangeDecisionKind.BadRequest);
+                }
+
+                if (suffixLength >= _fileLength) {
+                    return new(RangeDecisionKind.Ok, 0, _fileLength);
+                }
+
+                return new(RangeDecisionKind.Ok, _fileLength - suffixLength, suffixLength);
+            }
+
+            if (!long.TryParse(startPart, out long parsedStart) || parsedStart < 0) {
+                return new(RangeDecisionKind.BadRequest);
+            }
+
+            // bytes=500-
+            if (endPart.Length == 0) {
+                if (parsedStart >= _fileLength) {
+                    return new(RangeDecisionKind.NotSatisfiable);
+                }
+                return new(RangeDecisionKind.Ok, parsedStart, _fileLength - parsedStart);
+            }
+
+            if (!long.TryParse(endPart, out long parsedEnd) || parsedEnd < parsedStart) {
+                return new(RangeDecisionKind.BadRequest);
+            }
+
+            if (parsedStart >= _fileLength) {
+                return new(RangeDecisionKind.NotSatisfiable);
+            }
+
+            if (parsedEnd >= _fileLength) {
+                parsedEnd = _fileLength - 1;
+            }
+            return new(RangeDecisionKind.Ok, parsedStart, (parsedEnd - parsedStart) + 1);
+        }
+
+        /// <summary>
+        /// BuildRangeError
+        /// </summary>
+        /// <param name="status"></param>
+        /// <param name="message"></param>
+        /// <param name="fullLength"></param>
+        private void BuildRangeError(int status, string message, long? fullLength = null) {
+
+            DisposeBody();
+
+            _statusCode = status;
+            _statusText = message;
+            _contentType = "text/plain; charset=utf-8";
+
+            if (status == 416 && fullLength.HasValue) {
+                AddHeader("Content-Range", $"bytes */{fullLength.Value}");
+            }
+
+            byte[] buf = _bufferPool.Rent(128);
+            int len = Utf8NoBom.GetBytes(message.AsSpan(), buf.AsSpan());
+
+            _bodyKind = BodyKind.OwnedBuffer;
+            _bodyArray = buf;
+            _bodyOffset = 0;
+            _bodyLength = len;
+
+            _filePath = null;
+            _fileLength = 0;
+            _fileRangeEnabled = false;
+            _fileRangeStart = 0;
+            _fileRangeLength = 0;
+        }
+
+        /// <summary>
+        /// RangeDecision
+        /// </summary>
+        private readonly struct RangeDecision {
+            public readonly RangeDecisionKind Kind;
+            public readonly long Start;
+            public readonly long Length;
+
+            public RangeDecision(RangeDecisionKind kind, long start = 0, long length = 0) {
+                Kind = kind;
+                Start = start;
+                Length = length;
+            }
+        }
+
+        /// <summary>
+        /// RangeDecisionKind
+        /// </summary>
+        private enum RangeDecisionKind : byte {
+            None = 0,
+            Ok = 1,
+            BadRequest = 2,
+            NotSatisfiable = 3
+        }
+
+        #endregion range helpers
 
         #region cookie write helpers
 
