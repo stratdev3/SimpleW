@@ -253,7 +253,7 @@ namespace SimpleW.Service.OpenID {
 
                 HttpIdentity identity = new(
                     isAuthenticated: true,
-                    authenticationType: "Bearer",
+                    authenticationType: $"OpenID:{auth.Provider}",
                     identifier: GuidFromSub(sub).ToString(),
                     name: Claim("name"),
                     email: Claim("email"),
