@@ -110,7 +110,7 @@
         /// server.UseMiddleware(static (session, next) => {
         ///     if (session.Request.Path.StartsWith("/api/secret", StringComparison.Ordinal)) {
         ///         if (!session.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != "secret") {
-        ///             return session.SendTextAsync("Unauthorized", 401, "Unauthorized");
+        ///             return session.Response.Unauthorized();
         ///         }
         ///     }
         ///     return next();

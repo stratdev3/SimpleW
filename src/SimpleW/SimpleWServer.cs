@@ -472,7 +472,7 @@ namespace SimpleW {
         /// server.UseMiddleware(static (session, next) => {
         ///     if (session.Request.Path.StartsWith("/api/secret", StringComparison.Ordinal)) {
         ///         if (!session.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != "secret") {
-        ///             return session.SendTextAsync("Unauthorized", 401, "Unauthorized");
+        ///             return session.Response.Unauthorized();
         ///         }
         ///     }
         ///     return next();
@@ -490,7 +490,7 @@ namespace SimpleW {
         /// public sealed class TestModule : IHttpModule {
         ///     public void Install(SimpleW server) {
         ///         server.MapGet("/api/test/hello", static (session) => {
-        ///             return session.SendTextAsync("Hello World !");
+        ///             return session.Response.Text("Hello World !");
         ///         }
         ///     }
         /// }
@@ -524,13 +524,13 @@ namespace SimpleW {
         /// // example1 : log and sent
         /// server.ConfigureResultHandler((session, result) => {
         ///     Console.WriteLine("result will be serialized and sent as response");
-        ///     return session.SendJsonAsync(result);
+        ///     return session.Response.Json(result);
         /// });
         /// // exemple2: do something async and sent response
         /// server.ConfigureResultHandler(async (session, result) => {
         ///     Console.WriteLine("wait 2sec then result will be serialized and sent as response");
         ///     await Task.Delay(2_000);
-        ///     await session.SendJsonAsync(result);
+        ///     await session.Response.Json(result);
         /// });
         /// </example>
         public SimpleWServer ConfigureResultHandler(HttpResultHandler handler) {
@@ -584,17 +584,17 @@ namespace SimpleW {
         ///     return new { message = $"Hello {name} !" };
         /// });
         /// server.MapGet("/api/test/hello", static (HttpSession session) => {
-        ///     return session.SendJsonAsync(new { message = "Hello World !" });
+        ///     return session.Response.Json(new { message = "Hello World !" });
         /// });
         /// server.MapGet("/api/test/hello", static (HttpSession session, string? name = null) => {
-        ///     return session.SendJsonAsync(new { message = $"Hello {name} !" });
+        ///     return session.Response.Json(new { message = $"Hello {name} !" });
         /// });
         /// server.MapGet("/api/test/hello", static (string? name = null, HttpSession session) => {
-        ///     return session.SendJsonAsync(new { message = $"Hello {name} !" });
+        ///     return session.Response.Json(new { message = $"Hello {name} !" });
         /// });
         /// server.MapGet("/api/test/hello", static async (HttpSession session, string? name = null) => {
         ///     await Task.Delay(2_000);
-        ///     await session.SendJsonAsync(new { message = $"Hello {name} !" });
+        ///     await session.Response.Json(new { message = $"Hello {name} !" }).SendAsync();
         /// });
         /// server.MapGet("/api/test/hello", static async (string? name = null) => {
         ///     await Task.Delay(2_000);

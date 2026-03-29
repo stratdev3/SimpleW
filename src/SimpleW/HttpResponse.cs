@@ -1189,45 +1189,128 @@ namespace SimpleW {
         public readonly struct CookieOptions {
 
             /// <summary>
-            /// Path
+            /// Path scope of the cookie.
+            /// 
+            /// Defines the URL path that must exist in the request for the browser to send the cookie.
+            /// Example: "/api" means the cookie is only sent for requests starting with "/api".
+            /// 
+            /// Priority:
+            /// - More specific paths take precedence over less specific ones when multiple cookies share the same name.
+            /// - Does NOT override Domain rules, both must match.
+            /// 
+            /// Security note:
+            /// - Restricting Path reduces exposure surface (good practice).
             /// </summary>
             public readonly string? Path;
 
             /// <summary>
-            /// Domaine
+            /// Domain scope of the cookie.
+            /// 
+            /// Defines which hosts can receive the cookie.
+            /// Example:
+            /// - "example.com" → sent to example.com AND all subdomains (api.example.com, etc.)
+            /// - null → defaults to the current host ONLY (more restrictive, safer)
+            /// 
+            /// Priority:
+            /// - Domain + Path must BOTH match for the cookie to be sent.
+            /// - If multiple cookies share the same name, the most specific domain wins.
+            /// 
+            /// Security note:
+            /// - Avoid setting a wide domain unless needed (limits attack surface).
             /// </summary>
             public readonly string? Domain;
 
             /// <summary>
-            /// MaxAge in seconds
+            /// Max-Age in seconds.
+            /// 
+            /// Defines how long (relative to now) the cookie remains valid.
+            /// 
+            /// Priority:
+            /// - Takes precedence over Expires if both are set (RFC 6265).
+            /// - Preferred over Expires because it avoids client/server clock drift issues.
             /// </summary>
             public readonly int MaxAge;
             /// <summary>
-            /// HasMaxAge
+            /// Indicates whether Max-Age is explicitly set.
+            /// 
+            /// Useful because:
+            /// - 0 is a valid value (means "delete immediately")
+            /// - So you need a flag to distinguish "not set" vs "set to 0"
             /// </summary>
             public readonly bool HasMaxAge;
 
             /// <summary>
-            /// Expires
+            /// Absolute expiration date of the cookie.
+            /// 
+            /// Defines the exact date/time at which the cookie expires.
+            /// 
+            /// Priority:
+            /// - Used ONLY if Max-Age is NOT set.
+            /// - Ignored if Max-Age is present.
+            /// 
+            /// Caveat:
+            /// - Depends on client clock → can be unreliable.
             /// </summary>
             public readonly DateTimeOffset Expires;
             /// <summary>
-            /// HasExpires
+            /// Indicates whether Expires is explicitly set.
+            /// 
+            /// Same idea as HasMaxAge:
+            /// - Allows distinguishing "not set" from "default value"
             /// </summary>
             public readonly bool HasExpires;
 
             /// <summary>
-            /// Secure
+            /// Secure flag.
+            /// 
+            /// If true:
+            /// - Cookie is ONLY sent over HTTPS connections.
+            /// 
+            /// Priority:
+            /// - Independent from other attributes.
+            /// - Strongly recommended in production.
+            /// 
+            /// Security:
+            /// - Prevents leakage over HTTP (MITM).
+            /// - REQUIRED if SameSite=None (modern browsers enforce this).
             /// </summary>
             public readonly bool Secure;
 
             /// <summary>
-            /// HttpOnly
+            /// HttpOnly flag.
+            /// 
+            /// If true:
+            /// - Cookie is NOT accessible via JavaScript (document.cookie).
+            /// - Only sent automatically by the browser in HTTP requests.
+            /// 
+            /// Priority:
+            /// - Independent from SameSite / Secure.
+            /// 
+            /// Security:
+            /// - Protects against XSS stealing the cookie.
+            /// - DOES NOT prevent requests being made with the cookie (important nuance).
             /// </summary>
             public readonly bool HttpOnly;
 
             /// <summary>
-            /// SameSite
+            /// SameSite policy.
+            /// 
+            /// Controls whether the cookie is sent with cross-site requests.
+            /// Values:
+            /// - Strict: sent ONLY in same-site context (maximum protection)
+            /// - Lax: sent on top-level navigation (GET links, etc.) but not on CSRF-prone requests
+            /// - None: sent in ALL contexts (requires Secure=true)
+            /// 
+            /// Priority:
+            /// - Enforced by the browser BEFORE sending the cookie.
+            /// - Can block cookie even if Domain/Path match.
+            /// 
+            /// Security:
+            /// - Primary defense against CSRF.
+            /// 
+            /// Gotchas:
+            /// - SameSite=None REQUIRES Secure=true (otherwise cookie is rejected).
+            /// - Cross-domain SPA/API setups often REQUIRE SameSite=None.
             /// </summary>
             public readonly SameSiteMode SameSite;
 
