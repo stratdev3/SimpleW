@@ -141,8 +141,8 @@ public void Ping() {
 
 :::
 
-
 The request is considered handled, no automatic response is sent.
+
 
 ### Synchronous Result
 

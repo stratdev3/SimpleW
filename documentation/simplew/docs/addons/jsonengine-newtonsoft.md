@@ -20,7 +20,7 @@ For this reason, SimpleW provides an official alternative engine via the `Simple
 #### Installation
 
 ```sh
-$ dotnet add package SimpleW.JsonEngine.Newtonsoft --version 26.0.0-rc.20260329-1636
+$ dotnet add package SimpleW.JsonEngine.Newtonsoft --version 26.0.0-rc.20260402-1644
 ```
 
 

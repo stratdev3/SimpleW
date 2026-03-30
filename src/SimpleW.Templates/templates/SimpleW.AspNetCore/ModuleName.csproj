@@ -13,9 +13,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SimpleW" Version="26.0.0-rc.20260329-1636" />
-    <PackageReference Include="SimpleW.Helper.Hosting" Version="26.0.0-rc.20260329-1636" />
-    <PackageReference Include="SimpleW.Helper.Razor" Version="26.0.0-rc.20260329-1636" />
+    <PackageReference Include="SimpleW" Version="26.0.0-rc.20260402-1644" />
+    <PackageReference Include="SimpleW.Helper.Hosting" Version="26.0.0-rc.20260402-1644" />
+    <PackageReference Include="SimpleW.Helper.Razor" Version="26.0.0-rc.20260402-1644" />
   </ItemGroup>
 
   <ItemGroup>

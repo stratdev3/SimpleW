@@ -25,7 +25,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Jwt --version 26.0.0-rc.20260329-1636
+$ dotnet add package SimpleW.Helper.Jwt --version 26.0.0-rc.20260402-1644
 ```
 
 ## Configuration options
@@ -117,30 +117,29 @@ Using with SimpleW, there is two approaches to resolve the principal at request 
 ```csharp [PrincipalResolver Approach]
 server.ConfigurePrincipalResolver(session => {
 
-    if (!session.Request.Headers.TryGetValue("Authorization", out var auth) || !auth.StartsWith("Bearer ")) {
-        return HttpPrincipal.Anonymous;
-    }
+    string? authorization = session.Request.Headers.Authorization;
 
-    string token = auth.Substring("Bearer ".Length);
-
-    if (JwtBearerHelper.TryValidateToken(options, token, out var principal, out _)) {
+    if (!string.IsNullOrWhiteSpace(authorization) 
+        && authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+        && JwtBearerHelper.TryValidateToken(options, authorization.Substring(7), out HttpPrincipal? principal, out _)
+    ) {
         return principal;
     }
-
+    
     return HttpPrincipal.Anonymous;
 });
 ```
 
 ```csharp [Middleware Approach]
 server.UseMiddleware(async (session, next) => {
-    if (session.Request.Headers.TryGetValue("Authorization", out var auth)
-        && auth.StartsWith("Bearer ")
-    ) {
-        string token = auth.Substring("Bearer ".Length);
 
-        if (JwtBearerHelper.TryValidateToken(options, token, out var principal, out _)) {
-            session.Principal = principal;
-        }
+    string? authorization = session.Request.Headers.Authorization;
+
+    if (!string.IsNullOrWhiteSpace(authorization) 
+        && authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+        && JwtBearerHelper.TryValidateToken(options, auth.Substring("Bearer ".Length), out HttpPrincipal? principal, out _)
+    ) {
+        session.Principal = principal;
     }
 
     await next();
