@@ -345,6 +345,17 @@ namespace SimpleW.Modules {
         /// </summary>
         public Guid Id { get; } = Guid.NewGuid();
 
+        #region opcodes
+
+        private const byte OpcodeContinuation = 0x0;
+        private const byte OpcodeText = 0x1;
+        private const byte OpcodeBinary = 0x2;
+        private const byte OpcodeClose = 0x8;
+        private const byte OpcodePing = 0x9;
+        private const byte OpcodePong = 0xA;
+
+        #endregion opcodes
+
         /// <summary>
         /// Serializes all outbound frame writes for this connection.
         /// This prevents concurrent sends from interleaving bytes on the underlying transport stream.
@@ -434,7 +445,7 @@ namespace SimpleW.Modules {
         /// <returns></returns>
         public ValueTask SendTextAsync(string text) {
             byte[] payload = Encoding.UTF8.GetBytes(text);
-            return SendFrameAsync(opcode: 0x1, payload);
+            return SendFrameAsync(opcode: OpcodeText, payload);
         }
 
         /// <summary>
@@ -442,14 +453,14 @@ namespace SimpleW.Modules {
         /// </summary>
         /// <param name="payload"></param>
         /// <returns></returns>
-        public ValueTask SendBinaryAsync(ReadOnlyMemory<byte> payload) => SendFrameAsync(opcode: 0x2, payload);
+        public ValueTask SendBinaryAsync(ReadOnlyMemory<byte> payload) => SendFrameAsync(opcode: OpcodeBinary, payload);
 
         /// <summary>
         /// PingAsync
         /// </summary>
         /// <param name="payload"></param>
         /// <returns></returns>
-        public ValueTask PingAsync(ReadOnlyMemory<byte> payload = default) => SendFrameAsync(opcode: 0x9, payload);
+        public ValueTask PingAsync(ReadOnlyMemory<byte> payload = default) => SendFrameAsync(opcode: OpcodePing, payload);
 
         /// <summary>
         /// CloseAsync
@@ -473,7 +484,7 @@ namespace SimpleW.Modules {
                     Buffer.BlockCopy(reasonBytes, 0, buf, 2, reasonBytes.Length);
                 }
 
-                await SendFrameAsync(opcode: 0x8, buf.AsMemory(0, len)).ConfigureAwait(false);
+                await SendFrameAsync(opcode: OpcodeClose, buf.AsMemory(0, len)).ConfigureAwait(false);
             }
             finally {
                 _pool.Return(buf);
@@ -518,16 +529,16 @@ namespace SimpleW.Modules {
                         yield break;
                     }
 
-                    if (frame.Opcode == 0x9) { // ping -> pong
-                        await SendFrameAsync(0xA, frame.Payload).ConfigureAwait(false);
+                    if (frame.Opcode == OpcodePing) { // ping -> pong
+                        await SendFrameAsync(OpcodePong, frame.Payload).ConfigureAwait(false);
                         frame.Dispose();
                         continue;
                     }
-                    if (frame.Opcode == 0xA) { // pong
+                    if (frame.Opcode == OpcodePong) { // pong
                         frame.Dispose();
                         continue;
                     }
-                    if (frame.Opcode == 0x8) { // close
+                    if (frame.Opcode == OpcodeClose) { // close
                         frame.Dispose();
                         FireClosed();
                         yield break;
@@ -537,7 +548,7 @@ namespace SimpleW.Modules {
                     bool fin = frame.Fin;
                     byte opcode = frame.Opcode;
 
-                    if (opcode == 0x0) {
+                    if (opcode == OpcodeContinuation) {
                         // continuation
                         if (reassembly == null) {
                             frame.Dispose();
@@ -555,11 +566,11 @@ namespace SimpleW.Modules {
 
                         if (fin) {
                             // emit
-                            if (reassemblyOpcode == 0x1) {
+                            if (reassemblyOpcode == OpcodeText) {
                                 string text = Encoding.UTF8.GetString(reassembly, 0, reassemblyLen);
                                 yield return new WebSocketMessage(WebSocketMessageKind.Text, text, default);
                             }
-                            else if (reassemblyOpcode == 0x2) {
+                            else if (reassemblyOpcode == OpcodeBinary) {
                                 yield return new WebSocketMessage(WebSocketMessageKind.Binary, null, reassembly.AsMemory(0, reassemblyLen));
                             }
 
@@ -571,14 +582,14 @@ namespace SimpleW.Modules {
                         continue;
                     }
 
-                    if (opcode is not (0x1 or 0x2)) {
+                    if (opcode is not (OpcodeText or OpcodeBinary)) {
                         frame.Dispose();
                         continue;
                     }
 
                     if (fin) {
                         // single frame message
-                        if (opcode == 0x1) {
+                        if (opcode == OpcodeText) {
                             string text = Encoding.UTF8.GetString(frame.Payload.Span);
                             frame.Dispose();
                             yield return new WebSocketMessage(WebSocketMessageKind.Text, text, default);
@@ -675,11 +686,12 @@ namespace SimpleW.Modules {
             }
 
             /// <summary>
-            /// Dispose
+            /// No-op.
+            /// Frame is only a lightweight view over the payload and does not manage buffer ownership.
             /// </summary>
             public void Dispose() {
-                // no-op, payload is already pooled in our implementation
             }
+
         }
 
         /// <summary>
@@ -699,8 +711,8 @@ namespace SimpleW.Modules {
         private async ValueTask SendFrameAsync(byte opcode, ReadOnlyMemory<byte> payload) {
 
             // if the connection is already marked as closed, we must not send any more frames,
-            // except for the CLOSE frame (opcode 0x8).
-            if (Volatile.Read(ref _closed) != 0 && opcode != 0x8) {
+            // except for the CLOSE frame (OpcodeClose).
+            if (Volatile.Read(ref _closed) != 0 && opcode != OpcodeClose) {
                 return;
             }
 
@@ -708,7 +720,7 @@ namespace SimpleW.Modules {
             try {
                 // re-check after acquiring the send lock.
                 // another thread may have closed the connection while we were waiting.
-                if (Volatile.Read(ref _closed) != 0 && opcode != 0x8) {
+                if (Volatile.Read(ref _closed) != 0 && opcode != OpcodeClose) {
                     return;
                 }
 
