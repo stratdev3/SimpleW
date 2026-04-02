@@ -536,7 +536,6 @@ namespace SimpleW.Modules {
             /// <param name="cacheSeconds"></param>
             /// <returns></returns>
             private async ValueTask SendFileAsync(HttpSession session, FileInfo fi, string contentType, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
-                long length = fi.Length;
 
                 session.Response
                        .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
@@ -546,7 +545,14 @@ namespace SimpleW.Modules {
                 if (session.Request.Method == "HEAD") {
                     await session.Response
                                  .AddHeader("Content-Type", contentType)
-                                 .AddHeader("Content-Length", length.ToString())
+                                 .AddHeader("Content-Length", fi.Length.ToString())
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
+                // header + body file
+                else if (_options.MaxCachedFileBytes.HasValue && fi.Length <= _options.MaxCachedFileBytes.Value) {
+                    await session.Response
+                                 .Body(await File.ReadAllBytesAsync(fi.FullName).ConfigureAwait(false), contentType)
                                  .SendAsync()
                                  .ConfigureAwait(false);
                 }
@@ -554,7 +560,8 @@ namespace SimpleW.Modules {
                 else {
                     await session.Response
                                  .File(fi, contentType)
-                                 .SendAsync();
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
                 }
             }
 
