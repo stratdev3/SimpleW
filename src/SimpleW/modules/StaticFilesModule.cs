@@ -216,17 +216,17 @@ namespace SimpleW.Modules {
                     if (endsWithSlash) {
                         string dirKey = NormalizeDirKey(fullPath);
                         if (_cache.TryGetValue(Path.Combine(dirKey, _options.DefaultDocument), out CacheEntry entry) && !entry.IsExpired) {
-                            await ServeFileAsync(session, request, entry).ConfigureAwait(false);
+                            await SendCacheEntryAsync(session, request, entry).ConfigureAwait(false);
                             return;
                         }
                         if (_options.AutoIndex && _dirIndexCache.TryGetValue(dirKey, out DirIndexCacheEntry cached) && !cached.IsExpired) {
-                            await ServeAutoIndexAsync(session, request, cached).ConfigureAwait(false);
+                            await SendAutoIndexCacheEntryAsync(session, request, cached).ConfigureAwait(false);
                             return;
                         }
                     }
                     else {
                         if (_cache.TryGetValue(fullPath, out CacheEntry entry) && !entry.IsExpired) {
-                            await ServeFileAsync(session, request, entry).ConfigureAwait(false);
+                            await SendCacheEntryAsync(session, request, entry).ConfigureAwait(false);
                             return;
                         }
                     }
@@ -259,7 +259,7 @@ namespace SimpleW.Modules {
 
                     // autoindex
                     if (_options.AutoIndex) {
-                        await ServeAutoIndexAsync(session, request, dirKey).ConfigureAwait(false);
+                        await SendAutoIndexAsync(session, request, dirKey).ConfigureAwait(false);
                         return;
                     }
 
@@ -291,7 +291,7 @@ namespace SimpleW.Modules {
                         return;
                     }
                     if (_options.AutoIndex) {
-                        await ServeAutoIndexAsync(session, request, dirKey).ConfigureAwait(false);
+                        await SendAutoIndexAsync(session, request, dirKey).ConfigureAwait(false);
                         return;
                     }
 
@@ -363,38 +363,6 @@ namespace SimpleW.Modules {
 
             #region response
 
-            /// <summary>
-            /// Send a 200
-            /// </summary>
-            /// <param name="session"></param>
-            /// <param name="contentType"></param>
-            /// <param name="body"></param>
-            /// <param name="lastModifiedUtc"></param>
-            /// <param name="cacheSeconds"></param>
-            /// <returns></returns>
-            private async ValueTask SendBytesAsync(HttpSession session, string? contentType, ReadOnlyMemory<byte> body, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
-                long len = body.Length;
-
-                session.Response
-                       .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
-                       .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache");
-
-                if (session.Request.Method == "HEAD" || len == 0) {
-                    if (contentType != null) {
-                        session.Response.AddHeader("Content-Type", contentType);
-                    }
-                    await session.Response
-                                 .AddHeader("Content-Length", len.ToString())
-                                 .SendAsync()
-                                 .ConfigureAwait(false);
-                }
-                else {
-                    await session.Response
-                                 .Body(body, contentType)
-                                 .SendAsync()
-                                 .ConfigureAwait(false);
-                }
-            }
 
             /// <summary>
             /// ServeFileAsync
@@ -412,7 +380,7 @@ namespace SimpleW.Modules {
 
                     // 1) cache hit
                     if (_cache.TryGetValue(filePath, out CacheEntry entry) && !entry.IsExpired) {
-                        await ServeFileAsync(session, request, entry).ConfigureAwait(false);
+                        await SendCacheEntryAsync(session, request, entry).ConfigureAwait(false);
                         return;
                     }
 
@@ -438,7 +406,7 @@ namespace SimpleW.Modules {
                         // 304?
                         // sinon stream direct (sans cache mémoire)
                         session.Response.AddHeader("ETag", etag2);
-                        await SendFileStreamAsync(session, fi, contentType, lastModified, cacheSeconds).ConfigureAwait(false);
+                        await SendFileAsync(session, fi, contentType, lastModified, cacheSeconds).ConfigureAwait(false);
                         return;
                     }
 
@@ -492,17 +460,50 @@ namespace SimpleW.Modules {
                 // 200
                 session.Response.AddHeader("ETag", etag3);
 
-                await SendFileStreamAsync(session, fi2, ct2, lastModified2, cacheSeconds: null).ConfigureAwait(false);
+                await SendFileAsync(session, fi2, ct2, lastModified2, cacheSeconds: null).ConfigureAwait(false);
             }
 
             /// <summary>
-            /// ServeFileAsync
+            /// Send Bytes a 200
+            /// </summary>
+            /// <param name="session"></param>
+            /// <param name="contentType"></param>
+            /// <param name="body"></param>
+            /// <param name="lastModifiedUtc"></param>
+            /// <param name="cacheSeconds"></param>
+            /// <returns></returns>
+            private async ValueTask SendBytesAsync(HttpSession session, string? contentType, ReadOnlyMemory<byte> body, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
+                long len = body.Length;
+
+                session.Response
+                       .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                       .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache");
+
+                if (session.Request.Method == "HEAD" || len == 0) {
+                    if (contentType != null) {
+                        session.Response.AddHeader("Content-Type", contentType);
+                    }
+                    await session.Response
+                                 .AddHeader("Content-Length", len.ToString())
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
+                else {
+                    await session.Response
+                                 .Body(body, contentType)
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
+            }
+
+            /// <summary>
+            /// SendCacheEntryAsync
             /// </summary>
             /// <param name="session"></param>
             /// <param name="request"></param>
             /// <param name="entry"></param>
             /// <returns></returns>
-            private async ValueTask ServeFileAsync(HttpSession session, HttpRequest request, CacheEntry entry) {
+            private async ValueTask SendCacheEntryAsync(HttpSession session, HttpRequest request, CacheEntry entry) {
                 int cacheSeconds = (int)_options.CacheTimeout!.Value.TotalSeconds;
 
                 // 304 ?
@@ -534,7 +535,7 @@ namespace SimpleW.Modules {
             /// <param name="lastModifiedUtc"></param>
             /// <param name="cacheSeconds"></param>
             /// <returns></returns>
-            private async ValueTask SendFileStreamAsync(HttpSession session, FileInfo fi, string contentType, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
+            private async ValueTask SendFileAsync(HttpSession session, FileInfo fi, string contentType, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
                 long length = fi.Length;
 
                 session.Response
@@ -558,18 +559,18 @@ namespace SimpleW.Modules {
             }
 
             /// <summary>
-            /// Generate AutoIndex file
+            /// Generate and Send an AutoIndex file
             /// </summary>
             /// <param name="session"></param>
             /// <param name="request"></param>
             /// <param name="dirPath"></param>
             /// <returns></returns>
-            private async ValueTask ServeAutoIndexAsync(HttpSession session, HttpRequest request, string dirPath) {
+            private async ValueTask SendAutoIndexAsync(HttpSession session, HttpRequest request, string dirPath) {
 
                 // Cache ON ?
                 if (_options.CacheTimeout.HasValue) {
                     if (_dirIndexCache.TryGetValue(dirPath, out DirIndexCacheEntry cached) && !cached.IsExpired) {
-                        await ServeAutoIndexAsync(session, request, cached).ConfigureAwait(false);
+                        await SendAutoIndexCacheEntryAsync(session, request, cached).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -648,13 +649,13 @@ namespace SimpleW.Modules {
             }
 
             /// <summary>
-            /// Cached AutoIndex file
+            /// Send Cached AutoIndex file
             /// </summary>
             /// <param name="session"></param>
             /// <param name="request"></param>
             /// <param name="entry"></param>
             /// <returns></returns>
-            private async ValueTask ServeAutoIndexAsync(HttpSession session, HttpRequest request, DirIndexCacheEntry entry) {
+            private async ValueTask SendAutoIndexCacheEntryAsync(HttpSession session, HttpRequest request, DirIndexCacheEntry entry) {
                 await SendBytesAsync(
                             session,
                             contentType: "text/html; charset=utf-8",
