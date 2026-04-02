@@ -346,6 +346,12 @@ namespace SimpleW.Modules {
         public Guid Id { get; } = Guid.NewGuid();
 
         /// <summary>
+        /// Serializes all outbound frame writes for this connection.
+        /// This prevents concurrent sends from interleaving bytes on the underlying transport stream.
+        /// </summary>
+        private readonly SemaphoreSlim _sendLock = new(1, 1);
+
+        /// <summary>
         /// The underlying HttpSession
         /// </summary>
         private readonly HttpSession _session;
@@ -691,54 +697,66 @@ namespace SimpleW.Modules {
         /// <param name="payload"></param>
         /// <returns></returns>
         private async ValueTask SendFrameAsync(byte opcode, ReadOnlyMemory<byte> payload) {
-            if (Volatile.Read(ref _closed) != 0) {
+
+            // if the connection is already marked as closed, we must not send any more frames,
+            // except for the CLOSE frame (opcode 0x8).
+            if (Volatile.Read(ref _closed) != 0 && opcode != 0x8) {
                 return;
             }
 
-            Stream s = _session.TransportStream;
-
-            int payloadLen = payload.Length;
-            int headerLen = 2;
-            if (payloadLen >= 126 && payloadLen <= 65535) {
-                headerLen += 2;
-            }
-            else if (payloadLen > 65535) {
-                headerLen += 8;
-            }
-
-            byte[] header = _pool.Rent(headerLen);
+            await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
-                header[0] = (byte)(0x80 | (opcode & 0x0F)); // FIN=1
-
-                if (payloadLen < 126) {
-                    header[1] = (byte)payloadLen;
-                }
-                else if (payloadLen <= 65535) {
-                    header[1] = 126;
-                    header[2] = (byte)((payloadLen >> 8) & 0xFF);
-                    header[3] = (byte)(payloadLen & 0xFF);
-                }
-                else {
-                    header[1] = 127;
-                    ulong len = (ulong)payloadLen;
-                    header[2] = (byte)((len >> 56) & 0xFF);
-                    header[3] = (byte)((len >> 48) & 0xFF);
-                    header[4] = (byte)((len >> 40) & 0xFF);
-                    header[5] = (byte)((len >> 32) & 0xFF);
-                    header[6] = (byte)((len >> 24) & 0xFF);
-                    header[7] = (byte)((len >> 16) & 0xFF);
-                    header[8] = (byte)((len >> 8) & 0xFF);
-                    header[9] = (byte)(len & 0xFF);
+                // re-check after acquiring the send lock.
+                // another thread may have closed the connection while we were waiting.
+                if (Volatile.Read(ref _closed) != 0 && opcode != 0x8) {
+                    return;
                 }
 
-                await s.WriteAsync(header.AsMemory(0, headerLen)).ConfigureAwait(false);
-                if (payloadLen > 0) {
-                    await s.WriteAsync(payload).ConfigureAwait(false);
+                int payloadLen = payload.Length;
+
+                int headerLen = payloadLen switch {
+                    <= 125 => 2,
+                    <= ushort.MaxValue => 4,
+                    _ => 10
+                };
+
+                byte[] header = _pool.Rent(headerLen);
+                try {
+                    header[0] = (byte)(0x80 | (opcode & 0x0F)); // FIN=1
+
+                    if (payloadLen < 126) {
+                        header[1] = (byte)payloadLen;
+                    }
+                    else if (payloadLen <= 65535) {
+                        header[1] = 126;
+                        header[2] = (byte)((payloadLen >> 8) & 0xFF);
+                        header[3] = (byte)(payloadLen & 0xFF);
+                    }
+                    else {
+                        header[1] = 127;
+                        ulong len = (ulong)payloadLen;
+                        header[2] = (byte)((len >> 56) & 0xFF);
+                        header[3] = (byte)((len >> 48) & 0xFF);
+                        header[4] = (byte)((len >> 40) & 0xFF);
+                        header[5] = (byte)((len >> 32) & 0xFF);
+                        header[6] = (byte)((len >> 24) & 0xFF);
+                        header[7] = (byte)((len >> 16) & 0xFF);
+                        header[8] = (byte)((len >> 8) & 0xFF);
+                        header[9] = (byte)(len & 0xFF);
+                    }
+
+                    await _session.TransportStream.WriteAsync(header.AsMemory(0, headerLen)).ConfigureAwait(false);
+                    if (payloadLen > 0) {
+                        await _session.TransportStream.WriteAsync(payload).ConfigureAwait(false);
+                    }
+                    await _session.TransportStream.FlushAsync().ConfigureAwait(false);
                 }
-                await s.FlushAsync().ConfigureAwait(false);
+                finally {
+                    _pool.Return(header);
+                }
             }
             finally {
-                _pool.Return(header);
+                _sendLock.Release();
             }
         }
 
