@@ -49,8 +49,10 @@ namespace SimpleW.Observability {
             // meters
             RequestsTotal = Meter.CreateCounter<long>("http.server.request.count", unit: "request");
             RequestDurationMs = Meter.CreateHistogram<double>("http.server.request.duration", unit: "ms");
+            RequestBodyBytesTotal = Meter.CreateCounter<long>("http.server.request.body.bytes", unit: "By");
             ResponsesTotal = Meter.CreateCounter<long>("http.server.response.count", unit: "response");
             ResponseDurationMs = Meter.CreateHistogram<double>("http.server.response.duration", unit: "ms");
+            ResponseBodyBytesTotal = Meter.CreateCounter<long>("http.server.response.body.bytes", unit: "By");
             ActiveSessions = Meter.CreateObservableGauge<long>("simplew.session.active", () => Volatile.Read(ref _activeSessions), unit: "session");
         }
 
@@ -193,6 +195,11 @@ namespace SimpleW.Observability {
         private readonly Histogram<double> RequestDurationMs;
 
         /// <summary>
+        /// RequestBodyBytesTotal
+        /// </summary>
+        private readonly Counter<long> RequestBodyBytesTotal;
+
+        /// <summary>
         /// ResponseTotal
         /// </summary>
         private readonly Counter<long> ResponsesTotal;
@@ -201,6 +208,11 @@ namespace SimpleW.Observability {
         /// ResponseDurationMs
         /// </summary>
         private readonly Histogram<double> ResponseDurationMs;
+
+        /// <summary>
+        /// ResponseBodyBytesTotal
+        /// </summary>
+        private readonly Counter<long> ResponseBodyBytesTotal;
 
         /// <summary>
         /// ActiveSessions
@@ -217,7 +229,7 @@ namespace SimpleW.Observability {
             RequestsTotal.Add(
                 1,
                 new("simplew.instance", Options.InstanceId),
-                new("http.method", session.Request.Method),
+                new("http.request.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched")
             );
 
@@ -227,6 +239,15 @@ namespace SimpleW.Observability {
                 new("http.request.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched")
             );
+
+            if (long.TryParse(session.Request.Headers.ContentLengthRaw?.ToString(), out long ct) && ct > 0) {
+                RequestBodyBytesTotal.Add(
+                    ct,
+                    new("simplew.instance", Options.InstanceId),
+                    new("http.request.method", session.Request.Method),
+                    new("http.route", session.Request.RouteTemplate ?? "unmatched")
+                );
+            }
         }
 
         /// <summary>
@@ -239,7 +260,7 @@ namespace SimpleW.Observability {
             ResponsesTotal.Add(
                 1,
                 new("simplew.instance", Options.InstanceId),
-                new("http.method", session.Request.Method),
+                new("http.request.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched"),
                 new("http.response.status_code", session.Response.StatusCode)
             );
@@ -251,6 +272,16 @@ namespace SimpleW.Observability {
                 new("http.route", session.Request.RouteTemplate ?? "unmatched"),
                 new("http.response.status_code", session.Response.StatusCode)
             );
+
+            if (session.Response.BytesSent > 0) {
+                ResponseBodyBytesTotal.Add(
+                    session.Response.BytesSent,
+                    new("simplew.instance", Options.InstanceId),
+                    new("http.request.method", session.Request.Method),
+                    new("http.route", session.Request.RouteTemplate ?? "unmatched"),
+                    new("http.response.status_code", session.Response.StatusCode)
+                );
+            }
         }
 
         /// <summary>
