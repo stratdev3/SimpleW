@@ -224,7 +224,7 @@ namespace SimpleW.Observability {
             RequestDurationMs.Record(
                 elapsedMs,
                 new("simplew.instance", Options.InstanceId),
-                new("http.method", session.Request.Method),
+                new("http.request.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched")
             );
         }
@@ -247,7 +247,7 @@ namespace SimpleW.Observability {
             ResponseDurationMs.Record(
                 elapsedMs,
                 new("simplew.instance", Options.InstanceId),
-                new("http.method", session.Request.Method),
+                new("http.request.method", session.Request.Method),
                 new("http.route", session.Request.RouteTemplate ?? "unmatched"),
                 new("http.response.status_code", session.Response.StatusCode)
             );
