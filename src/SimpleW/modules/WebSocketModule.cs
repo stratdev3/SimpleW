@@ -1057,6 +1057,14 @@ namespace SimpleW.Modules {
 
                 string raw = m.Text ?? string.Empty;
 
+                if (!LooksLikeJsonObject(raw)) {
+                    if (_unknown != null) {
+                        WebSocketEnvelope env = new("", null, false, raw, null, null);
+                        await _unknown(conn, ctx, env).ConfigureAwait(false);
+                    }
+                    continue;
+                }
+
                 // try json
                 try {
                     using JsonDocument doc = JsonDocument.Parse(raw);
@@ -1088,8 +1096,8 @@ namespace SimpleW.Modules {
                         await _unknown(conn, ctx, env).ConfigureAwait(false);
                     }
                 }
+                // fallback
                 catch {
-                    // not json
                     if (_unknown != null) {
                         WebSocketEnvelope env = new("", null, false, raw, null, null);
                         await _unknown(conn, ctx, env).ConfigureAwait(false);
@@ -1097,6 +1105,27 @@ namespace SimpleW.Modules {
                 }
             }
         }
+
+        /// <summary>
+        ///  true if first non null char is an open brace
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        private static bool LooksLikeJsonObject(string s) {
+            if (string.IsNullOrEmpty(s)) {
+                return false;
+            }
+
+            ReadOnlySpan<char> span = s.AsSpan();
+
+            int i = 0;
+            while (i < span.Length && char.IsWhiteSpace(span[i])) {
+                i++;
+            }
+
+            return i < span.Length && span[i] == '{';
+        }
+
     }
 
     /// <summary>
