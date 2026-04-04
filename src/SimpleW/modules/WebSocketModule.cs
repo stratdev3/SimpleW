@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -443,9 +444,22 @@ namespace SimpleW.Modules {
         /// </summary>
         /// <param name="text"></param>
         /// <returns></returns>
-        public ValueTask SendTextAsync(string text) {
-            byte[] payload = Encoding.UTF8.GetBytes(text);
-            return SendFrameAsync(opcode: OpcodeText, payload);
+        public async ValueTask SendTextAsync(string text) {
+            if (string.IsNullOrEmpty(text)) {
+                await SendFrameAsync(opcode: OpcodeText, ReadOnlyMemory<byte>.Empty).ConfigureAwait(false);
+                return;
+            }
+
+            int byteCount = Encoding.UTF8.GetByteCount(text);
+            byte[] rented = _pool.Rent(byteCount);
+
+            try {
+                int written = Encoding.UTF8.GetBytes(text.AsSpan(), rented.AsSpan());
+                await SendFrameAsync(opcode: OpcodeText, rented.AsMemory(0, written)).ConfigureAwait(false);
+            }
+            finally {
+                _pool.Return(rented);
+            }
         }
 
         /// <summary>
@@ -734,34 +748,32 @@ namespace SimpleW.Modules {
 
                 byte[] header = _pool.Rent(headerLen);
                 try {
-                    header[0] = (byte)(0x80 | (opcode & 0x0F)); // FIN=1
+                    int writtenHeader = WriteFrameHeader(header, opcode, payloadLen);
 
-                    if (payloadLen < 126) {
-                        header[1] = (byte)payloadLen;
+                    if (payloadLen == 0) {
+                        await _session.SendAsync(new ArraySegment<byte>(header, 0, writtenHeader)).ConfigureAwait(false);
+                        return;
                     }
-                    else if (payloadLen <= 65535) {
-                        header[1] = 126;
-                        header[2] = (byte)((payloadLen >> 8) & 0xFF);
-                        header[3] = (byte)(payloadLen & 0xFF);
+
+                    if (MemoryMarshal.TryGetArray(payload, out ArraySegment<byte> payloadSeg) && payloadSeg.Array != null) {
+                        await _session.SendAsync(
+                            new ArraySegment<byte>(header, 0, writtenHeader),
+                            payloadSeg
+                        ).ConfigureAwait(false);
                     }
                     else {
-                        header[1] = 127;
-                        ulong len = (ulong)payloadLen;
-                        header[2] = (byte)((len >> 56) & 0xFF);
-                        header[3] = (byte)((len >> 48) & 0xFF);
-                        header[4] = (byte)((len >> 40) & 0xFF);
-                        header[5] = (byte)((len >> 32) & 0xFF);
-                        header[6] = (byte)((len >> 24) & 0xFF);
-                        header[7] = (byte)((len >> 16) & 0xFF);
-                        header[8] = (byte)((len >> 8) & 0xFF);
-                        header[9] = (byte)(len & 0xFF);
-                    }
+                        // fallback if payload is not array-backed
+                        byte[] frame = _pool.Rent(writtenHeader + payloadLen);
+                        try {
+                            Buffer.BlockCopy(header, 0, frame, 0, writtenHeader);
+                            payload.Span.CopyTo(frame.AsSpan(writtenHeader, payloadLen));
 
-                    await _session.TransportStream.WriteAsync(header.AsMemory(0, headerLen)).ConfigureAwait(false);
-                    if (payloadLen > 0) {
-                        await _session.TransportStream.WriteAsync(payload).ConfigureAwait(false);
+                            await _session.SendAsync(frame.AsMemory(0, writtenHeader + payloadLen)).ConfigureAwait(false);
+                        }
+                        finally {
+                            _pool.Return(frame);
+                        }
                     }
-                    await _session.TransportStream.FlushAsync().ConfigureAwait(false);
                 }
                 finally {
                     _pool.Return(header);
@@ -770,6 +782,39 @@ namespace SimpleW.Modules {
             finally {
                 _sendLock.Release();
             }
+        }
+
+        /// <summary>
+        /// Write WebSocket frame header into buffer and return header length.
+        /// Server frames are never masked.
+        /// </summary>
+        private static int WriteFrameHeader(byte[] header, byte opcode, int payloadLen) {
+            header[0] = (byte)(0x80 | (opcode & 0x0F)); // FIN=1
+
+            if (payloadLen <= 125) {
+                header[1] = (byte)payloadLen;
+                return 2;
+            }
+
+            if (payloadLen <= ushort.MaxValue) {
+                header[1] = 126;
+                header[2] = (byte)((payloadLen >> 8) & 0xFF);
+                header[3] = (byte)(payloadLen & 0xFF);
+                return 4;
+            }
+
+            header[1] = 127;
+            ulong len = (ulong)payloadLen;
+            header[2] = (byte)((len >> 56) & 0xFF);
+            header[3] = (byte)((len >> 48) & 0xFF);
+            header[4] = (byte)((len >> 40) & 0xFF);
+            header[5] = (byte)((len >> 32) & 0xFF);
+            header[6] = (byte)((len >> 24) & 0xFF);
+            header[7] = (byte)((len >> 16) & 0xFF);
+            header[8] = (byte)((len >> 8) & 0xFF);
+            header[9] = (byte)(len & 0xFF);
+
+            return 10;
         }
 
         #endregion frame write
