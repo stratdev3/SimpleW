@@ -1263,8 +1263,7 @@ namespace SimpleW {
                         $"{_response.StatusCode} " +
                         $"{(int)Telemetry.ElapsedMs(_requestStartWatch, Telemetry.GetWatch())}ms " +
                         $"session-{Id} " +
-                        $"{ClientIpAddress} " +
-                        $"\"{_request.Headers.UserAgent}\""
+                        $"{ClientIpAddress} "
                     );
                 }
             }
