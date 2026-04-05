@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <!--
+    flag :
+      - true : the dotnet build command use the default ProjectReference in all PropertyGroups
+      - false : the dotnet build command use the PackageReference in all PropertyGroups
+    Why ?
+    Because I want all my nuget packages use the same "Major.Minor" for compatibility
+    only patch difference are accepted.
+    -->
+    <UseLocalSimpleW Condition="'$(UseLocalSimpleW)' == ''">true</UseLocalSimpleW>
+    <!--
+    I want all my package use the same "Major.Minor" version
+    -->
+    <SimpleWCompatVersion>[26.0.0,26.1.0)</SimpleWCompatVersion>
+  </PropertyGroup>
+</Project>

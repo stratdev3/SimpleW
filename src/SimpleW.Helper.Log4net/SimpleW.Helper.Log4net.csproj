@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0;</TargetFrameworks>
@@ -47,8 +47,14 @@
     <PackageReference Include="log4net" Version="3.2.0" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- use for dotnet build -->
+  <ItemGroup Condition="'$(UseLocalSimpleW)' == 'true'">
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
+  </ItemGroup>
+
+  <!-- use for dotnet package (so all packages must follow the same "Major.Minor" version -->
+  <ItemGroup Condition="'$(UseLocalSimpleW)' != 'true'">
+    <PackageReference Include="SimpleW" Version="$(SimpleWCompatVersion)" />
   </ItemGroup>
 
   <ItemGroup>
