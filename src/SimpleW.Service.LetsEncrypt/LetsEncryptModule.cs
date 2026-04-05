@@ -218,7 +218,8 @@ namespace SimpleW.Service.LetsEncrypt {
                     _log.Fatal(ex.Message, ex);
                     throw ex;
                 }
-                _log.Info("LetsEncryptModule installing...");
+
+                _log.Info("installing...");
 
                 _server = server;
 
@@ -246,7 +247,7 @@ namespace SimpleW.Service.LetsEncrypt {
                     catch { }
                 });
 
-                _log.Info("LetsEncryptModule installed");
+                _log.Info("installed");
             }
 
             /// <summary>

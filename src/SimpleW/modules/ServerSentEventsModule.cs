@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Collections.Concurrent;
 using System.Text;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Modules {
@@ -97,6 +98,11 @@ namespace SimpleW.Modules {
     internal sealed class ServerSentEventsModule : IHttpModule {
 
         /// <summary>
+        /// Logger
+        /// </summary>
+        private static readonly ILogger _log = new Logger<ServerSentEventsModule>();
+
+        /// <summary>
         /// ServerSentEventsOptions
         /// </summary>
         private readonly ServerSentEventsOptions _options;
@@ -124,6 +130,8 @@ namespace SimpleW.Modules {
             server.MapGet(_options.Prefix, (HttpSession session) => HandlerAsync(session));
             // accept prefix wildcard as fallback (but will enforce exact match)
             server.MapGet(_options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
+
+            _log.Info($"installed with prefix {_options.Prefix}");
         }
 
         /// <summary>

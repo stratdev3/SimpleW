@@ -235,12 +235,13 @@ namespace SimpleW.Service.Chaos {
                     _log.Fatal(ex.Message, ex);
                     throw ex;
                 }
-                _log.Info("ChaosModule installing...");
+
+                _log.Info("installing...");
 
                 // Middleware = before routing -> affects everything under Prefix (API)
                 server.UseMiddleware(InvokeAsync);
 
-                _log.Info("ChaosModule installed");
+                _log.Info("installed");
             }
 
             /// <summary>

@@ -234,7 +234,8 @@ namespace SimpleW.Service.Firewall {
                     _log.Fatal(ex.Message, ex);
                     throw ex;
                 }
-                _log.Info("FirewallModule installing...");
+
+                _log.Info("installing...");
 
                 // sort path rules : longest prefix first => most specific wins
                 _options.PathRules.Sort(static (a, b) => b.Prefix.Length.CompareTo(a.Prefix.Length));
@@ -439,7 +440,7 @@ namespace SimpleW.Service.Firewall {
                     await next();
                 });
 
-                _log.Info("FirewallModule installed");
+                _log.Info("installed");
             }
 
             #region telemetry

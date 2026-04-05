@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Modules {
@@ -132,6 +133,11 @@ namespace SimpleW.Modules {
     internal sealed class WebSocketModule : IHttpModule {
 
         /// <summary>
+        /// Logger
+        /// </summary>
+        private static readonly ILogger _log = new Logger<WebSocketModule>();
+
+        /// <summary>
         /// WebSocketOptions
         /// </summary>
         private readonly WebSocketOptions _options;
@@ -159,6 +165,8 @@ namespace SimpleW.Modules {
             server.MapGet(_options.Prefix, (HttpSession session) => HandlerAsync(session));
             // accept prefix wildcard as fallback (but will enforce exact match)
             server.MapGet(_options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
+
+            _log.Info($"installed with prefix {_options.Prefix}");
         }
 
         /// <summary>

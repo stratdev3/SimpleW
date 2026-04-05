@@ -2,6 +2,7 @@
 using System.Buffers.Text;
 using System.Runtime.CompilerServices;
 using System.Text;
+using SimpleW.Observability;
 using static SimpleW.Modules.BasicAuthModuleExtension.BasicAuthOptions;
 
 
@@ -20,6 +21,11 @@ namespace SimpleW.Modules {
         private static volatile RuleSet _rules = RuleSet.Empty;
 
         /// <summary>
+        /// Logger
+        /// </summary>
+        private static readonly ILogger _log = new Logger<BasicAuthModule>();
+
+        /// <summary>
         /// Use Basic Auth Module (adds/updates a prefix rule; installs ONE middleware per server).
         /// It setups a Middleware
         /// </summary>
@@ -29,6 +35,8 @@ namespace SimpleW.Modules {
             BasicAuthOptions options = new();
             configure?.Invoke(options);
             options.ValidateAndNormalize();
+
+            _log.Info($"installed with prefix {options.Prefix}");
 
             UpsertRule(options);
 

@@ -134,7 +134,8 @@ namespace SimpleW.Service.Latency {
                 _log.Fatal(ex.Message, ex);
                 throw ex;
             }
-            _log.Info("LatencyModule installing...");
+
+            _log.Info("installing...");
 
             server.UseMiddleware(async (session, next) => {
 
@@ -149,7 +150,7 @@ namespace SimpleW.Service.Latency {
                 await next().ConfigureAwait(false);
             });
 
-            _log.Info("LatencyModule installed");
+            _log.Info("installed");
         }
 
         private TimeSpan? ResolveLatency(string path) {

@@ -1,4 +1,6 @@
-﻿namespace SimpleW.Modules {
+﻿using SimpleW.Observability;
+
+namespace SimpleW.Modules {
 
     /// <summary>
     /// CorsModuleExtension
@@ -112,7 +114,19 @@
         /// </summary>
         private sealed class CorsModule : IHttpModule {
 
+            /// <summary>
+            /// Logger
+            /// </summary>
+            private static readonly ILogger _log = new Logger<CorsModule>();
+
+            /// <summary>
+            /// Options
+            /// </summary>
             private readonly CorsOptions _options;
+
+            /// <summary>
+            /// Allowed Origins
+            /// </summary>
             private readonly HashSet<string> _allowedOrigins;
 
             /// <summary>
@@ -135,8 +149,12 @@
                     throw new InvalidOperationException("CorsModule must be installed before server start.");
                 }
 
+                _log.Info($"installing with prefix {_options.Prefix} ...");
+
                 // Global middleware (but we filter by Prefix)
                 server.UseMiddleware((session, next) => MiddlewareAsync(session, next));
+
+                _log.Info($"installed with prefix {_options.Prefix}");
             }
 
             /// <summary>

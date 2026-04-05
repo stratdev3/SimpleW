@@ -356,7 +356,8 @@ namespace SimpleW.Service.OpenID {
                     _log.Fatal(ex.Message, ex);
                     throw ex;
                 }
-                _log.Info("OpenIDModule installing...");
+                
+                _log.Info("installing...");
 
                 // register middleware: restore user from cookie
                 server.Router.UseMiddleware(async (session, next) => {
@@ -392,7 +393,7 @@ namespace SimpleW.Service.OpenID {
                 server.Router.MapGet($"{basePath}/callback/:provider", (HttpSession session, string provider) => CallbackHandler(session, provider));
                 server.Router.MapGet($"{basePath}/logout", (HttpSession s) => LogoutHandler(s));
 
-                _log.Info("OpenIDModule installed");
+                _log.Info("installed");
             }
 
             /// <summary>

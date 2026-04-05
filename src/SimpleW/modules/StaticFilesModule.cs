@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Modules {
@@ -131,6 +132,11 @@ namespace SimpleW.Modules {
         private class StaticFilesModule : IHttpModule, IDisposable {
 
             /// <summary>
+            /// Logger
+            /// </summary>
+            private static readonly ILogger _log = new Logger<StaticFilesModule>();
+
+            /// <summary>
             /// Options
             /// </summary>
             private readonly StaticFilesOptions _options;
@@ -195,6 +201,8 @@ namespace SimpleW.Modules {
                 // map GET + HEAD
                 server.MapGet(_options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
                 server.Map("HEAD", _options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
+
+                _log.Info($"installed with prefix {_options.Prefix}");
             }
 
             /// <summary>
