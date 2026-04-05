@@ -64,6 +64,25 @@ var server = new SimpleWServer(IPAddress.Any, 8080)
 await server.RunAsync();
 ```
 
+## Optional: replace the default Router
+
+By default, SimpleW uses the built-in `Router` implementation.
+
+In advanced scenarios, you can replace the router with a custom implementation.
+
+```csharp
+server.UseRouter(new MyCustomRouter());
+```
+
+::: info
+When the router is replaced, any registered route is lost.
+:::
+
+Typical use cases :
+- Implement a custom routing strategy
+- Wrap the default router to add cross-cutting features
+- Experiment with alternative routing pipelines
+
 
 ## Starting the server
 

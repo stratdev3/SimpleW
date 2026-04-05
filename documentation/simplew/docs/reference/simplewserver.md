@@ -178,6 +178,32 @@ See an [example](../guide/server.md#optional-lifecycle-callbacks-fluent).
 
 ## Router
 
+```csharp
+/// <summary>
+/// Replace the current router implementation.
+/// Must be called before the server starts.
+/// </summary>
+public SimpleWServer UseRouter(IRouter router) {
+    ArgumentNullException.ThrowIfNull(router);
+
+    if (IsStarted) {
+        InvalidOperationException ex = new("Router must be configured before starting the server.");
+        _log.Warn(ex.Message, ex);
+        throw ex;
+    }
+
+    Router = router;
+    return this;
+}
+```
+
+```csharp
+/// <summary>
+/// Router
+/// </summary>
+public IRouter Router { get; private set; }
+```
+
 The [`Router`](./router) property contains all routes handled by the web server.
 You can list them with `Router.Routes`.
 
