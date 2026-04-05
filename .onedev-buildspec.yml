@@ -12,6 +12,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: test
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/test/
+        dotnet test
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -179,22 +191,82 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
-  - type: CommandStep
-    name: test
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: DefaultInterpreter
-      commands: |
-        cd src/test/
-        dotnet test
-    useTTY: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW
+    sourcePath: src/SimpleW/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
-    name: publish artifact
-    sourcePath: src/SimpleW/bin/@param:build_configuration@/
-    artifacts: '*/SimpleW.dll'
+    name: publish artifact SimpleW.Helper.Hosting
+    sourcePath: src/SimpleW.Helper.Hosting/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.Hosting.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Jwt
+    sourcePath: src/SimpleW.Helper.Jwt/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.Jwt.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Log4net
+    sourcePath: src/SimpleW.Helper.Log4net/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.Log4net.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Razor
+    sourcePath: src/SimpleW.Helper.Razor/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.Razor.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Serilog
+    sourcePath: src/SimpleW.Helper.Serilog/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.Serilog.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.Swagger
+    sourcePath: src/SimpleW.Helper.Swagger/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.Swagger.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.JsonEngine.Newtonsoft
+    sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.JsonEngine.Newtonsoft.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Chaos
+    sourcePath: src/SimpleW.Service.Chaos/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Service.Chaos.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Firewall
+    sourcePath: src/SimpleW.Service.Firewall/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Service.Firewall.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Latency
+    sourcePath: src/SimpleW.Service.Latency/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Service.Latency.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.LetsEncrypt
+    sourcePath: src/SimpleW.Service.LetsEncrypt/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Service.LetsEncrypt.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.OpenID
+    sourcePath: src/SimpleW.Service.OpenID/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Service.OpenID.dll'
     condition: SUCCESSFUL
     optional: false
   paramSpecs:
