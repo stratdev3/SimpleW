@@ -543,16 +543,22 @@ namespace SimpleW.Modules {
                         yield break;
                     }
 
-                    if (frame.Opcode == OpcodePing) { // ping -> pong
-                        await SendFrameAsync(OpcodePong, frame.Payload).ConfigureAwait(false);
+                    if (frame.Opcode == OpcodePing) {
+                        try {
+                            await SendFrameAsync(OpcodePong, frame.Payload).ConfigureAwait(false);
+                        }
+                        finally {
+                            frame.Dispose();
+                        }
+                        continue;
+                    }
+
+                    if (frame.Opcode == OpcodePong) {
                         frame.Dispose();
                         continue;
                     }
-                    if (frame.Opcode == OpcodePong) { // pong
-                        frame.Dispose();
-                        continue;
-                    }
-                    if (frame.Opcode == OpcodeClose) { // close
+
+                    if (frame.Opcode == OpcodeClose) {
                         frame.Dispose();
                         FireClosed();
                         yield break;
@@ -562,35 +568,39 @@ namespace SimpleW.Modules {
                     bool fin = frame.Fin;
                     byte opcode = frame.Opcode;
 
+                    // continuation
                     if (opcode == OpcodeContinuation) {
-                        // continuation
                         if (reassembly == null) {
                             frame.Dispose();
                             continue; // ignore
                         }
+
                         if (reassemblyLen + frame.Payload.Length > _maxMessageBytes) {
                             frame.Dispose();
                             await CloseAsync(1009, "message too big").ConfigureAwait(false);
                             yield break;
                         }
 
-                        frame.Payload.CopyTo(reassembly.AsMemory(reassemblyLen));
+                        frame.Payload.Span.CopyTo(reassembly.AsSpan(reassemblyLen));
                         reassemblyLen += frame.Payload.Length;
                         frame.Dispose();
 
+                        // emit
                         if (fin) {
-                            // emit
-                            if (reassemblyOpcode == OpcodeText) {
-                                string text = Encoding.UTF8.GetString(reassembly, 0, reassemblyLen);
-                                yield return new WebSocketMessage(WebSocketMessageKind.Text, text, default);
-                            }
-                            else if (reassemblyOpcode == OpcodeBinary) {
-                                yield return new WebSocketMessage(WebSocketMessageKind.Binary, null, reassembly.AsMemory(0, reassemblyLen));
-                            }
+                            byte[] message = GC.AllocateUninitializedArray<byte>(reassemblyLen);
+                            Buffer.BlockCopy(reassembly, 0, message, 0, reassemblyLen);
 
+                            _pool.Return(reassembly);
                             reassembly = null;
+
+                            WebSocketMessage wsMessage = reassemblyOpcode == OpcodeText
+                                ? new WebSocketMessage(WebSocketMessageKind.Text, message, default)
+                                : new WebSocketMessage(WebSocketMessageKind.Binary, default, message);
+
                             reassemblyLen = 0;
                             reassemblyOpcode = 0;
+
+                            yield return wsMessage;
                         }
 
                         continue;
@@ -601,18 +611,21 @@ namespace SimpleW.Modules {
                         continue;
                     }
 
+                    // single frame message
                     if (fin) {
-                        // single frame message
+                        byte[] message = GC.AllocateUninitializedArray<byte>(frame.Payload.Length);
+                        if (frame.Payload.Length > 0) {
+                            frame.Payload.Span.CopyTo(message);
+                        }
+                        frame.Dispose();
+
                         if (opcode == OpcodeText) {
-                            string text = Encoding.UTF8.GetString(frame.Payload.Span);
-                            frame.Dispose();
-                            yield return new WebSocketMessage(WebSocketMessageKind.Text, text, default);
+                            yield return new WebSocketMessage(WebSocketMessageKind.Text, message, default);
                         }
                         else {
-                            ReadOnlyMemory<byte> data = frame.Payload;
-                            frame.Dispose();
-                            yield return new WebSocketMessage(WebSocketMessageKind.Binary, null, data);
+                            yield return new WebSocketMessage(WebSocketMessageKind.Binary, default, message);
                         }
+
                         continue;
                     }
 
@@ -626,7 +639,7 @@ namespace SimpleW.Modules {
                     reassembly = _pool.Rent(_maxMessageBytes);
                     reassemblyOpcode = opcode;
                     reassemblyLen = frame.Payload.Length;
-                    frame.Payload.CopyTo(reassembly);
+                    frame.Payload.Span.CopyTo(reassembly);
                     frame.Dispose();
                 }
             }
@@ -678,12 +691,15 @@ namespace SimpleW.Modules {
         /// <summary>
         /// Frame
         /// </summary>
-        private readonly struct Frame {
+        private readonly struct Frame : IDisposable {
 
             public readonly FrameKind Kind;
             public readonly bool Fin;
             public readonly byte Opcode;
             public readonly ReadOnlyMemory<byte> Payload;
+
+            private readonly byte[]? _pooledBuffer;
+            private readonly ArrayPool<byte>? _pool;
 
             /// <summary>
             /// Constructor
@@ -697,13 +713,35 @@ namespace SimpleW.Modules {
                 Fin = fin;
                 Opcode = opcode;
                 Payload = payload;
+                _pooledBuffer = null;
+                _pool = null;
             }
 
             /// <summary>
-            /// No-op.
-            /// Frame is only a lightweight view over the payload and does not manage buffer ownership.
+            /// Constructor with pooled ownership
+            /// </summary>
+            /// <param name="kind"></param>
+            /// <param name="fin"></param>
+            /// <param name="opcode"></param>
+            /// <param name="pooledBuffer"></param>
+            /// <param name="payloadLength"></param>
+            /// <param name="pool"></param>
+            public Frame(FrameKind kind, bool fin, byte opcode, byte[] pooledBuffer, int payloadLength, ArrayPool<byte> pool) {
+                Kind = kind;
+                Fin = fin;
+                Opcode = opcode;
+                Payload = pooledBuffer.AsMemory(0, payloadLength);
+                _pooledBuffer = pooledBuffer;
+                _pool = pool;
+            }
+
+            /// <summary>
+            /// Dispose pooled payload if owned
             /// </summary>
             public void Dispose() {
+                if (_pooledBuffer != null && _pool != null) {
+                    _pool.Return(_pooledBuffer);
+                }
             }
 
         }
@@ -878,12 +916,11 @@ namespace SimpleW.Modules {
                 }
 
                 if (payloadLen > (ulong)_maxMessageBytes) {
-                    // we won't even read it
                     await CloseAsync(1009, "message too big").ConfigureAwait(false);
                     return new Frame(FrameKind.EOF, false, 0, default);
                 }
 
-                byte[] maskKey = Array.Empty<byte>();
+                byte[]? maskKey = null;
                 if (masked) {
                     maskKey = _pool.Rent(4);
                     if (!await ReadExactAsync(s, maskKey.AsMemory(0, 4), ct).ConfigureAwait(false)) {
@@ -892,29 +929,30 @@ namespace SimpleW.Modules {
                     }
                 }
 
-                byte[] payloadBuf = payloadLen == 0 ? Array.Empty<byte>() : _pool.Rent((int)payloadLen);
-                if (payloadLen > 0) {
-                    if (!await ReadExactAsync(s, payloadBuf.AsMemory(0, (int)payloadLen), ct).ConfigureAwait(false)) {
-                        if (masked) {
-                            _pool.Return(maskKey);
-                        }
-                        _pool.Return(payloadBuf);
-                        return new Frame(FrameKind.EOF, false, 0, default);
+                if (payloadLen == 0) {
+                    if (maskKey != null) {
+                        _pool.Return(maskKey);
                     }
+                    return new Frame(FrameKind.Data, fin, opcode, ReadOnlyMemory<byte>.Empty);
                 }
 
-                if (masked && payloadLen > 0) {
-                    for (int i = 0; i < (int)payloadLen; i++) {
-                        payloadBuf[i] ^= maskKey[i & 3];
+                byte[] payloadBuf = _pool.Rent((int)payloadLen);
+                if (!await ReadExactAsync(s, payloadBuf.AsMemory(0, (int)payloadLen), ct).ConfigureAwait(false)) {
+                    if (maskKey != null) {
+                        _pool.Return(maskKey);
                     }
+                    _pool.Return(payloadBuf);
+                    return new Frame(FrameKind.EOF, false, 0, default);
                 }
 
                 if (masked) {
-                    _pool.Return(maskKey);
+                    for (int i = 0; i < (int)payloadLen; i++) {
+                        payloadBuf[i] ^= maskKey![i & 3];
+                    }
+                    _pool.Return(maskKey!);
                 }
 
-                ReadOnlyMemory<byte> mem = payloadLen == 0 ? ReadOnlyMemory<byte>.Empty : payloadBuf.AsMemory(0, (int)payloadLen);
-                return new Frame(FrameKind.Data, fin, opcode, mem);
+                return new Frame(FrameKind.Data, fin, opcode, payloadBuf, (int)payloadLen, _pool);
             }
             finally {
                 _pool.Return(header);
@@ -1055,75 +1093,163 @@ namespace SimpleW.Modules {
                     continue;
                 }
 
-                string raw = m.Text ?? string.Empty;
+                ReadOnlyMemory<byte> rawUtf8 = m.Utf8Text;
 
-                if (!LooksLikeJsonObject(raw)) {
+                if (!LooksLikeJsonObject(rawUtf8)) {
                     if (_unknown != null) {
-                        WebSocketEnvelope env = new("", null, false, raw, null, null);
+                        WebSocketEnvelope env = new("", null, false, rawUtf8, default);
                         await _unknown(conn, ctx, env).ConfigureAwait(false);
                     }
                     continue;
                 }
 
-                // try json
-                try {
-                    using JsonDocument doc = JsonDocument.Parse(raw);
-                    JsonElement root = doc.RootElement;
-
-                    string op = "";
-                    if (root.ValueKind == JsonValueKind.Object &&
-                        root.TryGetProperty("op", out var opEl) &&
-                        opEl.ValueKind == JsonValueKind.String) {
-                        op = opEl.GetString() ?? "";
-                    }
-
-                    string? id = null;
-                    if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("id", out JsonElement idEl)) {
-                        id = idEl.ValueKind == JsonValueKind.String ? idEl.GetString() : idEl.ToString();
-                    }
-
-                    JsonElement? payload = null;
-                    if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("payload", out JsonElement plEl)) {
-                        payload = plEl;
-                    }
-
-                    WebSocketEnvelope env = new(op, id, true, raw, payload, root);
-
-                    if (!string.IsNullOrEmpty(op) && _handlers.TryGetValue(op, out var h)) {
-                        await h(conn, ctx, env).ConfigureAwait(false);
-                    }
-                    else if (_unknown != null) {
-                        await _unknown(conn, ctx, env).ConfigureAwait(false);
-                    }
-                }
-                // fallback
-                catch {
+                if (!TryParseEnvelope(rawUtf8, out WebSocketEnvelope env2)) {
                     if (_unknown != null) {
-                        WebSocketEnvelope env = new("", null, false, raw, null, null);
+                        WebSocketEnvelope env = new("", null, false, rawUtf8, default);
                         await _unknown(conn, ctx, env).ConfigureAwait(false);
                     }
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(env2.Op) && _handlers.TryGetValue(env2.Op, out WebSocketMessageHandler? h)) {
+                    await h(conn, ctx, env2).ConfigureAwait(false);
+                }
+                else if (_unknown != null) {
+                    await _unknown(conn, ctx, env2).ConfigureAwait(false);
                 }
             }
         }
 
         /// <summary>
-        ///  true if first non null char is an open brace
+        /// True if first significant UTF-8 byte is '{'
         /// </summary>
-        /// <param name="s"></param>
+        /// <param name="utf8"></param>
         /// <returns></returns>
-        private static bool LooksLikeJsonObject(string s) {
-            if (string.IsNullOrEmpty(s)) {
-                return false;
-            }
-
-            ReadOnlySpan<char> span = s.AsSpan();
+        private static bool LooksLikeJsonObject(ReadOnlyMemory<byte> utf8) {
+            ReadOnlySpan<byte> span = utf8.Span;
 
             int i = 0;
-            while (i < span.Length && char.IsWhiteSpace(span[i])) {
-                i++;
+            while (i < span.Length) {
+                byte b = span[i];
+                if (b is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n') {
+                    i++;
+                    continue;
+                }
+
+                return b == (byte)'{';
             }
 
-            return i < span.Length && span[i] == '{';
+            return false;
+        }
+
+        /// <summary>
+        /// TryParseEnvelope from UTF-8 JSON object
+        /// </summary>
+        /// <param name="utf8"></param>
+        /// <param name="env"></param>
+        /// <returns></returns>
+        private static bool TryParseEnvelope(ReadOnlyMemory<byte> utf8, out WebSocketEnvelope env) {
+            env = default;
+
+            try {
+                Utf8JsonReader reader = new(utf8.Span, isFinalBlock: true, state: default);
+
+                if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) {
+                    return false;
+                }
+
+                string op = "";
+                string? id = null;
+                ReadOnlyMemory<byte> payloadUtf8 = default;
+
+                while (reader.Read()) {
+                    if (reader.TokenType == JsonTokenType.EndObject) {
+                        env = new WebSocketEnvelope(op, id, true, utf8, payloadUtf8);
+                        return true;
+                    }
+
+                    if (reader.TokenType != JsonTokenType.PropertyName) {
+                        return false;
+                    }
+
+                    bool isOp = reader.ValueTextEquals("op");
+                    bool isId = reader.ValueTextEquals("id");
+                    bool isPayload = reader.ValueTextEquals("payload");
+
+                    if (!reader.Read()) {
+                        return false;
+                    }
+
+                    if (isOp) {
+                        if (reader.TokenType == JsonTokenType.String) {
+                            op = reader.GetString() ?? "";
+                        }
+                        else {
+                            SkipValue(ref reader);
+                        }
+                    }
+                    else if (isId) {
+                        id = GetCurrentValueAsString(utf8, ref reader);
+                    }
+                    else if (isPayload) {
+                        payloadUtf8 = GetCurrentValueSlice(utf8, ref reader);
+                    }
+                    else {
+                        SkipValue(ref reader);
+                    }
+                }
+
+                return false;
+            }
+            catch (JsonException) {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Skip current JSON value
+        /// </summary>
+        /// <param name="reader"></param>
+        private static void SkipValue(ref Utf8JsonReader reader) {
+            if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) {
+                reader.Skip();
+            }
+        }
+
+        /// <summary>
+        /// Return current JSON value as raw UTF-8 slice
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        private static ReadOnlyMemory<byte> GetCurrentValueSlice(ReadOnlyMemory<byte> source, ref Utf8JsonReader reader) {
+            int start = checked((int)reader.TokenStartIndex);
+
+            if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) {
+                reader.Skip();
+            }
+
+            int end = checked((int)reader.BytesConsumed);
+            return source.Slice(start, end - start);
+        }
+
+        /// <summary>
+        /// Return current JSON scalar as string
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="reader"></param>
+        /// <returns></returns>
+        private static string? GetCurrentValueAsString(ReadOnlyMemory<byte> source, ref Utf8JsonReader reader) {
+            if (reader.TokenType == JsonTokenType.String) {
+                return reader.GetString();
+            }
+
+            if (reader.TokenType == JsonTokenType.Null) {
+                return null;
+            }
+
+            ReadOnlyMemory<byte> raw = GetCurrentValueSlice(source, ref reader);
+            return Encoding.UTF8.GetString(raw.Span);
         }
 
     }
@@ -1322,6 +1448,7 @@ namespace SimpleW.Modules {
     /// <returns></returns>
     public delegate ValueTask WebSocketMessageHandler(WebSocketConnection conn, WebSocketContext ctx, WebSocketEnvelope msg);
 
+
     /// <summary>
     /// Envelope used for routing
     ///
@@ -1333,60 +1460,40 @@ namespace SimpleW.Modules {
     /// <param name="Op"></param>
     /// <param name="Id"></param>
     /// <param name="IsJson"></param>
-    /// <param name="RawText"></param>
-    /// <param name="Payload"></param>
-    /// <param name="Root"></param>
-    public readonly record struct WebSocketEnvelope(string Op, string? Id, bool IsJson, string RawText, JsonElement? Payload, JsonElement? Root) {
+    /// <param name="RawUtf8"></param>
+    /// <param name="PayloadUtf8"></param>
+    public readonly record struct WebSocketEnvelope(string Op, string? Id, bool IsJson, ReadOnlyMemory<byte> RawUtf8, ReadOnlyMemory<byte> PayloadUtf8) {
 
         /// <summary>
-        /// Deserialize the whole payload into T
+        /// Get utf8 String from RawUtf8
+        /// </summary>
+        public string RawText => Encoding.UTF8.GetString(RawUtf8.Span);
+
+        /// <summary>
+        /// Flag
+        /// </summary>
+        public bool HasPayload => !PayloadUtf8.IsEmpty;
+
+        /// <summary>
+        /// Try deserialize full payload into T.
+        /// Returns false if there is no payload or if deserialization fails.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="obj"></param>
+        /// <param name="value"></param>
+        /// <param name="options"></param>
         /// <returns></returns>
-        public bool TryGetPayload<T>(out T? obj) {
-            obj = default;
-
-            if (Payload == null) {
-                return false;
-            }
-            if (Payload.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) {
+        public bool TryDeserializePayload<T>(out T? value, JsonSerializerOptions? options = null) {
+            if (PayloadUtf8.IsEmpty) {
+                value = default;
                 return false;
             }
 
             try {
-                obj = Payload.Value.Deserialize<T>();
-                return obj != null || default(T) == null; // true for value types too
+                value = JsonSerializer.Deserialize<T>(PayloadUtf8.Span, options);
+                return true;
             }
             catch {
-                obj = default;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Deserialize a property of payload into T
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="name"></param>
-        /// <param name="obj"></param>
-        /// <returns></returns>
-        public bool TryGetPayload<T>(string name, out T? obj) {
-            obj = default;
-
-            if (Payload == null || Payload.Value.ValueKind != JsonValueKind.Object || !Payload.Value.TryGetProperty(name, out var el)) {
-                return false;
-            }
-            if (el.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) {
-                return false;
-            }
-
-            try {
-                obj = el.Deserialize<T>();
-                return obj != null || default(T) == null;
-            }
-            catch {
-                obj = default;
+                value = default;
                 return false;
             }
         }
@@ -1397,9 +1504,9 @@ namespace SimpleW.Modules {
     /// WebSocketMessage
     /// </summary>
     /// <param name="Kind"></param>
-    /// <param name="Text"></param>
+    /// <param name="Utf8Text"></param>
     /// <param name="Binary"></param>
-    public readonly record struct WebSocketMessage(WebSocketMessageKind Kind, string? Text, ReadOnlyMemory<byte> Binary);
+    public readonly record struct WebSocketMessage(WebSocketMessageKind Kind, ReadOnlyMemory<byte> Utf8Text, ReadOnlyMemory<byte> Binary);
 
     /// <summary>
     /// WebSocket Message Kind
