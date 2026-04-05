@@ -10,15 +10,6 @@
 [![MacOS](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml)
 [![Windows (Visual Studio)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml)
 
-### Features
-
-1. Routing
-2. API REST (Controller/Method + automatic json serialization/deserialization)
-3. Json Web Token
-4. Websocket
-5. Server Sent Events
-6. Static Files
-7. OpenTelemetry
 
 ### Getting Started
 
