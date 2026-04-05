@@ -1,7 +1,7 @@
 # WebsocketModule
 
-The `WebsocketModule` is used to setup WebSockets.
-This module setup a middleware.
+The `WebSocketModule` installs a WebSocket endpoint on the server.
+It maps a single WebSocket route, upgrades the HTTP connection to WebSocket, then routes incoming messages by `op`.
 
 
 ## Definition
@@ -39,9 +39,9 @@ public string? RequiredSubProtocol { get; set; }
 
 ```csharp
 /// <summary>
-/// Optional keep-alive ping
+/// If set, periodically send ping to keep proxies/load balancers happy
 /// </summary>
-public TimeSpan? PingInterval { get; set; }
+public TimeSpan? KeepAliveInterval  { get; set; }
 ```
 
 ```csharp
@@ -106,6 +106,40 @@ public void OnUnknown(WebSocketMessageHandler handler);
 public void OnBinary(Func<WebSocketConnection, WebSocketContext, ReadOnlyMemory<byte>, ValueTask> handler)
 ```
 
+
+## Envelope
+
+Text handlers receive a `WebSocketEnvelope`.
+
+```csharp
+    /// <summary>
+    /// Envelope used for routing
+    /// </summary>
+    /// <param name="Op"></param>
+    /// <param name="Id"></param>
+    /// <param name="IsJson"></param>
+    /// <param name="RawUtf8"></param>
+    /// <param name="PayloadUtf8"></param>
+public readonly record struct WebSocketEnvelope(
+    string Op,
+    string? Id,
+    bool IsJson,
+    ReadOnlyMemory<byte> RawUtf8,
+    ReadOnlyMemory<byte> PayloadUtf8
+)
+```
+
+```csharp
+/// <summary>
+/// Try deserialize full payload into T.
+/// Returns false if there is no payload or if deserialization fails.
+/// </summary>
+/// <typeparam name="T"></typeparam>
+/// <param name="value"></param>
+/// <param name="options"></param>
+/// <returns></returns>
+public bool TryDeserializePayload<T>(out T? value, JsonSerializerOptions? options = null)
+```
 
 ## Example
 

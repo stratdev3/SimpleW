@@ -14,7 +14,7 @@ Even if you map `/ws/*`, the handler enforces **strict match**, so anything unde
 
 ### 2) Routing by op
 
-Text messages are expected to be JSON and follow an envelope format:
+Text messages are expected to be UTF-8 JSON and follow an envelope format :
 
 ```json
 { "op": "chat/join", "id": "42", "payload": { ... } }
@@ -22,9 +22,20 @@ Text messages are expected to be JSON and follow an envelope format:
 
 - `op` : operation name used for routing (exact match)
 - `id` : optional correlation id (string or number accepted)
-- `payload` : optional JSON payload
+- `payload` : optional raw JSON payload
 
-If the incoming message is not JSON, it will be routed to the `OnUnknown` handler (if defined).
+The router parses only the envelope fields needed for routing :
+- op
+- id
+-  payload
+
+The payload is kept as raw UTF-8 and can then be deserialized inside the handler with :
+
+```csharp
+msg.TryDeserializePayload<T>(out var value)
+```
+
+If the incoming text message is not a JSON object, or if the envelope cannot be parsed, it is routed to `OnUnknown` (if defined).
 
 
 ### 3) Hub and Rooms
@@ -146,7 +157,7 @@ class Program {
             }
 
             ws.Map("chat/join", async (conn, ctx, msg) => {
-                if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+                if (!msg.TryDeserializePayload(out RoomName? m) || m == null) {
                     return;
                 }
 
@@ -163,7 +174,7 @@ class Program {
             });
 
             ws.Map("chat/leave", async (conn, ctx, msg) => {
-                if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+                if (!msg.TryDeserializePayload(out RoomName? m) || m == null) {
                     return;
                 }
 
@@ -174,7 +185,7 @@ class Program {
             });
 
             ws.Map("chat/msg", async (conn, ctx, msg) => {
-                if (!msg.TryGetPayload(out RoomName? m) || m == null) {
+                if (!msg.TryDeserializePayload(out RoomName? m) || m == null) {
                     return;
                 }
 
@@ -184,7 +195,7 @@ class Program {
 
             ws.OnUnknown(async (conn, ctx, msg) => {
                 // for debug
-                await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : "bad message: expected JSON {op,payload}");
+                await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : $"bad message: {msg.RawText}");
             });
 
             ws.OnDisconnect = async (conn, ctx) => {
