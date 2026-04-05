@@ -23,7 +23,7 @@
     <!-- versioning -->
     <AssemblyVersion>26.0.0</AssemblyVersion>
     <FileVersion>26.0.0</FileVersion>
-    <Version>26.0.0-rc</Version>
+    <Version>26.0.0</Version>
 
     <!-- ci/cd -->
     <Deterministic>true</Deterministic>

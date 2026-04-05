@@ -300,7 +300,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD nuget
+- name: CD testing nuget
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -312,7 +312,7 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW
+    name: pack SimpleW
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -320,13 +320,13 @@ jobs:
       commands: |
         cd src/SimpleW
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.csproj
         dotnet pack -c Release SimpleW.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Helper.Hosting
+    name: pack SimpleW.Helper.Hosting
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -334,13 +334,13 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Hosting
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj
         dotnet pack -c Release SimpleW.Helper.Hosting.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Helper.Jwt
+    name: pack SimpleW.Helper.Jwt
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -348,13 +348,13 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj
         dotnet pack -c Release SimpleW.Helper.Jwt.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Helper.Log4net
+    name: pack SimpleW.Helper.Log4net
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -362,13 +362,13 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Log4net
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj
         dotnet pack -c Release SimpleW.Helper.Log4net.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Helper.Swagger
+    name: pack SimpleW.Helper.Swagger
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -376,13 +376,13 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Swagger
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj
         dotnet pack -c Release SimpleW.Helper.Swagger.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Helper.Razor
+    name: pack SimpleW.Helper.Razor
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -390,13 +390,13 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Razor
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Razor.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj
         dotnet pack -c Release SimpleW.Helper.Razor.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Helper.Serilog
+    name: pack SimpleW.Helper.Serilog
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -404,13 +404,13 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Serilog
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj
         dotnet pack -c Release SimpleW.Helper.Serilog.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.JsonEngine.Newtonsoft
+    name: pack SimpleW.JsonEngine.Newtonsoft
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -418,13 +418,13 @@ jobs:
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj
         dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Service.Chaos
+    name: pack SimpleW.Service.Chaos
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -432,13 +432,13 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Chaos
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Chaos.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj
         dotnet pack -c Release SimpleW.Service.Chaos.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Service.Firewall
+    name: pack SimpleW.Service.Firewall
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -446,13 +446,13 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Firewall
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Firewall.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj
         dotnet pack -c Release SimpleW.Service.Firewall.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Service.Latency
+    name: pack SimpleW.Service.Latency
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -460,13 +460,13 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Latency
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.Latency.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Latency.csproj
         dotnet pack -c Release SimpleW.Service.Latency.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Service.LetsEncrypt
+    name: pack SimpleW.Service.LetsEncrypt
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -474,13 +474,13 @@ jobs:
       commands: |
         cd src/SimpleW.Service.LetsEncrypt
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj
         dotnet pack -c Release SimpleW.Service.LetsEncrypt.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Service.OpenID
+    name: pack SimpleW.Service.OpenID
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -488,13 +488,13 @@ jobs:
       commands: |
         cd src/SimpleW.Service.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Service.OpenID.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj
         dotnet pack -c Release SimpleW.Service.OpenID.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: build SimpleW.Templates
+    name: pack SimpleW.Templates
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
@@ -502,7 +502,10 @@ jobs:
       commands: |
         cd src/SimpleW.Templates
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc))</Version>#<Version>\\1.${TS}</Version>#g" SimpleW.Templates.csproj
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Templates.csproj
+        sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:testing@.${TS}\"#g" templates/SimpleW.AspNetCore/ModuleName.csproj
+        sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:testing@.${TS}\"#g" templates/SimpleW.Controller/ModuleName.csproj
+        sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:testing@.${TS}\"#g" templates/SimpleW.Minimal/ModuleName.csproj
         dotnet pack -c Release SimpleW.Templates.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -759,6 +762,23 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: testing
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
