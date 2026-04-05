@@ -25,7 +25,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Jwt --version 26.0.0-rc.20260402-1644
+$ dotnet add package SimpleW.Helper.Jwt --version 26.0.0-rc.20260405-1671
 ```
 
 ## Configuration options

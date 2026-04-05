@@ -15,7 +15,7 @@ Notes :
 - HTTP/3 quic
 
 
-## v26.0.0-rc - _(2026-03-??)_
+## v26.0.0-rc - _(2026-04-??)_
 
 This version is a major release :
 - a **complete rewrite** of the project (start from scratch no more netcoreserver override)
