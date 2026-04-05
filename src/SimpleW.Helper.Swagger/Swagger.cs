@@ -96,7 +96,7 @@ namespace SimpleW.Helper.Swagger {
             /// <summary>
             /// Filter which routes appear in swagger (null => all routes)
             /// </summary>
-            public Func<Router.RouteInfo, bool>? RouteFilter { get; set; }
+            public Func<RouteInfo, bool>? RouteFilter { get; set; }
 
             /// <summary>
             /// Best effort: scan Controller methods to infer query params types
@@ -211,7 +211,7 @@ namespace SimpleW.Helper.Swagger {
                 string serverUrl = $"{scheme}://{host}";
 
                 // routes -> paths
-                IEnumerable<Router.RouteInfo> allRoutes = server.Router.Routes;
+                IEnumerable<RouteInfo> allRoutes = server.Router.Routes;
 
                 if (options.RouteFilter != null) {
                     allRoutes = allRoutes.Where(options.RouteFilter);
@@ -227,7 +227,7 @@ namespace SimpleW.Helper.Swagger {
                 // OpenAPI "paths" object
                 Dictionary<string, object> paths = new(StringComparer.Ordinal);
 
-                foreach (Router.RouteInfo r in allRoutes) {
+                foreach (RouteInfo r in allRoutes) {
 
                     string openApiPath = ToOpenApiPathTemplate(r.Path);
 

@@ -3,7 +3,7 @@
     /// <summary>
     /// Router
     /// </summary>
-    public sealed class Router {
+    public sealed class Router : IRouter {
 
         #region constructor
 
@@ -856,17 +856,6 @@
 
             return routes;
         }
-
-        /// <summary>
-        /// Route Info
-        /// </summary>
-        /// <param name="Method"></param>
-        /// <param name="Host"></param>
-        /// <param name="Path"></param>
-        /// <param name="IsAbsolutePath"></param>
-        /// <param name="Description"></param>
-        /// <param name="IsPattern"></param>
-        public sealed record RouteInfo(string Method, string? Host, string Path, bool IsAbsolutePath, string? Description, bool IsPattern);
 
         #endregion list/export Routes
 

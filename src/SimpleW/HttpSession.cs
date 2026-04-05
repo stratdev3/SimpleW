@@ -44,7 +44,7 @@ namespace SimpleW {
         /// <summary>
         /// Router
         /// </summary>
-        private readonly Router _router;
+        private readonly IRouter _router;
 
         /// <summary>
         /// IsObservability
@@ -160,7 +160,7 @@ namespace SimpleW {
         /// <param name="socket"></param>
         /// <param name="bufferPool"></param>
         /// <param name="router"></param>
-        public HttpSession(SimpleWServer server, Socket socket, ArrayPool<byte> bufferPool, Router router) {
+        public HttpSession(SimpleWServer server, Socket socket, ArrayPool<byte> bufferPool, IRouter router) {
             Id = Guid.NewGuid();
 
             Server = server;

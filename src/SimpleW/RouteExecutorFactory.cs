@@ -613,7 +613,7 @@ namespace SimpleW {
         /// <param name="router"></param>
         /// <param name="basePrefix"></param>
         /// <exception cref="ArgumentException"></exception>
-        public static void RegisterController(Type controllerType, Router router, string? basePrefix) {
+        public static void RegisterController(Type controllerType, IRouter router, string? basePrefix) {
             ArgumentNullException.ThrowIfNull(controllerType);
             ArgumentNullException.ThrowIfNull(router);
 

@@ -22,7 +22,7 @@ namespace SimpleW {
         /// <summary>
         /// Router
         /// </summary>
-        public Router Router { get; private set; }
+        public IRouter Router { get; private set; }
 
         #region constructor
 
@@ -539,6 +539,28 @@ namespace SimpleW {
         }
 
         #endregion handler result
+
+        #region router
+
+        /// <summary>
+        /// Replace the current router implementation.
+        /// All existing routes are lost !!
+        /// Must be called before the server starts.
+        /// </summary>
+        public SimpleWServer UseRouter(IRouter router) {
+            ArgumentNullException.ThrowIfNull(router);
+
+            if (IsStarted) {
+                InvalidOperationException ex = new("Router must be configured before starting the server.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
+
+            Router = router;
+            return this;
+        }
+
+        #endregion router
 
         #region map delegate
 
