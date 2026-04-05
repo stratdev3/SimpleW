@@ -215,7 +215,7 @@ jobs:
       value: Release
   triggers:
   - type: BranchUpdateTrigger
-    paths: src/SimpleW/ src/test/
+    paths: src/
     userMatch: anyone
     paramMatrix:
     - valuesProvider:
