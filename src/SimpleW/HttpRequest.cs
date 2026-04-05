@@ -5,12 +5,12 @@ using System.Text;
 namespace SimpleW {
 
     /// <summary>
-    /// HTTP request is used to create or process parameters of HTTP protocol request (method, URL, headers, etc).
+    /// Represents an HTTP request and exposes its protocol data such as the method, URL, headers, and body.
     /// </summary>
     public sealed class HttpRequest {
 
         /// <summary>
-        /// ArrayPool
+        /// Array pool used for temporary buffers.
         /// </summary>
         private readonly ArrayPool<byte> _bufferPool;
 
@@ -40,12 +40,14 @@ namespace SimpleW {
         public HttpHeaders Headers { get; private set; }
 
         /// <summary>
-        /// Body (buffer only valid during the time of the underlying Handler)
+        /// Gets the request body.
+        /// The underlying buffer is only valid for the lifetime of the current handler.
         /// </summary>
         public ReadOnlySequence<byte> Body { get; private set; } = ReadOnlySequence<byte>.Empty;
 
         /// <summary>
-        /// Body as String (only valid during the time of the underlying Handler)
+        /// Gets the request body as a string.
+        /// The underlying buffer is only valid for the lifetime of the current handler.
         /// </summary>
         public string BodyString {
             get {
@@ -72,44 +74,44 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// QueryString as String (e.g: key1=value1&amp;key2=value2)
+        /// Gets the query string as raw text (for example: key1=value1&amp;key2=value2).
         /// </summary>
         public string QueryString { get; private set; } = string.Empty;
 
         /// <summary>
-        /// QueryString as Dictionnary
+        /// Gets the parsed query string as a dictionary.
         /// </summary>
         public Dictionary<string, string> Query { get; private set; } = new Dictionary<string, string>();
 
         /// <summary>
-        /// Route values extracted from matched route (ex: :id, :path*)
-        /// Null when route has no parameters.
+        /// Gets the route values extracted from the matched route (for example: :id, :path*).
+        /// <see langword="null"/> when the route has no parameters.
         /// </summary>
         public Dictionary<string, string>? RouteValues { get; private set; }
 
         /// <summary>
-        /// JsonEngine
-        /// Can be used to parse body
+        /// JSON engine associated with the request.
+        /// Can be used to parse the body.
         /// </summary>
         public readonly IJsonEngine JsonEngine;
 
         /// <summary>
-        /// Max size of request headers in bytes
+        /// Maximum request header size, in bytes.
         /// </summary>
         public readonly int MaxRequestHeaderSize;
 
         /// <summary>
-        /// Max size of request body in bytes
+        /// Maximum request body size, in bytes.
         /// </summary>
         public readonly long MaxRequestBodySize;
 
         /// <summary>
-        /// Matched route template for openTelemetry
+        /// Gets the matched route template for OpenTelemetry.
         /// </summary>
         public string? RouteTemplate { get; private set; }
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new instance of the <see cref="HttpRequest"/> class.
         /// </summary>
         /// <param name="bufferPool"></param>
         /// <param name="jsonEngine"></param>
@@ -123,7 +125,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Reset HttpRequest for reuse
+        /// Resets the request so it can be reused.
         /// </summary>
         public void Reset() {
             Method = string.Empty;
@@ -144,12 +146,12 @@ namespace SimpleW {
         #region buffer
 
         /// <summary>
-        /// public Property to received a buffer from an ArrayPool
+        /// public Property to received a buffer from an Array pool used for temporary buffers.
         /// </summary>
         public byte[]? PooledBodyBuffer { get; set; }
 
         /// <summary>
-        /// Return the buffer to ArrayPool
+        /// Return the buffer to Array pool used for temporary buffers.
         /// </summary>
         public void ReturnPooledBodyBuffer() {
             if (PooledBodyBuffer != null) {
@@ -241,9 +243,9 @@ namespace SimpleW {
     }
 
     /// <summary>
-    /// HttpHeaders
-    ///     1. most common
-    ///     2. fallback list
+    /// Represents HTTP headers.
+    /// Frequently used headers are stored in dedicated fields,
+    /// and all others are stored in a Fallback collection. collection.
     /// </summary>
     public struct HttpHeaders {
 
@@ -284,12 +286,12 @@ namespace SimpleW {
         public string? AcceptLanguage;
 
         /// <summary>
-        /// Contection
+        /// Connection
         /// </summary>
         public string? Connection;
 
         /// <summary>
-        /// Transfert Encoding
+        /// Transfer Encoding
         /// </summary>
         public string? TransferEncoding;
 
@@ -335,7 +337,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Add a Header (name/value).
-        /// Set most common else save in _other
+        /// Common headers are stored in dedicated fields; all others are stored in the Fallback collection. array.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
@@ -407,7 +409,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// TryGetValue (most commons + others).
+        /// Tries to get a header value from either the dedicated fields or the Fallback collection. collection.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
@@ -491,7 +493,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Enumerated all headers (most commons + others).
+        /// Enumerates all headers from both the dedicated fields and the fallback collection.
         /// </summary>
         public IEnumerable<KeyValuePair<string, string>> EnumerateAll() {
             // most common headers
@@ -555,8 +557,8 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Try get a cookie by name from the Cookie header.
-        /// Cookie names are compared case-sensitively (RFC).
+        /// Tries to get a cookie value by name from the Cookie header.
+        /// Cookie names are compared case-sensitively, as required by the RFC.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>
@@ -656,7 +658,7 @@ namespace SimpleW {
     }
 
     /// <summary>
-    /// HeaderEntry
+    /// Represents a header name/value pair.
     /// </summary>
     public readonly struct HeaderEntry {
 
@@ -671,7 +673,7 @@ namespace SimpleW {
         public readonly string Value;
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new instance of the <see cref="HttpRequest"/> class.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="value"></param>

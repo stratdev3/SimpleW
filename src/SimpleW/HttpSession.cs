@@ -12,42 +12,42 @@ using SimpleW.Parsers;
 namespace SimpleW {
 
     /// <summary>
-    /// HTTP session is used to receive/send HTTP requests/responses from the connected HTTP client.
+    /// Represents an HTTP session used to receive requests from and send responses to a connected client.
     /// </summary>
     public sealed class HttpSession : IDisposable {
 
         /// <summary>
-        /// Guid of the current HttpSession
+        /// Gets the unique identifier of this session.
         /// </summary>
         public Guid Id { get; }
 
         /// <summary>
-        /// Underlying SimpleW Server
+        /// Owning <see cref="SimpleWServer"/> instance.
         /// </summary>
         public readonly SimpleWServer Server;
 
         /// <summary>
-        /// Expose the Server.JsonEngine
+        /// Gets the server JSON engine.
         /// </summary>
         public IJsonEngine JsonEngine => Server.JsonEngine;
 
         /// <summary>
-        /// Socket from SocketAsyncEventArgs
+        /// Underlying client socket.
         /// </summary>
         private readonly Socket _socket;
 
         /// <summary>
-        /// ArrayPool Buffer
+        /// Array pool used for buffers.
         /// </summary>
         private readonly ArrayPool<byte> _bufferPool;
 
         /// <summary>
-        /// Router
+        /// Router used to Dispatch. requests.
         /// </summary>
         private readonly IRouter _router;
 
         /// <summary>
-        /// IsObservability
+        /// Gets a value indicating whether observability features are enabled.
         /// </summary>
         private bool IsObservability => Server.IsTelemetryEnabled || Log.IsEnabledFor(LogLevel.Error);
 
@@ -57,47 +57,47 @@ namespace SimpleW {
         private bool _receiving;
 
         /// <summary>
-        /// Received Buffer
+        /// Receive buffer.
         /// </summary>
         private byte[] _recvBuffer;
 
         /// <summary>
-        /// Parse Buffer
+        /// Parsing buffer.
         /// </summary>
         private byte[] _parseBuffer;
 
         /// <summary>
-        /// Count number of byte in _parseBuffer
+        /// Number of bytes currently stored in the parse buffer.
         /// </summary>
         private int _parseBufferCount;
 
         /// <summary>
-        /// Parser réutilisé pour cette session
+        /// Parser reused for this session.
         /// </summary>
         private HttpRequestParser _parser;
 
         /// <summary>
-        /// Last HttpRequest Parsed
+        /// Gets the current request.
         /// </summary>
         public HttpRequest Request => _request;
 
         /// <summary>
-        /// Last HttpRequest Parsed
+        /// Gets the current request.
         /// </summary>
         private readonly HttpRequest _request;
 
         /// <summary>
-        /// Current HttpResponse
+        /// Gets the current response.
         /// </summary>
         public HttpResponse Response => _response;
 
         /// <summary>
-        /// Current HttpResponse
+        /// Gets the current response.
         /// </summary>
         private readonly HttpResponse _response;
 
         /// <summary>
-        /// Principal
+        /// Current user principal.
         /// </summary>
         private HttpPrincipal _principal = HttpPrincipal.Anonymous;
 
@@ -107,7 +107,7 @@ namespace SimpleW {
         private bool _principalResolved;
 
         /// <summary>
-        /// Principal
+        /// Indicates whether the principal has alRead phase.y been resolved.
         /// </summary>
         public HttpPrincipal Principal {
             get {
@@ -124,8 +124,8 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Per-request transient storage shared across middlewares/handlers.
-        /// Lazy allocated to keep fast path clean when unused.
+        /// Per-request transient storage shared across middlewares and handlers.
+        /// Lazily allocated to keep the fast path clean when unused.
         /// </summary>
         private HttpBag? _bag;
 
@@ -138,18 +138,18 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Expose the underlying Socket
+        /// Gets the underlying socket.
         /// </summary>
         public Socket Socket => _socket;
 
         /// <summary>
-        /// TransportStream
+        /// Transport stream.
         /// </summary>
         private Stream? _transportStream;
 
         /// <summary>
-        /// Exposes the underlying transport as a Stream (NetworkStream or SslStream)
-        /// NOTE: caller must NOT dispose this stream (it would close the socket)
+        /// Gets the underlying transport as a <see cref="Stream"/> (<see cref="NetworkStream"/> or <see cref="SslStream"/>).
+        /// Callers must not dispose this stream, as doing so would close the socket.
         /// </summary>
         public Stream TransportStream => _transportStream ??= new NetworkStream(_socket, ownsSocket: false);
 
@@ -226,14 +226,13 @@ namespace SimpleW {
         #region cancellationToken
 
         /// <summary>
-        /// The CancellationTokenSource
+        /// Cancellation token source used to signal request aborts.
         /// </summary>
         private readonly CancellationTokenSource _abortCts = new();
 
         /// <summary>
-        /// Cancellation Token
-        /// pass this cts to any async method in handler
-        /// you want to stop when client disconnect
+        /// Gets a cancellation token that is triggered when the client disconnects.
+        /// Pass this token to aSynchronous path. work that should stop when the client disconnects.
         /// </summary>
         public CancellationToken RequestAborted {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -245,7 +244,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Abort (call cts.Cancel)
+        /// Cancels the request-aborted token.
         /// </summary>
         internal void Abort() {
             try {
@@ -258,31 +257,30 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// ThrowIfAborted
-        /// use this method in any sync handler
-        /// you want to stop when client disconnect
+        /// Throws if the request has been aborted.
+        /// Use this in Synchronous path.hronous handlers that should stop when the client disconnects.
         /// </summary>
         public void ThrowIfAborted() => RequestAborted.ThrowIfCancellationRequested();
 
         #region watcher
 
         /// <summary>
-        /// flag 0/1 : the RequestAborted has been accessed for this request
+        /// 0/1 flag indicating whether <see cref="RequestAborted"/> has been accessed for the current request.
         /// </summary>
         private int _requestAbortedAccessed;
 
         /// <summary>
-        /// Current handler task (only set for async dispatch)
+        /// Current handler task, set only for aSynchronous path.hronous Dispatch..
         /// </summary>
         private Task? _currentDispatchTask;
 
         /// <summary>
-        /// flag 0/1 : watcher started for current request
+        /// 0/1 flag indicating whether the disconnect watcher has started for the current request.
         /// </summary>
         private int _disconnectWatcherStarted;
 
         /// <summary>
-        /// Try Start then WatchDisconnectWhileAsync for the current Request
+        /// Starts the disconnect watcher for the current request when needed.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void TryStartDisconnectWatcherForCurrentDispatch() {
@@ -305,7 +303,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Watch for Disconnected Client (a poll loop)
+        /// Polls for client disconnection while a handler is running.
         /// </summary>
         /// <param name="awaitedHandlerTask"></param>
         /// <returns></returns>
@@ -347,7 +345,7 @@ namespace SimpleW {
         #region ssl
 
         /// <summary>
-        /// Flag true if current Session is Https
+        /// Gets a value indicating whether this session uses HTTPS.
         /// </summary>
         public bool IsSsl => _sslStream != null;
 
@@ -357,7 +355,7 @@ namespace SimpleW {
         private SslStream? _sslStream;
 
         /// <summary>
-        /// ClientCertificate if exists in sslStream
+        /// Gets the client certificate when available.
         /// </summary>
         public X509Certificate2? ClientCertificate {
             get {
@@ -372,7 +370,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Add SslContext
+        /// Enables HTTPS for this session.
         /// </summary>
         /// <param name="sslContext"></param>
         /// <returns></returns>
@@ -404,12 +402,12 @@ namespace SimpleW {
         #region handle idle/read timeouts
 
         /// <summary>
-        /// Flag LastActivityTick
+        /// Gets the last activity tick.
         /// </summary>
         public long LastActivityTick { get; private set; }
 
         /// <summary>
-        /// Update LastActivityTick
+        /// Updates the last activity tick.
         /// </summary>
         public void MarkActivity() {
             LastActivityTick = Environment.TickCount64;
@@ -420,22 +418,22 @@ namespace SimpleW {
         #region Process
 
         /// <summary>
-        /// Flag
+        /// Transport ownership flag.
         /// </summary>
         private int _isTransportOwned;
 
         /// <summary>
-        /// Is Transport Owner by external entity and not HttpSession anymore
+        /// Gets a value indicating whether transport ownership has been taken by an external component.
         /// </summary>
         internal bool IsTransportOwned => Volatile.Read(ref _isTransportOwned) == 1;
 
         /// <summary>
-        /// Called to stop HTTP parsing and take over the transport
+        /// Stops HTTP parsing and transfers transport ownership.
         /// </summary>
         internal bool TryTakeTransportOwnership() => Interlocked.Exchange(ref _isTransportOwned, 1) == 0;
 
         /// <summary>
-        /// Flag to close Connection after Response
+        /// Transport ownership flag. to close Marks the session as Read phase.y to receive data.ion after Response
         /// </summary>
         public bool CloseAfterResponse { get; private set; }
 
@@ -679,7 +677,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Update the _closeAfterResponse flag
+        /// Determines whether the connection should be closed after the response.
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
@@ -701,7 +699,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// WillCloseConnection
+        /// WillCloseMarks the session as Read phase.y to receive data.ion
         /// </summary>
         /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -716,7 +714,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Per Request Reset properties
+        /// Resets per-request state.
         /// </summary>
         private void PerRequestReset() {
             // reset response
@@ -1062,7 +1060,7 @@ namespace SimpleW {
         #region IDisposable
 
         /// <summary>
-        /// Flag to avoid multiple Dispose() called
+        /// Transport ownership flag. to avoid multiple Dispose() called
         /// </summary>
         private bool _disposed;
 
@@ -1132,7 +1130,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// CompressParseBuffer
+        /// Compacts the parse buffer after consumed bytes are removed.
         /// </summary>
         /// <param name="offset"></param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1149,7 +1147,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Fake HttpRequest
+        /// Creates a fake request for testing purposes.
         /// </summary>
         /// <param name="buffer"></param>
         /// <param name="request"></param>
@@ -1214,12 +1212,12 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Current Activity
+        /// Current telemetry activity.
         /// </summary>
         private Activity? _currentActivity;
 
         /// <summary>
-        /// Pending Response Exception
+        /// Exception associated with the pending response, if any.
         /// </summary>
         private Exception? _pendingResponseException;
 
@@ -1252,7 +1250,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Notify Response Sent
+        /// Notifies the session that the response has been sent.
         /// </summary>
         public void NotifyResponseSent() {
             if (_pendingResponseException == null) {
@@ -1299,7 +1297,7 @@ namespace SimpleW {
         #region logging
 
         /// <summary>
-        /// Logger
+        /// Logger instance.
         /// </summary>
         private static readonly ILogger _log = new Logger<HttpSession>();
 
@@ -1313,15 +1311,15 @@ namespace SimpleW {
     public sealed class HttpRequestException : Exception {
 
         /// <summary>
-        /// Response Status Code
+        /// Gets the HTTP status code to return.
         /// </summary>
         public int StatusCode { get; }
         /// <summary>
-        /// Response Status Text
+        /// Gets the HTTP status text to return.
         /// </summary>
         public string StatusText { get; }
         /// <summary>
-        /// Diplay Name
+        /// Gets the display name used for diagnostics.
         /// </summary>
         public string DisplayName { get; }
 

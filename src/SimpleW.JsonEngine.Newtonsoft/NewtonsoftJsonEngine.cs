@@ -149,7 +149,7 @@ namespace SimpleW.JsonEngine.Newtonsoft {
         }
 
         /// <summary>
-        /// Newtonsoft Recommanded Settings for SimpleW
+        /// Newtonsoft Recommended Settings for SimpleW
         /// </summary>
         /// <returns></returns>
         public static Func<JsonAction, JsonSerializerSettings?> SettingsSimpleWBuilder() {

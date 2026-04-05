@@ -3,17 +3,17 @@ using System.Data;
 namespace SimpleW {
 
     /// <summary>
-    /// Principal
+    /// Represents the current user principal.
     /// </summary>
     public sealed class HttpPrincipal {
 
         /// <summary>
-        /// Identity
+        /// Represents an authenticated or anonymous identity.
         /// </summary>
         public HttpIdentity Identity { get; }
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new instance of the <see cref="HttpPrincipal"/> class.
         /// </summary>
         /// <param name="identity"></param>
         public HttpPrincipal(HttpIdentity identity) {
@@ -70,14 +70,14 @@ namespace SimpleW {
         public bool Has(string key, string? value = null) => Identity.Has(key, value);
 
         /// <summary>
-        /// Anonymous Principal
+        /// Anonymous Represents the current user principal.
         /// </summary>
         public static HttpPrincipal Anonymous { get; } = new(new HttpIdentity(false, null, null, null, null, null, null));
 
     }
 
     /// <summary>
-    /// Identity
+    /// Represents an authenticated or anonymous identity.
     /// </summary>
     public sealed class HttpIdentity {
 
@@ -122,7 +122,7 @@ namespace SimpleW {
         public IReadOnlyList<IdentityProperty> Properties { get; }
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new instance of the <see cref="HttpPrincipal"/> class.
         /// </summary>
         /// <param name="isAuthenticated"></param>
         /// <param name="authenticationType"></param>
@@ -153,14 +153,14 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// IsInRole
+        /// Returns <see langword="true"/> if the principal belongs to the specified role.
         /// </summary>
         /// <param name="role"></param>
         /// <returns></returns>
         public bool IsInRole(string role) => _roles.Contains(role);
 
         /// <summary>
-        /// IsInRoles
+        /// Returns <see langword="true"/> if the principal belongs to the specified role.
         /// </summary>
         /// <param name="roles"></param>
         /// <returns></returns>
@@ -208,7 +208,7 @@ namespace SimpleW {
     }
 
     /// <summary>
-    /// IdentityProperty
+    /// Represents an authenticated or anonymous identity.Property
     /// </summary>
     public sealed class IdentityProperty {
 
@@ -223,7 +223,7 @@ namespace SimpleW {
         public string Value { get; }
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new instance of the <see cref="HttpPrincipal"/> class.
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>

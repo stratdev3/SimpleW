@@ -1,36 +1,36 @@
 ﻿namespace SimpleW {
 
     /// <summary>
-    /// Router
+    /// Routes incoming HTTP requests to the appropriate handler.
     /// </summary>
     public sealed class Router : IRouter {
 
         #region constructor
 
         /// <summary>
-        /// Is Root Router
+        /// Indicates whether this instance is the root router.
         /// </summary>
         private readonly bool _isRootRouter;
 
         /// <summary>
-        /// Global Router
+        /// Global router used for routes without a host constrain
         /// </summary>
         private readonly Router? _globalRouter;
 
         /// <summary>
-        /// Host Routers
+        /// Child routers keyed by normalized host name.
         /// </summary>
         private readonly Dictionary<string, Router>? _hostRouters;
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new root router.
         /// </summary>
         public Router() : this(isRootRouter: true) { }
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new root router.
         /// </summary>
-        /// <param name="isRootRouter"></param>
+        /// <param name="isRootRouter">True to create the root router; otherwise, a child router.</param>
         private Router(bool isRootRouter) {
             _isRootRouter = isRootRouter;
 
@@ -47,17 +47,17 @@
         #region route exact
 
         /// <summary>
-        /// GET Routes
+        /// Exact GET routes.
         /// </summary>
         private readonly Dictionary<string, Route> _get = new(StringComparer.Ordinal);
 
         /// <summary>
-        /// POST Routes
+        /// Exact POST routes.
         /// </summary>
         private readonly Dictionary<string, Route> _post = new(StringComparer.Ordinal);
 
         /// <summary>
-        /// (PATCH, HEAD, OPTIONS, etc.) Routes
+        /// Exact routes for all other HTTP methods (PATCH, HEAD, OPTIONS, and so on).
         /// </summary>
         private readonly Dictionary<string, Dictionary<string, Route>> _others = new(StringComparer.Ordinal);
 
@@ -66,17 +66,17 @@
         #region route pattern
 
         /// <summary>
-        /// GET Routes patterns (wildcards + params)
+        /// Pattern-based GET routes using wildcards or parameters.
         /// </summary>
         private readonly List<RouteMatcher> _getMatchers = new();
 
         /// <summary>
-        /// POST Routes patterns (wildcards + params)
+        /// Pattern-based POST routes using wildcards or parameters.
         /// </summary>
         private readonly List<RouteMatcher> _postMatchers = new();
 
         /// <summary>
-        /// (PATCH, HEAD, OPTIONS, etc.) Routes (wildcards + params)
+        /// Pattern-based routes for all other HTTP methods.
         /// </summary>
         private readonly Dictionary<string, List<RouteMatcher>> _otherMatchers = new(StringComparer.Ordinal);
 
@@ -85,12 +85,12 @@
         #region middleware
 
         /// <summary>
-        /// List of Middlewares
+        /// Middleware chain executed before the final route handler.
         /// </summary>
         private readonly List<HttpMiddleware> _middlewares = new();
 
         /// <summary>
-        /// Add a new Middleware
+        /// Registers a middleware on the root router.
         /// </summary>
         /// <param name="middleware"></param>
         /// <exception cref="ArgumentNullException"></exception>
@@ -125,10 +125,10 @@
         }
 
         /// <summary>
-        /// Execute Pipeline
+        /// Executes the middleware pipeline and then invokes the final route handler.
         /// </summary>
-        /// <param name="session"></param>
-        /// <param name="terminalExecutor"></param>
+        /// <param name="session">The current HTTP session.</param>
+        /// <param name="terminalExecutor">The final route executor.</param>
         /// <returns></returns>
         private ValueTask ExecutePipelineAsync(HttpSession session, HttpRouteExecutor terminalExecutor) {
             if (_middlewares.Count == 0) {
@@ -155,7 +155,7 @@
         private HttpResultHandler _resultHandler = HttpResultHandlers.SendJsonResult;
 
         /// <summary>
-        /// Action to do on the non null Result of any handler (Delegate).
+        /// Gets or sets the handler used for non-null delegate results.
         /// </summary>
         public HttpResultHandler ResultHandler {
             get => _resultHandler;
@@ -177,7 +177,7 @@
         #region Map Method
 
         /// <summary>
-        /// Map Method/Path to a HttpRouteExecutor
+        /// Maps an HTTP method and path to a route executor.
         /// </summary>
         /// <param name="method"></param>
         /// <param name="path"></param>
@@ -187,7 +187,7 @@
         }
 
         /// <summary>
-        /// Map Method/Host/Path to a HttpRouteExecutor
+        /// Maps an HTTP method, host, and path to a route executor.
         /// </summary>
         /// <param name="method"></param>
         /// <param name="host"></param>
@@ -209,7 +209,7 @@
         }
 
         /// <summary>
-        /// Map Method/Host/Path to a Delegate
+        /// Maps an HTTP method, host, and path to a delegate.
         /// </summary>
         /// <param name="method"></param>
         /// <param name="host"></param>
@@ -220,7 +220,7 @@
         }
 
         /// <summary>
-        /// Map Method/Path to a Delegate
+        /// Maps an HTTP method and path to a delegate.
         /// </summary>
         /// <param name="method"></param>
         /// <param name="path"></param>
@@ -230,12 +230,12 @@
         }
 
         /// <summary>
-        /// Map GET/Path to a Delegate
+        /// Maps a GET route to a delegate.
         /// </summary>
         public void MapGet(string path, Delegate handler) => Map("GET", path, handler);
 
         /// <summary>
-        /// Map GET/Host/Path to a Delegate
+        /// Maps a host-specific GET route to a delegate.
         /// </summary>
         /// <param name="host"></param>
         /// <param name="path"></param>
@@ -243,12 +243,12 @@
         public void MapGet(string host, string path, Delegate handler) => Map("GET", host, path, handler);
 
         /// <summary>
-        /// Map POST/Path to a Delegate
+        /// Maps a POST route to a delegate.
         /// </summary>
         public void MapPost(string path, Delegate handler) => Map("POST", path, handler);
 
         /// <summary>
-        /// Map POST/Host/Path to a Delegate
+        /// Maps a host-specific POST route to a delegate.
         /// </summary>
         /// <param name="host"></param>
         /// <param name="path"></param>
@@ -260,7 +260,7 @@
         #region Add Route
 
         /// <summary>
-        /// AddRouteInternal
+        /// Adds a route to the appropriate router instance.
         /// </summary>
         /// <param name="route"></param>
         private void AddRouteInternal(Route route) {
@@ -298,9 +298,7 @@
         }
 
         /// <summary>
-        /// AddRouteLocal depending on
-        ///     - exact route
-        ///     - pattern route
+        /// Adds a route locally as either an exact match or a pattern match.
         /// </summary>
         /// <param name="route"></param>
         private void AddRouteLocal(Route route) {
@@ -346,7 +344,7 @@
         }
 
         /// <summary>
-        /// Validate Route Path
+        /// Validates a route path before registration.
         /// </summary>
         /// <param name="path"></param>
         /// <exception cref="ArgumentException"></exception>
@@ -358,7 +356,7 @@
         }
 
         /// <summary>
-        /// Normalize Host
+        /// Normalizes a host name by trimming whitespace, removing any port, and converting it to lowercase.
         /// </summary>
         /// <param name="host"></param>
         /// <returns></returns>
@@ -393,15 +391,13 @@
         #region Dispatch Route
 
         /// <summary>
-        /// Main Dispatch :
-        ///     1. try find the route in a host router, and Execute
-        ///     2. try find the route in the global router, and Execute
-        ///     3. else fallback, and Execute
-        ///     4. 404 and Execute
+        /// Dispatches a request using the following order:
+        /// 1. host-specific routes
+        /// 2. global routes
+        /// 3. fallback route
+        /// 4. automatic 404 response
         ///
-        /// The Execute is the following :
-        ///     1. fast path if no middleware : execute Handler
-        ///     2. loop to all middleware until next()
+        /// Once a route is selected, the middleware pipeline is executed before the handler.
         /// </summary>
         /// <param name="session"></param>
         /// <returns></returns>
@@ -437,7 +433,7 @@
         }
 
         /// <summary>
-        /// Find Handler from Method/Path
+        /// Attempts to resolve a route locally for the current method and path.
         /// </summary>
         /// <param name="session"></param>
         /// <param name="executor"></param>
@@ -468,9 +464,10 @@
         }
 
         /// <summary>
-        /// Find Handler from Method/Path with exact route, with the following priority :
-        ///     1. find exact route for GET/POST method, O(1) complexity
-        ///     2. if not found, find exact route for other methods, O(n) complexity
+        /// Attempts to resolve an exact route match.
+        /// Priority:
+        /// 1. exact GET or POST route in O(1)
+        /// 2. exact route for any other method
         /// </summary>
         /// <param name="session"></param>
         /// <param name="executor"></param>
@@ -509,9 +506,11 @@
         }
 
         /// <summary>
-        /// Find Handler from Method/Path with pattern route, with the following priority :
-        ///     1. find pattern route for GET/POST method, O(n) complexity
-        ///     2. if not found, find pattern route for other methods, O(n) complexity
+        /// Attempts to resolve a pattern-based route match.
+        /// Priority:
+        /// 1. GET or POST pattern routes
+        /// 2. pattern routes for any other method
+        /// The most specific matching route wins.
         /// </summary>
         /// <param name="session"></param>
         /// <param name="executor"></param>
@@ -563,12 +562,12 @@
         #region fallback
 
         /// <summary>
-        /// Fallback Handler
+        /// Optional fallback handler used when no route matches.
         /// </summary>
         private HttpRouteExecutor? _fallback;
 
         /// <summary>
-        /// Set Fallback Handler
+        /// Registers the fallback handler.
         /// </summary>
         /// <param name="handler"></param>
         public void MapFallback(Delegate handler) {
@@ -590,7 +589,7 @@
         #region RouteMatcher
 
         /// <summary>
-        /// RouteMatcher (segments + :params + * + :param*)
+        /// Matches route patterns made of literals, parameters, and wildcards.
         /// </summary>
         private sealed class RouteMatcher {
 
@@ -599,7 +598,7 @@
             public readonly int Specificity;
 
             /// <summary>
-            /// Constructor
+            /// Compiles a route pattern into matchable segments.
             /// </summary>
             /// <param name="route"></param>
             public RouteMatcher(Route route) {
@@ -640,7 +639,7 @@
             }
 
             /// <summary>
-            /// Find parameters in path
+            /// Attempts to match the given request path and extract route values.
             /// </summary>
             /// <param name="path"></param>
             /// <param name="values"></param>
@@ -748,7 +747,7 @@
             #endregion helpers
 
             /// <summary>
-            /// Segment
+            /// Represents a single compiled segment of a route pattern.
             /// </summary>
             private readonly struct Segment {
 
@@ -773,7 +772,7 @@
         #region list/export Routes
 
         /// <summary>
-        /// All declared Routes
+        /// Gets all declared routes.
         /// </summary>
         public IEnumerable<RouteInfo> Routes {
             get {
@@ -808,7 +807,7 @@
         }
 
         /// <summary>
-        /// Get local routes from the current router only
+        /// Returns only the routes declared on the current router.
         /// </summary>
         /// <param name="host"></param>
         /// <returns></returns>

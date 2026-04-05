@@ -80,7 +80,7 @@ namespace SimpleW {
                 throw ex;
             }
             if (Port == 0) {
-                InvalidOperationException ex = new("Unable to found the current port.");
+                InvalidOperationException ex = new("Unable to find the current port.");
                 _log.Error(ex.Message, ex);
                 throw ex;
             }
@@ -100,7 +100,7 @@ namespace SimpleW {
                 throw ex;
             }
             if (Address == null) {
-                InvalidOperationException ex = new("Unable to found the current IPAddress.");
+                InvalidOperationException ex = new("Unable to find the current IPAddress.");
                 _log.Error(ex.Message, ex);
                 throw ex;
             }

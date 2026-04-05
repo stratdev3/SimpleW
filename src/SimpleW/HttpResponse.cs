@@ -9,65 +9,66 @@ using SimpleW.Buffers;
 namespace SimpleW {
 
     /// <summary>
-    /// HttpResponse builder
-    /// Owns status line, headers, body, and can send via HttpSession.SendAsync()
+    /// Builds an HTTP response.
+    /// Owns the status line, headers, and body, and can send the response through HttpSession.SendAsync().
     /// </summary>
     public sealed class HttpResponse {
 
         #region internal properties
 
         /// <summary>
-        /// The Session
+        /// The current HTTP session.
         /// </summary>
         private readonly HttpSession _session;
 
         /// <summary>
-        /// The ArrayPool
+        /// The shared byte array pool.
         /// </summary>
         private readonly ArrayPool<byte> _bufferPool;
 
         /// <summary>
-        /// Flag Response Sent
+        /// Indicates whether the response has already been sent.
         /// </summary>
         private bool _sent;
 
         /// <summary>
-        /// Status Code
+        /// The HTTP status code.
         /// </summary>
         private int _statusCode;
 
         /// <summary>
-        /// Status Text
+        /// The HTTP status text.
         /// </summary>
         private string _statusText;
 
         /// <summary>
-        /// Content Type
+        /// The response content type.
         /// </summary>
         private string? _contentType;
 
         /// <summary>
-        /// Headers
+        /// The response headers.
         /// </summary>
         private HeaderEntry[] _headers;
 
         /// <summary>
-        /// Header count
+        /// The number of headers currently stored.
         /// </summary>
         private int _headerCount;
 
         /// <summary>
-        /// If user added a Content-Length via AddHeader (so we must not auto-write it)
+        /// Indicates whether the user explicitly set Content-Length via AddHeader,
+        /// so it must not be generated automatically.
         /// </summary>
         private long? _customContentLength;
 
         /// <summary>
-        /// suppress content length
+        /// Indicates whether Content-Length generation is disabled.
         /// </summary>
         private bool _suppressContentLength;
 
         /// <summary>
-        /// Connection
+        /// The Connection header value.
         /// </summary>
         private string? _connection;
 
@@ -77,12 +78,12 @@ namespace SimpleW {
         private ResponseCompressionMode _compressionMode = ResponseCompressionMode.Auto;
 
         /// <summary>
-        /// Minimum body size (bytes) before auto-compress kicks in (default: 512)
+        /// The minimum body size, in bytes, before automatic compression is applied. Defaults to 512.
         /// </summary>
         private int _compressionMinSize = 512;
 
         /// <summary>
-        /// Compression level (default: Fastest)
+        /// The compression level. Defaults to Fastest.
         /// </summary>
         private CompressionLevel _compressionLevel = CompressionLevel.Fastest;
 
@@ -91,42 +92,42 @@ namespace SimpleW {
         //
 
         /// <summary>
-        /// Kind of Body
+        /// The current body storage kind.
         /// </summary>
         private BodyKind _bodyKind;
 
         /// <summary>
-        /// for BodyKind.Memory
+        /// Stores the body when BodyKind is Memory.
         /// </summary>
         private ReadOnlyMemory<byte> _bodyMemory;
 
         /// <summary>
-        /// for BodyKind.Segment / OwnedBuffer
+        /// Stores the body when BodyKind is Segment or OwnedBuffer.
         /// </summary>
         private byte[]? _bodyArray;
         private int _bodyOffset;
         private int _bodyLength;
 
         /// <summary>
-        /// for BodyKind.File
+        /// Stores the file path and length when BodyKind is File.
         /// </summary>
         private string? _filePath;
         private long _fileLength;
 
         /// <summary>
-        /// for BodyKind.File range support
+        /// Stores range information when file range support is enabled.
         /// </summary>
         private bool _fileRangeEnabled;
         private long _fileRangeStart;
         private long _fileRangeLength;
 
         /// <summary>
-        /// owned body writer (ArrayPool)
+        /// Owns a pooled body writer backed by ArrayPool.
         /// </summary>
         private PooledBufferWriter? _ownedBodyWriter;
 
         /// <summary>
-        /// optional owner for lifetime-managed body
+        /// Optional owner used to manage the body lifetime.
         /// </summary>
         private IDisposable? _bodyOwner;
 
@@ -135,32 +136,32 @@ namespace SimpleW {
         #region exposed properties
 
         /// <summary>
-        /// Return StatusCode
+        /// Gets the current HTTP status code.
         /// </summary>
         public int StatusCode => _statusCode;
 
         /// <summary>
-        /// Total Bytes Sent
+        /// Gets or sets the total number of bytes sent.
         /// </summary>
         public long BytesSent { get; set; }
 
         /// <summary>
-        /// Return true if response has been sent
+        /// Gets whether the response has already been sent.
         /// </summary>
         public bool Sent => _sent;
 
         /// <summary>
-        /// Connection
+        /// Gets the Connection header value.
         /// </summary>
         public string? Connection => _connection;
 
         #endregion exposed properties
 
         /// <summary>
-        /// Constructor
+        /// Initializes a new HTTP response.
         /// </summary>
-        /// <param name="session"></param>
-        /// <param name="bufferPool"></param>
+        /// <param name="session">The current HTTP session.</param>
+        /// <param name="bufferPool">The byte array pool used for temporary buffers.</param>
         public HttpResponse(HttpSession session, ArrayPool<byte> bufferPool) {
             _session = session;
             _bufferPool = bufferPool;
@@ -192,11 +193,11 @@ namespace SimpleW {
         #region manipulate (high level methods)
 
         /// <summary>
-        /// Status
+        /// Sets the response status code and optional status text.
         /// </summary>
-        /// <param name="statusCode"></param>
-        /// <param name="statusText"></param>
-        /// <returns></returns>
+        /// <param name="statusCode">The HTTP status code.</param>
+        /// <param name="statusText">The optional status text. If null, the default text is used.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Status(int statusCode, string? statusText = null) {
             _statusCode = statusCode;
             _statusText = statusText ?? DefaultStatusText(statusCode);
@@ -204,10 +205,10 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Get the Default Status Text for a status code
+        /// Gets the default status text for the specified HTTP status code.
         /// </summary>
-        /// <param name="code"></param>
-        /// <returns></returns>
+        /// <param name="code">The HTTP status code.</param>
+        /// <returns>The default status text.</returns>
         public static string DefaultStatusText(int code) => code switch {
 
             100 => "Continue",
@@ -286,30 +287,30 @@ namespace SimpleW {
         };
 
         /// <summary>
-        /// Set ContentType
+        /// Sets the response content type.
         /// </summary>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="contentType">The content type to set.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse ContentType(string contentType) {
             _contentType = contentType;
             return this;
         }
 
         /// <summary>
-        /// Set ContentType from a file extension (e.g: ".html")
+        /// Sets the content type from a file extension (for example, ".html").
         /// </summary>
-        /// <param name="extension"></param>
-        /// <returns></returns>
+        /// <param name="extension">The file extension.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse ContextTypeFromExtension(string extension) {
             _contentType = DefaultContentType(extension);
             return this;
         }
 
         /// <summary>
-        /// Get Content Type from a file extension (e.g: ".html")
+        /// Gets the default content type for a file extension (for example, ".html").
         /// </summary>
-        /// <param name="extension"></param>
-        /// <returns></returns>
+        /// <param name="extension">The file extension.</param>
+        /// <returns>The matching content type.</returns>
         public static string DefaultContentType(string extension) => extension switch {
 
             // web
@@ -415,11 +416,11 @@ namespace SimpleW {
         };
 
         /// <summary>
-        /// Add Header
+        /// Adds a response header.
         /// </summary>
-        /// <param name="name"></param>
-        /// <param name="value"></param>
-        /// <returns></returns>
+        /// <param name="name">The header name.</param>
+        /// <param name="value">The header value.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse AddHeader(string name, string value) {
             if (string.Equals(name, "Content-Length", StringComparison.OrdinalIgnoreCase)) {
                 if (!long.TryParse(value, out long cl) || cl < 0) {
@@ -447,21 +448,23 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Body from byte[] (borrowed stable, array-backed)
+        /// Sets the body from a byte array.
+        /// The array is borrowed and must remain valid until the response is sent.
         /// </summary>
-        /// <param name="body"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="body">The response body.</param>
+        /// <param name="contentType">The optional content type.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Body(byte[] body, string? contentType = "application/octet-stream") {
             return Body(new ArraySegment<byte>(body, 0, body.Length), contentType);
         }
 
         /// <summary>
-        /// Body from ArraySegment (borrowed stable, array-backed, supports offset/len)
+        /// Sets the body from an ArraySegment.
+        /// The array is borrowed and must remain valid until the response is sent.
         /// </summary>
-        /// <param name="body"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="body">The response body segment.</param>
+        /// <param name="contentType">The optional content type.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Body(ArraySegment<byte> body, string? contentType = "application/octet-stream") {
             DisposeBody();
 
@@ -480,13 +483,12 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Body from ReadOnlyMemory (borrowed stable if no owner provided)
-        /// If array-backed => store as Segment immediately
-        /// If not array-backed => store as Memory
+        /// Sets the body from ReadOnlyMemory.
+        /// If the memory is array-backed, it is stored as a segment; otherwise, it is stored as memory.
         /// </summary>
-        /// <param name="body"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="body">The response body.</param>
+        /// <param name="contentType">The optional content type.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Body(ReadOnlyMemory<byte> body, string? contentType = "application/octet-stream") {
             DisposeBody();
 
@@ -517,12 +519,12 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Body with explicit owner (zero-copy + safe lifetime)
+        /// Sets the body with an explicit owner to guarantee a safe lifetime without copying.
         /// </summary>
-        /// <param name="body"></param>
-        /// <param name="owner"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="body">The response body.</param>
+        /// <param name="owner">The owner responsible for the body lifetime.</param>
+        /// <param name="contentType">The optional content type.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Body(ReadOnlyMemory<byte> body, IDisposable owner, string? contentType = "application/octet-stream") {
             DisposeBody();
 
@@ -553,11 +555,11 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Set UTF-8 text Body (owned pooled buffer)
+        /// Sets a UTF-8 text body using an owned pooled buffer.
         /// </summary>
-        /// <param name="body"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="body">The text body.</param>
+        /// <param name="contentType">The content type to use.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Text(string body, string contentType = "text/plain; charset=utf-8") {
             DisposeBody();
             _contentType = contentType;
@@ -575,11 +577,11 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Set UTF-8 html Body (owned pooled buffer)
+        /// Sets a UTF-8 HTML body using an owned pooled buffer.
         /// </summary>
-        /// <param name="body"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="body">The HTML body.</param>
+        /// <param name="contentType">The content type to use.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Html(string body, string contentType = "text/html; charset=utf-8") {
             DisposeBody();
             _contentType = contentType;
@@ -597,12 +599,12 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Set JSON Body serialized into pooled buffer
+        /// Serializes a value as JSON into a pooled buffer.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="value"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <typeparam name="T">The value type.</typeparam>
+        /// <param name="value">The value to serialize.</param>
+        /// <param name="contentType">The content type to use.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Json<T>(T value, string contentType = "application/json; charset=utf-8") {
             DisposeBody();
             _contentType = contentType;
@@ -622,21 +624,22 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Set File Body
+        /// Sets the response body from a file path.
         /// </summary>
-        /// <param name="path"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="path">The file path.</param>
+        /// <param name="contentType">The optional content type.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse File(string path, string? contentType = null) {
             return File(new FileInfo(path), contentType);
         }
 
         /// <summary>
-        /// Set File Body from FileInfo (avoids re-stat / allows caller to pre-validate)
+        /// Sets the response body from a FileInfo instance.
+        /// Avoids an extra stat call and allows the caller to validate the file first.
         /// </summary>
-        /// <param name="fi"></param>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="fi">The file information.</param>
+        /// <param name="contentType">The optional content type.</param>
+        /// <returns>The current response instance.</returns>
         /// <exception cref="ArgumentNullException"></exception>
         public HttpResponse File(FileInfo fi, string? contentType = null) {
             ArgumentNullException.ThrowIfNull(fi);
@@ -653,12 +656,12 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Configure compression policy for this response
+        /// Configures the compression policy for this response.
         /// </summary>
-        /// <param name="mode"></param>
-        /// <param name="minSize"></param>
-        /// <param name="level"></param>
-        /// <returns></returns>
+        /// <param name="mode">The compression mode.</param>
+        /// <param name="minSize">The minimum body size required for automatic compression.</param>
+        /// <param name="level">The compression level.</param>
+        /// <returns>The current response instance.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HttpResponse Compression(ResponseCompressionMode mode, int? minSize = null, CompressionLevel? level = null) {
             _compressionMode = mode;
@@ -672,15 +675,15 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Convenience: disable compression for this response
+        /// Disables compression for this response.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HttpResponse NoCompression() => Compression(ResponseCompressionMode.Disabled);
 
         /// <summary>
-        /// Remove Body
+        /// Removes the current response body.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The current response instance.</returns>
         public HttpResponse RemoveBody() {
             DisposeBody();
             _customContentLength = null;
@@ -689,9 +692,9 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// No header Content-Length
+        /// Prevents Content-Length from being written.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The current response instance.</returns>
         public HttpResponse NoContentLength() {
             _customContentLength = null;
             _suppressContentLength = true;
@@ -703,8 +706,8 @@ namespace SimpleW {
         //
 
         /// <summary>
-        /// Send the response now
-        /// Guard included : only one SendAsync per Response !
+        /// Sends the response immediately.
+        /// A response can only be sent once.
         /// </summary>
         /// <returns></returns>
         public async ValueTask SendAsync() {
@@ -986,10 +989,10 @@ namespace SimpleW {
         #region alias common response
 
         /// <summary>
-        /// Not Found 404
+        /// Sets a 404 Not Found response.
         /// </summary>
-        /// <param name="body"></param>
-        /// <returns></returns>
+        /// <param name="body">The optional response body.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse NotFound(string? body = null) {
             DisposeBody();
             Status(404);
@@ -1000,10 +1003,10 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Internal Server Error 500
+        /// Sets a 500 Internal Server Error response.
         /// </summary>
-        /// <param name="body"></param>
-        /// <returns></returns>
+        /// <param name="body">The optional response body.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse InternalServerError(string? body = null) {
             DisposeBody();
             Status(500);
@@ -1014,10 +1017,10 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Redirect 302
+        /// Sets a 302 redirect response.
         /// </summary>
-        /// <param name="url"></param>
-        /// <returns></returns>
+        /// <param name="url">The redirect target URL.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Redirect(string url) {
             DisposeBody();
             Status(302);
@@ -1026,10 +1029,10 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Unauthorized 401
+        /// Sets a 401 Unauthorized response.
         /// </summary>
-        /// <param name="body"></param>
-        /// <returns></returns>
+        /// <param name="body">The optional response body.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Unauthorized(string? body = null) {
             DisposeBody();
             Status(401);
@@ -1040,10 +1043,10 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Forbidden 403
+        /// Sets a 403 Forbidden response.
         /// </summary>
-        /// <param name="body"></param>
-        /// <returns></returns>
+        /// <param name="body">The optional response body.</param>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Forbidden(string? body = null) {
             DisposeBody();
             Status(403);
@@ -1054,9 +1057,9 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Access 401/403
+        /// Returns 401 if the user is unauthenticated; otherwise returns 403.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Access() {
             if (!_session.Principal.IsAuthenticated) {
                 return Unauthorized();
@@ -1065,9 +1068,9 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Attachment
+        /// Marks the response as a downloadable attachment.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The current response instance.</returns>
         public HttpResponse Attachment(string outputFilename) {
             AddHeader("Content-Disposition", $"attachment;filename={outputFilename}");
             ContextTypeFromExtension(outputFilename);
@@ -1079,23 +1082,22 @@ namespace SimpleW {
         #region cookies
 
         /// <summary>
-        /// Array of Cookies
+        /// Stores the cookies to write to the response.
         /// </summary>
         private CookieEntry[]? _cookies;
 
         /// <summary>
-        /// Real number of cookies write
+        /// The number of cookies currently queued.
         /// </summary>
         private int _cookieCount;
 
         /// <summary>
-        /// Set a Cookie
-        /// So tell client to create a cookie on its side
+        /// Adds a Set-Cookie header to the response.
         /// </summary>
-        /// <param name="name"></param>
-        /// <param name="value"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
+        /// <param name="name">The cookie name.</param>
+        /// <param name="value">The cookie value.</param>
+        /// <param name="options">The cookie options.</param>
+        /// <returns>The current response instance.</returns>
         /// <example>
         /// SetCookie(
         ///     "sid",
@@ -1121,13 +1123,12 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Delete a Cookie
-        /// So tell client to delete the cookie on its side
+        /// Adds a Set-Cookie header that instructs the client to delete the cookie.
         /// </summary>
-        /// <param name="name"></param>
-        /// <param name="path"></param>
-        /// <param name="domain"></param>
-        /// <returns></returns>
+        /// <param name="name">The cookie name.</param>
+        /// <param name="path">The cookie path.</param>
+        /// <param name="domain">The cookie domain.</param>
+        /// <returns>The current response instance.</returns>
         /// <example>
         /// DeleteCookie("sid");
         /// </example>
@@ -1147,10 +1148,9 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Clear all Cookies
-        /// clear cookies here, so no cookie will be written in the response
+        /// Removes all queued cookies from the response.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The current response instance.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HttpResponse ClearCookies() {
             _cookieCount = 0;
@@ -1160,7 +1160,7 @@ namespace SimpleW {
         #region cookie structure
 
         /// <summary>
-        /// Cookie SameSite Mode
+        /// The SameSite policy applied to a cookie.
         /// </summary>
         public enum SameSiteMode : byte {
             /// <summary>
@@ -1184,7 +1184,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Cookie Options
+        /// Defines the options used to write a cookie.
         /// </summary>
         public readonly struct CookieOptions {
 
@@ -1361,7 +1361,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Cookie Entry
+        /// Represents a cookie queued for the response.
         /// </summary>
         private readonly struct CookieEntry {
             public readonly string Name;
@@ -1369,11 +1369,11 @@ namespace SimpleW {
             public readonly CookieOptions Options;
 
             /// <summary>
-            /// Constructor
+            /// Initializes a cookie entry.
             /// </summary>
-            /// <param name="name"></param>
-            /// <param name="value"></param>
-            /// <param name="options"></param>
+            /// <param name="name">The cookie name.</param>
+            /// <param name="value">The cookie value.</param>
+            /// <param name="options">The cookie options.</param>
             public CookieEntry(string name, string value, CookieOptions options) {
                 Name = name;
                 Value = value;
@@ -1388,7 +1388,8 @@ namespace SimpleW {
         #region Dispose
 
         /// <summary>
-        /// Reset response for next request (keep arrays allocated)
+        /// Resets the response so it can be reused for the next request.
+        /// Already allocated arrays are kept.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Reset() {
@@ -1416,7 +1417,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Dispose Body
+        /// Releases the current body and any owned resources.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void DisposeBody() {
@@ -1600,7 +1601,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Kind of Body
+        /// Identifies how the response body is currently stored.
         /// </summary>
         private enum BodyKind : byte {
             None = 0,
@@ -1616,7 +1617,7 @@ namespace SimpleW {
         #region compression write helpers
 
         /// <summary>
-        /// Response compression mode
+        /// Controls response compression behavior.
         /// </summary>
         public enum ResponseCompressionMode : byte {
             /// <summary>
@@ -1642,15 +1643,15 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Negotiated Encoding
+        /// The content encoding selected for the response.
         /// </summary>
         private enum NegotiatedEncoding : byte { None = 0, Gzip = 1, Deflate = 2, Brotli = 3 }
 
         /// <summary>
-        /// Return true if the current HttpResponse has header matching name
+        /// Returns true if the response contains a header with the specified name.
         /// </summary>
-        /// <param name="name"></param>
-        /// <returns></returns>
+        /// <param name="name">The header name to search for.</param>
+        /// <returns>True if the header exists; otherwise false.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool HasHeaderIgnoreCase(string name) {
             for (int i = 0; i < _headerCount; i++) {
@@ -1667,12 +1668,11 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Return true if the current HttpResponse
-        /// has a specific headerName and headerValue
+        /// Returns true if the response contains the specified header name and value.
         /// </summary>
-        /// <param name="headerName"></param>
-        /// <param name="headerValue"></param>
-        /// <returns></returns>
+        /// <param name="headerName">The header name to search for.</param>
+        /// <param name="headerValue">The header value to search for.</param>
+        /// <returns>True if a matching header is found; otherwise false.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool HasHeaderValueIgnoreCase(string headerName, string headerValue) {
             for (int i = 0; i < _headerCount; i++) {
@@ -1692,10 +1692,10 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Check if body can be compress depending on its content type
+        /// Determines whether the content type is suitable for compression.
         /// </summary>
-        /// <param name="contentType"></param>
-        /// <returns></returns>
+        /// <param name="contentType">The content type to evaluate.</param>
+        /// <returns>True if compression is allowed; otherwise false.</returns>
         private static bool IsCompressibleContentType(string? contentType) {
             if (string.IsNullOrEmpty(contentType)) {
                 return true;
@@ -1727,13 +1727,13 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Return the Negotiated Encoding depending on client accept encoding and server settings
+        /// Selects the best encoding based on the client's Accept-Encoding header and server settings.
         /// </summary>
-        /// <param name="acceptEncoding"></param>
-        /// <param name="allowGzip"></param>
-        /// <param name="allowDeflate"></param>
-        /// <param name="allowBrotli"></param>
-        /// <returns></returns>
+        /// <param name="acceptEncoding">The raw Accept-Encoding header.</param>
+        /// <param name="allowGzip">Whether gzip is allowed.</param>
+        /// <param name="allowDeflate">Whether deflate is allowed.</param>
+        /// <param name="allowBrotli">Whether Brotli is allowed.</param>
+        /// <returns>The selected encoding.</returns>
         private static NegotiatedEncoding NegotiateEncoding(string? acceptEncoding, bool allowGzip, bool allowDeflate, bool allowBrotli) {
             if (string.IsNullOrEmpty(acceptEncoding)) {
                 return NegotiatedEncoding.None;
@@ -1814,13 +1814,13 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// CompressTo pooled writer
+        /// Compresses the input into a pooled buffer writer.
         /// </summary>
-        /// <param name="pool"></param>
-        /// <param name="input"></param>
-        /// <param name="encoding"></param>
-        /// <param name="level"></param>
-        /// <returns></returns>
+        /// <param name="pool">The array pool to use.</param>
+        /// <param name="input">The input payload.</param>
+        /// <param name="encoding">The encoding to apply.</param>
+        /// <param name="level">The compression level.</param>
+        /// <returns>A pooled writer containing the compressed payload.</returns>
         private static PooledBufferWriter CompressToPooledWriter(ArrayPool<byte> pool, ReadOnlyMemory<byte> input, NegotiatedEncoding encoding, CompressionLevel level) {
             int init = input.Length <= 0 ? 256 : Math.Min(Math.Max(256, input.Length / 2), 64 * 1024);
             PooledBufferWriter output = new(pool, initialSize: init);
@@ -1852,9 +1852,9 @@ namespace SimpleW {
         #region range helpers
 
         /// <summary>
-        /// EvaluateRange
+        /// Evaluates the request Range header for the current file response.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The evaluated range decision.</returns>
         private RangeDecision EvaluateRange() {
 
             if (_bodyKind != BodyKind.File) {
@@ -1937,11 +1937,11 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// BuildRangeError
+        /// Builds an error response for an invalid or unsatisfied range request.
         /// </summary>
-        /// <param name="status"></param>
-        /// <param name="message"></param>
-        /// <param name="fullLength"></param>
+        /// <param name="status">The HTTP status code to use.</param>
+        /// <param name="message">The error message.</param>
+        /// <param name="fullLength">The full file length, when relevant.</param>
         private void BuildRangeError(int status, string message, long? fullLength = null) {
 
             DisposeBody();
@@ -1985,7 +1985,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// RangeDecisionKind
+        /// The possible outcomes of range evaluation.
         /// </summary>
         private enum RangeDecisionKind : byte {
             None = 0,
@@ -2041,10 +2041,10 @@ namespace SimpleW {
         private const string ATTR_SAMESITE = "SameSite";
 
         /// <summary>
-        /// Write RFC1123 date format
+        /// Writes a date using RFC1123 format.
         /// </summary>
-        /// <param name="w"></param>
-        /// <param name="dto"></param>
+        /// <param name="w">The target writer.</param>
+        /// <param name="dto">The date to write.</param>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void WriteRfc1123DateAscii(PooledBufferWriter w, DateTimeOffset dto) {
             // RFC1123 / IMF-fixdate, always UTC
@@ -2064,9 +2064,9 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Write Cookie
+        /// Writes all queued Set-Cookie headers.
         /// </summary>
-        /// <param name="headerWriter"></param>
+        /// <param name="headerWriter">The target header writer.</param>
         private void WriteCookie(PooledBufferWriter headerWriter) {
             if (_cookieCount == 0) {
                 return;
@@ -2159,9 +2159,9 @@ namespace SimpleW {
         private static byte[]? _dateHeaderBytes;
 
         /// <summary>
-        /// Get Cache Date Header
+        /// Returns a cached Date header for the current second.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The cached Date header bytes.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ReadOnlySpan<byte> GetCachedDateHeader() {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();

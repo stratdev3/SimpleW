@@ -34,7 +34,7 @@ namespace SimpleW {
         /// <exception cref="SocketException"></exception>
         public static void EnableReusePort(this Socket socket) {
 
-            // only on Linux, it's a non sens on Windows
+            // only on Linux, it's a nonsense on Windows
             if (!OperatingSystem.IsLinux()) {
                 return;
             }

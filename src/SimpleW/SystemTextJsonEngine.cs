@@ -128,7 +128,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// System.Text.Json Recommanded Settings for SimpleW
+        /// System.Text.Json Recommended Settings for SimpleW
         /// </summary>
         /// <returns></returns>
         public static Func<JsonAction, JsonSerializerOptions?> OptionsSimpleWBuilder() {
