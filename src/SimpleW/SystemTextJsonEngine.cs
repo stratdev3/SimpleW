@@ -163,7 +163,6 @@ namespace SimpleW {
                     return;
                 }
 
-                // Clé de cache = type + includes + excludes (normalisés)
                 includeProperties = Normalize(includeProperties);
                 excludeProperties = Normalize(excludeProperties);
                 string cacheKey = BuildKey(typeof(T), includeProperties, excludeProperties);
