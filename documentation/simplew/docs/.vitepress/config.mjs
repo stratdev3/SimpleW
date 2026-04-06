@@ -20,7 +20,7 @@ export default defineConfig({
     ],
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
-        logo: '/logo-min.webp',
+        logo: '/logo.svg',
 
         nav: [
             {

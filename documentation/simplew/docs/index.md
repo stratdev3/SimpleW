@@ -12,9 +12,6 @@ hero:
     #tagline: Simple. Fast. Powerful.
     #tagline: Simplicity First. Performance Built-In.
     #tagline: Simple by Design. Built for Speed.
-    image:
-        src: /logo-min.webp
-        alt: SimpleW
     actions:
         - theme: brand
           text: What is SimpleW?
@@ -39,16 +36,6 @@ features:
     - icon: 🧩
       title: Powerful Addons
       details: Designed for extensibility. Integrate additional capabilities through independent modules without bloating your core.
-
-carousel:
-  - src: /logo-min.webp
-  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-lightweight-by-design-min.jpg
-  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-addons-min.jpg
-  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-simplicity-min.jpg
-  - src: https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/documentation/carousel/simplew-design-by-dev-for-dev-min.jpg
-  #- src: /simplewbot/simplew-lightweight-by-design-min.jpg
-  #- src: /simplewbot/simplew-complexity-is-not-a-feature-min.jpg
-  #- src: /simplewbot/simplew-frameworks-should-not-be-cages-min.jpg
 
 ---
 

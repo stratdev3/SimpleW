@@ -1,28 +1,18 @@
 <script setup lang="ts">
 import DefaultTheme from 'vitepress/theme'
-import { computed } from 'vue'
 import { useData } from 'vitepress'
-import CarouselSwiperHero from './CarouselSwiperHero.vue'
+import AnimatedLogo from './AnimatedLogo.vue'
 
 const { Layout } = DefaultTheme
 const { frontmatter } = useData()
 
-const items = computed(() => (frontmatter.value?.carousel ?? []) as any[])
+const isHome = frontmatter.value?.layout === 'home'
 </script>
 
 <template>
   <Layout>
-    <!-- replace hero image -->
-    <template #home-hero-image>
-      <div class="home-carousel" v-if="items.length">
-        <CarouselSwiperHero :items="items" loop />
-      </div>
+    <template #home-hero-image v-if="isHome">
+      <AnimatedLogo />
     </template>
   </Layout>
 </template>
-
-<style scoped>
-.home-carousel {
-  width: min(520px, 92vw);
-}
-</style>
