@@ -52,7 +52,7 @@ namespace Sample {
 
 ::: tip NOTE
 The `clientCertificateRequired` and `checkCertificateRevocation` allows better control over the SSL Context, 
-and they are to `false` for test purpose.
+and they are set to `false` for testing purposes.
 Take a look at the [UseHttps](../reference/simplewserver.md#ssl-certificate) for more information.
 :::
 
@@ -149,7 +149,7 @@ This property returns an `X509Certificate2` or `null` if no client certificate w
 
 mTLS only validates the connection.
 To integrate with the SimpleW authentication model, you should map the client certificate to a [`HttpPrincipal`](./principal.md).
-There is two approaches to resolve the principal at request time :
+There are two approaches to resolve the principal at request time :
 
 ::: code-group
 
@@ -210,7 +210,7 @@ server.UseMiddleware(async (session, next) => {
 ## Disable Certificate
 
 You can disable a certificate while the server is running.
-This is a special method `ReloadListenerAsync` to allow a such config change.
+This uses the special method `ReloadListenerAsync` to allow such a configuration change.
 
 ```csharp
 await server.ReloadListenerAsync(s => {
@@ -220,7 +220,7 @@ await server.ReloadListenerAsync(s => {
 ```
 
 ::: info
-You can use the same logic to `UseHttps()` after you already started you server without.
+You can use the same logic to `UseHttps()` after you have already started your server without it.
 
 :::
 

@@ -1,6 +1,6 @@
 # WebSockets
 
-The WebsocketModule provides a the two-way communication channels over HTTP called Websockets : server can push data to the client without it has to request (except first time to connect socket).
+The WebsocketModule provides two-way communication channels over HTTP called WebSockets: the server can push data to the client without the client having to request it (except the first time to open the socket).
 
 
 ## Key Concepts
@@ -27,7 +27,7 @@ Text messages are expected to be UTF-8 JSON and follow an envelope format :
 The router parses only the envelope fields needed for routing :
 - op
 - id
--  payload
+- payload
 
 The payload is kept as raw UTF-8 and can then be deserialized inside the handler with :
 
@@ -130,6 +130,9 @@ Below is a full example using :
 ```csharp [program.cs]
 class Program {
     static async Task Main() {
+
+        Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+
         var server = new SimpleWServer(IPAddress.Any, 2015);
 
         // setup static files modules to server the index.html
@@ -206,7 +209,6 @@ class Program {
             };
         });
 
-        Console.WriteLine("server started at http://localhost:{server.Port}/");
         await server.RunAsync();
     }
 }
@@ -265,7 +267,7 @@ class Program {
     </div>
 
     <div class="small">
-        Protocole: send JSON <code>{op,id?,payload}</code> with <code>op</code> to <code>chat/join</code>,
+        Protocol: send JSON <code>{op,id?,payload}</code> with <code>op</code> to <code>chat/join</code>,
         <code>chat/leave</code>, <code>chat/msg</code>.
     </div>
 

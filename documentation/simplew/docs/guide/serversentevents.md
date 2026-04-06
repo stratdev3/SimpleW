@@ -31,8 +31,8 @@ It then calls `TryTakeTransportOwnership()` to stop the normal HTTP parsing loop
 
 The module includes a built-in ServerSentEventsHub with a room system :
 - connections can **join / leave rooms**
--broadcasts to a room send events to all connections in that room
--rooms are auto-cleaned when empty
+- broadcasts to a room send events to all connections in that room
+- rooms are auto-cleaned when empty
 - connections are removed on close automatically
 
 
@@ -172,7 +172,7 @@ public sealed class ServerSentEventsMessage {
 }
 ```
 
-The `Payload` payload supports multiline text: each line becomes one `payload`: line.
+The `Payload` field supports multiline text : each line becomes one `data:` line.
 
 ### Broadcast notifications to all clients
 
@@ -214,7 +214,7 @@ class Program {
         Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
         var server = new SimpleWServer(IPAddress.Any, 2015);
 
-        // setup static files modules to server the index.html
+        // setup static files module to serve the index.html
         server.UseStaticFilesModule(options => {
             options.Path = @"C:\www\";
             options.Prefix = "/";

@@ -1,6 +1,6 @@
 # Route Attribute
 
-The primary goal of the `Route` attribut is to target method and add them to the [`Router`](./router).
+The primary goal of the `Route` attribute is to target methods and add them to the [`Router`](./router).
 
 
 ## Properties
@@ -40,7 +40,7 @@ public string? Description { get; set; }
 public RouteAttribute(string method, string path)
 ```
 
-Example, i want the `Home()` method of the `TestController` class be called when client send a request to http://localhost:2015/api/test/index.
+For example, to have the `Home()` method of the `TestController` class be called when a client sends a request to http://localhost:2015/api/test/index:
 
 ```csharp{20}
 using System;
@@ -87,14 +87,14 @@ namespace Sample {
 
 ```csharp
 /// <summary>
-/// Route Attribut for Controller
+/// Route Attribute for Controller
 /// </summary>
 /// <param name="path">The path.</param>
 /// <exception cref="ArgumentException">The argument 'path' must be specified.</exception>
 RouteAttribute(string path)
 ```
 
-Example, i want all callable method of my `TestController` have the same prefix like /test.
+For example, to give all callable methods of `TestController` the same prefix, such as /test :
 
 
 ```csharp{17}

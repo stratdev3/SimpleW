@@ -1,6 +1,6 @@
 # Hosting
 
-The [`SimpleW.Helper.Hosting`](https://www.nuget.org/packages/SimpleW.Helper.Hosting) package provides an helper that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
+The [`SimpleW.Helper.Hosting`](https://www.nuget.org/packages/SimpleW.Helper.Hosting) package provides a helper that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
 
 It is designed for developers who are used to the .NET *Generic Host* model and want :
 - standard application lifecycle management
@@ -124,7 +124,7 @@ Priority order
 3. Default value (if provided)
 
 ::: info
-Unlike kestrel, SimpleW can listen to only one port at the same time. To listen to another port, just create a new instance of SimpleW.
+Unlike Kestrel, SimpleW can listen on only one port at a time. To listen on another port, just create a new instance of SimpleW.
 :::
 
 ## Configuring the SimpleW server
@@ -193,7 +193,7 @@ await host.RunAsync();
 
 ### What this does
 
-The bridge forwards every log produced by the SimpleW logging system to the `Microsoft.Extensions.Logging infrastructure`.
+The bridge forwards every log produced by the SimpleW logging system to the `Microsoft.Extensions.Logging` infrastructure.
 
 This means :
 - SimpleW logs appear in the **same output** as your application logs

@@ -1,6 +1,6 @@
 # Newtonsoft
 
-The [`SimpleW.JsonEngine.Newtonsoft`](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) is an optional integration package that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
+The [`SimpleW.JsonEngine.Newtonsoft`](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) is an optional integration package that replaces the default SimpleW JSON engine with **Newtonsoft.Json**.
 
 
 ## Using Newtonsoft.Json
@@ -52,7 +52,7 @@ server.ConfigureJsonEngine(new NewtonsoftJsonEngine(
     (action) => {
         Newtonsoft.Json.JsonSerializerSettings settings = new();
 
-        // you can customize settings dependings the IJsonEngine method called
+        // you can customize settings depending on the IJsonEngine method called
         if (action == JsonAction.Serialize) {
             settings.Formatting = Newtonsoft.Json.Formatting.Indented;
         }

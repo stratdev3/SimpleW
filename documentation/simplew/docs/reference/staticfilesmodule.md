@@ -1,7 +1,7 @@
 # StaticFilesModule
 
 
-The `StaticFilesModule` serve static files and expose some options to adjust its behaviour and performances.
+The `StaticFilesModule` serves static files and exposes options to adjust its behaviour and performance.
 
 
 ## Definition
@@ -17,7 +17,7 @@ The `StaticFilesModule` serve static files and expose some options to adjust its
 public static SimpleWServer UseStaticFilesModule(this SimpleWServer server, Action<StaticFilesOptions>? configure = null)
 ```
 
-The options are the followings
+The options are the following
 
 ```csharp
 /// <summary>

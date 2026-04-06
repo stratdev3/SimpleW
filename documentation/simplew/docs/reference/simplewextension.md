@@ -1,6 +1,6 @@
 # SimpleWExtension
 
-The `SimpleWExtension` static class provide several useful helpers.
+The `SimpleWExtension` static class provides several useful helpers.
 
 
 ## CreateJwt

@@ -133,7 +133,7 @@ namespace Sample {
 
         [Route("GET", "/index")]
         public object Index() {
-            // the model can for strongly type or anonymous like in this example
+            // the model can be strongly typed or anonymous like in this example
             var model =  new { Title = "Home", H1 = "Welcome" };
             return View("Home/Index", model);
         }
@@ -158,7 +158,7 @@ namespace Sample {
                 options.Views = "Views" // path of your views folder
             });
             server.MapGet("/api/home/index", () => {
-                // the model can for strongly type or anonymous like in this example
+                // the model can be strongly typed or anonymous like in this example
                 var model =  new { Title = "Home", H1 = "Welcome" };
                 return RazorResults.View("Home/Index", model);
             });
@@ -253,7 +253,7 @@ Render it from a view or layout:
 
 ## View names
 
-A view name is a **path relative** to `ViewsPath`.
+A view name is a **path relative to** `ViewsPath`.
 
 Examples (with `ViewsPath = "Views"`) :
 - `"Home"` → `Views/Home.cshtml`

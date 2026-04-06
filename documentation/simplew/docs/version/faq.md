@@ -17,9 +17,9 @@ Github is just a mirror. Ping me, if your code is interesting and still MIT lice
 
 I don't hate it, but I don't like it (see the paragraph about [Why this library exists](../guide/what-is-simplew.md#why-this-library)).
 
-> Why there is no DI in SimpleW like in ASP.NET Core ?
+> Why is there no DI in SimpleW like in ASP.NET Core?
 
-I really deeply hating how Depending Injection is working on ASP.NET Core. I hate how the framework resolves the full dependency graph recursively and instantiates everything through a DI container :
+I really deeply hate how Dependency Injection works in ASP.NET Core. I hate how the framework resolves the full dependency graph recursively and instantiates everything through a DI container :
 
 - I’m not a fan of the _magic_ instantiation model where objects are created implicitly by the framework (except the controller itself)
 - It tends to hide the actual object graph, which can make the execution flow harder to understand and debug
@@ -54,12 +54,12 @@ I want to keep the core simple and lightweight so that :
 Addons are the place for everything that does not belong in the core.
 Also, a product is much easier to adopt when there is a healthy ecosystem around it.
 
-That's my [philosphy](../guide/what-is-simplew.md#philosophy)
+That's my [philosophy](../guide/what-is-simplew.md#philosophy)
 
 > How to use SimpleW ?
 
 I spent a **crazy** amount of time writing documentation. Please, [RTFM](https://en.wikipedia.org/wiki/RTFM)
 
-> I still have understanding issue ?
+> I still have questions ?
 
-If you still have issue, [ping me on Discord](https://discord.gg/mDNRjyV8Ak) and I'll try to look at it.
+If you still have questions, [ping me on Discord](https://discord.gg/mDNRjyV8Ak) and I'll take a look.

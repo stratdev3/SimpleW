@@ -1,7 +1,7 @@
 # ServerSentEventsModule
 
-The `ServerSentEventsModule` is used to setup Server Sent Events.
-This module setup a middleware.
+The `ServerSentEventsModule` is used to set up Server-Sent Events.
+This module sets up a middleware.
 
 
 ## Definition

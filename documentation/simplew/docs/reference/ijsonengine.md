@@ -1,12 +1,12 @@
 # IJsonEngine
 
-The interface is both implemented by `SystemTextJsonEngine` and `NewtonsoftJsonEngine`.
+The interface is implemented by both `SystemTextJsonEngine` and `NewtonsoftJsonEngine`.
 It is used to change [`SimpleWServer.JsonEngine`](./simplewserver.md#jsonengine) property.
 
 
 ## Signature
 
-A `IJsonEngine` is an interface with the following method :
+An `IJsonEngine` is an interface with the following methods :
 
 ```csharp
 /// <summary>

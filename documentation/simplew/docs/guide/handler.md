@@ -16,7 +16,7 @@ A handler is just a method, but SimpleW turns it into a full HTTP execution pipe
 ## What is a Handler ?
 
 A handler is a C# `delegate` or a `controller method` that is registered to handle an HTTP request.
-From SimpleW’s point of view, a handler *is anything that can be executed by the router to process a request*.
+From SimpleW’s point of view, a handler is *anything that can be executed by the router to process a request*.
 There are two equivalent ways to define a handler :
 
 1. **Delegate-based handlers** (functional style)

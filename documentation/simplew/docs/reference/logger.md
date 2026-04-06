@@ -5,13 +5,13 @@ This class is used for logging.
 
 ## Constructor
 
-Prefix the logger with a string
+Prefix the logger with a string :
 
 ```csharp
 private static readonly ILogger _log = new Logger("MyClass");
 ```
 
-Prefix the logging with a Type as string
+Prefix the logger with a type as a string :
 
 ```csharp
 private static readonly ILogger _log = new Logger<MyClass>();

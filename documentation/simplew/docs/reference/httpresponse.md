@@ -26,7 +26,7 @@ public HttpResponse(HttpSession session, ArrayPool<byte> bufferPool)
 ```
 
 ::: danger
-Never instanciate your own `HttpResponse`, this is already done by [`HttpSession`](./httpsession.md#response) is a proper way ([GC](https://en.wikipedia.org/wiki/Garbage_collection_(computer_science)) friendly).
+Never instantiate your own `HttpResponse`; this is already handled by [`HttpSession`](./httpsession.md#response) in the proper way ([GC](https://en.wikipedia.org/wiki/Garbage_collection_(computer_science)) friendly).
 :::
 
 
@@ -211,7 +211,7 @@ public HttpResponse NoCompression()
 public async ValueTask SendAsync()
 ```
 
-This is the proper way of sending data a client in you want to do it on your own.
+This is the proper way of sending data to a client when you want to do it on your own.
 
 
 ## DefaultContentType

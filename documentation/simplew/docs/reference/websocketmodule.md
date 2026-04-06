@@ -14,7 +14,7 @@ It maps a single WebSocket route, upgrades the HTTP connection to WebSocket, the
 public static SimpleWServer UseWebSocketModule(this SimpleWServer server, Action<WebSocketOptions>? configure = null)
 ```
 
-The options are the followings
+The options are the following
 
 ```csharp
 /// <summary>

@@ -32,7 +32,7 @@ The team behind [Uptrace](https://uptrace.dev/) has built an impressive open-sou
 They offer a helper extension for the [.NET OpenTelemetry exporter](https://github.com/open-telemetry/opentelemetry-dotnet) as a [NuGet package](https://www.nuget.org/packages/Uptrace.OpenTelemetry), 
 making it effortless to integrate end-to-end tracing into your .NET services.
 
-So add the official OpenTelemetry package
+Then add the official OpenTelemetry package
 
 ```sh
 $ dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
@@ -206,7 +206,7 @@ This hook runs **after** the response is generated and allows full access to :
 - The complete `HttpSession`
 
 ::: tip NOTE
-As header can be forged on client side, you should only accept X-Headers if the underlying reverse proxy is under control and configured with a proper header policy.
+As headers can be forged on the client side, you should only accept X-Headers if the underlying reverse proxy is under your control and configured with a proper header policy.
 :::
 
 

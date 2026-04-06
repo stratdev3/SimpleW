@@ -5,7 +5,7 @@ It is used by [`SimpleWServer.UseModule`](./simplewserver.md#usemodule) to insta
 
 ## Signature
 
-A `IHttpModule` is an interface with the following method :
+An `IHttpModule` is an interface with the following method:
 
 ```csharp
 /// <summary>
@@ -15,4 +15,4 @@ A `IHttpModule` is an interface with the following method :
 void Install(SimpleWServer server);
 ```
 
-Example of implements : `StaticFilesModule` and `WebsocketModule`...
+Examples of implementations : `StaticFilesModule` and `WebsocketModule`...

@@ -1,7 +1,7 @@
 # CorsModule
 
-The `CorsModule` is used to setup Cross-Origin Resource Sharing policy.
-This module setup a middleware.
+The `CorsModule` is used to set up a Cross-Origin Resource Sharing policy.
+This module sets up a middleware.
 
 
 ## Definition
@@ -14,7 +14,7 @@ This module setup a middleware.
 public static SimpleWServer UseCorsModule(this SimpleWServer server, Action<CorsOptions>? configure = null)
 ```
 
-The options are the followings
+The options are the following
 
 ```csharp
 /// <summary>

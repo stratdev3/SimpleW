@@ -87,7 +87,7 @@ Once installed, every log emitted via :
 Log.Info("MySource", "Hello world");
 ```
 
-will be forwarded to Log4net.
+will be forwarded to log4net.
 
 
 ## Automatic Minimum Level Detection

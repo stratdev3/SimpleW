@@ -1,6 +1,6 @@
 # HttpRequest
 
-This class all informations of the client request.
+This class holds all the information about the client request.
 
 
 ## Method
@@ -48,7 +48,7 @@ public string Protocol { get; private set; }
 public HttpHeaders Headers { get; private set; }
 ```
 
-See [`HttpHeaders`](./httpheaders.md) class for more informations
+See [`HttpHeaders`](./httpheaders.md) class for more information
 
 
 ## Body

@@ -115,6 +115,6 @@ Log.RemoveSink(mySink);
 
 SimpleW logging can easily be connected to **external logging frameworks or monitoring systems**.
 
-This is done by registering a **sink** that forwards `LogEntry` objects to another system, see example above.
+This is done by registering a **sink** that forwards `LogEntry` objects to another system (see the example above).
 
-See Addons to find all the available logging helper to integrate famous solution like [Serilog](../addons/helper-serilog.md) or [Log4net](../addons/helper-log4net.md).
+See Addons to find all the available logging helpers to integrate well-known solutions like [Serilog](../addons/helper-serilog.md) or [Log4net](../addons/helper-log4net.md).

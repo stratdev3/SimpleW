@@ -4,10 +4,10 @@
 
 Consider the `v26 = v2` like the `v16 = v1`.
 
-Even if some high level classes/methods has been renamed, your understanding of their role remains quite the same
-and the bump version should not be a pain.
+Even if some high-level classes/methods have been renamed, your understanding of their role remains essentially the same
+and the version bump should not be painful.
 
-For example, I've migrated a full project _(thirty controllers / four hundred methods)_ on a couple of hours :
+For example, I've migrated a full project _(thirty controllers / four hundred methods)_ in a couple of hours :
 - 1h : 90% of searches and replaces _(mostly Request and Response syntax change)_
 - 1h : 10% of real things to rewrite/adapt _(SimpleWServer options, CORS, WebSockets, Telemetry)_
 
@@ -38,7 +38,7 @@ How to replace old class/method/property with the new one.
 
 ### Response
 
-- `Response.MakeResponse()` depending on the context, build you response with `Response.Text()`, `Response.Body()`...
+- `Response.MakeResponse()` depending on the context, build your response with `Response.Text()`, `Response.Body()`...
 - `Response.MakeUnAuthorizedResponse()` => `Response.UnAuthorized()`
 - `Response.MakeForbiddenResponse()` => `Response.Forbidden()`
 - `Response.MakeInternalServerErrorResponse()` => `Response.InternalServerError()`
@@ -64,6 +64,6 @@ How to replace old class/method/property with the new one.
 
 ### Removed
 
-- All the statistics properties from `SimpleWServer` class (`ConnectedSessions`, `BytesPending`, `BytesSent`, `BytesReceived`) has been removed. They may be appears is a future release but not now.
-- `SimpleWServer.OptionSendBufferSize` property no longer exists;
+- All the statistics properties from the `SimpleWServer` class (`ConnectedSessions`, `BytesPending`, `BytesSent`, `BytesReceived`) have been removed. They may appear in a future release, but not now.
+- `SimpleWServer.OptionSendBufferSize` property no longer exists.
 - `SimpleWServer.TrustXHeaders` property no longer exists (see [`SimpleWServer.ConfigureTelemetry()`](./observability.md) on how to add custom telemetry tags);

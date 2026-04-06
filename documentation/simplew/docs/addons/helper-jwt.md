@@ -110,7 +110,7 @@ principal.Identity.IsAuthenticated == true
 
 ## Minimal Example
 
-Using with SimpleW, there is two approaches to resolve the principal at request time.
+When using SimpleW, there are two approaches to resolve the principal at request time.
 
 ::: code-group
 

@@ -1,11 +1,11 @@
 # Changelog
 
 Notes :
-- it does not strictly follow the semver convention.
-- no technical debt : code that's need to be refactored/broken, will be.
-- when something breaks, it's documented and a migration guide is provided.
-- no long-term support or backports for major versions, just stick to the latest update.
-- found a bug or way to optimize, feel free to submit a patch.
+- It does not strictly follow the semver convention.
+- No technical debt : code that needs to be refactored/broken, will be.
+- When something breaks, it's documented and a migration guide is provided.
+- No long-term support or backports for major versions, just stick to the latest update.
+- Found a bug or a way to optimize? Feel free to submit a patch.
 
 
 ## Roadmap - _(2026)_
@@ -18,9 +18,9 @@ Notes :
 ## v26.0.0-rc - _(2026-04-??)_
 
 This version is a major release :
-- a **complete rewrite** of the project (start from scratch no more netcoreserver override)
-- the core is **simple** as possible and delivers **very good performances** !
-- there is many place for **extensibility**.
+- a **complete rewrite** of the project (start from scratch, no more NetCoreServer override)
+- the core is **as simple** as possible and delivers **very good performances** !
+- there are many places for **extensibility**.
 - so there are **addons** !
 
 ### breakingChange
@@ -31,7 +31,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 
 | Feature / Aspect                     | SimpleW v16 (old) | SimpleW v26 (new) |
 |--------------------------------------|-------------------------|-----------------------------|
-| NET runtime                          | NET8                       | NET8 but should consider NET9/NET10 for better perfs and RAM usage under heady load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
+| NET runtime                          | NET8                       | NET8 but should consider NET9/NET10 for better perfs and RAM usage under heavy load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
 | Core architecture                    | ⚠️ (tied to NetCoreServer)| ✅ from scratch (custom, simple, clean) |
 | Code readability                     | ⚠️                        | ✅                           |
 | Overall design philosophy            | ⚠️ wrapper                | ✅ minimal, custom, fast     |
@@ -98,7 +98,7 @@ Major release, including extensive rewrites and significant performance improvem
 
 ### breakingChange
 
-- removed the *Newtonsoft.Json* dependency from the [*SimpleW*](https://www.nuget.org/packages/SimpleW) nuget package. The default json engine is now *System.Text.Json*. To switch back, set *Newtonsoft* as the [`JsonEngine`](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine) and install the a new [*SimpleW.Newtonsoft*](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package to (see [example](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine))
+- removed the *Newtonsoft.Json* dependency from the [*SimpleW*](https://www.nuget.org/packages/SimpleW) nuget package. The default json engine is now *System.Text.Json*. To switch back, set *Newtonsoft* as the [`JsonEngine`](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine) and install the new [*SimpleW.Newtonsoft*](https://www.nuget.org/packages/SimpleW.Newtonsoft) nuget package (see [example](https://stratdev3.github.io/SimpleW/guide/api-response.html#json-engine))
 - "X-*" headers are not trusted by default. To allow them, set the [`TrustXHeaders`](https://stratdev3.github.io/SimpleW/reference/simplewserver.html#security) server property to true (see [example](https://stratdev3.github.io/SimpleW/guide/observability.html#security)).
 - in `Controller`, all `Make*Response()` methods have been replaced by [`Response.Make*Response()`](https://stratdev3.github.io/SimpleW/reference/httpresponse.html) (see [example](https://stratdev3.github.io/SimpleW/guide/api-response.html#helpers))
 - removed `Controller.SendResponseAsync()`
@@ -232,7 +232,7 @@ Maintenance
 
 ### breakingChange
 
-- the `getWebUserCallback` delegate set with `SimpleW.SetToken()` is new call by `Controller.JwtToWebUser()` to redress `Controller.webuser` on each request.
+- the `getWebUserCallback` delegate set with `SimpleW.SetToken()` is now called by `Controller.JwtToWebUser()` to restore `Controller.webuser` on each request.
 
 
 
@@ -272,7 +272,7 @@ Maintenance
 
 ### feature
 
-- `Controller.GetJwt()` is now virtual and can be overrided in subclass.
+- `Controller.GetJwt()` is now virtual and can be overridden in subclass.
 - documentation
 
 
@@ -291,7 +291,7 @@ Maintenance
 
 ### feature
 
-- feature(WebSocket): handle multiple socket endpoints and not just once (#9).
+- feature(WebSocket): handle multiple socket endpoints and not just one (#9).
 - documentation
 
 
@@ -380,7 +380,7 @@ Maintenance
 - clean code
 - add documentation
 - add license
-- include LitJWT sources in projet files
+- include LitJWT sources in project files
 
 
 

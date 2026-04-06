@@ -1,6 +1,6 @@
 # Router
 
-The primary goal of the `Router` is to execute `delegate` depending on [`Method`](./httprequest#method) and [`Url`](./httprequest#url).
+The primary goal of the `Router` is to execute a `delegate` based on the [`Method`](./httprequest#method) and [`Url`](./httprequest#url).
 
 
 ## Routes

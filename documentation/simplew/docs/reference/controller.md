@@ -2,7 +2,7 @@
 
 The `Controller` is the base class for REST API controllers
 
-It contains several properties and methods. The following one are the most used.
+It contains several properties and methods. The following ones are the most used.
 
 
 ## Session
@@ -26,7 +26,7 @@ This property contains the current Session instance. See the [HttpSession](./htt
 public HttpRequest Request;
 ```
 
-This property contains all informations about the request. See the [HttpRequest](./httprequest) class for uses.
+This property contains all the information about the request. See the [HttpRequest](./httprequest) class for uses.
 
 
 ## Response
@@ -38,7 +38,7 @@ This property contains all informations about the request. See the [HttpRequest]
 public HttpResponse Response;
 ```
 
-This property can be used to return a response object which will be send to client.
+This property can be used to return a response object that will be sent to the client.
 It's initialized as an empty Response instance. See the [HttpResponse](./httpresponse) class for uses.
 
 
@@ -63,7 +63,7 @@ This property can be used to define security. See the [HttpPrincipal](./httpprin
 public HttpBag Bag => Session.Bag;
 ```
 
-This property can be used to pass data between middleware. See the [HttpBag](./httpbag.md.md) class for uses.
+This property can be used to pass data between middleware. See the [HttpBag](./httpbag.md) class for uses.
 
 
 ## OnBeforeMethod

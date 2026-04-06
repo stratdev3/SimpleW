@@ -25,7 +25,7 @@ HttpPrincipal
 ```
 
 ::: info
-The `HttpPrincipal` here is quite the same in AspNet Core except that :
+The `HttpPrincipal` here is similar to the one in ASP.NET Core, except that :
 - it contains only one `HttpIdentity`
 - `Claims` are renamed as `IdentityProperty`
 :::
@@ -214,7 +214,7 @@ session.Principal = new HttpPrincipal(new HttpIdentity(
 :::
 
 ::: info
-The principal is resolved only when needed by lazy loading.
+The principal is resolved lazily, only when needed.
 This avoids unnecessary work and improves performance.
 :::
 

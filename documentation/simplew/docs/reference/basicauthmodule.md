@@ -1,7 +1,7 @@
 # BasicAuthModule
 
-The `BasicAuthModule` is used to setup Basic Authentication.
-This module setup a middleware but even it is called multiples times to setup differents prefix, there will be only one iteration on the pipeline : the configuration of all prefixes and users is stored in a global registry shared between all `SimpleWServer` instances.
+The `BasicAuthModule` is used to set up Basic Authentication.
+This module sets up a middleware, but even if it is called multiple times to set up different prefixes, there will be only one iteration on the pipeline: the configuration of all prefixes and users is stored in a global registry shared between all `SimpleWServer` instances.
 
 
 ## Definition
@@ -14,7 +14,7 @@ This module setup a middleware but even it is called multiples times to setup di
 public static SimpleWServer UseBasicAuthModule(this SimpleWServer server, Action<BasicAuthOptions>? configure = null)
 ```
 
-The options are the followings
+The options are the following
 
 ```csharp
 /// <summary>

@@ -7,13 +7,13 @@ Thanks to its [architecture](./what-is-simplew#architecture), SimpleW can handle
 
 ## Server Comparison
 
-Monitoring requests-per-second is not relevant as it depend on the hardware. <br />
+Monitoring requests-per-second is not relevant as it depends on the hardware. <br />
 What matters is how each server performs relative to the others in the same conditions.
 
 All tests are performed on Linux on a capable machine.
 
 
-#### Evaluate request with a server containing a single route that returns a json serialized object
+#### Evaluating requests with a server containing a single route that returns a JSON-serialized object
 
 Command : [`bombardier -c 200 -d 30s http://127.0.0.1:8080/api/test/hello`](https://github.com/codesenberg/bombardier)
 

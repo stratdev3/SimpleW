@@ -63,6 +63,6 @@ $ curl --unix-socket C:\www\test.sock http://localhost/api/test
 > { "message" : "Hello World !" }
 ```
 
-There only one change :
+There is only one change :
 - L13 : use the `SimpleWServer()` constructor with `UnixDomainSocketEndPoint` argument.
 

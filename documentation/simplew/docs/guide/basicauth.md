@@ -67,7 +67,7 @@ namespace Sample {
 ```
 
 ::: warning
-- You should never expose BasicAuth over plain HTTP, but above HTTPS !
+- You should never expose BasicAuth over plain HTTP, always use HTTPS!
 - Credentials are Base64-encoded, not encrypted.
 :::
 

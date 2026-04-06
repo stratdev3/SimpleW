@@ -10,7 +10,7 @@ Stop talking, show me the code !
 
 ## Installation
 
-Using the nuget package, always prefer the last version.
+Using the NuGet package, always prefer the latest version.
 
 ```sh
 $ dotnet add package SimpleW --version 26.0.0-rc.20260405-1683
@@ -60,7 +60,7 @@ namespace Sample {
 :::
 
 
-It uses the [`MapGet`](../reference/simplewserver.md#map) and [`MapPost`](../reference/simplewserver.md#map) methods, which are quite the same as asp.net core.
+It uses the [`MapGet`](../reference/simplewserver.md#map) and [`MapPost`](../reference/simplewserver.md#map) methods, which are very similar to ASP.NET Core.
 
 ::: info
 See the [Templates](../addons/template-templates.md#simplew-minimal) addons to quickly create a minimal project.
@@ -69,7 +69,7 @@ See the [Templates](../addons/template-templates.md#simplew-minimal) addons to q
 
 ## Controller Example
 
-The following example build a REST API with a clear routing and controller/method structured class.
+The following example builds a REST API with clear routing using a structured controller/method class.
 
 ::: code-group
 
@@ -126,12 +126,12 @@ namespace Sample {
 :::
 
 
-Then just [open your browser](http://localhost:2015/api/test?name=Chris) to and you will see the `{ "message": "Hello Chris !" }` JSON response.
+Then just [open your browser](http://localhost:2015/api/test?name=Chris) and you will see the `{ "message": "Hello Chris !" }` JSON response.
 
 
 ## Static Files Example
 
-The following example serve statics files in your `c:\www` directory.
+The following example serves static files from your `c:\www` directory.
 
 ::: code-group
 
@@ -188,7 +188,7 @@ Then just [open your browser](http://localhost:2015/).
 
 ## FullStack Example
 
-The following example will serve both static files in your `c:\www` directory and a REST API.
+The following example serves both static files from your `c:\www` directory and a REST API.
 
 ::: code-group
 
@@ -306,7 +306,7 @@ namespace Sample {
 :::
 
 
-Then just Then just [open your browser](http://localhost:2015/) and interact with the form.
+Then just [open your browser](http://localhost:2015/) and interact with the form.
 
 
 <style>

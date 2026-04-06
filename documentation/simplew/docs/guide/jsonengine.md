@@ -42,7 +42,7 @@ This makes it possible to :
 - Apply project-specific conventions
 
 
-## Available Json Engine
+## Available JSON Engines
 
-See [Addons](../addons/addons.md) to find all the available json engines.
+See [Addons](../addons/addons.md) to find all the available JSON engines.
 The most famous, `Newtonsoft`, has its [wrapper](../addons/jsonengine-newtonsoft.md).

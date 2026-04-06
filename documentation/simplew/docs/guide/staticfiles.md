@@ -7,7 +7,7 @@ That's the goal of the [`StaticFilesModule`](../reference/staticfilesmodule.md).
 
 ## Basic
 
-To serve statics files with very few lines of code :
+To serve static files with very few lines of code :
 
 ```csharp
 using System;
@@ -93,7 +93,7 @@ namespace Sample {
 
 You can change some settings before server start.
 
-To change the default document `index.html` by your own page
+To change the default document `index.html` to your own page
 ```csharp
 option.DefaultDocument = "maintenance.html";
 ```
@@ -104,7 +104,7 @@ option.DefaultDocument = "maintenance.html";
 By default, the `StaticFilesModule()` serves directories/files from disk to each request.
 To enable cache, set the `CacheTimeout` property to anything but null.<br />
 
-The following example enable cache for 1 day :
+The following example enables cache for 1 day :
 
 ```csharp
 // serve statics files
@@ -151,13 +151,13 @@ http://localhost:2015/videos/movie.mp4
 
 The video will :
 - Start immediately
-- Alow seeking
+- Allow seeking
 - Use efficient partial downloads
 
 
 ## How to serve a Vue app
 
-This section shows how to server a vue.js application.
+This section shows how to serve a Vue.js application.
 
 First, create your vue/vite application :
 
@@ -203,7 +203,7 @@ found 0 vulnerabilities
 ```
 
 Node will create all files and start serving the application using its own built-in web server.
-But we want SimpleW to server the application in a production mode.
+But we want SimpleW to serve the application in production mode.
 
 So, build the application release :
 
@@ -222,14 +222,14 @@ dist/assets/index-Cc-rvdMb.js   61.31 kB │ gzip: 24.69 kB
 ✓ built in 424ms
 ```
 
-To get the location of dist files just
+To get the location of the dist files, run :
 
 ```bash
 $ pwd
 > C:\www\my-vue-app\dist
 ```
 
-Now, we will server this directory using the `StaticFilesModule` module of SimpleW :
+Now, we will serve this directory using the `StaticFilesModule` module of SimpleW :
 
 ```csharp
 using System;

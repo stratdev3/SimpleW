@@ -1,7 +1,7 @@
 # HttpHeaders
 
-This class is used to store the http headers included cookies. 
-The most commons header have their own public property to get easier use, the others are stored in a array.
+This class is used to store the HTTP headers, including cookies.
+The most common headers have their own public property for easier access; the others are stored in an array.
 
 ```csharp
 /// <summary>

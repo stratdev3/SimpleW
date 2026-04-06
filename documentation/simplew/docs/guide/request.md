@@ -161,7 +161,7 @@ public class UserController : Controller {
                 user
             };
         }
-        // exception is thrown when type convertion failed
+        // exception is thrown when type conversion fails
         catch (Exception ex) {
             return Response.MakeInternalServerErrorResponse(ex.Message);
         }

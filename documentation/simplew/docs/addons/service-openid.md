@@ -1,6 +1,6 @@
 # OpenID
 
-The [`SimpleW.Service.OpenID`](https://www.nuget.org/packages/SimpleW.Service.OpenID) package provides an OpenID Connect (OIDC) authentication for the SimpleW web server.
+The [`SimpleW.Service.OpenID`](https://www.nuget.org/packages/SimpleW.Service.OpenID) package provides OpenID Connect (OIDC) authentication for the SimpleW web server.
 It is implemented as a SimpleW middleware.
 
 It allows SimpleW applications to authenticate users using external identity providers such as **Google, Apple, Azure AD**, or **Keycloak**, using the standard **Authorization Code flow**.
@@ -162,7 +162,7 @@ After authentication :
   - Injects the authenticated user into `HttpSession.Principal`
 
 ```csharp
-if (session.Principal.IsAuthencated) {
+if (session.Principal.IsAuthenticated) {
     // user is authenticated
 }
 ```
