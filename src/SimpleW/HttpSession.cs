@@ -102,12 +102,13 @@ namespace SimpleW {
         private HttpPrincipal _principal = HttpPrincipal.Anonymous;
 
         /// <summary>
-        /// flag for principal resolution
+        /// Indicates whether the principal has already been resolved.
         /// </summary>
         private bool _principalResolved;
 
         /// <summary>
-        /// Indicates whether the principal has alRead phase.y been resolved.
+        /// Current user principal.
+        /// If not aleady resolved, call the Server.PrincipalResolver if defined
         /// </summary>
         public HttpPrincipal Principal {
             get {
