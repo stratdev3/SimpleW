@@ -194,7 +194,7 @@ server.ConfigureTelemetry(options => {
     options.IncludeStackTrace = true;
     options.EnrichWithHttpSession = (activity, session) => {
         // override host with the X-Forwarded-Host header (set by a trusted reverse proxy)
-        if (session.Request.Headers.TryGetValue("X-Forwarded-Host", out string? host) {
+        if (session.Request.Headers.TryGetValue("X-Forwarded-Host", out string? host)) {
             activity.SetTag("url.host", host);
         }
     };

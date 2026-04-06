@@ -13,9 +13,18 @@ Because I strongly believe in open source, and I use open-source software every 
 
 Github is just a mirror. Ping me, if your code is interesting and still MIT license, I will pull from your repo.
 
+> Do I need the ASP.NET runtime ?
+
+Hell no. SimpleW targets the standard .NET runtime — no ASP.NET overhead, no bloat.
+That said, if you want to run both side by side, nothing stops you from using the ASP.NET runtime — SimpleW will work just fine.
+
 > Why do you hate ASP.NET Core ?
 
 I don't hate it, but I don't like it (see the paragraph about [Why this library exists](../guide/what-is-simplew.md#why-this-library)).
+
+> Do you like Kestrel ?
+
+Kestrel is an awesome server. I just want a serious alternative to its hegemony.
 
 > Why is there no DI in SimpleW like in ASP.NET Core?
 
@@ -24,10 +33,6 @@ I really deeply hate how Dependency Injection works in ASP.NET Core. I hate how 
 - I’m not a fan of the _magic_ instantiation model where objects are created implicitly by the framework (except the controller itself)
 - It tends to hide the actual object graph, which can make the execution flow harder to understand and debug
 - It usually introduces a fair amount of boilerplate and configuration for relatively simple use cases
-
-> Do you like Kestrel ?
-
-Kestrel is an awesome server. I just want a serious alternative to its hegemony.
 
 > What is the primary goal of SimpleW ?
 

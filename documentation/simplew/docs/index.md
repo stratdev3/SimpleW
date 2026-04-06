@@ -26,13 +26,13 @@ hero:
 features:
     - icon: ⚡
       title: Zero Dependencies, Maximum Speed
-      details: Built on top of native sockets. Minimal overhead, instant startup and high-performance workloads.
+      details: Built on top of native sockets. Minimal overhead, instant startup and strong performance under load.
     - icon: 🌐
       title: Flexible Web Server
       details: Handle APIs, static files, and dynamic content through a simple routing model — with full control over behavior.
     - icon: 🛡️
       title: Production-Grade Core
-      details: A fully integrated core designed for real-world usage covering security, communication, and observability without external dependencies.
+      details: A fully integrated core designed for real-world usage, covering security, communication, and observability without external dependencies.
     - icon: 🧩
       title: Powerful Addons
       details: Designed for extensibility. Integrate additional capabilities through independent modules without bloating your core.
@@ -57,7 +57,7 @@ server.MapGet("/api/test/hello", () => {
     return new { message = "Hello World !" };
 });
 
-// start a blocking background server
+// run server
 await server.RunAsync();
 ```
 
@@ -90,12 +90,6 @@ class Program {
         // telemetry
         server.ConfigureTelemetry(options => {
             options.IncludeStackTrace = true;
-            options.EnrichWithHttpSession = (activity, session) => {
-                // override host with the X-Forwarded-Host header (set by a trusted reverse proxy)
-                if (session.Request.Headers.TryGetValue("X-Forwarded-Host", out string? host) {
-                    activity.SetTag("url.host", host);
-                }
-            };
         });
 
         // socket tuning
@@ -119,7 +113,7 @@ class Program {
             options.AllowRules.Add(IpRule.Cidr("10.0.0.0/8"));
             options.AllowRules.Add(IpRule.Single("127.0.0.1"));
             options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb";
-            options.AllowCountries.Add(CountryRule.Any("US"));
+            options.AllowCountries.Add(CountryRule.Any("FR"));
         });
 
         // OpenID
@@ -132,7 +126,7 @@ class Program {
             });
         });
 
-        // start a blocking background server
+        // run server
         await server.RunAsync();
     }
 }
@@ -166,10 +160,10 @@ builder.ConfigureSimpleW(server => {
         });
         // routes
         server.MapGet("/hello", () => {
-            return new { mesage = "Hello World !" };
+            return new { message = "Hello World !" };
         });
         // ssl
-        X509Certificate2 cert = new(@"C:\Users\SimpleW\ssl\domain.pfx", "password");
+        X509Certificate2 cert = new(@"/app/ssl/domain.pfx", "password");
         var sslcontext = new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert, clientCertificateRequired: false, checkCertificateRevocation: false);
         server.UseHttps(sslcontext);
     },

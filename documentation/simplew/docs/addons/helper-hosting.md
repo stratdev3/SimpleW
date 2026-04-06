@@ -50,7 +50,7 @@ var builder = SimpleWHost.CreateApplicationBuilder(args);
 
 builder.ConfigureSimpleW(server => {
     server.MapGet("/hello", () => {
-        return new { mesage = "Hello World !" };
+        return new { message = "Hello World !" };
     });
 });
 
@@ -95,7 +95,7 @@ builder.ConfigureSimpleW(server => {
     server.UseHttps(); // native SimpleW HTTPS support, see documentation
 
     server.MapGet("/hello", () => {
-        return new { mesage = "Hello World !" };
+        return new { message = "Hello World !" };
     });
 });
 ```
