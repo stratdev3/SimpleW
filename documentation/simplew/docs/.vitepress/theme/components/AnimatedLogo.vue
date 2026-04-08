@@ -156,7 +156,6 @@
   --out-y-7: 55%;
   --out-y-8: 58%;
 
-  position: relative;
   width: min(100%, var(--scene-w));
   height: var(--scene-h);
   margin: 0 auto;
