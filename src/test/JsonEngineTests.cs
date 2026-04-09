@@ -138,6 +138,28 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
+        [Fact]
+        public void Populate_NewtonSoft_EmptyStringToNullConverter_Converts_EmptyString_To_Null() {
+
+            var engine = new NewtonsoftJsonEngine(NewtonsoftJsonEngine.SettingsSimpleWBuilder());
+            var model = new StringContainer_JsonEngineTests { Value = "initial" };
+
+            SimpleWExtension.JsonMap("""{"Value":""}""", model, engine);
+
+            Check.That(model.Value).IsNull();
+        }
+
+        [Fact]
+        public void Populate_NewtonSoft_EmptyStringToNullConverter_Converts_Integer_To_String() {
+
+            var engine = new NewtonsoftJsonEngine(NewtonsoftJsonEngine.SettingsSimpleWBuilder());
+            var model = new StringContainer_JsonEngineTests();
+
+            SimpleWExtension.JsonMap("""{"Value":1}""", model, engine);
+
+            Check.That(model.Value).IsEqualTo("1");
+        }
+
         #endregion newtonSoft
 
         public class User_JsonEngineTests {
@@ -146,6 +168,10 @@ namespace test {
             public string? Name { get; set; }
             public int Counter { get; set; }
             public DateTime CreatedAt { get; set; }
+        }
+
+        public class StringContainer_JsonEngineTests {
+            public string? Value { get; set; }
         }
 
     }

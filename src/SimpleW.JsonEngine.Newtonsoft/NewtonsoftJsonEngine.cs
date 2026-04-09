@@ -227,7 +227,7 @@ namespace SimpleW.JsonEngine.Newtonsoft {
         /// Override ReadJson for the current StringIsEmptyToNull converter
         /// </summary>
         public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
-            if (reader.TokenType == JsonToken.Null) {
+            if (reader.Value == null || reader.TokenType == JsonToken.Null || reader.TokenType == JsonToken.Undefined) {
                 return null;
             }
 
@@ -236,8 +236,26 @@ namespace SimpleW.JsonEngine.Newtonsoft {
                 return string.IsNullOrWhiteSpace(text) ? null : text;
             }
 
-            // fallback: let Newtonsoft handle other token types
-            return serializer.Deserialize(reader, objectType);
+            if (reader.TokenType == JsonToken.StartObject || reader.TokenType == JsonToken.StartArray || reader.TokenType == JsonToken.StartConstructor) {
+                throw new JsonSerializationException($"Cannot deserialize token '{reader.TokenType}' into string at path '{reader.Path}'.");
+            }
+
+            return ToInvariantString(reader.Value);
+        }
+
+        /// <summary>
+        /// Convert scalar JSON values to string without going back through the serializer.
+        /// </summary>
+        private static string? ToInvariantString(object? value) {
+            if (value is byte[] bytes) {
+                return Convert.ToBase64String(bytes);
+            }
+
+            if (value is IFormattable formattable) {
+                return formattable.ToString(null, CultureInfo.InvariantCulture);
+            }
+
+            return value!.ToString();
         }
 
         /// <summary>
