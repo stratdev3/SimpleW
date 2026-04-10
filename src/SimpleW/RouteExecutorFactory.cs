@@ -318,7 +318,7 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Create a HttpRouteExecutor from a ControllerType
+        /// Create a HttpRouteExecutor from a tarted method of a ControllerType
         /// Note : this slow reflection code is only called once
         ///        to create an Expression Tree of the call to ControllerType
         /// </summary>
