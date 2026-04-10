@@ -15,4 +15,4 @@ An `IHttpModule` is an interface with the following method:
 void Install(SimpleWServer server);
 ```
 
-Examples of implementations : `StaticFilesModule` and `WebsocketModule`...
+See more [examples](../guide/module.md).

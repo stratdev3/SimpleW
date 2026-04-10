@@ -153,3 +153,4 @@ public bool TryGetCookie(string name, out string? value)
 public IEnumerable<KeyValuePair<string, string>> EnumerateCookies()
 ```
 
+See more [examples](../guide/response.md#2-httpresponse-finegrained-control).

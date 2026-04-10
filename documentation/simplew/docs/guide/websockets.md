@@ -47,6 +47,34 @@ The module includes an in-memory **WebSocketHub**, letting you :
 
 Connections are **auto-removed on close**, and rooms are auto-cleaned when empty.
 
+## WebSocket Flow
+
+```text
+HTTP Upgrade request
+        |
+        v
+/ws endpoint handshake
+        |
+        v
+WebSocket connection established
+        |
+        v
+Incoming message
+{ op, id, payload }
+        |
+        v
+Router matches op
+   |            |              |
+known op     unknown op    binary frame
+   |            |              |
+   v            v              v
+handler      OnUnknown       OnBinary
+   |
+   +--> reply to sender
+   +--> join / leave room
+   +--> broadcast through hub
+```
+
 
 ## Installation
 

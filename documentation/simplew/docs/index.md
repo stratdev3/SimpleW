@@ -122,7 +122,7 @@ class Program {
                 o.Authority = "https://accounts.google.com";
                 o.ClientId = "<google-client-id>";
                 o.ClientSecret = "<google-client-secret>";
-                o.PublicBaseUrl = "https://myapp.example.com";
+                o.RedirectUri = "https://myapp.example.com/auth/oidc/callback/google";
             });
         });
 

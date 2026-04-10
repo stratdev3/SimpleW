@@ -35,6 +35,31 @@ The module includes a built-in ServerSentEventsHub with a room system :
 - rooms are auto-cleaned when empty
 - connections are removed on close automatically
 
+## SSE Flow
+
+```text
+HTTP GET /sse
+      |
+      v
+SSE handshake
+(text/event-stream, keep-alive, no buffering)
+      |
+      v
+TryTakeTransportOwnership()
+      |
+      v
+ServerSentEventsConnection created
+      |
+      v
+Connection joins hub / rooms
+      |
+      v
+Server pushes events or comments
+      |
+      v
+Client receives stream until disconnect
+```
+
 
 ## Installation
 
@@ -164,7 +189,7 @@ await hub.BroadcastManyAsync(new[] { "r1", "r2" },
 SSE message frame builder :
 
 ```csharp
-public sealed class ServerSentEventsMessage {
+public class ServerSentEventsMessage {
     public string? Id { get; set; }
     public string? Event { get; set; }
     public int? RetryMs { get; set; }

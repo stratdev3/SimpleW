@@ -48,7 +48,7 @@ Templates allow developers to:
 They allow SimpleW to support different JSON serializers/deserializers, depending on performance needs, features, or external dependencies.
 
 Each JsonEngine addon provides :
-- A concrete implementation of a JSON engine
+- A concrete implementation of a `IJsonEngine`
 - A consistent API that integrates with SimpleW’s configuration
 
 This makes it easy to switch or extend JSON handling without impacting the rest of the system.

@@ -156,6 +156,9 @@
   --out-y-7: 55%;
   --out-y-8: 58%;
 
+  --label-x-factor: 0.35;
+  --label-y-factor: 0.39;
+
   width: min(100%, var(--scene-w));
   height: var(--scene-h);
   margin: 0 auto;
@@ -350,7 +353,10 @@
    Persistent orbit labels
    ========================================================= */
 .belt-label {
+  --label-ring-size: 0px;
   position: absolute;
+  left: calc(50% + var(--label-ring-size) * var(--label-x-factor));
+  top: calc(50% - var(--label-ring-size) * var(--label-y-factor));
   font-size: 10px;
   font-family: ui-monospace, monospace;
   letter-spacing: 0.07em;
@@ -362,20 +368,17 @@
 }
 
 .label-firewall {
-  left: calc(40% + var(--belt-fw) / 2 + 10px);
-  top: calc(20% - 20px);
+  --label-ring-size: var(--belt-fw);
   color: var(--fw-main);
 }
 
 .label-auth {
-  left: calc(40% + var(--belt-auth) / 2 + 10px);
-  top: 20%;
+  --label-ring-size: var(--belt-auth);
   color: var(--auth-main);
 }
 
 .label-routing {
-  right: calc(8% + var(--belt-routing) / 2 + 10px);
-  top: calc(20% + 20px);
+  --label-ring-size: var(--belt-routing);
   color: var(--routing-main);
 }
 
@@ -941,9 +944,9 @@
   .server-core {
     --scene-h: 320px;
     --logo-size: 150px;
-    --belt-routing: 136px;
-    --belt-auth: 180px;
-    --belt-fw: 230px;
+    --belt-routing: 180px;
+    --belt-auth: 230px;
+    --belt-fw: 280px;
     --dot: 6px;
   }
 
@@ -962,15 +965,16 @@
     width: 15px;
     height: 15px;
   }
+
 }
 
 @media (max-width: 640px) {
   .server-core {
     --scene-h: 236px;
     --logo-size: 110px;
-    --belt-routing: 96px;
-    --belt-auth: 126px;
-    --belt-fw: 162px;
+    --belt-routing: 126px;
+    --belt-auth: 162px;
+    --belt-fw: 198px;
     --dot: 5px;
     margin-bottom: -65px;
   }
@@ -994,6 +998,7 @@
     width: 13px;
     height: 13px;
   }
+
 }
 
 /* =========================================================

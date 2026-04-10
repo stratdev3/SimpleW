@@ -15,8 +15,8 @@ Github is just a mirror. Ping me, if your code is interesting and still MIT lice
 
 > Do I need the ASP.NET runtime ?
 
-Hell no. SimpleW targets the standard .NET runtime — no ASP.NET overhead, no bloat.
-That said, if you want to run both side by side, nothing stops you from using the ASP.NET runtime — SimpleW will work just fine.
+Hell no. SimpleW targets the standard .NET runtime : no ASP.NET overhead, no bloat.
+That said, if you want to run both side by side, nothing stops you from using the ASP.NET runtime. SimpleW will work just fine.
 
 > Why do you hate ASP.NET Core ?
 
@@ -33,6 +33,10 @@ I really deeply hate how Dependency Injection works in ASP.NET Core. I hate how 
 - I’m not a fan of the _magic_ instantiation model where objects are created implicitly by the framework (except the controller itself)
 - It tends to hide the actual object graph, which can make the execution flow harder to understand and debug
 - It usually introduces a fair amount of boilerplate and configuration for relatively simple use cases
+
+> Minimal API or Controller architecture ?
+
+To my opinion, minimal-api is just a toy you use for prototyping or for a showcase. No only it has less options than the controller but it simply does not scale. Always prefer the controller architecture when you have more than ten routes.
 
 > What is the primary goal of SimpleW ?
 

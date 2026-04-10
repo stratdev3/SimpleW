@@ -229,5 +229,5 @@ You can use the same logic to `UseHttps()` after you have already started your s
 
 There is an [`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) addon that provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**.
 
-Just follow the documentation of the [Let's Encrypt Module](../addons/service-letsencrypt.md.md).
+Just follow the documentation of the [Let's Encrypt Module](../addons/service-letsencrypt.md).
 

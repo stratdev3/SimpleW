@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitepress'
+﻿import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -62,7 +62,7 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'Framework',
+                    text: 'Core',
                     items: [
                         { text: 'Server', link: '/guide/server' },
                         { text: 'Handler', link: '/guide/handler' },
@@ -72,9 +72,10 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'Extend',
+                    text: 'Extensibility',
                     items: [
                         { text: 'Middleware', link: '/guide/middleware' },
+                        { text: 'Attribute', link: '/guide/handler-attribute' },
                         { text: 'Module', link: '/guide/module' },
                         { text: 'Callback', link: '/guide/callback' },
                         { text: 'Result Handler', link: '/guide/resulthandler' },
@@ -87,7 +88,6 @@ export default defineConfig({
                         { text: 'Principal', link: '/guide/principal' },
                         { text: 'Cross-Origin Resource Sharing', link: '/guide/cors' },
                         { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
-                        { text: 'Basic Auth', link: '/guide/basicauth' },
                     ]
                 },
                 {
@@ -98,13 +98,17 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'Others',
+                    text: 'Operations',
                     items: [
                         { text: 'Static Files', link: '/guide/staticfiles' },
-                        { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                         { text: 'Observability', link: '/guide/observability' },
                         { text: 'Logging', link: '/guide/logging' },
+                        { text: 'Unix Sockets', link: '/guide/unix-sockets' },
                     ]
+                },
+                {
+                    text: 'How to',
+                    link: '/guide/how-to'
                 },
             ],
 
@@ -112,8 +116,10 @@ export default defineConfig({
                 {
                     text: 'Services',
                     items: [
+                        { text: 'BasicAuth', link: '/addons/service-basicauth' },
                         { text: 'Chaos', link: '/addons/service-chaos' },
                         { text: 'Firewall', link: '/addons/service-firewall' },
+                        { text: 'Jwt', link: '/addons/service-jwt' },
                         { text: 'Latency', link: '/addons/service-latency' },
                         { text: 'LetsEncrypt', link: '/addons/service-letsencrypt' },
                         { text: 'OpenID', link: '/addons/service-openid' },
@@ -122,9 +128,11 @@ export default defineConfig({
                 {
                     text: 'Helpers',
                     items: [
+                        { text: 'BasicAuth', link: '/addons/helper-basicauth' },
                         { text: 'Hosting', link: '/addons/helper-hosting' },
                         { text: 'Jwt', link: '/addons/helper-jwt' },
                         { text: 'Log4net', link: '/addons/helper-log4net' },
+                        { text: 'OpenID', link: '/addons/helper-openid' },
                         { text: 'Razor', link: '/addons/helper-razor' },
                         { text: 'Serilog', link: '/addons/helper-serilog' },
                         { text: 'Swagger', link: '/addons/helper-swagger' },
@@ -159,6 +167,7 @@ export default defineConfig({
                         { text: 'HttpBag', link: '/reference/httpbag' },
                         { text: 'HttpMiddleware', link: '/reference/httpmiddleware' },
                         { text: 'IHttpModule', link: '/reference/ihttpmodule' },
+                        { text: 'ISimpleWEngine', link: '/reference/isimplewengine' },
                         { text: 'IJsonEngine', link: '/reference/ijsonengine' },
                         { text: 'IdentityProperty', link: '/reference/identityproperty' },
                     ]
@@ -209,7 +218,7 @@ export default defineConfig({
 
         footer: {
             message: 'Released under the MIT License.',
-            copyright: 'Copyright © 2021-present Christophe CHATEAU'
+            copyright: 'Copyright © 2021-present <a href="#" onclick="location.href=\'mailto:\'+atob(\'Y29udGFjdEBzaW1wbGV3Lm5ldA==\');return false;">Christophe CHATEAU</a>'
         },
 
         search: {

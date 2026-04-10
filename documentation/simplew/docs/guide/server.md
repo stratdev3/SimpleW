@@ -36,10 +36,10 @@ var server2 = new SimpleWServer(endpoint);
 > Important: calling `Configure(...)` after the server has started throws an exception.
 
 ```csharp
-server1.Configure(options => {
+server.Configure(options => {
     // Example: set options here (depends on SimpleWSServerOptions fields)
     options.TcpNoDelay = true;
-    optiosn.MaxRequestBodySize = 100 * 1024 * 1024; // 100Mo
+    options.MaxRequestBodySize = 100 * 1024 * 1024; // 100Mo
 });
 ```
 
@@ -64,6 +64,27 @@ var server = new SimpleWServer(IPAddress.Any, 8080)
 await server.RunAsync();
 ```
 
+
+## Optional: replace the default Engine
+
+By default, `SimpleWServer` uses `SimpleWEngine` as its network engine.
+
+If you need a custom transport/listener implementation, you can replace it with `UseEngine(...)` before starting the server.
+
+```csharp
+var server = new SimpleWServer(IPAddress.Any, 8080);
+
+server.UseEngine(new MyCustomEngine());
+```
+
+Your custom engine must implement [`ISimpleWEngine`](../reference/isimplewengine.md).
+
+Typical use cases :
+- Customize how incoming connections are accepted
+- Experiment with another low-level listener implementation
+- Extend the default engine behavior in a dedicated class
+
+
 ## Optional: replace the default Router
 
 By default, SimpleW uses the built-in `Router` implementation.
@@ -84,6 +105,36 @@ Typical use cases :
 - Experiment with alternative routing pipelines
 
 
+## Optional: configure default Principal
+
+By default, requests use an anonymous principal.
+
+If you want the server to resolve a default principal for each request, you can use `ConfigurePrincipalResolver(...)`.
+
+```csharp
+server.ConfigurePrincipalResolver(session => {
+    if (session.Request.Headers.TryGetValue("X-User", out string? user) && !string.IsNullOrWhiteSpace(user)) {
+        return new HttpPrincipal(new HttpIdentity(
+            isAuthenticated: true,
+            authenticationType: "Header",
+            identifier: user,
+            name: user,
+            email: null,
+            roles: [ "user" ],
+            properties: null
+        ));
+    }
+
+    return HttpPrincipal.Anonymous;
+});
+```
+
+This is useful for simple global identity resolution.
+For shared authentication and authorization rules, middleware is usually a better fit.
+
+See the [Principal guide](./principal.md).
+
+
 ## Starting the server
 
 ### StartAsync (non-blocking)
@@ -91,7 +142,7 @@ Typical use cases :
 `StartAsync()` starts listening and returns immediately.
 
 ```csharp
-await server1.StartAsync();
+await server.StartAsync();
 
 // app continues running...
 Console.WriteLine("Server started!");
@@ -110,7 +161,7 @@ until the server is stopped or the provided token is cancelled.
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
 
-await server1.RunAsync(cts.Token);
+await server.RunAsync(cts.Token);
 ```
 
 
@@ -124,7 +175,7 @@ await server1.RunAsync(cts.Token);
 - resets server state
 
 ```csharp
-await server1.StopAsync();
+await server.StopAsync();
 ```
 
 Calling `StopAsync()` multiple times is safe (it returns early if already stopped/stopping).
@@ -139,7 +190,7 @@ Calling `StopAsync()` multiple times is safe (it returns early if already stoppe
 - Existing sessions are not the listener: reloading focuses on the **accept loop + endpoint/TLS**.
 
 ```csharp
-await server1.ReloadListenerAsync(s => {
+await server.ReloadListenerAsync(s => {
     s.UseAddress(IPAddress.Any);
     s.UsePort(9090);
     // Optional: switch TLS config too

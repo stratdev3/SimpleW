@@ -30,7 +30,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-rc.20260405-1683
+$ dotnet add package SimpleW.Helper.Razor --version 26.0.0-rc.20260417-1773
 ```
 
 
@@ -129,7 +129,7 @@ namespace Sample {
     }
 
     [Route("/home")]
-    public sealed class HomeController : RazorController {
+    public class HomeController : RazorController {
 
         [Route("GET", "/index")]
         public object Index() {

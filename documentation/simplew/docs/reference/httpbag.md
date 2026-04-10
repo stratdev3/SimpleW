@@ -48,3 +48,5 @@ public bool Remove(string key)
 /// </summary>
 public void Clear()
 ```
+
+See more [examples](../guide/middleware.md#bag-per-request-storage).

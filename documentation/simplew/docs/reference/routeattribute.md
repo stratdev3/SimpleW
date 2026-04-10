@@ -7,9 +7,23 @@ The primary goal of the `Route` attribute is to target methods and add them to t
 
 ```csharp
 /// <summary>
+/// Method (GET, POST...)
+/// </summary>
+public string Method { get; protected set; }
+```
+
+```csharp
+/// <summary>
 /// Host (optional)
 /// </summary>
 public string? Host { get; set; }
+```
+
+```csharp
+/// <summary>
+/// Path
+/// </summary>
+public string Path { get; protected set; }
 ```
 
 ```csharp
@@ -138,4 +152,16 @@ namespace Sample {
     }
 
 }
+```
+
+
+## SetPrefix
+
+```csharp
+/// <summary>
+/// Add prefix to Path
+/// </summary>
+/// <param name="prefix">The prefix.</param>
+/// <exception cref="ArgumentException">The argument 'prefix' must be specified.</exception>
+public void SetPrefix(string prefix)
 ```

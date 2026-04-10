@@ -113,7 +113,7 @@ Controllers are supported automatically.
 
 ```csharp
 [Route("/api/users")]
-public sealed class UsersController : Controller {
+public class UsersController : Controller {
 
     [Route("GET", "/list")]
     public object List(int page = 1) {

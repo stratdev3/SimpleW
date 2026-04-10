@@ -23,6 +23,29 @@ Telemetry is based on :
 - `System.Diagnostics.Metrics`
 - OpenTelemetry semantic conventions
 
+## Telemetry Flow
+
+```text
+Incoming request
+      |
+      v
+SimpleW request pipeline
+      |
+      +--> create trace span (Activity)
+      |
+      +--> record metrics (Meter)
+      |
+      +--> attach tags
+      |    (http, route, network, errors, instance)
+      |
+      v
+OpenTelemetry exporter
+      |
+      v
+Backend
+(Uptrace, Jaeger, Tempo, Datadog, ...)
+```
+
 
 ## Traces
 

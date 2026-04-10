@@ -44,13 +44,12 @@ How to replace old class/method/property with the new one.
 - `Response.MakeInternalServerErrorResponse()` => `Response.InternalServerError()`
 - `Response.MakeNotFoundResponse()` => `Response.NotFound()`
 - `Response.MakeRedirectResponse()` => `Response.Redirect()`
-- `Response.MakeAccessResponse()` => `Response.Access()`
-- `Response.MakeDownloadResponse()` => depending on the context `Response.Text()` or `Response.Body()` and then `Response.Body().Attachment(outputFilename)`.
+- `Response.MakeDownloadResponse()` => depending on the context `Response.Text()`, `Response.Body()` or `Response.File()` and then `Response.Body().Attachment(outputFilename)`.
 
 
 ### Controller
 
-- `webuser` => `User`
+- `webuser` => `Principal`
 
 ### RouteAttribute
 
@@ -59,7 +58,7 @@ How to replace old class/method/property with the new one.
 ### Extensions
 
 - `NetCoreServerExtension` => `SimpleWExtension`
-- `NetCoreServerExtension.CreateJwt()` => `Session.CreateJwt()`
+- `NetCoreServerExtension.CreateJwt()` => `new JwtBearerHelper(...).CreateToken()` with the [Jwt addon](../addons/helper-jwt.md)
 
 
 ### Removed
@@ -67,3 +66,4 @@ How to replace old class/method/property with the new one.
 - All the statistics properties from the `SimpleWServer` class (`ConnectedSessions`, `BytesPending`, `BytesSent`, `BytesReceived`) have been removed. They may appear in a future release, but not now.
 - `SimpleWServer.OptionSendBufferSize` property no longer exists.
 - `SimpleWServer.TrustXHeaders` property no longer exists (see [`SimpleWServer.ConfigureTelemetry()`](./observability.md) on how to add custom telemetry tags);
+- `Response.MakeAccessResponse()` method no longer exists.

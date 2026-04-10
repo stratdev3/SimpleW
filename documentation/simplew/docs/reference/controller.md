@@ -66,6 +66,18 @@ public HttpBag Bag => Session.Bag;
 This property can be used to pass data between middleware. See the [HttpBag](./httpbag.md) class for uses.
 
 
+## Metadata
+
+```csharp
+/// <summary>
+/// Gets the metadata attached to the matched handler.
+/// </summary>
+public HandlerMetadataCollection Metadata
+```
+
+See the [HandlerMetadataCollection](../guide/handler-attribute.md) class for uses.
+
+
 ## OnBeforeMethod
 
 This [callback](../guide/callback#onbeforemethod) is defined as

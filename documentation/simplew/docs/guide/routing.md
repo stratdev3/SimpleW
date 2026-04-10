@@ -104,6 +104,42 @@ This guarantees :
 - O(1) lookup for common routes
 - No ambiguity between exact and pattern routes
 
+### Resolution Diagram
+
+```text
+Incoming request: host + method + path
+                  |
+                  v
+      Try host-specific routes first
+                  |
+         +--------+--------+
+         |                 |
+      exact              pattern
+         |                 |
+         +--------+--------+
+                  |
+            no host match
+                  |
+                  v
+          Try global routes
+                  |
+         +--------+--------+
+         |                 |
+      exact              pattern
+         |                 |
+         +--------+--------+
+                  |
+             no route match
+                  |
+                  v
+           Fallback handler?
+             |         |
+            yes        no
+             |         |
+             v         v
+          handler   404 Not Found
+```
+
 
 ## Path Parameters
 

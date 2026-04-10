@@ -99,6 +99,39 @@ server.Configure(options => {
 See [`SimpleWSServerOptions`](./simplewserveroptions.md) for more information on all options and an [example](../guide/server#configuration)
 
 
+## UseEngine
+
+```csharp
+/// <summary>
+/// Network engine used by the server.
+/// </summary>
+public ISimpleWEngine Engine { get; private set; }
+```
+
+By default, `SimpleWServer` uses `SimpleWEngine`.
+
+```csharp
+/// <summary>
+/// Replace the current network engine implementation.
+/// Must be called before the server starts.
+/// </summary>
+/// <param name="engine"></param>
+/// <returns></returns>
+public SimpleWServer UseEngine(ISimpleWEngine engine)
+```
+
+Use this method when you want to replace the default network engine with your own implementation.
+
+Example :
+
+```csharp
+var server = new SimpleWServer(IPAddress.Any, 8080);
+server.UseEngine(new MyCustomEngine());
+```
+
+The custom engine must implement [`ISimpleWEngine`](../reference/isimplewengine.md).
+
+
 ## Control
 
 ```csharp
@@ -176,7 +209,7 @@ public SimpleWServer OnStopped(Func<SimpleWServer, Task> callback);
 See an [example](../guide/server.md#optional-lifecycle-callbacks-fluent).
 
 
-## Router
+## UseRouter
 
 ```csharp
 /// <summary>

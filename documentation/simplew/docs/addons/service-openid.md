@@ -1,246 +1,237 @@
 # OpenID
 
-The [`SimpleW.Service.OpenID`](https://www.nuget.org/packages/SimpleW.Service.OpenID) package provides OpenID Connect (OIDC) authentication for the SimpleW web server.
-It is implemented as a SimpleW middleware.
+The [`SimpleW.Service.OpenID`](https://www.nuget.org/packages/SimpleW.Service.OpenID) package provides a ready-to-use OpenID Connect module for SimpleW.
 
-It allows SimpleW applications to authenticate users using external identity providers such as **Google, Apple, Azure AD**, or **Keycloak**, using the standard **Authorization Code flow**.
+This package is built on top of [`SimpleW.Helper.OpenID`](./helper-openid.md) and adds a small policy layer:
+- restore the principal from the OpenID auth cookie
+- challenge decorated handlers automatically
+- map `login`, `callback`, and `logout` routes for you
 
-This module is **not based on ASP.NET**, does not rely on any hidden framework behavior, and integrates directly with SimpleW routing, sessions, and user model.
+It is designed for applications that want OpenID with minimal wiring while keeping the actual OIDC protocol work inside the helper package.
 
 
 ## Features
 
-It allows you to :
-- Authenticate users via OpenID Connect (OIDC)
-- Use external identity providers (Google, Apple, Azure AD, Keycloak, etc.)
-- Handle the full Authorization Code flow
-- Validate ID tokens (issuer, audience, lifetime, signature, nonce)
-- Create secure, cookie-based authentication sessions
-- Automatically restore authenticated users on each request
-- Map OpenID claims to SimpleW Principal (`HttpPrincipal`, `HttpIdentity`)
-- Support multiple identity providers
-- Keep full control over routing, cookies, and sessions
+It allows you to:
+- register one or more OpenID providers
+- keep the stateless helper behavior based on the provider `id_token`
+- restore `session.Principal` automatically
+- protect handlers with `[OpenIDAuth("provider")]`
+- expose ready-to-use `GET` routes for login, callback, and logout
+- reuse an existing `OpenIDHelper` when you already have one
 
 
 ## Requirements
 
 - .NET 8.0
 - SimpleW (core server)
-- Microsoft.IdentityModel.Protocols.OpenIdConnect 8.x (automatically included)
+- `SimpleW.Helper.OpenID` (automatically included)
 
 
 ## Installation
 
+Install the package from NuGet:
+
 ```sh
-$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-rc.20260405-1683
+$ dotnet add package SimpleW.Service.OpenID --version 26.0.0-rc.20260417-1773
 ```
 
 
 ## Configuration options
 
-### OpenIDMultiOptions (global / multi-provider)
-
-| Option | Default | Description |
-|------|---------|-------------|
-| BasePath | `/auth/oidc` | Base path for all OpenID routes (`/login/{provider}`, `/callback/{provider}`, `/logout`). |
-| DefaultProvider | `null` | Default provider used when calling `/auth/oidc/login` without specifying a provider. |
-| CookieName | `simplew_oidc` | Name of the authentication cookie shared across all providers. |
-| CookieSecure | `true` | Marks the authentication cookie as Secure (HTTPS only). |
-| CookieSameSite | `Lax` | SameSite policy for the authentication cookie. |
-| Add(name, configure) | — | Registers a new OpenID provider with its own OpenIDOptions. |
-
-### OpenIDOptions (per provider)
-
-| Option | Default | Description |
-|------|---------|-------------|
-| Authority* | — | OpenID provider base URL (e.g. `https://accounts.google.com`). |
-| ClientId* | — | OAuth2 / OpenID client identifier. |
-| ClientSecret* | — | Client secret used to authenticate against the token endpoint. |
-| PublicBaseUrl* | — | Public base URL of the application (used to build redirect URIs). |
-| RedirectUri | `null` | Explicit redirect URI. Overrides PublicBaseUrl if set. |
-| Scopes | `openid profile email` | Scopes requested during authentication. |
-| RequireHttpsMetadata | `true` | Requires HTTPS when retrieving OIDC discovery metadata. |
-| StateTtlMinutes | `10` | Lifetime of the temporary authentication state (state + nonce). |
-| SessionTtlMinutes | `480` | Default session lifetime when the provider does not specify one. |
-| ClockSkewSeconds | `60` | Allowed clock skew when validating token timestamps. |
-| CleanupEveryNRequests | `256` | Number of requests between cleanup passes (no background timers). |
-| CookieName | inherited | Cookie name (usually inherited from OpenIDMultiOptions). |
-| CookieSecure | inherited | Marks the authentication cookie as Secure. |
-| CookieSameSite | inherited | SameSite policy for the authentication cookie. |
-| SaveTokens | `false` | Stores provider tokens (id_token, access_token) in memory. |
-| Prompt | `null` | Optional OIDC prompt parameter (e.g. `select_account`). |
-| LoginHint | `null` | Enables support for the login_hint query parameter. |
-| ClientAuthentication | `Basic` | Client authentication method (Basic or PostBody). |
-| HttpClient | `null` | Custom HttpClient used for OIDC requests. |
-| PrincipalFactory | default | Maps an OpenID session to a SimpleW Principal instance. |
-
-### ClientAuthMode
-
-| Value | Description |
-|------|-------------|
-| Basic | Uses HTTP Basic authentication (`Authorization: Basic base64(client_id:client_secret)`). |
-| PostBody | Sends client_secret in the POST body (supported by some providers). |
-
-
-## Minimal Example
+### UseOpenIDModule
 
 ```csharp
 server.UseOpenIDModule(options => {
-    options.Add("google", o => {
-        o.Authority = "https://accounts.google.com";
-        o.ClientId = "<client-id>";
-        o.ClientSecret = "<client-secret>";
-        o.PublicBaseUrl = "https://myapp.example.com";
-    });
-
-    options.DefaultProvider = "google";
-});
-```
-
-This configuration enables :
-- `/auth/oidc/login/google`
-- `/auth/oidc/callback/google`
-- `/auth/oidc/logout`
-
-
-### Multi-provider usage
-
-You can configure multiple identity providers at the same time :
-
-```csharp
-server.UseOpenIDModule(options => {
-    options.Add("google", o => {
-        o.Authority = "https://accounts.google.com";
-        o.ClientId = "<google-client-id>";
-        o.ClientSecret = "<google-client-secret>";
-        o.PublicBaseUrl = "https://myapp.example.com";
-    });
-    options.Add("apple", o => {
-        o.Authority = "https://appleid.apple.com";
-        o.ClientId = "<apple-client-id>";
-        o.ClientSecret = "<apple-client-secret>";
-        o.PublicBaseUrl = "https://myapp.example.com";
+    options.Add("google", provider => {
+        provider.Authority = "https://accounts.google.com";
+        provider.ClientId = "<google-client-id>";
+        provider.ClientSecret = "<google-client-secret>";
+        provider.RedirectUri = "https://app.example.com/auth/oidc/callback/google";
     });
 });
 ```
 
-Each provider is accessed through :
+The module maps these routes under `BasePath`:
+- `GET {BasePath}/login/:provider`
+- `GET {BasePath}/callback/:provider`
+- `GET {BasePath}/logout`
 
-```
-/auth/oidc/login/{provider}
-/auth/oidc/callback/{provider}
-```
+By default, `BasePath` is `/auth/oidc`.
 
-Example :
+### OpenIDModuleOptions
 
-```
-/auth/oidc/login/google
-/auth/oidc/login/apple
-```
+`OpenIDModuleOptions` extends `OpenIDHelperOptions`, so it inherits:
+- `CookieName`
+- `ChallengeCookieNamePrefix`
+- `CookiePath`
+- `CookieDomain`
+- `CookieSecure`
+- `CookieHttpOnly`
+- `CookieSameSite`
+- `SessionLifetime`
+- `ChallengeLifetime`
+- `BackchannelTimeout`
+- `Backchannel`
+- `AllowExternalReturnUrls`
+- `CookieProtectionKey`
+- `PrincipalFactory`
+- `Add(...)` for providers
+
+And adds the module-specific properties below:
+
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `BasePath` | `/auth/oidc` | Base path used for the technical OpenID routes. |
+| `RestorePrincipal` | `true` | Restores `session.Principal` from the OpenID cookie before the handler runs. |
+| `AutoChallenge` | `true` | Automatically redirects unauthenticated handlers decorated with `OpenIDAuthAttribute`. Requires `RestorePrincipal = true`. |
+| `Helper` | `null` | Reuses an existing `OpenIDHelper` instead of creating one from inline options. |
+| `ModulePrincipalFactory` | `null` | Optional module-level principal factory that receives route information in addition to the validated OpenID context. |
+
+When `Helper` is provided, do not combine it with inline helper settings such as:
+- provider registration through `Add(...)`
+- cookie settings
+- `PrincipalFactory`
+- `ModulePrincipalFactory`
+
+### Metadata attributes
+
+| Attribute | Description |
+| --------- | ----------- |
+| `[OpenIDAuth("google")]` | Requires an authenticated OpenID principal for the named provider and redirects to the module login route when needed. |
+| `[AllowAnonymous]` | Bypasses the module auto-challenge behavior for the decorated handler. |
 
 
-## Login flow
-
-1. User accesses `/auth/oidc/login/:provider`
-2. User is redirected to the identity provider
-3. Provider redirects back to `/auth/oidc/callback/:provider`
-4. Authorization code is exchanged for tokens
-5. ID token is validated (OIDC rules)
-6. A secure authentication cookie is created
-7. User is redirected back to the original page
-
-
-## Principal session handling
-
-After authentication :
-
-- A secure cookie is stored on the client
-- Session data is stored in memory on the server
-- On each request, the module :
-  - Reads the cookie
-  - Restores the session
-  - Injects the authenticated user into `HttpSession.Principal`
+## Minimal example
 
 ```csharp
-if (session.Principal.IsAuthenticated) {
-    // user is authenticated
+using System.Net;
+using SimpleW;
+using SimpleW.Service.OpenID;
+
+var server = new SimpleWServer(IPAddress.Any, 8080);
+
+server.UseOpenIDModule(options => {
+    options.CookieSecure = false; // local HTTP development only
+
+    options.Add("google", provider => {
+        provider.Authority = "https://accounts.google.com";
+        provider.ClientId = "<google-client-id>";
+        provider.ClientSecret = "<google-client-secret>";
+        provider.RedirectUri = "http://127.0.0.1:8080/auth/oidc/callback/google";
+    });
+});
+
+server.MapController<AccountController>("/api");
+
+await server.RunAsync();
+
+[Route("/account")]
+public class AccountController : Controller {
+
+    [AllowAnonymous]
+    [Route("GET", "/public")]
+    public object Public() {
+        return new {
+            login = "/auth/oidc/login/google?returnUrl=/api/account/me",
+            logout = "/auth/oidc/logout?returnUrl=/"
+        };
+    }
+
+    [OpenIDAuth("google")]
+    [Route("GET", "/me")]
+    public object Me() {
+        return new {
+            isAuthenticated = Principal.IsAuthenticated,
+            name = Principal.Name,
+            email = Principal.Email,
+            provider = Principal.Get("provider")
+        };
+    }
+
 }
 ```
 
-::: info
-See more info about [Principal](../guide/principal.md)
-:::
+With this configuration:
+- the module restores the principal from the auth cookie
+- `/api/account/me` redirects to the provider login flow when the user is anonymous
+- `/auth/oidc/login/google` starts the challenge flow
+- `/auth/oidc/callback/google` completes the login and redirects to `returnUrl`
+- `/auth/oidc/logout` clears the local auth cookie and redirects to `returnUrl`
 
 
-## Accessing the authenticated principal
+## Reusing a pre-built helper
 
-Example API endpoint :
+If you already have a configured helper, inject it directly:
 
 ```csharp
-server.Router.MapGet("/api/me", (HttpSession session) => {
-    if (!session.Principal.IsAuthenticated) {
-        return session.Response
-                      .Unauthorized()
-                      .SendAsync();
-    }
+using SimpleW.Helper.OpenID;
+using SimpleW.Service.OpenID;
 
-    return session.Response.Json(new {
-        session.Principal
-    }).SendAsync();
+OpenIDHelper oidc = new(options => {
+    options.CookieSecure = false;
+
+    options.Add("google", provider => {
+        provider.Authority = "https://accounts.google.com";
+        provider.ClientId = "<google-client-id>";
+        provider.ClientSecret = "<google-client-secret>";
+        provider.RedirectUri = "http://127.0.0.1:8080/auth/oidc/callback/google";
+    });
+});
+
+server.UseOpenIDModule(options => {
+    options.BasePath = "/auth/oidc";
+    options.Helper = oidc;
 });
 ```
 
+When `Helper` is provided, the module reuses it as-is.
 
-## Principal mapping (`PrincipalFactory`)
+If that helper uses a custom `PrincipalFactory`, keep a provider marker such as the `provider` identity property so `[OpenIDAuth("provider")]` can distinguish providers correctly.
 
-By default, OpenID claims are mapped to a `HttpPrincipal`.
 
-You can fully customize this behavior :
+## Principal Mapping (PrincipalFactory)
+
+Because `OpenIDModuleOptions` inherits `OpenIDHelperOptions`, you can keep using the regular helper `PrincipalFactory`:
 
 ```csharp
-options.Add("google", o => {
-    o.PrincipalFactory = auth => {
+server.UseOpenIDModule(options => {
+    options.Add("google", provider => {
+        provider.Authority = "https://accounts.google.com";
+        provider.ClientId = "<google-client-id>";
+        provider.ClientSecret = "<google-client-secret>";
+        provider.RedirectUri = "https://app.example.com/auth/oidc/callback/google";
+    });
 
-        string? Claim(string type) => auth.Claims.FirstOrDefault(c => c.Type == type)?.Value;
+    options.PrincipalFactory = context => {
+        string subject = context.ClaimsPrincipal.FindFirst("sub")?.Value ?? "";
+        string? email = context.ClaimsPrincipal.FindFirst("email")?.Value;
 
-        var identity = new HttpIdentity(
+        return new HttpPrincipal(new HttpIdentity(
             isAuthenticated: true,
-            authenticationType: "OpenID",
-            identifier: Claim("sub"),
-            name: Claim("name") ?? Claim("preferred_username"),
-            email: Claim("email"),
-            roles: auth.Claims .Where(c => c.Type == "role" || c.Type == "roles" || c.Type == "groups")
-                               .Select(c => c.Value)
-                               .Distinct()
-                               .ToArray(),
-            properties: auth.Claims.Select(c => new IdentityProperty(c.Type, c.Value))
-        );
-
-        return new HttpPrincipal(identity);
+            authenticationType: $"OpenID:{context.ProviderName}",
+            identifier: subject,
+            name: email,
+            email: email,
+            roles: [ "user" ],
+            properties: [
+                new IdentityProperty("provider", context.ProviderName),
+                new IdentityProperty("subject", subject)
+            ]
+        ));
     };
 });
 ```
 
-Notes :
-- `auth.Claims` contains all claims returned by the OpenID provider.
-- `PrincipalFactory` is executed:
-  - After successful authentication
-  - When restoring the session from the authentication cookie
-- If not specified, a default implementation is used.
+If you also need module route information such as `BasePath`, use `ModulePrincipalFactory` instead.
 
 
-## Security considerations
+## When to use the helper package instead
 
-- State and nonce are generated for each login attempt
-- State values have a configurable TTL
-- ID tokens are fully validated
-- Cookies support Secure and SameSite settings
-- Open redirects are explicitly prevented
+Use [`SimpleW.Helper.OpenID`](./helper-openid.md) instead of this service package when you want:
+- a custom middleware that decides auth policy differently
+- technical routes fully controlled by the application
+- advanced multi-auth strategies mixing OpenID with other schemes
 
-
-## Limitations
-
-- Sessions are stored in memory (not distributed)
-- No refresh token rotation by default
-- Facebook is not a native OIDC provider (use Keycloak or Auth0)
-- Apple requires a JWT-based client secret
+The service package is intentionally thin.
+It is a convenience wrapper around `OpenIDHelper`.

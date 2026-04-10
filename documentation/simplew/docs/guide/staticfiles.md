@@ -4,6 +4,42 @@ Not only can you serve all your static files, but SimpleW is also great at servi
 
 That's the goal of the [`StaticFilesModule`](../reference/staticfilesmodule.md).
 
+## Static File Resolution Flow
+
+```text
+Incoming request path
+      |
+      v
+Prefix match?
+  | no
+  v
+next route / 404
+
+  yes
+   |
+   v
+Map URL to file path
+   |
+   v
+File exists?
+  | no -------------------------> 404 or auto-index
+  |
+  yes
+   |
+   v
+Cache enabled?
+  | yes --> serve cached entry / refresh via watcher
+  | no  --> read from disk
+   |
+   v
+Range header?
+  | yes --> Partial Content
+  | no  --> Full file
+   |
+   v
+Response sent
+```
+
 
 ## Basic
 

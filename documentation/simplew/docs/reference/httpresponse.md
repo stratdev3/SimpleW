@@ -323,14 +323,6 @@ public HttpResponse Forbidden(string? body = null)
 
 ```csharp
 /// <summary>
-/// Access 401/403
-/// </summary>
-/// <returns></returns>
-public HttpResponse Access()
-```
-
-```csharp
-/// <summary>
 /// Attachment
 /// </summary>
 /// <returns></returns>

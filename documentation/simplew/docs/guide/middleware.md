@@ -4,6 +4,35 @@ SimpleW provides a lightweight and flexible middleware pipeline.
 A middleware allows you to intercept an HTTP request, execute custom logic, and decide whether
 to continue the pipeline or short-circuit the response.
 
+## Pipeline Diagram
+
+```text
+Incoming HTTP request
+        |
+        v
+Middleware 1
+   |  \
+   |   \-- return a response directly ----------> Response sent
+   v
+Middleware 2
+   |  \
+   |   \-- return a response directly ----------> Response sent
+   v
+Handler / Controller
+        |
+        v
+HttpResultHandler / HttpResponse
+        |
+        v
+Response sent
+        ^
+        |
+Middleware 2 resumes after await next()
+        ^
+        |
+Middleware 1 resumes after await next()
+```
+
 ## Registering a Middleware
 
 You can register a middleware using the [`UseMiddleware`](../reference/simplewserver.md#usemiddleware) method :
@@ -102,10 +131,11 @@ This makes it easy to implement :
 SimpleW provides a lightweight **per-request storage container** called the **Bag**.
 
 The Bag allows middlewares, handlers, and controllers to **share data during the lifetime of a single HTTP request**.
-
-It is conceptually similar to `HttpContext.Items` in ASP.NET Core.
-
 The Bag is attached to the [`HttpSession`](../reference/httpsession.md#bag) and is automatically reset for every request.
+
+::: info
+It is conceptually similar to `HttpContext.Items` in ASP.NET Core.
+:::
 
 ### Why Bags Exist
 

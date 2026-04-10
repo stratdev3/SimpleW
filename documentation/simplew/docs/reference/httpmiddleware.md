@@ -22,3 +22,5 @@ public delegate ValueTask HttpMiddleware(HttpSession session, Func<ValueTask> ne
 
 Calling `next()` continues the request processing.
 If `next()` is not called, the pipeline stops and the response is considered handled.
+
+See more [examples](../guide/middleware.md).

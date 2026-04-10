@@ -45,10 +45,10 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 | Routing                              | ✅ (minimal, attribute, querystring, regexp, path, wildcard) | ✅ (minimal, attribute, querystring, path, wildcard, host) |
 | Minimal API                          | ✅                       | ✅                                           |
 | Controllers                          | ✅                       | ✅                                           |
+| Custome attribute                    | ❌                       | ✅                                           |
 | SSL / HTTPS                          | ✅ (SslContext)          | ✅  (SslContext, mutual authentication)      |
 | WebSocket                            | ✅ (full broadcast)      | ✅ (smart broadcast using "rooms")           |
 | Server-Sent Events (SSE)             | ✅                       | ✅ (smart broadcast using "rooms")           |
-| Basic Auth                           | ❌                       | ✅                                           |
 | Unix socket                          | ✅                       | ✅                                           |
 | Static files                         | ✅ (Cache, FileWatcher)  | ✅ (Cache, FileWatcher, Last-Modified, Etag) |
 | Cross-Origin Resource Sharing (CORS) | ✅                       | ✅                                           |
@@ -67,7 +67,7 @@ There is a [complete migration guide](../guide/migrate-from-v16.md).
 | Documentation                        | ✅                                     | ✅ [simplew.net](https://simplew.net/v26/)                  |
 | Tests                                | ✅                                     | ✅ (more tests)                                             |
 | Support                              | ❌                                     | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                 |
-| Addons                               | ❌                                     | ✅ Chaos, Firewall, Hosting, Jwt, Latency, Log4net, OpenID, Razor, Swagger, LetsEncrypt, Templates, Serilog, Log4net |
+| Addons                               | ❌                                     | ✅ BasicAuth, Chaos, Firewall, Hosting, Jwt, Latency, Log4net, OpenID, Razor, Swagger, LetsEncrypt, Templates, Serilog, Log4net |
 
 
 

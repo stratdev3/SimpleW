@@ -89,3 +89,5 @@ public string? Get(string key)
 /// <returns></returns>
 public bool Has(string key, string? value = null)
 ```
+
+See more [examples](../guide/principal.md#httpidentity).

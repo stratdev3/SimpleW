@@ -11,3 +11,5 @@ The primary goal of the `Router` is to execute a `delegate` based on the [`Metho
 /// </summary>
 public List<Route> Routes { get; private set; }
 ```
+
+See more [examples](../guide/routing.md).

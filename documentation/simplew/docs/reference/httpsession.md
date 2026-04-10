@@ -26,6 +26,8 @@ This property can be used to control [`Server`](./simplewserver.md) from any [`C
 public IJsonEngine JsonEngine;
 ```
 
+See the [interface](./isimplewengine.md). See the [examples](../guide/jsonengine.md).
+
 
 ## Request
 
@@ -65,7 +67,20 @@ You should always used the `Response` to send data to a client.
 public HttpPrincipal Principal
 ```
 
-The current [`HttpPrincipal`](../reference/httpprincipal.md) use for this session. See 
+The current [`HttpPrincipal`](../reference/httpprincipal.md) use for this session. See the [examples](../guide/principal.md).
+
+
+## Metadata
+
+```csharp
+/// <summary>
+/// Metadata attached to the currently matched handler.
+/// Empty when no metadata is defined or no route matched yet.
+/// </summary>
+public HandlerMetadataCollection Metadata { get; internal set; }
+```
+
+See the [examples](../guide/handler-attribute.md).
 
 
 ## Bag
@@ -76,6 +91,22 @@ The current [`HttpPrincipal`](../reference/httpprincipal.md) use for this sessio
 /// </summary>
 public HttpBag Bag;
 ```
+
+See the [class](./httpbag.md). See the [examples](../guide/middleware.md#bag-per-request-storage).
+
+
+## ClientIPAddress
+
+```csharp
+/// <summary>
+/// Client IPAddress
+/// </summary>
+/// <returns></returns>
+public IPAddress? ClientIpAddress
+```
+
+See the [examples](../guide/observability.md#custom-client-ip-resolution).
+
 
 ## ClientCertificate
 
@@ -135,4 +166,35 @@ public async ValueTask SendAsync(ArraySegment<byte> header, ArraySegment<byte> b
 /// <returns></returns>
 /// <exception cref="InvalidOperationException"></exception>
 public async ValueTask SendAsync(ArraySegment<byte> buffer)
+```
+
+
+## Socket
+
+```csharp
+/// <summary>
+/// Gets the underlying socket.
+/// </summary>
+public Socket Socket { get; }
+```
+
+
+## TransportStream
+
+```csharp
+/// <summary>
+/// Gets the underlying transport as a <see cref="Stream"/> (<see cref="NetworkStream"/> or <see cref="SslStream"/>).
+/// Callers must not dispose this stream, as doing so would close the socket.
+/// </summary>
+public Stream TransportStream { get; }
+```
+
+
+## TryTakeTransportOwnership
+
+```csharp
+/// <summary>
+/// Stops HTTP parsing and transfers transport ownership.
+/// </summary>
+internal bool TryTakeTransportOwnership()
 ```

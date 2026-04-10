@@ -210,7 +210,7 @@ You can bypass `HttpResponse` entirely and send raw bytes directly to the client
 
 ```csharp [Delegate Handler]
 server.MapGet("/raw", async ValueTask (HttpSession session) => {
-    await session.Response.SendAsync(BuildRawResponse());
+    await session.SendAsync(BuildRawResponse());
 });
 ```
 

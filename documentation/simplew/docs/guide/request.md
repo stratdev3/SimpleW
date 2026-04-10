@@ -28,6 +28,22 @@ The request body is **only valid while the handler is running**.
 
 This design avoids allocations and keeps SimpleW fast and predictable.
 
+## Request Body API Map
+
+Prefered method to get `Body` depending on the payload.
+
+```text
+Incoming request body
+      |
+      +-- small text payload ------------------> BodyString
+      |
+      +-- JSON or form fields -----------------> BodyMap(...)
+      |
+      +-- multipart small upload -------------> BodyMultipart()
+      |
+      +-- multipart large / production -------> BodyMultipartStream()
+```
+
 
 ## Query String and Route Values
 
