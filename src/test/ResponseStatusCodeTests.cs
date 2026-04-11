@@ -133,61 +133,6 @@ namespace test {
             PortManager.ReleasePort(server.Port);
         }
 
-        [Fact]
-        public async Task Response_StatusCode_401_Access() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (HttpSession session) => {
-                return session.Response.Access();
-            });
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
-        [Fact]
-        public async Task Response_StatusCode_403_Access() {
-
-            // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.MapGet("/", (HttpSession session) => {
-                session.Principal = new(new HttpIdentity(
-                    isAuthenticated: true,
-                    authenticationType: null,
-                    identifier: null,
-                    name: null,
-                    email: null,
-                    roles: null,
-                    properties: null
-                ));
-                return session.Response.Access();
-            });
-            await server.StartAsync();
-
-            // client
-            var client = new HttpClient();
-            var response = await client.GetAsync($"http://{server.Address}:{server.Port}/");
-            var content = await response.Content.ReadAsStringAsync();
-
-            // asserts
-            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
-
-            // dispose
-            await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
-        }
-
     }
 
 }

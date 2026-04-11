@@ -1057,17 +1057,6 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Returns 401 if the user is unauthenticated; otherwise returns 403.
-        /// </summary>
-        /// <returns>The current response instance.</returns>
-        public HttpResponse Access() {
-            if (!_session.Principal.IsAuthenticated) {
-                return Unauthorized();
-            }
-            return Forbidden();
-        }
-
-        /// <summary>
         /// Marks the response as a downloadable attachment.
         /// </summary>
         /// <returns>The current response instance.</returns>
