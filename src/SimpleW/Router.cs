@@ -183,7 +183,18 @@
         /// <param name="path"></param>
         /// <param name="executor"></param>
         public void Map(string method, string path, HttpRouteExecutor executor) {
-            Map(method, host: null, path, executor);
+            Map(method, host: null, path, executor, HandlerMetadataCollection.Empty);
+        }
+
+        /// <summary>
+        /// Maps an HTTP method and path to a route executor with handler metadata.
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="path"></param>
+        /// <param name="executor"></param>
+        /// <param name="metadata"></param>
+        public void Map(string method, string path, HttpRouteExecutor executor, HandlerMetadataCollection metadata) {
+            Map(method, host: null, path, executor, metadata);
         }
 
         /// <summary>
@@ -194,15 +205,29 @@
         /// <param name="path"></param>
         /// <param name="executor"></param>
         public void Map(string method, string? host, string path, HttpRouteExecutor executor) {
+            Map(method, host, path, executor, HandlerMetadataCollection.Empty);
+        }
+
+        /// <summary>
+        /// Maps an HTTP method, host, and path to a route executor with handler metadata.
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="executor"></param>
+        /// <param name="metadata"></param>
+        public void Map(string method, string? host, string path, HttpRouteExecutor executor, HandlerMetadataCollection metadata) {
             ArgumentNullException.ThrowIfNull(method);
             ArgumentNullException.ThrowIfNull(path);
             ArgumentNullException.ThrowIfNull(executor);
+            ArgumentNullException.ThrowIfNull(metadata);
 
             Route route = new(
                 string.IsNullOrWhiteSpace(host)
                     ? new RouteAttribute(method, path)
                     : new RouteAttribute(method, path) { Host = host },
-                executor
+                executor,
+                metadata
             );
 
             AddRouteInternal(route);
@@ -216,7 +241,10 @@
         /// <param name="path"></param>
         /// <param name="handler"></param>
         public void Map(string method, string? host, string path, Delegate handler) {
-            Map(method, host, path, RouteExecutorFactory.Create(handler));
+            ArgumentNullException.ThrowIfNull(method);
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(handler);
+            Map(method, host, path, RouteExecutorFactory.Create(handler), RouteExecutorFactory.GetMetadata(handler));
         }
 
         /// <summary>
@@ -226,6 +254,9 @@
         /// <param name="path"></param>
         /// <param name="handler"></param>
         public void Map(string method, string path, Delegate handler) {
+            ArgumentNullException.ThrowIfNull(method);
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(handler);
             Map(method, host: null, path, handler);
         }
 
@@ -288,7 +319,8 @@
                             IsAbsolutePath = route.Attribute.IsAbsolutePath,
                             Description = route.Attribute.Description
                         },
-                        route.Executor
+                        route.Executor,
+                        route.Metadata
                     ));
                     return;
                 }
@@ -424,11 +456,13 @@
             // 3. fallback
             if (_fallback != null) {
                 session.Request.ParserSetRouteTemplate(":fallback");
+                session.Metadata = _fallbackMetadata;
                 return ExecutePipelineAsync(session, _fallback);
             }
 
             // 4. at last, return a 404
             session.Request.ParserSetRouteTemplate(":notfound");
+            session.Metadata = HandlerMetadataCollection.Empty;
             return ExecutePipelineAsync(session,_notFoundExecutor);
         }
 
@@ -488,6 +522,7 @@
             // GET / POST exact
             if (dict != null && dict.TryGetValue(session.Request.Path, out route)) {
                 session.Request.ParserSetRouteTemplate(route.Attribute.Path);
+                session.Metadata = route.Metadata;
                 executor = route.Executor;
                 return true;
             }
@@ -498,6 +533,7 @@
                 && otherDict.TryGetValue(session.Request.Path, out route)
             ) {
                 session.Request.ParserSetRouteTemplate(route.Attribute.Path);
+                session.Metadata = route.Metadata;
                 executor = route.Executor;
                 return true;
             }
@@ -553,6 +589,7 @@
 
             session.Request.ParserSetRouteValues(bestValues);
             session.Request.ParserSetRouteTemplate(best.Route.Attribute.Path);
+            session.Metadata = best.Route.Metadata;
             executor = best.Route.Executor;
             return true;
         }
@@ -567,6 +604,11 @@
         private HttpRouteExecutor? _fallback;
 
         /// <summary>
+        /// Metadata attached to the fallback handler.
+        /// </summary>
+        private HandlerMetadataCollection _fallbackMetadata = HandlerMetadataCollection.Empty;
+
+        /// <summary>
         /// Registers the fallback handler.
         /// </summary>
         /// <param name="handler"></param>
@@ -576,6 +618,7 @@
                 throw new InvalidOperationException("Fallback must be registered on the root router only.");
             }
             _fallback = RouteExecutorFactory.Create(handler);
+            _fallbackMetadata = RouteExecutorFactory.GetMetadata(handler);
         }
 
         #endregion fallback

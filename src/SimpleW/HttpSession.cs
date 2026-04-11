@@ -139,6 +139,12 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Metadata attached to the currently matched handler.
+        /// Empty when no metadata is defined or no route matched yet.
+        /// </summary>
+        public HandlerMetadataCollection Metadata { get; internal set; } = HandlerMetadataCollection.Empty;
+
+        /// <summary>
         /// Gets the underlying socket.
         /// </summary>
         public Socket Socket => _socket;
@@ -724,6 +730,8 @@ namespace SimpleW {
             _pendingResponseException = null;
             // reset bag
             _bag?.Clear();
+            // reset handler metadata
+            Metadata = HandlerMetadataCollection.Empty;
             // reset principal
             _principal = HttpPrincipal.Anonymous;
             _principalResolved = false;

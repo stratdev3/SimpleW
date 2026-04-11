@@ -32,6 +32,11 @@ namespace SimpleW {
         public HttpBag Bag => Session.Bag;
 
         /// <summary>
+        /// Gets the metadata attached to the matched handler.
+        /// </summary>
+        public HandlerMetadataCollection Metadata => Session.Metadata;
+
+        /// <summary>
         /// Called before any Controller.Method()
         /// </summary>
         public virtual void OnBeforeMethod() { }

@@ -636,10 +636,12 @@ namespace SimpleW {
                     continue;
                 }
 
+                HttpRouteExecutor handlerDelegate = Create(controllerType, method);
+                HandlerMetadataCollection metadata = GetMetadata(controllerType, method);
+
                 foreach (RouteAttribute attr in methodRoutes.Where(a => !string.IsNullOrWhiteSpace(a.Method) && a.Method != "*")) {
-                    HttpRouteExecutor handlerDelegate = Create(controllerType, method);
                     string fullPath = BuildFullPath(basePrefix ?? string.Empty, controllerPrefix, attr);
-                    router.Map(attr.Method, (!string.IsNullOrWhiteSpace(attr.Host) ? attr.Host : classHost), fullPath, handlerDelegate);
+                    router.Map(attr.Method, (!string.IsNullOrWhiteSpace(attr.Host) ? attr.Host : classHost), fullPath, handlerDelegate, metadata);
                 }
             }
         }
@@ -931,6 +933,49 @@ namespace SimpleW {
         }
 
         #endregion argument
+
+        #region handler metadata
+
+        /// <summary>
+        /// Get metadata from a delegate handler.
+        /// Class metadata is collected before method metadata.
+        /// </summary>
+        /// <param name="handler"></param>
+        /// <returns></returns>
+        internal static HandlerMetadataCollection GetMetadata(Delegate handler) {
+            ArgumentNullException.ThrowIfNull(handler);
+
+            Type? declaringType = handler.Target?.GetType() ?? handler.Method.DeclaringType;
+            return GetMetadata(declaringType, handler.Method);
+        }
+
+        /// <summary>
+        /// Get metadata from a controller class and action method.
+        /// Class metadata is collected before method metadata.
+        /// </summary>
+        /// <param name="declaringType"></param>
+        /// <param name="method"></param>
+        /// <returns></returns>
+        private static HandlerMetadataCollection GetMetadata(Type? declaringType, MethodInfo method) {
+            ArgumentNullException.ThrowIfNull(method);
+
+            IEnumerable<IHandlerMetadata> classMetadata = declaringType?.GetCustomAttributes(inherit: true)
+                                                                        .OfType<IHandlerMetadata>()
+                                                          ?? Enumerable.Empty<IHandlerMetadata>();
+
+            IEnumerable<IHandlerMetadata> methodMetadata = method.GetCustomAttributes(inherit: true)
+                                                                 .OfType<IHandlerMetadata>();
+
+            IHandlerMetadata[] items = classMetadata.Concat(methodMetadata).ToArray();
+
+            if (items.Length == 0) {
+                return HandlerMetadataCollection.Empty;
+            }
+
+            return new HandlerMetadataCollection(items);
+        }
+
+        #endregion handler metadata
 
         #region helpers
 

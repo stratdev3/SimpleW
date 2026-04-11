@@ -21,9 +21,19 @@ namespace SimpleW {
         void Map(string method, string path, HttpRouteExecutor executor);
 
         /// <summary>
+        /// Map Method/Path to an executor with handler metadata.
+        /// </summary>
+        void Map(string method, string path, HttpRouteExecutor executor, HandlerMetadataCollection metadata);
+
+        /// <summary>
         /// Map Method/Host/Path to an executor.
         /// </summary>
         void Map(string method, string? host, string path, HttpRouteExecutor executor);
+
+        /// <summary>
+        /// Map Method/Host/Path to an executor with handler metadata.
+        /// </summary>
+        void Map(string method, string? host, string path, HttpRouteExecutor executor, HandlerMetadataCollection metadata);
 
         /// <summary>
         /// Map Method/Path to a delegate.
