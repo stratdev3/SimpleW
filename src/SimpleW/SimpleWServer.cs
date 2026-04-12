@@ -19,11 +19,6 @@ namespace SimpleW {
         /// </summary>
         private static readonly ILogger _log = new Logger<SimpleWServer>();
 
-        /// <summary>
-        /// Router
-        /// </summary>
-        public IRouter Router { get; private set; }
-
         #region constructor
 
         /// <summary>
@@ -40,10 +35,46 @@ namespace SimpleW {
         public SimpleWServer(EndPoint endpoint) {
             EndPoint = endpoint;
             Router = new Router();
+            Engine = new SimpleWEngine();
             Options = new SimpleWSServerOptions();
         }
 
         #endregion constructor
+
+        #region options
+
+        /// <summary>
+        /// Options
+        /// </summary>
+        internal SimpleWSServerOptions Options { get; private set; }
+
+        /// <summary>
+        /// Configure
+        /// </summary>
+        /// <param name="configure"></param>
+        /// <returns></returns>
+        /// <example>
+        /// server.Configure(options => {
+        ///     options.ReuseAddress = true;
+        ///     options.TcpNoDelay = true;
+        ///     options.TcpKeepAlive = true;
+        /// });
+        /// </example>
+        public SimpleWServer Configure(Action<SimpleWSServerOptions> configure) {
+            ArgumentNullException.ThrowIfNull(configure);
+
+            if (IsStarted) {
+                InvalidOperationException ex = new("Server options must be configured before starting the server.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
+            }
+
+            configure(Options);
+            return this;
+        }
+
+
+        #endregion options
 
         #region endpoint
 
@@ -115,12 +146,12 @@ namespace SimpleW {
 
         #endregion endpoint
 
-        #region actions
+        #region engine
 
         /// <summary>
-        /// Options
+        /// Network engine used by the server.
         /// </summary>
-        internal SimpleWSServerOptions Options { get; private set; }
+        public ISimpleWEngine Engine { get; private set; }
 
         /// <summary>
         /// Is the server started?
@@ -153,27 +184,21 @@ namespace SimpleW {
         private Task? _lifetimeTask;
 
         /// <summary>
-        /// Configure
+        /// Replace the current network engine implementation.
+        /// Must be called before the server starts.
         /// </summary>
-        /// <param name="configure"></param>
+        /// <param name="engine"></param>
         /// <returns></returns>
-        /// <example>
-        /// server.Configure(options => {
-        ///     options.ReuseAddress = true;
-        ///     options.TcpNoDelay = true;
-        ///     options.TcpKeepAlive = true;
-        /// });
-        /// </example>
-        public SimpleWServer Configure(Action<SimpleWSServerOptions> configure) {
-            ArgumentNullException.ThrowIfNull(configure);
+        public SimpleWServer UseEngine(ISimpleWEngine engine) {
+            ArgumentNullException.ThrowIfNull(engine);
 
             if (IsStarted) {
-                InvalidOperationException ex = new("Server options must be configured before starting the server.");
-                _log.Warn(ex.Message, ex);
+                InvalidOperationException ex = new("Engine must be configured before starting the server.");
+                _log.Fatal(ex.Message, ex);
                 throw ex;
             }
 
-            configure(Options);
+            Engine = engine;
             return this;
         }
 
@@ -182,9 +207,9 @@ namespace SimpleW {
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <example>await server.StartAsync(appLifetime.ApplicationStopping);</example>
-        public Task StartAsync(CancellationToken cancellationToken = default) {
+        public async Task StartAsync(CancellationToken cancellationToken = default) {
             if (IsStarted) {
-                return Task.CompletedTask;
+                return;
             }
 
             _log.Info($"server starting...");
@@ -194,18 +219,32 @@ namespace SimpleW {
 
             IsStopping = false;
 
-            ListenSocket();
-            StartSessionTimeoutLoop(_lifetimeCts.Token);
+            try {
+                // refresh the endpoint property based on the actual endpoint created
+                EndPoint = await Engine.StartAsync(this, Options, CreateSessionAsync, _lifetimeCts.Token).ConfigureAwait(false) ?? EndPoint;
+                StartSessionTimeoutLoop(_lifetimeCts.Token);
 
-            IsStarted = true;
-            _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
-            _log.Info($"server started at {_listenUrl}");
+                IsStarted = true;
+                _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
+                _log.Info($"server started at {_listenUrl}");
 
-            // notify subscribers
-            FireStartedCallbacks();
+                // notify subscribers
+                FireStartedCallbacks();
+            }
+            catch {
+                try {
+                    await Engine.StopAsync(this).ConfigureAwait(false);
+                }
+                catch { }
 
-            // not blocking
-            return Task.CompletedTask;
+                _lifetimeCts?.Dispose();
+                _lifetimeCts = null;
+                _lifetimeTask = null;
+                IsStarted = false;
+                IsStopping = false;
+
+                throw;
+            }
         }
 
         /// <summary>
@@ -261,7 +300,8 @@ namespace SimpleW {
                 // normal
             }
             finally {
-                CloseAndDisposeSocket();
+                try { await Engine.StopAsync(this).ConfigureAwait(false); }
+                catch { }
                 CloseAllSessions();
 
                 // stop idle timer
@@ -324,23 +364,23 @@ namespace SimpleW {
                 _log.Info($"server reloading {_listenUrl}...");
 
                 try {
-                    // stop accepting new connections: close the listen socket and dispose acceptors
-                    CloseAndDisposeSocket();
+                    // stop accepting new connections
+                    await Engine.StopAsync(this, cancellationToken).ConfigureAwait(false);
                     // callback
                     reconfigure(this);
                     // new listener + restart accept loop(s)
-                    ListenSocket();
+                    EndPoint = await Engine.StartAsync(this, Options, CreateSessionAsync, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                     _log.Warn($"server reloaded at {_listenUrl}");
                 }
                 catch (Exception ex) {
                     _log.Warn($"server failed to reload at {_listenUrl}", ex);
                     // rollback best effort
                     try {
-                        CloseAndDisposeSocket();
+                        await Engine.StopAsync(this, cancellationToken).ConfigureAwait(false);
                         EndPoint = oldEndPoint;
                         SslContext = oldSsl;
                         _log.Warn($"server restoring at {_listenUrl}", ex);
-                        ListenSocket();
+                        EndPoint = await Engine.StartAsync(this, Options, CreateSessionAsync, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                         _log.Warn($"server restored at {_listenUrl}");
                     }
                     catch (Exception exx) {
@@ -448,7 +488,7 @@ namespace SimpleW {
 
         #endregion callbacks
 
-        #endregion actions
+        #endregion engine
 
         #region middleware and module
 
@@ -541,6 +581,11 @@ namespace SimpleW {
         #endregion handler result
 
         #region router
+
+        /// <summary>
+        /// Router
+        /// </summary>
+        public IRouter Router { get; private set; }
 
         /// <summary>
         /// Replace the current router implementation.
@@ -731,165 +776,6 @@ namespace SimpleW {
 
         #endregion map controllers
 
-        #region network
-
-        /// <summary>
-        /// BufferPool
-        /// </summary>
-        private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
-
-        /// <summary>
-        /// Listen Socket
-        /// </summary>
-        private Socket? _listenSocket;
-
-        /// <summary>
-        /// SocketAsyncEventArgs list
-        /// </summary>
-        private readonly List<SocketAsyncEventArgs> _acceptorEventArgs = new();
-
-        /// <summary>
-        /// Create Socket
-        /// </summary>
-        /// <returns>Socket object</returns>
-        protected virtual Socket CreateSocket() {
-            ProtocolType protocolType = IsUnixDomainSocket ? ProtocolType.IP : ProtocolType.Tcp;
-            return new Socket(EndPoint.AddressFamily, SocketType.Stream, protocolType);
-        }
-
-        /// <summary>
-        /// Listen to Socket
-        /// </summary>
-        private void ListenSocket() {
-
-            // create socket
-            _listenSocket = CreateSocket();
-
-            // option: reuse address
-            _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, Options.ReuseAddress);
-            // option: exclusive address use
-            _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, Options.ExclusiveAddressUse);
-            // option: reuse port
-            if (Options.ReusePort) {
-                _listenSocket.EnableReusePort();
-            }
-            // option: dual mode (this option must be applied before listening)
-            if (EndPoint.AddressFamily == AddressFamily.InterNetworkV6) {
-                _listenSocket.DualMode = Options.DualMode;
-            }
-
-            // bind socket to endpoint
-            _listenSocket.Bind(EndPoint);
-            // refresh the endpoint property based on the actual endpoint created
-            EndPoint = _listenSocket.LocalEndPoint!;
-            // start listen to the socket with the given accepting backlog size
-            _listenSocket.Listen(Options.ListenBacklog);
-
-            // by default only run one SAEA instance but when
-            // user enables AcceptPerCore, he wants better perf
-            // and we force a minimum of 2 instances. The use case
-            // it VPS hosting with only 1 core, 2 instances
-            // can be a real perf improvement.
-            int maxParalleListenSocketEventArgs = Options.AcceptPerCore ? Math.Max(2, Environment.ProcessorCount) : 1;
-
-            for (int i = 0; i < maxParalleListenSocketEventArgs; i++) {
-                // SocketAsyncEventArgs
-                SocketAsyncEventArgs listenSocketEventArgs = new();
-                listenSocketEventArgs.Completed += OnAcceptSocketCompleted;
-                _acceptorEventArgs.Add(listenSocketEventArgs);
-
-                // start the first accept
-                AcceptSocket(listenSocketEventArgs);
-            }
-        }
-
-        /// <summary>
-        /// Start accept a new client connection
-        /// </summary>
-        /// <param name="e"></param>
-        private void AcceptSocket(SocketAsyncEventArgs e) {
-            if (_listenSocket == null || IsStopping) {
-                return;
-            }
-
-            // socket must be cleared since the context object is being reused
-            e.AcceptSocket = null;
-
-            bool pending;
-            try {
-                // async accept a new client connection
-                pending = _listenSocket.AcceptAsync(e);
-            }
-            catch (ObjectDisposedException) {
-                return;
-            }
-
-            if (!pending) {
-                ProcessAcceptSocket(e);
-            }
-        }
-
-        /// <summary>
-        /// Process accepted client connection
-        /// </summary>
-        private void ProcessAcceptSocket(SocketAsyncEventArgs e) {
-            if (e.SocketError == SocketError.Success && e.AcceptSocket != null) {
-                // handle connection : create a HttpSession
-                _ = CreateSessionAsync(e.AcceptSocket);
-            }
-            // non disconnect errors
-            else if (!(e.SocketError == SocketError.ConnectionAborted
-                    || e.SocketError == SocketError.ConnectionRefused
-                    || e.SocketError == SocketError.ConnectionReset
-                    || e.SocketError == SocketError.OperationAborted
-                    || e.SocketError == SocketError.Shutdown)
-            ) {
-                //OnError(e.SocketError);
-            }
-
-            // accept new client (except if socket is closed)
-            if (_listenSocket != null && !_listenSocket.SafeHandle.IsInvalid && !IsStopping) {
-                AcceptSocket(e);
-            }
-        }
-
-        /// <summary>
-        /// This method is the callback method associated with Socket.AcceptAsync()
-        /// operations and is invoked when an accept operation is complete
-        /// </summary>
-        private void OnAcceptSocketCompleted(object? sender, SocketAsyncEventArgs e) {
-            if (_listenSocket == null || _listenSocket.SafeHandle.IsInvalid || IsStopping) {
-                return;
-            }
-            ProcessAcceptSocket(e);
-        }
-
-        /// <summary>
-        /// Close listener + acceptor SAEA
-        /// </summary>
-        private void CloseAndDisposeSocket() {
-
-            try {
-                _listenSocket?.Close();
-                _listenSocket?.Dispose();
-            }
-            catch { }
-            finally {
-                _listenSocket = null;
-            }
-
-            // dispose acceptor event args
-            foreach (SocketAsyncEventArgs e in _acceptorEventArgs) {
-                try { e.Completed -= OnAcceptSocketCompleted; }
-                catch { }
-                try { e.Dispose(); }
-                catch { }
-            }
-            _acceptorEventArgs.Clear();
-        }
-
-        #endregion network
-
         #region sslcontext
 
         /// <summary>
@@ -935,6 +821,11 @@ namespace SimpleW {
         /// Server sessions
         /// </summary>
         protected readonly ConcurrentDictionary<Guid, HttpSession> Sessions = new();
+
+        /// <summary>
+        /// BufferPool
+        /// </summary>
+        private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
 
         /// <summary>
         /// Handle Connection and create HttpSession

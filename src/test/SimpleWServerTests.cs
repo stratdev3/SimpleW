@@ -70,6 +70,108 @@ namespace test {
 
         #endregion constructor
 
+        #region engine
+
+        [Fact]
+        public void Engine_Should_Default_To_SimpleWEngine() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, 5001);
+
+            Check.That(server.Engine).IsInstanceOf<SimpleWEngine>();
+        }
+
+        [Fact]
+        public void ConfigureEngine_Should_Replace_Default_Engine_Before_Start() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, 5001);
+            var engine = new FakeEngine();
+
+            server.UseEngine(engine);
+
+            Check.That(server.Engine).IsSameReferenceAs(engine);
+        }
+
+        [Fact]
+        public async Task ConfigureEngine_AfterStart_Should_Throw() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", () => new { ok = true });
+
+            await server.StartAsync();
+
+            Assert.Throws<InvalidOperationException>(() => server.UseEngine(new FakeEngine()));
+
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task CustomEngine_Should_Be_Used_For_Start_And_Stop() {
+
+            var engine = new FakeEngine();
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+
+            server.UseEngine(engine);
+
+            await server.StartAsync();
+            await server.StopAsync();
+
+            Check.That(engine.StartCallCount).IsEqualTo(1);
+            Check.That(engine.StopCallCount).IsEqualTo(1);
+
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task SimpleWEngine_Should_Not_Be_Shared_By_Two_Started_Servers() {
+
+            int port1 = PortManager.GetFreePort();
+            int port2 = PortManager.GetFreePort();
+            var engine = new SimpleWEngine();
+            var server1 = new SimpleWServer(IPAddress.Loopback, port1);
+            var server2 = new SimpleWServer(IPAddress.Loopback, port2);
+
+            server1.UseEngine(engine);
+            server2.UseEngine(engine);
+            server1.MapGet("/", () => new { ok = true });
+            server2.MapGet("/", () => new { ok = true });
+
+            try {
+                await server1.StartAsync();
+
+                await Assert.ThrowsAsync<InvalidOperationException>(() => server2.StartAsync());
+            }
+            finally {
+                await server1.StopAsync();
+                await server2.StopAsync();
+                PortManager.ReleasePort(port1);
+                PortManager.ReleasePort(port2);
+            }
+        }
+
+        private sealed class FakeEngine : ISimpleWEngine {
+
+            public string Name => nameof(FakeEngine);
+
+            public int StartCallCount { get; private set; }
+
+            public int StopCallCount { get; private set; }
+
+            public Task<EndPoint?> StartAsync(SimpleWServer server, SimpleWSServerOptions options, Func<Socket, Task> connectionHandler, CancellationToken cancellationToken = default) {
+                StartCallCount++;
+                return Task.FromResult<EndPoint?>(server.EndPoint);
+            }
+
+            public Task StopAsync(SimpleWServer server, CancellationToken cancellationToken = default) {
+                StopCallCount++;
+                return Task.CompletedTask;
+            }
+
+        }
+
+
+        #endregion engine
+
         #region result handler
 
         [Fact]
