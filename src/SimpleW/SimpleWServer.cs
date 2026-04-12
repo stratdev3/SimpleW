@@ -1076,6 +1076,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Configure the principal resolver.
+        /// Lazy fallback used to resolve the request principal on first access
         /// </summary>
         public SimpleWServer ConfigurePrincipalResolver(HttpPrincipalResolver resolver) {
             ArgumentNullException.ThrowIfNull(resolver);
