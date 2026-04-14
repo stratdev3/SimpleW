@@ -36,6 +36,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.BasicAuth
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.BasicAuth/
+        dotnet build -c @param:build_configuration@ SimpleW.Helper.BasicAuth.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Helper.Hosting
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -120,6 +132,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Service.BasicAuth
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.BasicAuth/
+        dotnet build -c @param:build_configuration@ SimpleW.Service.BasicAuth.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Service.Chaos
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -198,6 +222,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.BasicAuth
+    sourcePath: src/SimpleW.Helper.BasicAuth/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.BasicAuth.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
     sourcePath: src/SimpleW.Helper.Hosting/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Hosting.dll'
@@ -237,6 +267,12 @@ jobs:
     name: publish artifact SimpleW.JsonEngine.Newtonsoft
     sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.JsonEngine.Newtonsoft.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.BasicAuth
+    sourcePath: src/SimpleW.Service.BasicAuth/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Service.BasicAuth.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
@@ -322,6 +358,20 @@ jobs:
         TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.csproj
         dotnet pack -c Release SimpleW.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Helper.BasicAuth
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.BasicAuth
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj
+        dotnet pack -c Release SimpleW.Helper.BasicAuth.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -424,6 +474,20 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: pack SimpleW.Service.BasicAuth
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.BasicAuth
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj
+        dotnet pack -c Release SimpleW.Service.BasicAuth.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: pack SimpleW.Service.Chaos
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -517,6 +581,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.BasicAuth
+    sourcePath: src/SimpleW.Helper.BasicAuth/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
     sourcePath: src/SimpleW.Helper.Hosting/bin/Release/
     artifacts: '*.*nupkg'
@@ -555,6 +625,12 @@ jobs:
   - type: PublishArtifactStep
     name: publish artifact SimpleW.JsonEngine.Newtonsoft
     sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.BasicAuth
+    sourcePath: src/SimpleW.Service.BasicAuth/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -602,6 +678,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.BasicAuth to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -686,6 +774,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Service.BasicAuth to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -830,6 +930,61 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: CD production nuget SimpleW.Helper.BasicAuth
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Helper.BasicAuth
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.BasicAuth
+        dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.BasicAuth.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.BasicAuth
+    sourcePath: src/SimpleW.Helper.BasicAuth/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.BasicAuth to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -1215,6 +1370,61 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: CD production nuget SimpleW.Service.BasicAuth
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Service.BasicAuth
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.BasicAuth
+        dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.BasicAuth.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.BasicAuth
+    sourcePath: src/SimpleW.Service.BasicAuth/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Service.BasicAuth to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
