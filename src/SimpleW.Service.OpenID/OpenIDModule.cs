@@ -1,12 +1,5 @@
-using System.Collections.Concurrent;
-using System.IdentityModel.Tokens.Jwt;
-using System.Net.Http.Headers;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using Microsoft.IdentityModel.Protocols;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
-using Microsoft.IdentityModel.Tokens;
+using System.Runtime.CompilerServices;
+using SimpleW.Helper.OpenID;
 using SimpleW.Modules;
 using SimpleW.Observability;
 
@@ -14,810 +7,583 @@ using SimpleW.Observability;
 namespace SimpleW.Service.OpenID {
 
     /// <summary>
-    /// OpenIDModuleExtension
+    /// OpenID module extensions for SimpleW.
     /// </summary>
     public static class OpenIDModuleExtension {
 
+        private static readonly ConditionalWeakTable<SimpleWServer, ModuleState> _states = new();
+
         /// <summary>
-        /// Use OpenID Module
+        /// Logger
         /// </summary>
-        /// <param name="server"></param>
-        /// <param name="configure"></param>
-        /// <returns></returns>
-        public static SimpleWServer UseOpenIDModule(this SimpleWServer server, Action<OpenIDMultiOptions>? configure = null) {
+        private static readonly ILogger _log = new Logger<OpenIDModule>();
+
+        private static readonly OpenIDHelperOptions _defaultHelperOptions = new();
+        private static readonly Func<OpenIDPrincipalContext, HttpPrincipal> _defaultHelperPrincipalFactory = _defaultHelperOptions.PrincipalFactory;
+
+        /// <summary>
+        /// Adds or updates the OpenID convenience module on the current server.
+        /// The module is a thin wrapper over OpenIDHelper that restores the principal,
+        /// wires handler-metadata based challenge behavior, and maps technical routes.
+        /// </summary>
+        public static SimpleWServer UseOpenIDModule(this SimpleWServer server, Action<OpenIDModuleOptions>? configure = null) {
             ArgumentNullException.ThrowIfNull(server);
 
-            var multi = new OpenIDMultiOptions();
-            configure?.Invoke(multi);
-            multi.Validate();
+            OpenIDModuleOptions options = new();
+            configure?.Invoke(options);
+            options.ValidateAndNormalize();
 
-            server.UseModule(new OpenIDModule(multi));
+            ModuleState state = _states.GetValue(server, static _ => new ModuleState());
+            state.SetConfiguration(ModuleConfiguration.FromOptions(options));
+
+            EnsureInstalled(server, state);
+            _log.Info($"installed with base path {state.Snapshot!.BasePath}");
             return server;
         }
 
+        private static void EnsureInstalled(SimpleWServer server, ModuleState state) {
+            ModuleConfiguration configuration = state.Snapshot ?? throw new InvalidOperationException("OpenID module configuration is missing.");
+
+            lock (state.SyncRoot) {
+                if (state.IsInstalled) {
+                    return;
+                }
+
+                state.IsInstalled = true;
+            }
+
+            server.UseModule(new OpenIDModule(state, configuration.LoginPath, configuration.CallbackPath, configuration.LogoutPath));
+        }
+
         /// <summary>
-        /// Multi configuration (providers + defaults)
+        /// Module-level OpenID configuration.
+        /// Helper options stay available because the module delegates all OpenID mechanics to OpenIDHelper.
         /// </summary>
-        public sealed class OpenIDMultiOptions {
+        public sealed class OpenIDModuleOptions : OpenIDHelperOptions {
 
             /// <summary>
-            /// Logger
-            /// </summary>
-            private readonly ILogger _log = new Logger<OpenIDMultiOptions>();
-
-            /// <summary>
-            /// Providers
-            /// </summary>
-            private readonly Dictionary<string, OpenIDOptions> _providers = new(StringComparer.OrdinalIgnoreCase);
-
-            /// <summary>
-            /// Providers
-            /// </summary>
-            public IReadOnlyDictionary<string, OpenIDOptions> Providers => _providers;
-
-            /// <summary>
-            /// Path prefix for login or callback routes
-            /// Final routes:
-            ///   - {BasePath}/login/:provider
-            ///   - {BasePath}/callback/:provider
+            /// Base path used for technical OpenID routes (default "/auth/oidc")
             /// </summary>
             public string BasePath { get; set; } = "/auth/oidc";
 
             /// <summary>
-            /// Shared cookie name for all providers (recommended)
+            /// When true, the module restores session.Principal from the OpenID cookie on every request.
             /// </summary>
-            public string CookieName { get; set; } = "simplew_oidc";
+            public bool RestorePrincipal { get; set; } = true;
 
             /// <summary>
-            /// Indicates whether the authentication cookie should be marked
-            /// as Secure. When true, the cookie is only sent over HTTPS.
+            /// When true, handlers decorated with OpenIDAuthAttribute automatically trigger an OpenID login redirect.
             /// </summary>
-            public bool CookieSecure { get; set; } = true;
+            public bool AutoChallenge { get; set; } = true;
 
             /// <summary>
-            /// SameSite policy applied to the authentication cookie.
-            /// Lax is a good default for OpenID flows, allowing redirects
-            /// from the identity provider while still offering CSRF protection.
+            /// Optional pre-built helper.
+            /// When set, inline helper properties cannot be used.
             /// </summary>
-            public HttpResponse.SameSiteMode CookieSameSite { get; set; } = HttpResponse.SameSiteMode.Lax;
+            public OpenIDHelper? Helper { get; set; }
 
             /// <summary>
-            /// Add a provider configuration
+            /// Optional module-level principal factory.
+            /// It receives the module route information in addition to the validated OpenID claims.
+            /// Ignored when Helper is set.
             /// </summary>
-            public void Add(string provider, Action<OpenIDOptions> configure) {
-                if (string.IsNullOrWhiteSpace(provider)) {
-                    ArgumentException ex = new("Provider name is required.", nameof(provider));
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-
-                OpenIDOptions o = new();
-                configure?.Invoke(o);
-                _providers[provider] = o;
-            }
+            public Func<OpenIDModuleContext, HttpPrincipal>? ModulePrincipalFactory { get; set; }
 
             /// <summary>
-            /// Check Properties and return
+            /// Validate and normalize the module options.
             /// </summary>
             /// <returns></returns>
-            /// <exception cref="ArgumentException"></exception>
-            public OpenIDMultiOptions Validate() {
-                if (_providers.Count == 0) {
-                    ArgumentException ex = new("At least one OpenID provider must be configured.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
+            public new OpenIDModuleOptions ValidateAndNormalize() {
+                if (string.IsNullOrWhiteSpace(BasePath)) {
+                    throw new ArgumentException($"{nameof(OpenIDModuleOptions)}.{nameof(BasePath)} must not be null or empty.", nameof(BasePath));
                 }
 
-                foreach (var kv in _providers) {
-                    kv.Value.Validate();
+                BasePath = SimpleWExtension.NormalizePrefix(BasePath);
+
+                if (!RestorePrincipal && AutoChallenge) {
+                    throw new ArgumentException($"{nameof(AutoChallenge)} requires {nameof(RestorePrincipal)} to be enabled.");
                 }
 
-                if (!BasePath.StartsWith("/", StringComparison.Ordinal)) {
-                    ArgumentException ex = new("BasePath must start with '/'.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
+                if (Helper != null) {
+                    ValidateHelperExclusivity();
+                    return this;
                 }
 
+                base.ValidateAndNormalize();
                 return this;
+            }
+
+            private void ValidateHelperExclusivity() {
+                bool hasInlineHelperConfig = Providers.Count > 0
+                                             || !string.Equals(CookieName, _defaultHelperOptions.CookieName, StringComparison.Ordinal)
+                                             || !string.Equals(ChallengeCookieNamePrefix, _defaultHelperOptions.ChallengeCookieNamePrefix, StringComparison.Ordinal)
+                                             || !string.Equals(CookiePath, _defaultHelperOptions.CookiePath, StringComparison.Ordinal)
+                                             || !string.Equals(CookieDomain, _defaultHelperOptions.CookieDomain, StringComparison.Ordinal)
+                                             || CookieSecure != _defaultHelperOptions.CookieSecure
+                                             || CookieHttpOnly != _defaultHelperOptions.CookieHttpOnly
+                                             || CookieSameSite != _defaultHelperOptions.CookieSameSite
+                                             || SessionLifetime != _defaultHelperOptions.SessionLifetime
+                                             || ChallengeLifetime != _defaultHelperOptions.ChallengeLifetime
+                                             || BackchannelTimeout != _defaultHelperOptions.BackchannelTimeout
+                                             || Backchannel != null
+                                             || AllowExternalReturnUrls != _defaultHelperOptions.AllowExternalReturnUrls
+                                             || CookieProtectionKey != null
+                                             || !Equals(PrincipalFactory, _defaultHelperPrincipalFactory);
+
+                if (hasInlineHelperConfig || ModulePrincipalFactory != null) {
+                    throw new ArgumentException("OpenIDModuleOptions cannot be combined with inline helper settings, PrincipalFactory, or ModulePrincipalFactory when Helper is provided.");
+                }
             }
 
         }
 
         /// <summary>
-        /// Provider options (same as your current OpenIDOptions, but WITHOUT fixed Login/Callback paths)
+        /// Additional context exposed by the module-level principal factory.
         /// </summary>
-        public sealed class OpenIDOptions {
+        public sealed class OpenIDModuleContext : OpenIDPrincipalContext {
 
             /// <summary>
-            /// Logger
+            /// Base path used by the module.
             /// </summary>
-            private readonly ILogger _log = new Logger<OpenIDOptions>();
+            public required string BasePath { get; init; }
 
             /// <summary>
-            /// Provider authority
-            /// ex: https://accounts.google.com, https://login.microsoftonline.com/{tenant}/v2.0
+            /// Login route mapped by the module.
             /// </summary>
-            public string Authority { get; set; } = string.Empty;
+            public required string LoginPath { get; init; }
 
             /// <summary>
-            /// CliendId
+            /// Callback route mapped by the module.
             /// </summary>
-            public string ClientId { get; set; } = string.Empty;
+            public required string CallbackPath { get; init; }
 
             /// <summary>
-            /// ClientSecret
+            /// Logout route mapped by the module.
             /// </summary>
-            public string ClientSecret { get; set; } = string.Empty;
+            public required string LogoutPath { get; init; }
 
-            /// <summary>
-            /// Either set RedirectUri explicitly (recommended), OR set PublicBaseUrl and we append CallbackPath.
-            /// </summary>
-            public string? RedirectUri { get; set; }
+        }
 
-            /// <summary>
-            /// Public URL of your app, e.g. https://myapp.example.com
-            /// Used only if RedirectUri is not set.
-            /// </summary>
-            public string? PublicBaseUrl { get; set; }
+        #region registry / configuration
 
-            /// <summary>
-            /// OpenID Connect scopes requested during authentication.
-            /// "openid" is mandatory, while "profile" and "email"
-            /// allow access to basic user information.
-            /// </summary>
-            public string[] Scopes { get; set; } = ["openid", "profile", "email"];
+        /// <summary>
+        /// Per-server OpenID module state.
+        /// </summary>
+        private sealed class ModuleState {
 
-            /// <summary>
-            /// Indicates whether HTTPS is required when retrieving
-            /// OpenID Connect metadata (discovery document).
-            /// Should always be true in production.
-            /// </summary>
-            public bool RequireHttpsMetadata { get; set; } = true;
+            public object SyncRoot { get; } = new();
 
-            /// <summary>
-            /// Time-to-live (in minutes) for the temporary authentication state.
-            /// This value limits how long a login attempt (state + nonce)
-            /// is considered valid, protecting against replay attacks.
-            /// </summary>
-            public int StateTtlMinutes { get; set; } = 10;
+            public bool IsInstalled { get; set; }
 
-            /// <summary>
-            /// Default lifetime (in minutes) of an authenticated user session
-            /// when the identity provider does not provide an explicit expiration.
-            /// </summary>
-            public int SessionTtlMinutes { get; set; } = 8 * 60;
+            private volatile ModuleConfiguration? _configuration;
 
-            /// <summary>
-            /// Allowed clock skew (in seconds) when validating token timestamps
-            /// (nbf, exp). This compensates small time differences between
-            /// the server and the identity provider.
-            /// </summary>
-            public int ClockSkewSeconds { get; set; } = 60;
+            public ModuleConfiguration? Snapshot => _configuration;
 
-            /// <summary>
-            /// Number of incoming requests between cleanup passes.
-            /// Cleanup removes expired authentication states and sessions
-            /// without using background timers.
-            /// </summary>
-            public int CleanupEveryNRequests { get; set; } = 256;
+            public void SetConfiguration(ModuleConfiguration configuration) {
+                lock (SyncRoot) {
+                    if (_configuration != null && !string.Equals(_configuration.BasePath, configuration.BasePath, StringComparison.Ordinal)) {
+                        throw new InvalidOperationException($"OpenID module base path is already fixed to '{_configuration.BasePath}' for this server.");
+                    }
 
-            /// <summary>
-            /// Store provider tokens in-memory in the session.
-            /// If false: we still store claims + subject.
-            /// </summary>
-            public bool SaveTokens { get; set; } = false;
-
-            /// <summary>
-            /// OIDC prompt parameter (optional), e.g. "select_account"
-            /// </summary>
-            public string? Prompt { get; set; }
-
-            /// <summary>
-            /// Set to enable login_hint query string support.
-            /// </summary>
-            public string? LoginHint { get; set; }
-
-            /// <summary>
-            /// ClientAuthentication
-            /// </summary>
-            public ClientAuthMode ClientAuthentication { get; set; } = ClientAuthMode.Basic;
-
-            /// <summary>
-            /// HttpClient
-            /// </summary>
-            public HttpClient? HttpClient { get; set; }
-
-            /// <summary>
-            /// Map an AuthSession to a HttpPrincipal.
-            /// </summary>
-            public Func<AuthSession, HttpPrincipal> PrincipalFactory { get; set; } = (auth) => {
-
-                string? Claim(string type) => auth.Claims.FirstOrDefault(c => c.Type == type)?.Value;
-
-                string[] ClaimsArray(string type) => auth.Claims
-                                                         .Where(c => c.Type == type)
-                                                         .Select(c => c.Value)
-                                                         .Distinct(StringComparer.OrdinalIgnoreCase)
-                                                         .ToArray();
-
-                // stable Guid from OIDC "sub"
-                static Guid GuidFromSub(string sub) {
-                    using var sha = SHA256.Create();
-                    byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(sub));
-                    Span<byte> g = stackalloc byte[16];
-                    hash.AsSpan(0, 16).CopyTo(g);
-                    return new Guid(g);
+                    _configuration = configuration;
                 }
-
-                string sub = Claim("sub") ?? Guid.NewGuid().ToString();
-
-                HttpIdentity identity = new(
-                    isAuthenticated: true,
-                    authenticationType: $"OpenID:{auth.Provider}",
-                    identifier: GuidFromSub(sub).ToString(),
-                    name: Claim("name"),
-                    email: Claim("email"),
-                    roles: ClaimsArray("roles")
-                                .Concat(ClaimsArray("role"))
-                                .Concat(ClaimsArray("groups"))
-                                .Distinct()
-                                .ToArray(),
-                    properties: [
-                        new IdentityProperty("login", Claim("preferred_username") ?? Claim("email") ?? sub)
-                    ]
-                );
-
-                return new HttpPrincipal(identity);
-            };
-
-            /// <summary>
-            /// Check Properties and return
-            /// </summary>
-            /// <exception cref="ArgumentException"></exception>
-            public OpenIDOptions Validate() {
-                if (string.IsNullOrWhiteSpace(Authority)) {
-                    ArgumentException ex = new("Authority is required.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-                if (string.IsNullOrWhiteSpace(ClientId)) {
-                    ArgumentException ex = new("ClientId is required.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-                if (string.IsNullOrWhiteSpace(ClientSecret)) {
-                    ArgumentException ex = new("ClientSecret is required.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-                if (string.IsNullOrWhiteSpace(RedirectUri) && string.IsNullOrWhiteSpace(PublicBaseUrl)) {
-                    ArgumentException ex = new("Either RedirectUri or PublicBaseUrl must be set.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-
-                return this;
             }
 
         }
 
         /// <summary>
-        /// Internal OpenID module (multi-provider)
+        /// Immutable runtime snapshot used by the module.
+        /// </summary>
+        private sealed record ModuleConfiguration(
+            string BasePath,
+            string LoginPath,
+            string CallbackPath,
+            string LogoutPath,
+            bool RestorePrincipal,
+            bool AutoChallenge,
+            OpenIDHelper Helper
+        ) {
+
+            public static ModuleConfiguration FromOptions(OpenIDModuleOptions options) {
+                string basePath = options.BasePath;
+                string loginPath = BuildRoutePath(basePath, "login/:provider");
+                string callbackPath = BuildRoutePath(basePath, "callback/:provider");
+                string logoutPath = BuildRoutePath(basePath, "logout");
+
+                OpenIDHelper helper = options.Helper ?? CreateHelper(options, basePath, loginPath, callbackPath, logoutPath);
+
+                return new ModuleConfiguration(
+                    BasePath: basePath,
+                    LoginPath: loginPath,
+                    CallbackPath: callbackPath,
+                    LogoutPath: logoutPath,
+                    RestorePrincipal: options.RestorePrincipal,
+                    AutoChallenge: options.AutoChallenge,
+                    Helper: helper
+                );
+            }
+
+            private static OpenIDHelper CreateHelper(
+                OpenIDModuleOptions options,
+                string basePath,
+                string loginPath,
+                string callbackPath,
+                string logoutPath
+            ) {
+                return new OpenIDHelper(o => {
+                    o.CookieName = options.CookieName;
+                    o.ChallengeCookieNamePrefix = options.ChallengeCookieNamePrefix;
+                    o.CookiePath = options.CookiePath;
+                    o.CookieDomain = options.CookieDomain;
+                    o.CookieSecure = options.CookieSecure;
+                    o.CookieHttpOnly = options.CookieHttpOnly;
+                    o.CookieSameSite = options.CookieSameSite;
+                    o.SessionLifetime = options.SessionLifetime;
+                    o.ChallengeLifetime = options.ChallengeLifetime;
+                    o.BackchannelTimeout = options.BackchannelTimeout;
+                    o.Backchannel = options.Backchannel;
+                    o.AllowExternalReturnUrls = options.AllowExternalReturnUrls;
+                    o.CookieProtectionKey = options.CookieProtectionKey?.ToArray();
+                    o.PrincipalFactory = context => {
+                        HttpPrincipal principal = options.ModulePrincipalFactory?.Invoke(new OpenIDModuleContext {
+                            Session = context.Session,
+                            ProviderName = context.ProviderName,
+                            Provider = context.Provider,
+                            ClaimsPrincipal = context.ClaimsPrincipal,
+                            AuthenticatedAt = context.AuthenticatedAt,
+                            BasePath = basePath,
+                            LoginPath = loginPath,
+                            CallbackPath = callbackPath,
+                            LogoutPath = logoutPath
+                        }) ?? options.PrincipalFactory(context);
+
+                        return EnsureProviderProperty(principal, context.ProviderName);
+                    };
+
+                    foreach (KeyValuePair<string, OpenIDProviderOptions> pair in options.Providers) {
+                        OpenIDProviderOptions provider = pair.Value;
+                        o.Add(pair.Key, clone => CopyProviderOptions(provider, clone));
+                    }
+                });
+            }
+
+            private static void CopyProviderOptions(OpenIDProviderOptions source, OpenIDProviderOptions destination) {
+                destination.Authority = source.Authority;
+                destination.MetadataAddress = source.MetadataAddress;
+                destination.ClientId = source.ClientId;
+                destination.ClientSecret = source.ClientSecret;
+                destination.RedirectUri = source.RedirectUri;
+                destination.Scopes = source.Scopes.ToArray();
+                destination.AuthorizationParameters = new Dictionary<string, string>(source.AuthorizationParameters, StringComparer.Ordinal);
+                destination.UsePkce = source.UsePkce;
+                destination.ValidateNonce = source.ValidateNonce;
+                destination.RequireHttpsMetadata = source.RequireHttpsMetadata;
+                destination.ValidateIssuer = source.ValidateIssuer;
+                destination.ValidIssuer = source.ValidIssuer;
+                destination.UseClientSecretBasicAuthentication = source.UseClientSecretBasicAuthentication;
+                destination.ClockSkew = source.ClockSkew;
+                destination.NameClaimType = source.NameClaimType;
+                destination.RoleClaimType = source.RoleClaimType;
+                destination.RoleClaimTypes = source.RoleClaimTypes.ToArray();
+                destination.ConfigureTokenValidation = source.ConfigureTokenValidation;
+            }
+
+            private static HttpPrincipal EnsureProviderProperty(HttpPrincipal principal, string providerName) {
+                if (principal.Has("provider", providerName)) {
+                    return principal;
+                }
+
+                List<IdentityProperty> properties = principal.Identity.Properties
+                    .Where(static p => !string.Equals(p.Key, "provider", StringComparison.Ordinal))
+                    .ToList();
+
+                properties.Add(new IdentityProperty("provider", providerName));
+
+                string? authenticationType = string.IsNullOrWhiteSpace(principal.Identity.AuthenticationType)
+                    ? $"OpenID:{providerName}"
+                    : principal.Identity.AuthenticationType;
+
+                return new HttpPrincipal(new HttpIdentity(
+                    isAuthenticated: principal.Identity.IsAuthenticated,
+                    authenticationType: authenticationType,
+                    identifier: principal.Identity.Identifier,
+                    name: principal.Identity.Name,
+                    email: principal.Identity.Email,
+                    roles: principal.Identity.Roles,
+                    properties: properties
+                ));
+            }
+
+        }
+
+        #endregion registry / configuration
+
+        /// <summary>
+        /// Module wrapper that delegates all OpenID mechanics to OpenIDHelper.
         /// </summary>
         private sealed class OpenIDModule : IHttpModule {
 
             /// <summary>
-            /// Logger
+            /// State
             /// </summary>
-            private readonly ILogger _log = new Logger<OpenIDModule>();
+            private readonly ModuleState _state;
 
             /// <summary>
-            /// Options
+            /// LoginPath
             /// </summary>
-            private readonly OpenIDMultiOptions _multi;
+            private readonly string _loginPath;
 
             /// <summary>
-            /// per provider runtime objects
+            /// CallbackPath
             /// </summary>
-            private readonly ConcurrentDictionary<string, ProviderRuntime> _runtime = new(StringComparer.OrdinalIgnoreCase);
+            private readonly string _callbackPath;
 
             /// <summary>
-            /// Pending
+            /// LogoutPath
             /// </summary>
-            private readonly ConcurrentDictionary<string, PendingAuth> _pending = new(StringComparer.Ordinal);
-
-            /// <summary>
-            /// AuthSession
-            /// </summary>
-            private readonly ConcurrentDictionary<string, AuthSession> _sessions = new(StringComparer.Ordinal);
-
-            /// <summary>
-            /// CleanUpTick
-            /// </summary>
-            private long _cleanupTick;
+            private readonly string _logoutPath;
 
             /// <summary>
             /// Constructor
             /// </summary>
-            /// <param name="multi"></param>
+            /// <param name="state"></param>
+            /// <param name="loginPath"></param>
+            /// <param name="callbackPath"></param>
+            /// <param name="logoutPath"></param>
             /// <exception cref="ArgumentNullException"></exception>
-            public OpenIDModule(OpenIDMultiOptions multi) {
-                _multi = multi ?? throw new ArgumentNullException(nameof(multi));
-                _multi.Validate();
+            public OpenIDModule(ModuleState state, string loginPath, string callbackPath, string logoutPath) {
+                _state = state ?? throw new ArgumentNullException(nameof(state));
+                _loginPath = loginPath ?? throw new ArgumentNullException(nameof(loginPath));
+                _callbackPath = callbackPath ?? throw new ArgumentNullException(nameof(callbackPath));
+                _logoutPath = logoutPath ?? throw new ArgumentNullException(nameof(logoutPath));
             }
 
             /// <summary>
             /// Install Module in server (called by SimpleW)
             /// </summary>
             /// <param name="server"></param>
+            /// <exception cref="InvalidOperationException"></exception>
             public void Install(SimpleWServer server) {
                 if (server.IsStarted) {
-                    InvalidOperationException ex = new("OpenIDModule must be installed before server start.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
+                    throw new InvalidOperationException("OpenIDModule must be installed before server start.");
                 }
-                
-                _log.Info("installing...");
 
-                // register middleware: restore user from cookie
-                server.Router.UseMiddleware(async (session, next) => {
-                    try {
-                        MaybeCleanup();
-
-                        if (session.Request.Headers.TryGetCookie(_multi.CookieName, out var sid)
-                            && !string.IsNullOrWhiteSpace(sid)
-                            && _sessions.TryGetValue(sid!, out var auth)
-                            && auth.ExpiresUtc > DateTimeOffset.UtcNow
-                        ) {
-                            // pick provider from stored session
-                            var opt = GetRuntime(auth.Provider).Options;
-                            session.Principal = opt.PrincipalFactory(auth);
-                        }
-                    }
-                    catch {
-                        // ignore auth restore errors (don’t break request pipeline)
-                    }
-
-                    await next();
-                });
-
-                // routes:
-                // /auth/oidc/login/{provider}
-                // /auth/oidc/callback/{provider}
-                // plus optional default shortcuts:
-                // /auth/oidc/login (=> default provider)
-                // /auth/oidc/callback (rarely used, but we can support if you really want)
-                string basePath = _multi.BasePath.TrimEnd('/');
-
-                server.Router.MapGet($"{basePath}/login/:provider", (HttpSession session, string provider) => LoginHandler(session, provider));
-                server.Router.MapGet($"{basePath}/callback/:provider", (HttpSession session, string provider) => CallbackHandler(session, provider));
-                server.Router.MapGet($"{basePath}/logout", (HttpSession s) => LogoutHandler(s));
-
-                _log.Info("installed");
+                server.UseMiddleware((session, next) => MiddlewareAsync(session, next, _state));
+                server.MapGet(_loginPath, (HttpSession session, string provider) => LoginHandlerAsync(session, provider));
+                server.MapGet(_callbackPath, (HttpSession session, string provider) => CallbackHandlerAsync(session, provider));
+                server.MapGet(_logoutPath, (HttpSession session) => LogoutHandler(session));
             }
 
             /// <summary>
-            /// GetRuntime
+            /// Middleware
             /// </summary>
-            /// <param name="provider"></param>
+            /// <param name="session"></param>
+            /// <param name="next"></param>
+            /// <param name="state"></param>
             /// <returns></returns>
-            /// <exception cref="InvalidOperationException"></exception>
-            private ProviderRuntime GetRuntime(string provider) {
-                if (!_multi.Providers.TryGetValue(provider, out var opt)) {
-                    throw new InvalidOperationException($"Unknown OpenID provider '{provider}'.");
+            private static async ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next, ModuleState state) {
+                ModuleConfiguration? configuration = state.Snapshot;
+                if (configuration == null) {
+                    await next().ConfigureAwait(false);
+                    return;
                 }
 
-                return _runtime.GetOrAdd(provider, _ => {
-                    HttpClient http = opt.HttpClient ?? new(new SocketsHttpHandler {
-                        AutomaticDecompression = System.Net.DecompressionMethods.All
+                if (configuration.RestorePrincipal && configuration.Helper.TryAuthenticate(session, out HttpPrincipal principal)) {
+                    session.Principal = principal;
+                }
+
+                if (!configuration.AutoChallenge || session.Metadata.Has<AllowAnonymousAttribute>()) {
+                    await next().ConfigureAwait(false);
+                    return;
+                }
+
+                OpenIDAuthAttribute? auth = session.Metadata.Get<OpenIDAuthAttribute>();
+                if (auth == null) {
+                    await next().ConfigureAwait(false);
+                    return;
+                }
+
+                if (IsAuthorizedForProvider(session.Principal, auth.Provider)) {
+                    await next().ConfigureAwait(false);
+                    return;
+                }
+
+                if (!configuration.Helper.HasProvider(auth.Provider)) {
+                    _log.Warn($"OpenID provider '{auth.Provider}' is not configured for automatic challenge.");
+                    await session.Response
+                                 .Status(500)
+                                 .Json(new {
+                                     ok = false,
+                                     error = "openid_provider_not_configured",
+                                     provider = auth.Provider
+                                 })
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                    return;
+                }
+
+                try {
+                    string challengeUrl = await configuration.Helper.CreateChallengeUrlAsync(
+                                                session,
+                                                auth.Provider,
+                                                returnUrl: CreateCurrentReturnUrl(session)
+                                            ).ConfigureAwait(false);
+
+                    await session.Response.Redirect(challengeUrl).SendAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex) {
+                    _log.Warn($"OpenID automatic challenge failed for provider '{auth.Provider}'", ex);
+                    await session.Response
+                                 .Status(502)
+                                 .Json(new {
+                                     ok = false,
+                                     error = "openid_challenge_failed",
+                                     provider = auth.Provider
+                                 })
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
+            }
+
+            /// <summary>
+            /// Login handler
+            /// </summary>
+            /// <param name="session"></param>
+            /// <param name="provider"></param>
+            /// <returns></returns>
+            private async ValueTask<object> LoginHandlerAsync(HttpSession session, string provider) {
+                ModuleConfiguration configuration = _state.Snapshot ?? throw new InvalidOperationException("OpenID module configuration is missing.");
+
+                if (!configuration.Helper.HasProvider(provider)) {
+                    return session.Response.Status(400).Json(new {
+                        ok = false,
+                        error = "invalid_provider",
+                        provider
                     });
+                }
 
-                    HttpDocumentRetriever retriever = new(http) { RequireHttps = opt.RequireHttpsMetadata };
-                    ConfigurationManager<OpenIdConnectConfiguration> cfg = new(
-                        $"{opt.Authority.TrimEnd('/')}/.well-known/openid-configuration",
-                        new OpenIdConnectConfigurationRetriever(),
-                        retriever
-                    );
+                try {
+                    string challengeUrl = await configuration.Helper.CreateChallengeUrlAsync(
+                                                session,
+                                                provider,
+                                                returnUrl: null,
+                                                extraParameters: BuildChallengeParameters(session)
+                                            ).ConfigureAwait(false);
 
-                    return new ProviderRuntime(provider, opt, http, cfg);
-                });
+                    return session.Response.Redirect(challengeUrl);
+                }
+                catch (Exception ex) {
+                    _log.Warn($"OpenID login failed for provider '{provider}'", ex);
+                    return session.Response.Status(502).Json(new {
+                        ok = false,
+                        error = "openid_challenge_failed",
+                        provider
+                    });
+                }
             }
 
             /// <summary>
-            /// LoginHandler
+            /// Callback handler
             /// </summary>
             /// <param name="session"></param>
             /// <param name="provider"></param>
             /// <returns></returns>
-            private async ValueTask LoginHandler(HttpSession session, string provider) {
-                if (string.IsNullOrWhiteSpace(provider)) {
-                    throw new InvalidOperationException("Missing provider route value.");
+            private async ValueTask<object> CallbackHandlerAsync(HttpSession session, string provider) {
+                ModuleConfiguration configuration = _state.Snapshot ?? throw new InvalidOperationException("OpenID module configuration is missing.");
+
+                OpenIDCallbackResult result = await configuration.Helper.CompleteCallbackAsync(session, provider).ConfigureAwait(false);
+                if (!result.IsSuccess) {
+                    return session.Response.Status(result.StatusCode).Json(new {
+                        ok = false,
+                        provider = result.Provider,
+                        error = result.Error,
+                        returnUrl = result.ReturnUrl
+                    });
                 }
 
-                var rt = GetRuntime(provider);
-                var opt = rt.Options;
-
-                string? returnUrl = null;
-                session.Request.Query?.TryGetValue("returnUrl", out returnUrl);
-                returnUrl = NormalizeReturnUrl(returnUrl);
-
-                string state = Base64Url(RandomBytes(32));
-                string nonce = Base64Url(RandomBytes(32));
-
-                _pending[state] = new PendingAuth(
-                    Provider: provider,
-                    Nonce: nonce,
-                    ReturnUrl: returnUrl,
-                    ExpiresUtc: DateTimeOffset.UtcNow.AddMinutes(opt.StateTtlMinutes)
-                );
-
-                var cfg = await rt.CfgManager.GetConfigurationAsync(session.RequestAborted).ConfigureAwait(false);
-
-                string redirectUri = BuildRedirectUri(rt, provider);
-
-                StringBuilder authorize = new();
-                authorize.Append(cfg.AuthorizationEndpoint);
-                authorize.Append(cfg.AuthorizationEndpoint.Contains('?', StringComparison.Ordinal) ? "&" : "?");
-
-                authorize.Append("client_id=").Append(UrlEncode(opt.ClientId));
-                authorize.Append("&response_type=code");
-                authorize.Append("&redirect_uri=").Append(UrlEncode(redirectUri));
-                authorize.Append("&scope=").Append(UrlEncode(string.Join(' ', opt.Scopes)));
-                authorize.Append("&state=").Append(UrlEncode(state));
-                authorize.Append("&nonce=").Append(UrlEncode(nonce));
-
-                if (!string.IsNullOrWhiteSpace(opt.Prompt)) {
-                    authorize.Append("&prompt=").Append(UrlEncode(opt.Prompt!));
-                }
-
-                if (!string.IsNullOrWhiteSpace(opt.LoginHint) && session.Request.Query?.TryGetValue("loginHint", out var lh) == true) {
-                    authorize.Append("&login_hint=").Append(UrlEncode(lh));
-                }
-
-                await session.Response
-                             .Redirect(authorize.ToString())
-                             .SendAsync().ConfigureAwait(false);
+                session.Principal = result.Principal!;
+                return session.Response.Redirect(result.ReturnUrl);
             }
 
             /// <summary>
-            /// CallbackHandler
-            /// </summary>
-            /// <param name="session"></param>
-            /// <param name="provider"></param>
-            /// <returns></returns>
-            private async ValueTask CallbackHandler(HttpSession session, string provider) {
-                if (string.IsNullOrWhiteSpace(provider)) {
-                    throw new InvalidOperationException("Missing provider route value.");
-                }
-                var rt = GetRuntime(provider);
-                var opt = rt.Options;
-
-                if (session.Request.Query == null
-                    || !session.Request.Query.TryGetValue("code", out var code)
-                    || !session.Request.Query.TryGetValue("state", out var state)
-                    || string.IsNullOrWhiteSpace(code)
-                    || string.IsNullOrWhiteSpace(state)
-                ) {
-                    await Fail(session, 400, "Missing code/state").ConfigureAwait(false);
-                    return;
-                }
-
-                if (!_pending.TryRemove(state, out var pending) || pending.ExpiresUtc <= DateTimeOffset.UtcNow) {
-                    await Fail(session, 400, "Invalid/expired state").ConfigureAwait(false);
-                    return;
-                }
-
-                if (!string.Equals(pending.Provider, provider, StringComparison.OrdinalIgnoreCase)) {
-                    await Fail(session, 400, "State/provider mismatch").ConfigureAwait(false);
-                    return;
-                }
-
-                var cfg = await rt.CfgManager.GetConfigurationAsync(session.RequestAborted).ConfigureAwait(false);
-                string redirectUri = BuildRedirectUri(rt, provider);
-
-                var token = await ExchangeCodeAsync(rt.Http, opt, cfg.TokenEndpoint, code, redirectUri, session.RequestAborted).ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(token.IdToken)) {
-                    await Fail(session, 401, "Missing id_token").ConfigureAwait(false);
-                    return;
-                }
-
-                var principal = ValidateIdToken(opt, token.IdToken!, cfg, pending.Nonce);
-
-                var sid = Base64Url(RandomBytes(32));
-                var now = DateTimeOffset.UtcNow;
-
-                var expires = token.ExpiresInSeconds > 0 ? now.AddSeconds(token.ExpiresInSeconds) : now.AddMinutes(opt.SessionTtlMinutes);
-
-                AuthSession authSession = new(
-                    SessionId: sid,
-                    Provider: provider,
-                    CreatedUtc: now,
-                    ExpiresUtc: expires,
-                    Subject: Find(principal, "sub") ?? Find(principal, ClaimTypes.NameIdentifier) ?? "",
-                    Claims: principal.Claims.ToArray(),
-                    Tokens: opt.SaveTokens ? token : null
-                );
-
-                _sessions[sid] = authSession;
-
-                session.Response.SetCookie(
-                    _multi.CookieName,
-                    sid,
-                    new HttpResponse.CookieOptions(
-                        path: "/",
-                        maxAgeSeconds: (int)Math.Max(60, (expires - now).TotalSeconds),
-                        secure: _multi.CookieSecure,
-                        httpOnly: true,
-                        sameSite: _multi.CookieSameSite
-                    )
-                );
-
-                await session.Response.Redirect(pending.ReturnUrl).SendAsync().ConfigureAwait(false);
-            }
-
-            /// <summary>
-            /// LogoutHandler
+            /// Logout handler
             /// </summary>
             /// <param name="session"></param>
             /// <returns></returns>
-            private async ValueTask LogoutHandler(HttpSession session) {
-                string? returnUrl = null;
-                session.Request.Query?.TryGetValue("returnUrl", out returnUrl);
-                returnUrl = NormalizeReturnUrl(returnUrl);
+            private object LogoutHandler(HttpSession session) {
+                ModuleConfiguration configuration = _state.Snapshot ?? throw new InvalidOperationException("OpenID module configuration is missing.");
 
-                if (session.Request.Headers.TryGetCookie(_multi.CookieName, out var sid) && !string.IsNullOrWhiteSpace(sid)) {
-                    _sessions.TryRemove(sid!, out _);
-                }
+                string requestedReturnUrl = session.Request.Query.TryGetValue("returnUrl", out string? returnUrl) && !string.IsNullOrWhiteSpace(returnUrl)
+                                                ? returnUrl
+                                                : "/";
 
-                await session.Response.DeleteCookie(_multi.CookieName, path: "/").Redirect(returnUrl).SendAsync().ConfigureAwait(false);
+                string normalizedReturnUrl = configuration.Helper.SignOut(session, requestedReturnUrl);
+                return session.Response.Redirect(normalizedReturnUrl);
             }
 
-            #region helpers
-
-            private static async Task<TokenResponse> ExchangeCodeAsync(HttpClient http, OpenIDOptions opt, string tokenEndpoint, string code, string redirectUri, CancellationToken ct) {
-                
-                // application/x-www-form-urlencoded
-                Dictionary<string, string> body = new(StringComparer.Ordinal) {
-                    ["grant_type"] = "authorization_code",
-                    ["code"] = code,
-                    ["redirect_uri"] = redirectUri,
-                    ["client_id"] = opt.ClientId,
-                };
-
-                // client_secret: either in body or Basic auth
-                using var req = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint) {
-                    Content = new FormUrlEncodedContent(body)
-                };
-
-                if (opt.ClientAuthentication == ClientAuthMode.Basic) {
-                    var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{opt.ClientId}:{opt.ClientSecret}"));
-                    req.Headers.Authorization = new AuthenticationHeaderValue("Basic", basic);
-                }
-                else {
-                    // post body
-                    body["client_secret"] = opt.ClientSecret;
-                    req.Content = new FormUrlEncodedContent(body);
+            private static bool IsAuthorizedForProvider(HttpPrincipal principal, string provider) {
+                if (!principal.IsAuthenticated) {
+                    return false;
                 }
 
-                using var resp = await http.SendAsync(req, ct).ConfigureAwait(false);
-                string json = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-
-                if (!resp.IsSuccessStatusCode) {
-                    throw new InvalidOperationException($"Token endpoint error {(int)resp.StatusCode}: {json}");
+                if (principal.Has("provider", provider)) {
+                    return true;
                 }
 
-                // Minimal JSON parsing without bringing a JSON dependency:
-                // You can replace by server.JsonEngine if you want.
-                return TokenResponse.FromJson(json);
+                return string.Equals(principal.Identity.AuthenticationType, $"OpenID:{provider}", StringComparison.OrdinalIgnoreCase);
             }
 
-            private static ClaimsPrincipal ValidateIdToken(OpenIDOptions opt, string idToken, OpenIdConnectConfiguration cfg, string expectedNonce) {
-                JwtSecurityTokenHandler handler = new();
-
-                TokenValidationParameters validation = new TokenValidationParameters {
-                    ValidateIssuer = true,
-                    ValidIssuer = cfg.Issuer,
-
-                    ValidateAudience = true,
-                    ValidAudience = opt.ClientId,
-
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromSeconds(opt.ClockSkewSeconds),
-
-                    RequireSignedTokens = true,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKeys = cfg.SigningKeys
-                };
-
-                var principal = handler.ValidateToken(idToken, validation, out _);
-
-                // nonce check (recommended for OIDC)
-                string? nonce = principal.Claims.FirstOrDefault(c => c.Type == "nonce")?.Value;
-                if (!string.Equals(nonce, expectedNonce, StringComparison.Ordinal)) {
-                    throw new SecurityTokenException("Invalid nonce");
-                }
-
-                return principal;
+            private static string CreateCurrentReturnUrl(HttpSession session) {
+                return string.IsNullOrWhiteSpace(session.Request.RawTarget) ? session.Request.Path : session.Request.RawTarget;
             }
 
-            private string BuildRedirectUri(ProviderRuntime rt, string provider) {
-                // In multi-provider, callback includes provider in path
-                if (!string.IsNullOrWhiteSpace(rt.Options.RedirectUri)) {
-                    return rt.Options.RedirectUri!;
-                }
-
-                string? baseUrl = rt.Options.PublicBaseUrl?.TrimEnd('/');
-                if (string.IsNullOrWhiteSpace(baseUrl)) {
-                    throw new InvalidOperationException("Either RedirectUri or PublicBaseUrl must be set.");
-                }
-
-                return $"{baseUrl}{_multi.BasePath.TrimEnd('/')}/callback/{provider}";
-            }
-
-            private static string NormalizeReturnUrl(string? returnUrl) {
-                if (string.IsNullOrWhiteSpace(returnUrl)) {
-                    return "/";
-                }
-
-                // only allow local paths to avoid open redirect
-                if (!returnUrl.StartsWith("/", StringComparison.Ordinal) || returnUrl.StartsWith("//", StringComparison.Ordinal)) {
-                    return "/";
-                }
-
-                return returnUrl;
-            }
-
-            private async ValueTask Fail(HttpSession session, int statusCode, string message) {
-                session.Response.Status(statusCode).Json(new { ok = false, error = message });
-                await session.Response.SendAsync().ConfigureAwait(false);
-            }
-
-            private void MaybeCleanup() {
-                long tick = Interlocked.Increment(ref _cleanupTick);
-                if (tick % _multi.Providers.Values.First().CleanupEveryNRequests != 0) {
-                    return;
-                }
-
-                DateTimeOffset now = DateTimeOffset.UtcNow;
-
-                foreach (var kv in _pending) {
-                    if (kv.Value.ExpiresUtc <= now) {
-                        _pending.TryRemove(kv.Key, out _);
+            private static IReadOnlyDictionary<string, string>? BuildChallengeParameters(HttpSession session) {
+                Dictionary<string, string>? parameters = null;
+                foreach (KeyValuePair<string, string> pair in session.Request.Query) {
+                    if (string.IsNullOrWhiteSpace(pair.Key)
+                        || string.IsNullOrWhiteSpace(pair.Value)
+                        || string.Equals(pair.Key, "returnUrl", StringComparison.OrdinalIgnoreCase)) {
+                        continue;
                     }
+
+                    parameters ??= new Dictionary<string, string>(StringComparer.Ordinal);
+                    parameters[pair.Key] = pair.Value;
                 }
 
-                foreach (var kv in _sessions) {
-                    if (kv.Value.ExpiresUtc <= now) {
-                        _sessions.TryRemove(kv.Key, out _);
-                    }
-                }
+                return parameters;
             }
-
-            private static byte[] RandomBytes(int len) {
-                byte[] bytes = new byte[len];
-                RandomNumberGenerator.Fill(bytes);
-                return bytes;
-            }
-
-            private static string Base64Url(byte[] bytes) => Base64UrlEncoder.Encode(bytes);
-
-            private static string UrlEncode(string s) => Uri.EscapeDataString(s);
-
-            static string? Find(ClaimsPrincipal p, string type) => p.Claims.FirstOrDefault(c => c.Type == type)?.Value;
-
-            #endregion helpers
-
-            /// <summary>
-            /// ProviderRuntime
-            /// </summary>
-            /// <param name="Provider"></param>
-            /// <param name="Options"></param>
-            /// <param name="Http"></param>
-            /// <param name="CfgManager"></param>
-            private sealed record ProviderRuntime(string Provider, OpenIDOptions Options, HttpClient Http, ConfigurationManager<OpenIdConnectConfiguration> CfgManager);
 
         }
 
-        /// <summary>
-        /// ClientAuthMode
-        /// </summary>
-        public enum ClientAuthMode {
-            /// <summary>
-            /// Authorization: Basic base64(client_id:client_secret)
-            /// </summary>
-            Basic,
-            /// <summary>
-            /// client_secret in POST body (some providers accept it)
-            /// </summary>
-            PostBody
+        private static string BuildRoutePath(string basePath, string suffix) {
+            return basePath == "/" ? "/" + suffix : $"{basePath}/{suffix}";
         }
 
-        /// <summary>
-        /// PendingAuth
-        /// </summary>
-        /// <param name="Provider"></param>
-        /// <param name="Nonce"></param>
-        /// <param name="ReturnUrl"></param>
-        /// <param name="ExpiresUtc"></param>
-        internal readonly record struct PendingAuth(string Provider, string Nonce, string ReturnUrl, DateTimeOffset ExpiresUtc);
+    }
+
+    /// <summary>
+    /// Declares that a handler requires OpenID authentication with the given provider.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public sealed class OpenIDAuthAttribute : Attribute, IHandlerMetadata {
 
         /// <summary>
-        /// AuthSession
+        /// Constructor
         /// </summary>
-        /// <param name="SessionId"></param>
-        /// <param name="Provider"></param>
-        /// <param name="CreatedUtc"></param>
-        /// <param name="ExpiresUtc"></param>
-        /// <param name="Subject"></param>
-        /// <param name="Claims"></param>
-        /// <param name="Tokens"></param>
-        public sealed record AuthSession(string SessionId, string Provider, DateTimeOffset CreatedUtc, DateTimeOffset ExpiresUtc, string Subject, Claim[] Claims, TokenResponse? Tokens);
-
-        /// <summary>
-        /// TokenResponse
-        /// </summary>
-        /// <param name="AccessToken"></param>
-        /// <param name="IdToken"></param>
-        /// <param name="RefreshToken"></param>
-        /// <param name="ExpiresInSeconds"></param>
-        /// <param name="TokenType"></param>
-        public sealed record TokenResponse(string? AccessToken, string? IdToken, string? RefreshToken, int ExpiresInSeconds, string? TokenType) {
-
-            /// <summary>
-            /// Minimal JSON parser for well-known fields.
-            /// Replace with server.JsonEngine if you prefer.
-            /// </summary>
-            /// <param name="json"></param>
-            /// <returns></returns>
-            public static TokenResponse FromJson(string json) {
-                static string? GetString(string j, string key) {
-                    var needle = $"\"{key}\"";
-                    var i = j.IndexOf(needle, StringComparison.OrdinalIgnoreCase);
-                    if (i < 0) {
-                        return null;
-                    }
-                    i = j.IndexOf(':', i);
-                    if (i < 0) {
-                        return null;
-                    }
-                    i++;
-
-                    while (i < j.Length && char.IsWhiteSpace(j[i])) {
-                        i++;
-                    }
-
-                    if (i < j.Length && j[i] == '"') {
-                        i++;
-                        var end = j.IndexOf('"', i);
-                        if (end < 0) {
-                            return null;
-                        }
-                        return j.Substring(i, end - i);
-                    }
-
-                    // non-string (rare)
-                    var end2 = j.IndexOfAny([',', '}', '\n', '\r'], i);
-                    if (end2 < 0) {
-                        end2 = j.Length;
-                    }
-                    return j.Substring(i, end2 - i).Trim();
-                }
-
-                static int GetInt(string j, string key) {
-                    var s = GetString(j, key);
-                    return int.TryParse(s, out var v) ? v : 0;
-                }
-
-                return new TokenResponse(
-                    AccessToken: GetString(json, "access_token"),
-                    IdToken: GetString(json, "id_token"),
-                    RefreshToken: GetString(json, "refresh_token"),
-                    ExpiresInSeconds: GetInt(json, "expires_in"),
-                    TokenType: GetString(json, "token_type")
-                );
+        /// <param name="provider"></param>
+        /// <exception cref="ArgumentException"></exception>
+        public OpenIDAuthAttribute(string provider) {
+            if (string.IsNullOrWhiteSpace(provider)) {
+                throw new ArgumentException("OpenID provider must not be null or empty.", nameof(provider));
             }
 
+            Provider = provider.Trim();
         }
+
+        /// <summary>
+        /// Provider logical name used by the module challenge flow.
+        /// </summary>
+        public string Provider { get; }
 
     }
 

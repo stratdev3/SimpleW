@@ -2,8 +2,8 @@
 
 [![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://simplew.net)
 
-[![NuGet Package](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
-![NuGet Downloads](https://img.shields.io/nuget/dt/SimpleW)
+[![NuGet Package](https://img.shields.io/nuget/v/SimpleW.Service.OpenID)](https://www.nuget.org/packages/SimpleW.Service.OpenID)
+![NuGet Downloads](https://img.shields.io/nuget/dt/SimpleW.Service.OpenID)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](licence)
 <br/>
 [![Linux](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml)
@@ -12,66 +12,74 @@
 
 ### Features
 
-OpenID Connect authentication module for the SimpleW web server with cookie-based sessions.
+`SimpleW.Service.OpenID` is the convenience module built on top of `SimpleW.Helper.OpenID`.
+
+It lets you:
+- restore the principal automatically from the OpenID auth cookie
+- challenge handlers decorated with `OpenIDAuthAttribute`
+- map `login`, `callback`, and `logout` routes under a base path
+- reuse the same provider and cookie options as `OpenIDHelper`
 
 ### Getting Started
 
-The minimal API
+Minimal module usage with controller metadata:
 
 ```cs
 using SimpleW;
-using SimpleW.Observability;
 using SimpleW.Service.OpenID;
 
-namespace Sample {
-    class Program {
+var server = new SimpleWServer(System.Net.IPAddress.Any, 8080);
 
-        static async Task Main() {
+server.UseOpenIDModule(options => {
+    options.CookieSecure = false; // local HTTP development only
 
-            // debug log
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+    options.Add("google", provider => {
+        provider.Authority = "https://accounts.google.com";
+        provider.ClientId = "<google-client-id>";
+        provider.ClientSecret = "<google-client-secret>";
+        provider.RedirectUri = "http://127.0.0.1:8080/auth/oidc/callback/google";
+    });
+});
 
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+server.MapController<AccountController>("/api");
 
-            server.UseOpenIDModule(options => {
+await server.RunAsync();
 
-                options.Add("google", o => {
-                    o.Authority = "https://accounts.google.com";
-                    o.ClientId = "azerty";
-                    o.ClientSecret = "GOCSPX-azerty";
-                    o.PublicBaseUrl = "http://myapp.example.test";
-                });
+[Route("/account")]
+public class AccountController : Controller {
 
-                options.CookieSecure = false;
-            });
+    [AllowAnonymous]
+    [Route("GET", "/public")]
+    public object Public() {
+        return new {
+            login = "/auth/oidc/login/google?returnUrl=/api/account/me",
+            logout = "/auth/oidc/logout?returnUrl=/"
+        };
+    }
 
-            // route to protect
-            server.Router.MapGet("/api/me", (HttpSession session) => {
-                if (!session.Request.User.Identity) {
-                    return session.Response
-                                  .Unauthorized()
-                                  .SendAsync();
-                }
-                var u = session.Request.User;
-                return session.Response.Json(new {
-                    authenticated = true,
-                    id = u.Id,
-                    login = u.Login,
-                    mail = u.Mail,
-                    fullName = u.FullName,
-                    roles = u.Roles,
-                    profile = u.Profile
-                }).SendAsync();
-            });
-
-            // start a blocking background server
-            await server.RunAsync();
-        }
+    [OpenIDAuth("google")]
+    [Route("GET", "/me")]
+    public object Me() {
+        return new {
+            user = Principal.Name,
+            email = Principal.Email,
+            provider = Principal.Get("provider")
+        };
     }
 
 }
 ```
+
+Routes automatically mapped by the module:
+
+- `GET /auth/oidc/login/:provider`
+- `GET /auth/oidc/callback/:provider`
+- `GET /auth/oidc/logout`
+
+`OpenIDModuleOptions` inherits from `OpenIDHelperOptions`, so provider discovery, cookie behavior, token validation, and `PrincipalFactory` stay identical to the helper package.
+
+Use this package when you want the OpenID plumbing and metadata-driven challenge behavior already wired.
+Use `SimpleW.Helper.OpenID` directly when you want to keep full control over the middleware and technical routes.
 
 ## Documentation
 

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0;</TargetFrameworks>
@@ -8,8 +8,8 @@
     <!-- nuget metadata -->
     <Authors>Christophe CHATEAU</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Description>OpenID Connect convenience module for SimpleW with automatic cookie-based principal restoration and login, callback, and logout routes built on top of SimpleW.Helper.OpenID.</Description>
-    <PackageTags>simplew;openid;openid-connect;oidc;authentication;auth;security;identity;login;sso;cookie;oauth2;module</PackageTags>
+    <Description>Reusable OpenID Connect helper for SimpleW to manage authorization challenges, callback completion, and stateless request authentication from provider-issued ID tokens.</Description>
+    <PackageTags>simplew;openid;openid-connect;oidc;oauth2;authentication;auth;security;identity;login;sso;cookie;helper</PackageTags>
     <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
@@ -46,13 +46,11 @@
   <!-- use for dotnet build -->
   <ItemGroup Condition="'$(UseLocalSimpleW)' == 'true'">
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
-    <ProjectReference Include="..\SimpleW.Helper.OpenID\SimpleW.Helper.OpenID.csproj" />
   </ItemGroup>
 
   <!-- use for dotnet package (so all packages must follow the same "Major.Minor" version -->
   <ItemGroup Condition="'$(UseLocalSimpleW)' != 'true'">
     <PackageReference Include="SimpleW" Version="$(SimpleWCompatVersion)" />
-    <PackageReference Include="SimpleW.Helper.OpenID" Version="$(SimpleWCompatVersion)" />
   </ItemGroup>
 
   <ItemGroup>
@@ -64,6 +62,10 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.16.0" />
   </ItemGroup>
 
 </Project>

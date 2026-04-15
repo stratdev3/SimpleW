@@ -84,6 +84,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.OpenID
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.OpenID/
+        dotnet build -c @param:build_configuration@ SimpleW.Helper.OpenID.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Helper.Razor
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -243,6 +255,12 @@ jobs:
     name: publish artifact SimpleW.Helper.Log4net
     sourcePath: src/SimpleW.Helper.Log4net/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Log4net.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.OpenID
+    sourcePath: src/SimpleW.Helper.OpenID/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.OpenID.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
@@ -414,6 +432,20 @@ jobs:
         TS=$(date +"%Y%m%d")-@build_number@
         sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj
         dotnet pack -c Release SimpleW.Helper.Log4net.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Helper.OpenID
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.OpenID
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj
+        dotnet pack -c Release SimpleW.Helper.OpenID.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -605,6 +637,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.OpenID
+    sourcePath: src/SimpleW.Helper.OpenID/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Razor
     sourcePath: src/SimpleW.Helper.Razor/bin/Release/
     artifacts: '*.*nupkg'
@@ -726,6 +764,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Log4net/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.OpenID to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -1150,6 +1200,61 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Log4net/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: CD production nuget SimpleW.Helper.OpenID
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Helper.OpenID
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.OpenID
+        dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.OpenID.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.OpenID
+    sourcePath: src/SimpleW.Helper.OpenID/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.OpenID to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Helper.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
