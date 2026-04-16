@@ -325,7 +325,7 @@ namespace SimpleW {
         /// <param name="controllerType"></param>
         /// <param name="method"></param>
         /// <returns></returns>
-        public static HttpRouteExecutor Create(Type controllerType, MethodInfo method) {
+        private static HttpRouteExecutor Create(Type controllerType, MethodInfo method) {
             ArgumentNullException.ThrowIfNull(controllerType);
             ArgumentNullException.ThrowIfNull(method);
 
@@ -738,7 +738,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="p"></param>
         /// <returns></returns>
-        public static object? GetDefaultValueForParameter(ParameterInfo p) {
+        private static object? GetDefaultValueForParameter(ParameterInfo p) {
             if (p.HasDefaultValue) {
                 return p.DefaultValue;
             }
@@ -759,7 +759,7 @@ namespace SimpleW {
         /// <param name="raw"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        public static T ConvertFromStringOrDefault<T>(string raw, T defaultValue) {
+        private static T ConvertFromStringOrDefault<T>(string raw, T defaultValue) {
             if (TryConvertFromString(raw, typeof(T), out object? value)) {
                 return (T)value!;
             }
@@ -774,7 +774,7 @@ namespace SimpleW {
         /// <param name="targetType"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        public static bool TryConvertFromString(string raw, Type targetType, out object? value) {
+        private static bool TryConvertFromString(string raw, Type targetType, out object? value) {
             value = null;
 
             Type? underlying = Nullable.GetUnderlyingType(targetType);
@@ -942,7 +942,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="handler"></param>
         /// <returns></returns>
-        internal static HandlerMetadataCollection GetMetadata(Delegate handler) {
+        public static HandlerMetadataCollection GetMetadata(Delegate handler) {
             ArgumentNullException.ThrowIfNull(handler);
 
             Type? declaringType = handler.Target?.GetType() ?? handler.Method.DeclaringType;
