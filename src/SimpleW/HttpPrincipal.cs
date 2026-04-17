@@ -1,5 +1,3 @@
-using System.Data;
-
 namespace SimpleW {
 
     /// <summary>
@@ -231,6 +229,40 @@ namespace SimpleW {
             Key = key;
             Value = value;
         }
+
+    }
+
+    /// <summary>
+    /// Declares that a handler is public and should bypass middleware-level authorization behavior.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public sealed class AllowAnonymousAttribute : Attribute, IHandlerMetadata {
+    }
+
+    /// <summary>
+    /// Declares that a handler requires at least one of the roles described by <see cref="Role"/>.
+    /// Multiple attributes can be combined and are evaluated independently by middleware.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+    public class RequireRoleAttribute : Attribute, IHandlerMetadata {
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="role"></param>
+        /// <exception cref="ArgumentException"></exception>
+        public RequireRoleAttribute(string role) {
+            if (string.IsNullOrWhiteSpace(role)) {
+                throw new ArgumentException("Role must not be null or empty.", nameof(role));
+            }
+
+            Role = role.Trim();
+        }
+
+        /// <summary>
+        /// Role expression evaluated through <see cref="HttpPrincipal.IsInRoles(string)"/>.
+        /// </summary>
+        public string Role { get; }
 
     }
 
