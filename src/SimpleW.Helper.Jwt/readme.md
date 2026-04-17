@@ -12,8 +12,8 @@
 
 ### Features
 
-This package lightweight JWT Bearer helpers for SimpleW.
-It allows you to easily create and validate JWT tokens using HttpIdentity or HttpPrincipal, with full support for roles and custom properties.
+This package provides lightweight JWT Bearer helpers for SimpleW.
+It allows you to create and validate JWT tokens using `HttpIdentity` or `HttpPrincipal`, with full support for roles and custom properties.
 Supports HS256, HS384, and HS512 algorithms, with optional issuer and audience validation.
 
 ### Getting Started
@@ -31,32 +31,28 @@ namespace Sample {
 
         static async Task Main() {
 
-            // create options
-            var options = JwtBearerOptions.Create(
-                secretKey: "super-secret-key",
-                issuer: "simplew",
-                audience: "api"
-            );
+            var helper = new JwtBearerHelper(options => {
+                options.SecretKey = "super-secret-key";
+                options.Issuer = "simplew";
+                options.Audience = "api";
+            });
 
-            // create an identity
             var identity = new HttpIdentity(
                 isAuthenticated: true,
                 authenticationType: "Custom",
                 identifier: "user-123",
                 name: "John Doe",
                 email: "john@doe.com",
-                roles: new[] { "admin" }
+                roles: new[] { "admin" },
+                properties: null
             );
 
-            // create token
-            string token = JwtBearerHelper.CreateToken(
-                options,
+            string token = helper.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromHours(1)
             );
 
-            // validate token
-            if (JwtBearerHelper.TryValidateToken(options, token, out var principal, out var error)) {
+            if (helper.TryValidateToken(token, out var principal, out var error)) {
                 Console.WriteLine($"User: {principal.Identity.Name}");
             }
             else {
@@ -68,6 +64,112 @@ namespace Sample {
 
 }
 ```
+
+### Middleware Integration
+
+You can restore `session.Principal` from the `Authorization` header in a middleware.
+
+```cs
+using System;
+using System.Collections.Generic;
+using SimpleW;
+using SimpleW.Helper.Jwt;
+
+JwtBearerHelper helper = new(options => {
+    options.SecretKey = "super-secret-key";
+    options.Issuer = "simplew";
+    options.Audience = "api";
+});
+
+server.UseMiddleware(async (session, next) => {
+    if (helper.TryAuthenticate(session, out HttpPrincipal principal)) {
+        session.Principal = principal;
+    }
+
+    await next();
+});
+```
+
+### Custom Attributes In Middleware
+
+Because SimpleW exposes route metadata through `session.Metadata`, you can combine core auth metadata with custom JWT attributes in one middleware.
+
+```cs
+using SimpleW;
+using SimpleW.Helper.Jwt;
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+public class JwtAuthAttribute : Attribute, IHandlerMetadata {
+}
+
+JwtBearerHelper helper = new(options => {
+    options.SecretKey = "super-secret-key";
+    options.Issuer = "simplew";
+    options.Audience = "api";
+});
+
+server.UseMiddleware(async (session, next) => {
+    if (helper.TryAuthenticate(session, out HttpPrincipal principal)) {
+        session.Principal = principal;
+    }
+
+    if (session.Metadata.Has<AllowAnonymousAttribute>()) {
+        await next();
+        return;
+    }
+
+    JwtAuthAttribute? auth = session.Metadata.Get<JwtAuthAttribute>();
+    RequireRoleAttribute? requiredRole = session.Metadata.Get<RequireRoleAttribute>();
+
+    if (auth == null && requiredRole == null) {
+        await next();
+        return;
+    }
+
+    if (!session.Principal.IsAuthenticated) {
+        await session.Response.Unauthorized().SendAsync();
+        return;
+    }
+
+    if (requiredRole != null && !session.Principal.IsInRoles(requiredRole.Role)) {
+        await session.Response
+                     .Status(403)
+                     .Json(new { ok = false, error = "forbidden", role = requiredRole.Role })
+                     .SendAsync();
+        return;
+    }
+
+    await next();
+});
+
+[JwtAuth]
+[Route("/api/account")]
+public class AccountController : Controller {
+
+    [AllowAnonymous]
+    [Route("GET", "/public")]
+    public object Public() {
+        return new { ok = true };
+    }
+
+    [Route("GET", "/me")]
+    public object Me() {
+        return new {
+            id = Principal.Identity.Identifier,
+            name = Principal.Name,
+            roles = Principal.Roles
+        };
+    }
+
+    [RequireRole("admin")]
+    [Route("GET", "/admin")]
+    public object Admin() {
+        return new { ok = true, area = "admin" };
+    }
+}
+```
+
+If you want a ready-to-use module that restores the principal automatically and protects handlers with metadata for you, use `SimpleW.Service.Jwt`.
 
 ## Documentation
 

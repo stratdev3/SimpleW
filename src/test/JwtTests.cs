@@ -1,4 +1,4 @@
-﻿using NFluent;
+using NFluent;
 using SimpleW;
 using SimpleW.Helper.Jwt;
 using Xunit;
@@ -6,12 +6,12 @@ using Xunit;
 namespace test {
 
     /// <summary>
-    /// Tests for JwtBearerHelper / JwtBearerOptions
+    /// Tests for JwtBearerHelper / JwtBearerOptions.
     /// </summary>
     public class JwtBearerHelperTests {
 
         [Fact]
-        public void CreateToken_Then_ValidateToken_Should_RebuildPrincipal() {
+        public void CreateToken_Then_ValidateToken_WithHelperInstance_Should_RebuildPrincipal() {
 
             JwtBearerOptions options = JwtBearerOptions.Create(
                 secretKey: "super-secret-key",
@@ -20,6 +20,8 @@ namespace test {
                 clockSkew: TimeSpan.FromMinutes(1),
                 algorithm: "HS256"
             );
+
+            JwtBearerHelper helper = new(options);
 
             HttpIdentity identity = new(
                 isAuthenticated: true,
@@ -34,14 +36,12 @@ namespace test {
                 }
             );
 
-            string token = JwtBearerHelper.CreateToken(
-                options,
+            string token = helper.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromHours(1)
             );
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -61,6 +61,11 @@ namespace test {
             Check.That(principal.IsInRole("devops")).IsTrue();
             Check.That(principal.IsInRole("Admin")).IsFalse(); // case-sensitive by design
 
+            Check.That(principal.Get("login")).IsEqualTo("Owner");
+            Check.That(principal.Has("auth_scheme", "Bearer")).IsTrue();
+            Check.That(principal.Has("issuer", "SimpleW")).IsTrue();
+            Check.That(principal.Has("audience", "SimpleW.Client")).IsTrue();
+            Check.That(principal.Get("auth_time")).IsNotNull();
             Check.That(principal.Get("tenant_id")).IsEqualTo("simplew");
             Check.That(principal.Get("plan")).IsEqualTo("pro");
         }
@@ -74,6 +79,8 @@ namespace test {
                 audience: "SimpleW.Client"
             );
 
+            JwtBearerHelper helper = new(options);
+
             HttpPrincipal principal = new(new HttpIdentity(
                 isAuthenticated: true,
                 authenticationType: "Bearer",
@@ -86,14 +93,12 @@ namespace test {
                 }
             ));
 
-            string token = JwtBearerHelper.CreateToken(
-                options,
+            string token = helper.CreateToken(
                 principal,
                 lifetime: TimeSpan.FromMinutes(30)
             );
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 token,
                 out HttpPrincipal? validated,
                 out string? error
@@ -108,12 +113,63 @@ namespace test {
         }
 
         [Fact]
+        public void TryValidateToken_Should_UseCustomPrincipalFactory() {
+
+            JwtBearerOptions options = JwtBearerOptions.Create(
+                secretKey: "super-secret-key",
+                issuer: "SimpleW",
+                audience: "SimpleW.Client"
+            );
+
+            options.AuthenticationType = "Jwt";
+            options.PrincipalFactory = context => new HttpPrincipal(new HttpIdentity(
+                isAuthenticated: true,
+                authenticationType: "CustomBearer",
+                identifier: context.Subject,
+                name: context.Name,
+                email: context.Email,
+                roles: context.Roles,
+                properties: new[] {
+                    new IdentityProperty("factory", "custom"),
+                    new IdentityProperty("token_subject", context.Subject ?? string.Empty)
+                }
+            ));
+
+            JwtBearerHelper helper = new(options);
+
+            HttpIdentity identity = new(
+                isAuthenticated: true,
+                authenticationType: "Bearer",
+                identifier: "owner",
+                name: "Owner",
+                email: "owner@simplew.dev",
+                roles: new[] { "admin" },
+                properties: null
+            );
+
+            string token = helper.CreateToken(identity, TimeSpan.FromHours(1));
+
+            bool ok = helper.TryValidateToken(
+                token,
+                out HttpPrincipal? principal,
+                out string? error
+            );
+
+            Check.That(ok).IsTrue();
+            Check.That(error).IsNull();
+            Check.That(principal).IsNotNull();
+            Check.That(principal!.Identity.AuthenticationType).IsEqualTo("CustomBearer");
+            Check.That(principal.Get("factory")).IsEqualTo("custom");
+            Check.That(principal.Get("token_subject")).IsEqualTo("owner");
+        }
+
+        [Fact]
         public void TryValidateToken_Should_ReturnFalse_When_TokenIsEmpty() {
 
             JwtBearerOptions options = JwtBearerOptions.Create(secretKey: "super-secret-key");
+            JwtBearerHelper helper = new(options);
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 "",
                 out HttpPrincipal? principal,
                 out string? error
@@ -128,9 +184,9 @@ namespace test {
         public void TryValidateToken_Should_ReturnFalse_When_TokenDoesNotHave3Parts() {
 
             JwtBearerOptions options = JwtBearerOptions.Create(secretKey: "super-secret-key");
+            JwtBearerHelper helper = new(options);
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 "abc.def",
                 out HttpPrincipal? principal,
                 out string? error
@@ -156,6 +212,9 @@ namespace test {
                 audience: "SimpleW.Client"
             );
 
+            JwtBearerHelper helperA = new(optionsA);
+            JwtBearerHelper helperB = new(optionsB);
+
             HttpIdentity identity = new(
                 isAuthenticated: true,
                 authenticationType: "Bearer",
@@ -166,15 +225,13 @@ namespace test {
                 properties: null
             );
 
-            string token = JwtBearerHelper.CreateToken(
-                optionsA,
+            string token = helperA.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromHours(1),
                 nowUtc: new DateTimeOffset(2026, 03, 22, 12, 00, 00, TimeSpan.Zero)
             );
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                optionsB,
+            bool ok = helperB.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -200,6 +257,9 @@ namespace test {
                 audience: "SimpleW.Client"
             );
 
+            JwtBearerHelper createHelper = new(createOptions);
+            JwtBearerHelper validateHelper = new(validateOptions);
+
             HttpIdentity identity = new(
                 isAuthenticated: true,
                 authenticationType: "Bearer",
@@ -210,14 +270,12 @@ namespace test {
                 properties: null
             );
 
-            string token = JwtBearerHelper.CreateToken(
-                createOptions,
+            string token = createHelper.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromHours(1)
             );
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                validateOptions,
+            bool ok = validateHelper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -243,6 +301,9 @@ namespace test {
                 audience: "OtherAudience"
             );
 
+            JwtBearerHelper createHelper = new(createOptions);
+            JwtBearerHelper validateHelper = new(validateOptions);
+
             HttpIdentity identity = new(
                 isAuthenticated: true,
                 authenticationType: "Bearer",
@@ -253,14 +314,12 @@ namespace test {
                 properties: null
             );
 
-            string token = JwtBearerHelper.CreateToken(
-                createOptions,
+            string token = createHelper.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromHours(1)
             );
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                validateOptions,
+            bool ok = validateHelper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -281,6 +340,8 @@ namespace test {
                 clockSkew: TimeSpan.Zero
             );
 
+            JwtBearerHelper helper = new(options);
+
             HttpIdentity identity = new(
                 isAuthenticated: true,
                 authenticationType: "Bearer",
@@ -291,31 +352,24 @@ namespace test {
                 properties: null
             );
 
-            string token = JwtBearerHelper.CreateToken(
-                options,
+            DateTimeOffset issuedAt = new(2026, 03, 22, 12, 00, 00, TimeSpan.Zero);
+
+            string token = helper.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromMinutes(10),
-                nowUtc: DateTimeOffset.UtcNow.AddHours(-3)
+                nowUtc: issuedAt
             );
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
-                out string? error
+                out string? error,
+                nowUtc: issuedAt.AddMinutes(20)
             );
 
-            // validate at 12:20 via token crafted at 12:00 with exp 12:10
-            ok = JwtBearerHelper.TryValidateToken(
-                options,
-                RecreateSameTokenWithValidationTime(token), // same token, helper only for readability
-                out principal,
-                out error
-            );
-
-            // The helper itself uses DateTimeOffset.UtcNow internally, so this test only works reliably
-            // if executed before token expiration relative to system clock.
-            // Keep a deterministic expired-token test below instead.
+            Check.That(ok).IsFalse();
+            Check.That(principal).IsNull();
+            Check.That(error).IsEqualTo("JWT token is expired.");
         }
 
         [Fact]
@@ -335,6 +389,9 @@ namespace test {
                 algorithm: "HS512"
             );
 
+            JwtBearerHelper createHelper = new(createOptions);
+            JwtBearerHelper validateHelper = new(validateOptions);
+
             HttpIdentity identity = new(
                 isAuthenticated: true,
                 authenticationType: "Bearer",
@@ -345,15 +402,13 @@ namespace test {
                 properties: null
             );
 
-            string token = JwtBearerHelper.CreateToken(
-                createOptions,
+            string token = createHelper.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromHours(1),
                 nowUtc: new DateTimeOffset(2026, 03, 22, 12, 00, 00, TimeSpan.Zero)
             );
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                validateOptions,
+            bool ok = validateHelper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -368,6 +423,7 @@ namespace test {
         public void CreateToken_Should_WriteSingleRole_AsRole() {
 
             JwtBearerOptions options = JwtBearerOptions.Create(secretKey: "super-secret-key");
+            JwtBearerHelper helper = new(options);
 
             HttpIdentity identity = new(
                 isAuthenticated: true,
@@ -379,10 +435,9 @@ namespace test {
                 properties: null
             );
 
-            string token = JwtBearerHelper.CreateToken(options, identity, TimeSpan.FromHours(1));
+            string token = helper.CreateToken(identity, TimeSpan.FromHours(1));
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -399,6 +454,7 @@ namespace test {
         public void CreateToken_Should_WriteMultipleRoles_AsRolesArray() {
 
             JwtBearerOptions options = JwtBearerOptions.Create(secretKey: "super-secret-key");
+            JwtBearerHelper helper = new(options);
 
             HttpIdentity identity = new(
                 isAuthenticated: true,
@@ -410,10 +466,9 @@ namespace test {
                 properties: null
             );
 
-            string token = JwtBearerHelper.CreateToken(options, identity, TimeSpan.FromHours(1));
+            string token = helper.CreateToken(identity, TimeSpan.FromHours(1));
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -430,6 +485,7 @@ namespace test {
         public void CreateToken_Should_KeepCoreFieldsPriority_OverProperties() {
 
             JwtBearerOptions options = JwtBearerOptions.Create(secretKey: "super-secret-key");
+            JwtBearerHelper helper = new(options);
 
             HttpIdentity identity = new(
                 isAuthenticated: true,
@@ -446,10 +502,9 @@ namespace test {
                 }
             );
 
-            string token = JwtBearerHelper.CreateToken(options, identity, TimeSpan.FromHours(1));
+            string token = helper.CreateToken(identity, TimeSpan.FromHours(1));
 
-            bool ok = JwtBearerHelper.TryValidateToken(
-                options,
+            bool ok = helper.TryValidateToken(
                 token,
                 out HttpPrincipal? principal,
                 out string? error
@@ -465,8 +520,5 @@ namespace test {
             Check.That(principal.Get("tenant_id")).IsEqualTo("simplew");
         }
 
-        private static string RecreateSameTokenWithValidationTime(string token) {
-            return token;
-        }
     }
 }

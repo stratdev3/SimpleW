@@ -636,8 +636,9 @@ namespace test {
                 }
             );
 
-            string token = JwtBearerHelper.CreateToken(
-                jwtOptions,
+            JwtBearerHelper jwtHelper = new(jwtOptions);
+
+            string token = jwtHelper.CreateToken(
                 identity,
                 lifetime: TimeSpan.FromHours(1)
             );
@@ -646,16 +647,7 @@ namespace test {
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
 
             server.ConfigurePrincipalResolver(session => {
-                string? authorization = session.Request.Headers.Authorization;
-
-                if (string.IsNullOrWhiteSpace(authorization)
-                    || !authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
-                    return null;
-                }
-
-                string jwt = authorization["Bearer ".Length..].Trim();
-
-                if (!JwtBearerHelper.TryValidateToken(jwtOptions, jwt, out HttpPrincipal? principal, out string? error)) {
+                if (!jwtHelper.TryAuthenticate(session, out HttpPrincipal principal)) {
                     return null;
                 }
 

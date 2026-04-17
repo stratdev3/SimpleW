@@ -1,81 +1,81 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SimpleW.Observability;
 
 
 namespace SimpleW.Helper.Jwt {
 
     /// <summary>
-    /// JWT Bearer options
+    /// Options for JwtBearerHelper.
     /// </summary>
-    public sealed class JwtBearerOptions {
+    public class JwtBearerOptions {
 
         /// <summary>
-        /// Precomputed Shared secret key bytes used to validate and create HMAC JWT tokens
+        /// Precomputed shared secret key bytes used to validate and create HMAC JWT tokens.
         /// </summary>
         internal byte[] SecretKeyBytes { get; private set; } = Array.Empty<byte>();
 
         /// <summary>
+        /// Shared secret key used to sign and validate HMAC JWT tokens.
+        /// </summary>
+        public string SecretKey { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Issuer written to the token and validated on read when set.
+        /// </summary>
+        public string? Issuer {
+            get => ExpectedIssuer;
+            set => ExpectedIssuer = value;
+        }
+
+        /// <summary>
+        /// Audience written to the token and validated on read when set.
+        /// </summary>
+        public string? Audience {
+            get => ExpectedAudience;
+            set => ExpectedAudience = value;
+        }
+
+        /// <summary>
         /// Expected issuer (iss). Null = do not validate issuer.
         /// </summary>
-        public string? ExpectedIssuer { get; init; }
+        public string? ExpectedIssuer { get; set; }
 
         /// <summary>
         /// Expected audience (aud). Null = do not validate audience.
         /// </summary>
-        public string? ExpectedAudience { get; init; }
+        public string? ExpectedAudience { get; set; }
 
         /// <summary>
-        /// Allowed clock skew for exp / nbf validation (default 1 minute)
+        /// Allowed clock skew for exp / nbf validation (default 1 minute).
         /// </summary>
-        public TimeSpan ClockSkew { get; init; } = TimeSpan.FromMinutes(1);
+        public TimeSpan ClockSkew { get; set; } = TimeSpan.FromMinutes(1);
 
         /// <summary>
-        /// JWT HMAC algorithm: HS256 / HS384 / HS512 (default HS256)
+        /// JWT HMAC algorithm: HS256 / HS384 / HS512 (default HS256).
         /// </summary>
-        public string Algorithm { get; init; } = "HS256";
+        public string Algorithm { get; set; } = "HS256";
 
         /// <summary>
-        /// Private Constructor
+        /// Authorization scheme read from the Authorization header.
         /// </summary>
-        /// <param name="secretKey"></param>
-        /// <param name="issuer"></param>
-        /// <param name="audience"></param>
-        /// <param name="clockSkew"></param>
-        /// <param name="algorithm"></param>
-        /// <exception cref="ArgumentException"></exception>
-        private JwtBearerOptions(
-            string secretKey,
-            string? issuer,
-            string? audience,
-            TimeSpan clockSkew,
-            string algorithm
-        ) {
-            if (string.IsNullOrWhiteSpace(secretKey)) {
-                throw new ArgumentException("SecretKey required");
-            }
-
-            algorithm = (algorithm ?? "").Trim().ToUpperInvariant();
-
-            if (algorithm is not ("HS256" or "HS384" or "HS512")) {
-                throw new ArgumentException("Invalid algorithm");
-            }
-
-            if (clockSkew < TimeSpan.Zero) {
-                throw new ArgumentException("ClockSkew must be >= 0");
-            }
-
-            ExpectedIssuer = string.IsNullOrWhiteSpace(issuer) ? null : issuer;
-            ExpectedAudience = string.IsNullOrWhiteSpace(audience) ? null : audience;
-            ClockSkew = clockSkew;
-            Algorithm = algorithm;
-
-            SecretKeyBytes = Encoding.UTF8.GetBytes(secretKey);
-        }
+        public string Scheme { get; set; } = "Bearer";
 
         /// <summary>
-        /// Builder
+        /// Authentication type used for the rebuilt HttpIdentity.
+        /// </summary>
+        public string AuthenticationType { get; set; } = "Bearer";
+
+        /// <summary>
+        /// Principal factory used to map a validated JWT token to a HttpPrincipal.
+        /// </summary>
+        public Func<JwtPrincipalContext, HttpPrincipal> PrincipalFactory { get; set; } = CreateDefaultPrincipal;
+
+        /// <summary>
+        /// Convenience builder.
         /// </summary>
         /// <param name="secretKey"></param>
         /// <param name="issuer"></param>
@@ -90,50 +90,231 @@ namespace SimpleW.Helper.Jwt {
             TimeSpan? clockSkew = null,
             string algorithm = "HS256"
         ) {
-            return new JwtBearerOptions(
-                secretKey,
-                issuer,
-                audience,
-                clockSkew ?? TimeSpan.FromMinutes(1),
-                algorithm
-            );
+            JwtBearerOptions options = new() {
+                SecretKey = secretKey,
+                Issuer = issuer,
+                Audience = audience,
+                ClockSkew = clockSkew ?? TimeSpan.FromMinutes(1),
+                Algorithm = algorithm
+            };
+
+            return options.ValidateAndNormalize();
+        }
+
+        /// <summary>
+        /// Validate and normalize options.
+        /// </summary>
+        /// <returns></returns>
+        public JwtBearerOptions ValidateAndNormalize() {
+            if (string.IsNullOrWhiteSpace(SecretKey)) {
+                throw new ArgumentException($"{nameof(SecretKey)} must not be null or empty.", nameof(SecretKey));
+            }
+
+            if (ClockSkew < TimeSpan.Zero) {
+                throw new ArgumentException($"{nameof(ClockSkew)} must be greater than or equal to zero.", nameof(ClockSkew));
+            }
+
+            Algorithm = NormalizeAlgorithm(Algorithm);
+            Scheme = string.IsNullOrWhiteSpace(Scheme) ? "Bearer" : Scheme.Trim();
+            AuthenticationType = string.IsNullOrWhiteSpace(AuthenticationType) ? Scheme : AuthenticationType.Trim();
+
+            ExpectedIssuer = string.IsNullOrWhiteSpace(ExpectedIssuer) ? null : ExpectedIssuer.Trim();
+            ExpectedAudience = string.IsNullOrWhiteSpace(ExpectedAudience) ? null : ExpectedAudience.Trim();
+            SecretKeyBytes = Encoding.UTF8.GetBytes(SecretKey);
+            return this;
+        }
+
+        private static string NormalizeAlgorithm(string? algorithm) {
+            string normalized = (algorithm ?? string.Empty).Trim().ToUpperInvariant();
+            if (normalized is not ("HS256" or "HS384" or "HS512")) {
+                throw new ArgumentException("Invalid algorithm", nameof(algorithm));
+            }
+
+            return normalized;
+        }
+
+        private static HttpPrincipal CreateDefaultPrincipal(JwtPrincipalContext context) {
+            List<IdentityProperty> properties = new() {
+                new("auth_scheme", context.Scheme),
+                new("auth_time", context.AuthenticatedAt.UtcDateTime.ToString("O", CultureInfo.InvariantCulture))
+            };
+
+            if (!string.IsNullOrWhiteSpace(context.Subject)) {
+                properties.Add(new IdentityProperty("subject", context.Subject));
+            }
+
+            string? login = context.Name ?? context.Email ?? context.Subject;
+            if (!string.IsNullOrWhiteSpace(login)) {
+                properties.Add(new IdentityProperty("login", login));
+            }
+
+            if (!string.IsNullOrWhiteSpace(context.Issuer)) {
+                properties.Add(new IdentityProperty("issuer", context.Issuer));
+            }
+
+            foreach (string audience in context.Audiences) {
+                if (!string.IsNullOrWhiteSpace(audience)) {
+                    properties.Add(new IdentityProperty("audience", audience));
+                }
+            }
+
+            properties.AddRange(context.Properties);
+
+            return new HttpPrincipal(new HttpIdentity(
+                isAuthenticated: true,
+                authenticationType: string.IsNullOrWhiteSpace(context.AuthenticationType) ? context.Scheme : context.AuthenticationType,
+                identifier: context.Subject,
+                name: context.Name,
+                email: context.Email,
+                roles: context.Roles,
+                properties: properties
+            ));
         }
 
     }
 
     /// <summary>
-    /// JWT Bearer helper
+    /// Context passed to JWT principal factories.
     /// </summary>
-    public static class JwtBearerHelper {
+    public sealed class JwtPrincipalContext {
 
         /// <summary>
-        /// Create JWT from a principal
+        /// Current session when authentication originates from an HTTP request.
+        /// </summary>
+        public HttpSession? Session { get; init; }
+
+        /// <summary>
+        /// Validated JWT token string.
+        /// </summary>
+        public required string Token { get; init; }
+
+        /// <summary>
+        /// Subject (sub) claim.
+        /// </summary>
+        public required string? Subject { get; init; }
+
+        /// <summary>
+        /// Name claim.
+        /// </summary>
+        public required string? Name { get; init; }
+
+        /// <summary>
+        /// Email claim.
+        /// </summary>
+        public required string? Email { get; init; }
+
+        /// <summary>
+        /// Issuer (iss) claim.
+        /// </summary>
+        public required string? Issuer { get; init; }
+
+        /// <summary>
+        /// Audience (aud) claim values.
+        /// </summary>
+        public required string[] Audiences { get; init; }
+
+        /// <summary>
+        /// Roles extracted from role/roles claims.
+        /// </summary>
+        public required string[] Roles { get; init; }
+
+        /// <summary>
+        /// Extra JWT claims mapped to SimpleW identity properties.
+        /// </summary>
+        public required IReadOnlyList<IdentityProperty> Properties { get; init; }
+
+        /// <summary>
+        /// Authentication time in UTC.
+        /// </summary>
+        public required DateTimeOffset AuthenticatedAt { get; init; }
+
+        /// <summary>
+        /// Authentication type used for the rebuilt identity.
+        /// </summary>
+        public required string AuthenticationType { get; init; }
+
+        /// <summary>
+        /// Authorization scheme used for the HTTP authentication flow.
+        /// </summary>
+        public required string Scheme { get; init; }
+
+    }
+
+    /// <summary>
+    /// Stateless helper for HTTP Bearer JWT authentication.
+    /// It parses the Authorization header, validates the token,
+    /// and can build a SimpleW principal when authentication succeeds.
+    /// Policy decisions such as route protection remain in user middleware.
+    /// </summary>
+    public sealed class JwtBearerHelper {
+
+        /// <summary>
+        /// Logger.
+        /// </summary>
+        private static readonly ILogger _log = new Logger<JwtBearerHelper>();
+
+        private readonly JwtBearerOptions _options;
+        private readonly Func<JwtPrincipalContext, HttpPrincipal> _principalFactory;
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="configure"></param>
+        public JwtBearerHelper(Action<JwtBearerOptions> configure) {
+            ArgumentNullException.ThrowIfNull(configure);
+
+            JwtBearerOptions options = new();
+            configure(options);
+            options.ValidateAndNormalize();
+
+            _options = options;
+            _principalFactory = options.PrincipalFactory;
+        }
+
+        /// <summary>
+        /// Constructor from an existing options instance.
+        /// A normalized clone is created so caller-owned options stay reusable.
         /// </summary>
         /// <param name="options"></param>
+        public JwtBearerHelper(JwtBearerOptions options) {
+            ArgumentNullException.ThrowIfNull(options);
+
+            JwtBearerOptions cloned = CloneOptions(options);
+            cloned.ValidateAndNormalize();
+
+            _options = cloned;
+            _principalFactory = cloned.PrincipalFactory;
+        }
+
+        /// <summary>
+        /// Create JWT from a principal.
+        /// </summary>
         /// <param name="principal"></param>
         /// <param name="lifetime"></param>
         /// <param name="issuer"></param>
         /// <param name="audience"></param>
         /// <param name="nowUtc"></param>
         /// <returns></returns>
-        public static string CreateToken(JwtBearerOptions options, HttpPrincipal principal, TimeSpan lifetime, string? issuer = null, string? audience = null, DateTimeOffset? nowUtc = null) {
+        public string CreateToken(HttpPrincipal principal, TimeSpan lifetime, string? issuer = null, string? audience = null, DateTimeOffset? nowUtc = null) {
             ArgumentNullException.ThrowIfNull(principal);
-            return CreateToken(options, principal.Identity, lifetime, issuer, audience, nowUtc);
+            return CreateToken(principal.Identity, lifetime, issuer, audience, nowUtc);
         }
 
         /// <summary>
-        /// Create JWT from an identity
+        /// Create JWT from an identity.
         /// </summary>
-        /// <param name="options"></param>
         /// <param name="identity"></param>
         /// <param name="lifetime"></param>
         /// <param name="issuer"></param>
         /// <param name="audience"></param>
         /// <param name="nowUtc"></param>
         /// <returns></returns>
-        public static string CreateToken(JwtBearerOptions options,HttpIdentity identity, TimeSpan lifetime, string? issuer = null, string? audience = null, DateTimeOffset? nowUtc = null) {
-            ArgumentNullException.ThrowIfNull(options);
+        public string CreateToken(HttpIdentity identity, TimeSpan lifetime, string? issuer = null, string? audience = null, DateTimeOffset? nowUtc = null) {
             ArgumentNullException.ThrowIfNull(identity);
+
+            if (lifetime < TimeSpan.Zero) {
+                throw new ArgumentException($"{nameof(lifetime)} must be greater than or equal to zero.", nameof(lifetime));
+            }
 
             DateTimeOffset now = nowUtc ?? DateTimeOffset.UtcNow;
             DateTimeOffset exp = now.Add(lifetime);
@@ -152,8 +333,8 @@ namespace SimpleW.Helper.Jwt {
                 payload["email"] = identity.Email;
             }
 
-            issuer ??= options.ExpectedIssuer;
-            audience ??= options.ExpectedAudience;
+            issuer ??= _options.ExpectedIssuer;
+            audience ??= _options.ExpectedAudience;
 
             if (!string.IsNullOrWhiteSpace(issuer)) {
                 payload["iss"] = issuer;
@@ -182,7 +363,7 @@ namespace SimpleW.Helper.Jwt {
                     continue;
                 }
 
-                // keep explicit core mapping priority
+                // Keep explicit core claim mapping priority.
                 if (payload.ContainsKey(property.Key)) {
                     continue;
                 }
@@ -191,7 +372,7 @@ namespace SimpleW.Helper.Jwt {
             }
 
             Dictionary<string, object?> header = new(StringComparer.Ordinal) {
-                ["alg"] = options.Algorithm,
+                ["alg"] = _options.Algorithm,
                 ["typ"] = "JWT"
             };
 
@@ -199,22 +380,59 @@ namespace SimpleW.Helper.Jwt {
             string encodedPayload = Base64UrlEncode(JsonSerializer.SerializeToUtf8Bytes(payload));
             string signingInput = encodedHeader + "." + encodedPayload;
 
-            byte[] signature = ComputeSignature(options.Algorithm, Encoding.ASCII.GetBytes(signingInput), options.SecretKeyBytes);
-
+            byte[] signature = ComputeSignature(_options.Algorithm, Encoding.ASCII.GetBytes(signingInput), _options.SecretKeyBytes);
             return signingInput + "." + Base64UrlEncode(signature);
         }
 
         /// <summary>
-        /// Validate JWT token and rebuild a principal
+        /// Validate JWT token and rebuild a principal.
         /// </summary>
-        /// <param name="options"></param>
         /// <param name="token"></param>
         /// <param name="principal"></param>
         /// <param name="error"></param>
+        /// <param name="nowUtc"></param>
         /// <returns></returns>
-        public static bool TryValidateToken(JwtBearerOptions options, string token, out HttpPrincipal? principal, out string? error) {
-            ArgumentNullException.ThrowIfNull(options);
+        public bool TryValidateToken(string token, out HttpPrincipal? principal, out string? error, DateTimeOffset? nowUtc = null) {
+            return TryValidateTokenCore(token, session: null, out principal, out error, nowUtc);
+        }
 
+        /// <summary>
+        /// Authenticate the current request using the Authorization header.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="principal"></param>
+        /// <returns></returns>
+        public bool TryAuthenticate(HttpSession session, out HttpPrincipal principal) {
+            ArgumentNullException.ThrowIfNull(session);
+            principal = HttpPrincipal.Anonymous;
+
+            try {
+                string? authorization = session.Request.Headers.Authorization;
+                if (string.IsNullOrWhiteSpace(authorization)) {
+                    _log.Trace(() => "TryAuthenticate : missing header authorization");
+                    return false;
+                }
+
+                if (!TryParseAuthorizationHeader(authorization, _options.Scheme, out string token)) {
+                    _log.Trace(() => "TryAuthenticate : unable to parse header authorization");
+                    return false;
+                }
+
+                if (!TryValidateTokenCore(token, session, out HttpPrincipal? authenticated, out string? error)) {
+                    _log.Trace(() => $"TryAuthenticate : invalid jwt token ({error ?? "unknown_error"})");
+                    return false;
+                }
+
+                principal = authenticated ?? HttpPrincipal.Anonymous;
+                return true;
+            }
+            catch (Exception ex) {
+                _log.Warn("TryAuthenticate", ex);
+                return false;
+            }
+        }
+
+        private bool TryValidateTokenCore(string token, HttpSession? session, out HttpPrincipal? principal, out string? error, DateTimeOffset? nowUtc = null) {
             principal = null;
             error = null;
 
@@ -274,21 +492,21 @@ namespace SimpleW.Helper.Jwt {
                 return false;
             }
 
-            if (!string.Equals(header.Alg, options.Algorithm, StringComparison.Ordinal)) {
+            if (!string.Equals(header.Alg, _options.Algorithm, StringComparison.Ordinal)) {
                 error = "JWT algorithm is invalid.";
                 return false;
             }
 
-            if (!TryVerifySignature(header.Alg, encodedHeader, encodedPayload, signatureBytes, options.SecretKeyBytes)) {
+            if (!TryVerifySignature(header.Alg, encodedHeader, encodedPayload, signatureBytes, _options.SecretKeyBytes)) {
                 error = "JWT signature is invalid.";
                 return false;
             }
 
-            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset now = nowUtc ?? DateTimeOffset.UtcNow;
 
             if (payload.Exp.HasValue) {
                 DateTimeOffset exp = DateTimeOffset.FromUnixTimeSeconds(payload.Exp.Value);
-                if (now > exp + options.ClockSkew) {
+                if (now > exp + _options.ClockSkew) {
                     error = "JWT token is expired.";
                     return false;
                 }
@@ -296,46 +514,88 @@ namespace SimpleW.Helper.Jwt {
 
             if (payload.Nbf.HasValue) {
                 DateTimeOffset nbf = DateTimeOffset.FromUnixTimeSeconds(payload.Nbf.Value);
-                if (now + options.ClockSkew < nbf) {
+                if (now + _options.ClockSkew < nbf) {
                     error = "JWT token is not active yet.";
                     return false;
                 }
             }
 
-            if (options.ExpectedIssuer != null
-                && !string.Equals(payload.Iss, options.ExpectedIssuer, StringComparison.Ordinal)
+            if (_options.ExpectedIssuer != null
+                && !string.Equals(payload.Iss, _options.ExpectedIssuer, StringComparison.Ordinal)
             ) {
                 error = "JWT issuer is invalid.";
                 return false;
             }
 
-            if (options.ExpectedAudience != null) {
-                bool audienceMatch = false;
-
-                if (payload.Aud.ValueKind == JsonValueKind.String) {
-                    audienceMatch = string.Equals(payload.Aud.GetString(), options.ExpectedAudience, StringComparison.Ordinal);
-                }
-                else if (payload.Aud.ValueKind == JsonValueKind.Array) {
-                    foreach (JsonElement element in payload.Aud.EnumerateArray()) {
-                        if (element.ValueKind == JsonValueKind.String &&
-                            string.Equals(element.GetString(), options.ExpectedAudience, StringComparison.Ordinal)) {
-                            audienceMatch = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!audienceMatch) {
-                    error = "JWT audience is invalid.";
-                    return false;
-                }
+            string[] audiences = GetAudiences(payload.Aud);
+            if (_options.ExpectedAudience != null
+                && !audiences.Contains(_options.ExpectedAudience, StringComparer.Ordinal)
+            ) {
+                error = "JWT audience is invalid.";
+                return false;
             }
 
-            principal = BuildPrincipal(payload);
+            JwtPrincipalContext context = new() {
+                Session = session,
+                Token = token,
+                Subject = payload.Sub,
+                Name = payload.Name,
+                Email = payload.Email,
+                Issuer = payload.Iss,
+                Audiences = audiences,
+                Roles = GetRoles(payload),
+                Properties = BuildProperties(payload),
+                AuthenticatedAt = now,
+                AuthenticationType = _options.AuthenticationType,
+                Scheme = _options.Scheme
+            };
+
+            principal = _principalFactory.Invoke(context);
+            if (principal == null) {
+                error = "JWT principal factory returned null.";
+                return false;
+            }
+
             return true;
         }
 
+        private static JwtBearerOptions CloneOptions(JwtBearerOptions options) {
+            return new JwtBearerOptions {
+                SecretKey = options.SecretKey,
+                ExpectedIssuer = options.ExpectedIssuer,
+                ExpectedAudience = options.ExpectedAudience,
+                ClockSkew = options.ClockSkew,
+                Algorithm = options.Algorithm,
+                Scheme = options.Scheme,
+                AuthenticationType = options.AuthenticationType,
+                PrincipalFactory = options.PrincipalFactory
+            };
+        }
+
         #region helpers
+
+        private static bool TryParseAuthorizationHeader(string authorization, string scheme, out string token) {
+            token = string.Empty;
+
+            ReadOnlySpan<char> span = authorization.AsSpan().Trim();
+            ReadOnlySpan<char> schemeSpan = scheme.AsSpan();
+
+            if (!span.StartsWith(schemeSpan, StringComparison.OrdinalIgnoreCase)) {
+                return false;
+            }
+
+            if (span.Length <= schemeSpan.Length || !char.IsWhiteSpace(span[schemeSpan.Length])) {
+                return false;
+            }
+
+            span = span.Slice(schemeSpan.Length).TrimStart();
+            if (span.Length == 0) {
+                return false;
+            }
+
+            token = span.ToString();
+            return true;
+        }
 
         private static bool TryVerifySignature(string algorithm, string encodedHeader, string encodedPayload, byte[] providedSignature, byte[] key) {
             byte[] signingInputBytes = Encoding.ASCII.GetBytes(encodedHeader + "." + encodedPayload);
@@ -375,8 +635,22 @@ namespace SimpleW.Helper.Jwt {
             return hmac.ComputeHash(data);
         }
 
-        private static HttpPrincipal BuildPrincipal(JwtPayload payload) {
-            List<string> roles = new();
+        private static string[] GetRoles(JwtPayload payload) {
+            HashSet<string> roles = new(StringComparer.Ordinal);
+
+            foreach (KeyValuePair<string, JsonElement> kv in payload.Extra) {
+                if (!string.Equals(kv.Key, "role", StringComparison.Ordinal)
+                    && !string.Equals(kv.Key, "roles", StringComparison.Ordinal)) {
+                    continue;
+                }
+
+                AddRoles(roles, kv.Value);
+            }
+
+            return roles.ToArray();
+        }
+
+        private static IReadOnlyList<IdentityProperty> BuildProperties(JwtPayload payload) {
             List<IdentityProperty> properties = new();
 
             foreach (KeyValuePair<string, JsonElement> kv in payload.Extra) {
@@ -392,11 +666,8 @@ namespace SimpleW.Helper.Jwt {
                     case "exp":
                     case "nbf":
                     case "iat":
-                        break;
-
                     case "role":
                     case "roles":
-                        AddRoles(roles, value);
                         break;
 
                     default:
@@ -405,20 +676,10 @@ namespace SimpleW.Helper.Jwt {
                 }
             }
 
-            HttpIdentity identity = new(
-                isAuthenticated: true,
-                authenticationType: "Bearer",
-                identifier: payload.Sub,
-                name: payload.Name,
-                email: payload.Email,
-                roles: roles,
-                properties: properties
-            );
-
-            return new HttpPrincipal(identity);
+            return properties;
         }
 
-        private static void AddRoles(List<string> roles, JsonElement value) {
+        private static void AddRoles(HashSet<string> roles, JsonElement value) {
             if (value.ValueKind == JsonValueKind.String) {
                 string? role = value.GetString();
                 if (!string.IsNullOrWhiteSpace(role)) {
@@ -429,14 +690,43 @@ namespace SimpleW.Helper.Jwt {
 
             if (value.ValueKind == JsonValueKind.Array) {
                 foreach (JsonElement item in value.EnumerateArray()) {
-                    if (item.ValueKind == JsonValueKind.String) {
-                        string? role = item.GetString();
-                        if (!string.IsNullOrWhiteSpace(role)) {
-                            roles.Add(role);
-                        }
+                    if (item.ValueKind != JsonValueKind.String) {
+                        continue;
+                    }
+
+                    string? role = item.GetString();
+                    if (!string.IsNullOrWhiteSpace(role)) {
+                        roles.Add(role);
                     }
                 }
             }
+        }
+
+        private static string[] GetAudiences(JsonElement value) {
+            if (value.ValueKind == JsonValueKind.String) {
+                string? audience = value.GetString();
+                if (!string.IsNullOrWhiteSpace(audience)) {
+                    return [ audience ];
+                }
+            }
+
+            if (value.ValueKind == JsonValueKind.Array) {
+                List<string> audiences = new();
+                foreach (JsonElement item in value.EnumerateArray()) {
+                    if (item.ValueKind != JsonValueKind.String) {
+                        continue;
+                    }
+
+                    string? audience = item.GetString();
+                    if (!string.IsNullOrWhiteSpace(audience)) {
+                        audiences.Add(audience);
+                    }
+                }
+
+                return audiences.Distinct(StringComparer.Ordinal).ToArray();
+            }
+
+            return Array.Empty<string>();
         }
 
         private static void AddProperty(List<IdentityProperty> properties, string key, JsonElement value) {
