@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SimpleW.Service.Jwt\SimpleW.Service.Jwt.csproj" />
     <ProjectReference Include="..\SimpleW.Helper.Jwt\SimpleW.Helper.Jwt.csproj" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
   <ProjectReference Include="..\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
