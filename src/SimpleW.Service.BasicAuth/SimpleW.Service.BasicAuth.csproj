@@ -8,7 +8,7 @@
     <!-- nuget metadata -->
     <Authors>Christophe CHATEAU</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Description>HTTP Basic authentication module for SimpleW with prefix-based protection, configurable realms, and convenience integration built on top of SimpleW.Helper.BasicAuth.</Description>
+    <Description>HTTP Basic authentication module for SimpleW with metadata-driven protection, configurable challenge realms, and convenience integration built on top of SimpleW.Helper.BasicAuth.</Description>
     <PackageTags>simplew;basic-auth;basic;auth;authentication;security;http;middleware;module;realm;www-authenticate</PackageTags>
     <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
     <PackageIcon>logo-transparent.png</PackageIcon>

@@ -67,7 +67,7 @@ namespace Sample {
                 await next().ConfigureAwait(false);
             });
 
-            server.MapControllers<Controller>("/api");
+            server.MapController<AdminController>("/api");
 
             await server.RunAsync();
         }
@@ -80,7 +80,7 @@ namespace Sample {
         [Route("GET", "/me")]
         public object Me() {
             return new {
-                message = $"Hello {Principal.Name}';
+                user = Principal.Name
             };
         }
 
@@ -91,40 +91,23 @@ namespace Sample {
         }
 
     }
+}
 
-    [Route("/home")]
-    public class HomeController : Controller {
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+public sealed class BasicAuthAttribute : Attribute, IHandlerMetadata {
 
-        [BasicAuth("Home Area")]
-        [Route("GET", "/me")]
-        public object Me() {
-            return new {
-                message = $"Hello {Principal.Name}';
-            };
-        }
-
-        [Route("GET", "/index")]
-        public object Index() {
-            return new { ok = true };
-        }
-
+    public BasicAuthAttribute(string realm = "Restricted") {
+        Realm = realm;
     }
 
+    public string Realm { get; }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-    public class BasicAuthAttribute : Attribute, IHandlerMetadata {
-
-        public BasicAuthAttribute(string realm = "Restricted") {
-            Realm = realm;
-        }
-
-        public string Realm { get; }
-
-    }
 }
 ```
 
-If you want a ready-to-use prefix-based module instead of custom middleware, use `SimpleW.Service.BasicAuth`.
+In a helper-only integration, `BasicAuthAttribute` is typically an application-defined metadata attribute.
+
+If you want a ready-to-use metadata-driven module that restores the principal and enforces `[BasicAuth]` / `[AllowAnonymous]` for you, use `SimpleW.Service.BasicAuth`.
 
 ## Documentation
 

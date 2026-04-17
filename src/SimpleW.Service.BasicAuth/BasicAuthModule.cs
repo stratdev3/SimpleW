@@ -1,8 +1,7 @@
-﻿using System.Buffers;
 using System.Runtime.CompilerServices;
+using SimpleW.Helper.BasicAuth;
 using SimpleW.Modules;
 using SimpleW.Observability;
-using SimpleW.Helper.BasicAuth;
 
 
 namespace SimpleW.Service.BasicAuth {
@@ -19,9 +18,12 @@ namespace SimpleW.Service.BasicAuth {
         /// </summary>
         private static readonly ILogger _log = new Logger<BasicAuthModule>();
 
+        private static readonly Func<BasicAuthContext, HttpPrincipal> _defaultHelperPrincipalFactory = new BasicAuthOptions().PrincipalFactory;
+
         /// <summary>
-        /// Adds or updates a BasicAuth prefix rule on the current server.
-        /// The module is a convenience wrapper over BasicAuthHelper.
+        /// Adds or updates the BasicAuth convenience module on the current server.
+        /// The module is a thin wrapper over BasicAuthHelper that restores the principal
+        /// and wires handler-metadata based Basic authentication behavior.
         /// </summary>
         public static SimpleWServer UseBasicAuthModule(this SimpleWServer server, Action<BasicAuthModuleOptions>? configure = null) {
             ArgumentNullException.ThrowIfNull(server);
@@ -31,10 +33,10 @@ namespace SimpleW.Service.BasicAuth {
             options.ValidateAndNormalize();
 
             ModuleState state = _states.GetValue(server, static _ => new ModuleState());
-            state.Upsert(Rule.FromOptions(options));
+            state.SetConfiguration(ModuleConfiguration.FromOptions(options));
 
-            _log.Info($"installed with prefix {options.Prefix}");
             EnsureInstalled(server, state);
+            _log.Info($"installed (restorePrincipal={options.RestorePrincipal}, autoAuthorize={options.AutoAuthorize})");
             return server;
         }
 
@@ -43,6 +45,7 @@ namespace SimpleW.Service.BasicAuth {
                 if (state.IsInstalled) {
                     return;
                 }
+
                 state.IsInstalled = true;
             }
 
@@ -51,22 +54,22 @@ namespace SimpleW.Service.BasicAuth {
 
         /// <summary>
         /// Module-level Basic Auth configuration.
-        /// Prefix/realm live here, while actual Basic authentication is delegated to a helper.
+        /// Helper options stay available because the module delegates all Basic mechanics to BasicAuthHelper.
         /// </summary>
         public sealed class BasicAuthModuleOptions : BasicAuthOptions {
 
             /// <summary>
-            /// Apply BasicAuth only for paths starting with this prefix (default "/")
+            /// When true, the module restores session.Principal from the Authorization header on every request.
             /// </summary>
-            public string Prefix { get; set; } = "/";
+            public bool RestorePrincipal { get; set; } = true;
 
             /// <summary>
-            /// Realm displayed by clients (default "Restricted")
+            /// When true, handlers decorated with BasicAuthAttribute are automatically enforced.
             /// </summary>
-            public string Realm { get; set; } = "Restricted";
+            public bool AutoAuthorize { get; set; } = true;
 
             /// <summary>
-            /// If true, OPTIONS requests under Prefix bypass auth (default true)
+            /// If true, protected OPTIONS requests bypass auth (default true)
             /// This is useful for CORS preflight requests or API gateways.
             /// </summary>
             public bool BypassOptionsRequests { get; set; } = true;
@@ -79,7 +82,7 @@ namespace SimpleW.Service.BasicAuth {
 
             /// <summary>
             /// Optional module-level principal factory.
-            /// It receives the matched prefix and realm in addition to the auth payload.
+            /// It receives the current Basic challenge realm in addition to the auth payload.
             /// Ignored if Helper is set.
             /// </summary>
             public Func<BasicAuthModuleContext, HttpPrincipal>? ModulePrincipalFactory { get; set; }
@@ -89,22 +92,12 @@ namespace SimpleW.Service.BasicAuth {
             /// </summary>
             /// <returns></returns>
             public new BasicAuthModuleOptions ValidateAndNormalize() {
-                if (string.IsNullOrWhiteSpace(Prefix)) {
-                    throw new ArgumentException($"{nameof(BasicAuthModuleOptions)}.{nameof(Prefix)} must not be null or empty.", nameof(Prefix));
+                if (!RestorePrincipal && AutoAuthorize) {
+                    throw new ArgumentException($"{nameof(AutoAuthorize)} requires {nameof(RestorePrincipal)} to be enabled.");
                 }
 
-                Prefix = SimpleWExtension.NormalizePrefix(Prefix);
-                Realm = string.IsNullOrWhiteSpace(Realm) ? "Restricted" : Realm.Trim();
-
                 if (Helper != null) {
-                    bool hasInlineHelperAuthConfig = (Users?.Length ?? 0) > 0
-                                                     || CredentialValidator != null
-                                                     || !ReferenceEquals(PrincipalFactory, _defaultHelperPrincipalFactory);
-
-                    if (hasInlineHelperAuthConfig || ModulePrincipalFactory != null) {
-                        throw new ArgumentException("BasicAuthModuleOptions cannot be combined with Users, CredentialValidator, PrincipalFactory, or ModulePrincipalFactory.");
-                    }
-
+                    ValidateHelperExclusivity();
                     return this;
                 }
 
@@ -112,7 +105,15 @@ namespace SimpleW.Service.BasicAuth {
                 return this;
             }
 
-            private static readonly Func<BasicAuthContext, HttpPrincipal> _defaultHelperPrincipalFactory = new BasicAuthOptions().PrincipalFactory;
+            private void ValidateHelperExclusivity() {
+                bool hasInlineHelperAuthConfig = (Users?.Length ?? 0) > 0
+                                                 || CredentialValidator != null
+                                                 || !ReferenceEquals(PrincipalFactory, _defaultHelperPrincipalFactory);
+
+                if (hasInlineHelperAuthConfig || ModulePrincipalFactory != null) {
+                    throw new ArgumentException("BasicAuthModuleOptions cannot be combined with inline helper settings, PrincipalFactory, or ModulePrincipalFactory when Helper is provided.");
+                }
+            }
 
         }
 
@@ -122,18 +123,13 @@ namespace SimpleW.Service.BasicAuth {
         public sealed class BasicAuthModuleContext : BasicAuthContext {
 
             /// <summary>
-            /// Prefix matched by the module.
-            /// </summary>
-            public required string Prefix { get; init; }
-
-            /// <summary>
             /// Realm used by the module challenge.
             /// </summary>
             public required string Realm { get; init; }
 
         }
 
-        #region registry / ruleset
+        #region registry / configuration
 
         /// <summary>
         /// Per-server BasicAuth module state.
@@ -144,27 +140,32 @@ namespace SimpleW.Service.BasicAuth {
 
             public bool IsInstalled { get; set; }
 
-            private volatile RuleSet _rules = RuleSet.Empty;
+            private volatile ModuleConfiguration? _configuration;
 
-            public RuleSet Snapshot => _rules;
+            public ModuleConfiguration? Snapshot => _configuration;
 
-            public void Upsert(Rule rule) {
+            public void SetConfiguration(ModuleConfiguration configuration) {
                 lock (SyncRoot) {
-                    _rules = _rules.WithUpsert(rule);
+                    _configuration = configuration;
                 }
             }
 
         }
 
         /// <summary>
-        /// BasicAuth rule stored by prefix.
+        /// Immutable runtime snapshot used by the module.
         /// </summary>
-        private sealed record Rule(string Prefix, string Realm, bool BypassOptionsRequests, BasicAuthHelper Helper) {
+        private sealed record ModuleConfiguration(
+            bool RestorePrincipal,
+            bool AutoAuthorize,
+            bool BypassOptionsRequests,
+            BasicAuthHelper Helper
+        ) {
 
-            public static Rule FromOptions(BasicAuthModuleOptions options) {
-                return new Rule(
-                    Prefix: options.Prefix,
-                    Realm: options.Realm,
+            public static ModuleConfiguration FromOptions(BasicAuthModuleOptions options) {
+                return new ModuleConfiguration(
+                    RestorePrincipal: options.RestorePrincipal,
+                    AutoAuthorize: options.AutoAuthorize,
                     BypassOptionsRequests: options.BypassOptionsRequests,
                     Helper: options.Helper ?? CreateHelper(options)
                 );
@@ -178,49 +179,18 @@ namespace SimpleW.Service.BasicAuth {
                         Session = context.Session,
                         Username = context.Username,
                         Password = context.Password,
-                        Prefix = options.Prefix,
-                        Realm = options.Realm
+                        Realm = ResolveRealm(context.Session)
                     }) ?? options.PrincipalFactory(context);
                 });
             }
 
+            private static string ResolveRealm(HttpSession session) {
+                return session.Metadata.Get<BasicAuthAttribute>()?.Realm ?? "Restricted";
+            }
+
         }
 
-        /// <summary>
-        /// Immutable rules snapshot.
-        /// </summary>
-        private sealed class RuleSet {
-
-            public static readonly RuleSet Empty = new(Array.Empty<string>(), new Dictionary<string, Rule>(StringComparer.Ordinal));
-
-            public string[] Prefixes { get; }
-            public Dictionary<string, Rule> ByPrefix { get; }
-
-            public RuleSet(string[] prefixes, Dictionary<string, Rule> byPrefix) {
-                Prefixes = prefixes;
-                ByPrefix = byPrefix;
-            }
-
-            public Rule? Find(string path) {
-                foreach (string prefix in Prefixes) {
-                    if (path.StartsWith(prefix, StringComparison.Ordinal)) {
-                        return ByPrefix[prefix];
-                    }
-                }
-
-                return null;
-            }
-
-            public RuleSet WithUpsert(Rule rule) {
-                Dictionary<string, Rule> nextDict = new(ByPrefix, StringComparer.Ordinal);
-                nextDict[rule.Prefix] = rule;
-
-                string[] nextPrefixes = nextDict.Keys.OrderByDescending(static p => p.Length).ToArray();
-                return new RuleSet(nextPrefixes, nextDict);
-            }
-        }
-
-        #endregion registry / ruleset
+        #endregion registry / configuration
 
         /// <summary>
         /// Module wrapper that delegates all Basic authentication work to BasicAuthHelper.
@@ -255,36 +225,70 @@ namespace SimpleW.Service.BasicAuth {
             }
 
             /// <summary>
-            /// Install Module in server (called by SimpleW)
+            /// Middleware
             /// </summary>
             /// <param name="session"></param>
             /// <param name="next"></param>
             /// <param name="state"></param>
             /// <returns></returns>
-            private static ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next, ModuleState state) {
-                RuleSet rules = state.Snapshot;
-                if (rules.Prefixes.Length == 0) {
-                    return next();
+            private static async ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next, ModuleState state) {
+                ModuleConfiguration? configuration = state.Snapshot;
+                if (configuration == null) {
+                    await next().ConfigureAwait(false);
+                    return;
                 }
 
-                Rule? rule = rules.Find(session.Request.Path);
-                if (rule == null) {
-                    return next();
+                if (configuration.RestorePrincipal && configuration.Helper.TryAuthenticate(session, out HttpPrincipal principal)) {
+                    session.Principal = principal;
                 }
 
-                if (rule.BypassOptionsRequests && session.Request.Method == "OPTIONS") {
-                    return next();
+                if (!configuration.AutoAuthorize || session.Metadata.Has<AllowAnonymousAttribute>()) {
+                    await next().ConfigureAwait(false);
+                    return;
                 }
 
-                if (!rule.Helper.TryAuthenticate(session, out HttpPrincipal principal)) {
-                    return rule.Helper.SendChallengeAsync(session, rule.Realm);
+                BasicAuthAttribute? auth = session.Metadata.Get<BasicAuthAttribute>();
+                if (auth == null) {
+                    await next().ConfigureAwait(false);
+                    return;
                 }
-                session.Principal = principal;
 
-                return next();
+                if (configuration.BypassOptionsRequests && session.Request.Method == "OPTIONS") {
+                    await next().ConfigureAwait(false);
+                    return;
+                }
+
+                if (!session.Principal.IsAuthenticated) {
+                    await configuration.Helper.SendChallengeAsync(session, auth.Realm).ConfigureAwait(false);
+                    return;
+                }
+
+                await next().ConfigureAwait(false);
             }
 
         }
 
     }
+
+    /// <summary>
+    /// Declares that a handler requires HTTP Basic authentication.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+    public sealed class BasicAuthAttribute : Attribute, IHandlerMetadata {
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="realm"></param>
+        public BasicAuthAttribute(string realm = "Restricted") {
+            Realm = string.IsNullOrWhiteSpace(realm) ? "Restricted" : realm.Trim();
+        }
+
+        /// <summary>
+        /// Realm sent back to clients in the Basic challenge.
+        /// </summary>
+        public string Realm { get; }
+
+    }
+
 }

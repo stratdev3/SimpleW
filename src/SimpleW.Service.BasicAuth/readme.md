@@ -14,10 +14,12 @@
 
 `SimpleW.Service.BasicAuth` is the convenience module built on top of `SimpleW.Helper.BasicAuth`.
 
-It lets you protect one or more path prefixes with:
-- a Basic challenge realm
-- optional `OPTIONS` bypass for preflight requests
-- inline users/validator configuration, or a pre-built `BasicAuthHelper`
+It lets you:
+- restore `session.Principal` automatically from the Basic header
+- challenge handlers decorated with `[BasicAuth("Realm")]`
+- honor `[AllowAnonymous]`
+- optionally bypass protected `OPTIONS` requests
+- configure users inline or reuse a pre-built `BasicAuthHelper`
 
 ### Getting Started
 
@@ -36,29 +38,39 @@ namespace Sample {
             var server = new SimpleWServer(System.Net.IPAddress.Any, 2015);
 
             server.UseBasicAuthModule(options => {
-                options.Prefix = "/admin";
-                options.Realm = "Admin Area";
                 options.Users = [
                     new BasicUser("admin", "secret")
                 ];
             });
 
-            server.MapGet("/admin/me", (HttpSession session) => {
-                return new {
-                    message = $"Hello {Principal.Name}';
-                };
-            });
+            server.MapController<AdminController>("/api");
 
             await server.RunAsync();
         }
     }
 
+    [Route("/admin")]
+    [BasicAuth("Admin Area")]
+    public class AdminController : Controller {
+
+        [Route("GET", "/me")]
+        public object Me() {
+            return new {
+                user = Principal.Name
+            };
+        }
+
+        [AllowAnonymous]
+        [Route("GET", "/health")]
+        public object Health() {
+            return new { ok = true };
+        }
+
+    }
 }
 ```
 
-You can register multiple prefix rules by calling `UseBasicAuthModule(...)` several times.
-
-If you want attribute-driven or fully custom auth middleware, instantiate `BasicAuthHelper` directly from `SimpleW.Helper.BasicAuth` and wire the policy yourself.
+If you want a fully custom Basic auth policy, instantiate `BasicAuthHelper` directly from `SimpleW.Helper.BasicAuth` and wire your own middleware.
 
 ## Documentation
 
