@@ -37,7 +37,7 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

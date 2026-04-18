@@ -43,7 +43,7 @@ namespace Sample {
                 options.Rules.Add(new LatencyRule("/api/*", TimeSpan.FromSeconds(2)));
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

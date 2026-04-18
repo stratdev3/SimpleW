@@ -47,7 +47,7 @@ namespace Sample {
                 options.HttpsPort = 443; // default value
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

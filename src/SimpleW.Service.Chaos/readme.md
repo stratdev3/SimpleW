@@ -44,7 +44,7 @@ namespace Sample {
                 options.Probability = 0.10; // 10% of requests fail
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

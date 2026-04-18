@@ -66,7 +66,7 @@ namespace Sample {
 
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

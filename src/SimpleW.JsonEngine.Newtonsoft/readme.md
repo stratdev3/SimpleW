@@ -44,7 +44,7 @@ namespace Sample {
                 Console.WriteLine("server started at http://localhost:{s.Port}/");
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
 
         }

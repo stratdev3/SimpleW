@@ -61,7 +61,7 @@ namespace Sample {
                 //o.ViewsPath = "Views";
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }
