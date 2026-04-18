@@ -8,7 +8,7 @@ namespace SimpleW {
     /// <summary>
     /// RouteExecutorFactory
     /// </summary>
-    internal static class RouteExecutorFactory {
+    public static class RouteExecutorFactory {
 
         /// <summary>
         /// Create a HttpRouteExecutor from a Delegate
@@ -245,13 +245,13 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.SyncResult: {
-                    // result -> object -> RouteExecutorHelpers.InvokeResultHandler(session, resultHandler, (object)result)
-                    MethodInfo invokeResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.InvokeResultHandler), BindingFlags.Public | BindingFlags.Static)!;
+                    // result -> object -> RouteExecutorHelpers.CallResultHandler(session, resultHandler, (object)result)
+                    MethodInfo callResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.CallResultHandler), BindingFlags.Public | BindingFlags.Static)!;
                     Expression resultAsObject = method.ReturnType.IsValueType
                                                     ? Expression.Convert(call, typeof(object))
                                                     : Expression.TypeAs(call, typeof(object));
                     returnExpr = Expression.Call(
-                                     invokeResultMethod,
+                                     callResultMethod,
                                      sessionParam,
                                      resultHandlerParam,
                                      resultAsObject
@@ -325,7 +325,7 @@ namespace SimpleW {
         /// <param name="controllerType"></param>
         /// <param name="method"></param>
         /// <returns></returns>
-        private static HttpRouteExecutor Create(Type controllerType, MethodInfo method) {
+        internal static HttpRouteExecutor CreateControllerActionExecutor(Type controllerType, MethodInfo method) {
             ArgumentNullException.ThrowIfNull(controllerType);
             ArgumentNullException.ThrowIfNull(method);
 
@@ -534,13 +534,13 @@ namespace SimpleW {
                 }
 
                 case HandlerReturnKind.SyncResult: {
-                    // result -> object -> RouteExecutorHelpers.InvokeResultHandler(session, resultHandler, (object)result)
-                    MethodInfo invokeResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.InvokeResultHandler), BindingFlags.Public | BindingFlags.Static)!;
+                    // result -> object -> RouteExecutorHelpers.CallResultHandler(session, resultHandler, (object)result)
+                    MethodInfo callResultMethod = typeof(RouteExecutorFactory).GetMethod(nameof(RouteExecutorFactory.CallResultHandler), BindingFlags.Public | BindingFlags.Static)!;
                     Expression resultAsObject = method.ReturnType.IsValueType
                                                     ? Expression.Convert(callExpr, typeof(object))
                                                     : Expression.TypeAs(callExpr, typeof(object));
                     returnExpr = Expression.Call(
-                                     invokeResultMethod,
+                                     callResultMethod,
                                      sessionParam,
                                      resultHandlerParam,
                                      resultAsObject
@@ -612,8 +612,9 @@ namespace SimpleW {
         /// <param name="controllerType"></param>
         /// <param name="router"></param>
         /// <param name="basePrefix"></param>
+        /// <param name="actionExecutorFactory"></param>
         /// <exception cref="ArgumentException"></exception>
-        public static void RegisterController(Type controllerType, IRouter router, string? basePrefix) {
+        public static void RegisterController(Type controllerType, IRouter router, string? basePrefix, ControllerActionExecutorFactory? actionExecutorFactory = null) {
             ArgumentNullException.ThrowIfNull(controllerType);
             ArgumentNullException.ThrowIfNull(router);
 
@@ -628,6 +629,7 @@ namespace SimpleW {
             RouteAttribute? classRoute = controllerType.GetCustomAttribute<RouteAttribute>(inherit: true);
             string controllerPrefix = classRoute?.Path ?? string.Empty;
             string? classHost = classRoute?.Host;
+            ControllerActionExecutorFactory executorFactory = actionExecutorFactory ?? CreateControllerActionExecutor;
 
             foreach (MethodInfo method in controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)) {
 
@@ -636,7 +638,7 @@ namespace SimpleW {
                     continue;
                 }
 
-                HttpRouteExecutor handlerDelegate = Create(controllerType, method);
+                HttpRouteExecutor handlerDelegate = executorFactory(controllerType, method);
                 HandlerMetadataCollection metadata = GetMetadata(controllerType, method);
 
                 foreach (RouteAttribute attr in methodRoutes.Where(a => !string.IsNullOrWhiteSpace(a.Method) && a.Method != "*")) {
@@ -687,12 +689,35 @@ namespace SimpleW {
         /// <summary>
         /// Type of Handlers
         /// </summary>
-        private enum HandlerReturnKind {
+        public enum HandlerReturnKind {
+            /// <summary>
+            /// The handler returns nothing (`void`).
+            /// </summary>
             Void,
+
+            /// <summary>
+            /// The handler returns a synchronous value that must be passed to the result handler.
+            /// </summary>
             SyncResult,
+
+            /// <summary>
+            /// The handler returns a `Task` without result.
+            /// </summary>
             TaskNoResult,
+
+            /// <summary>
+            /// The handler returns a `Task&lt;T&gt;`.
+            /// </summary>
             TaskWithResult,
+
+            /// <summary>
+            /// The handler returns a `ValueTask` without result.
+            /// </summary>
             ValueTaskNoResult,
+
+            /// <summary>
+            /// The handler returns a `ValueTask&lt;T&gt;`.
+            /// </summary>
             ValueTaskWithResult
         }
 
@@ -701,7 +726,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="returnType"></param>
         /// <returns></returns>
-        private static HandlerReturnKind GetReturnKind(Type returnType) {
+        public static HandlerReturnKind GetReturnKind(Type returnType) {
 
             if (returnType == typeof(void)) {
                 return HandlerReturnKind.Void;
@@ -738,7 +763,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="p"></param>
         /// <returns></returns>
-        private static object? GetDefaultValueForParameter(ParameterInfo p) {
+        public static object? GetDefaultValueForParameter(ParameterInfo p) {
             if (p.HasDefaultValue) {
                 return p.DefaultValue;
             }
@@ -759,7 +784,7 @@ namespace SimpleW {
         /// <param name="raw"></param>
         /// <param name="defaultValue"></param>
         /// <returns></returns>
-        private static T ConvertFromStringOrDefault<T>(string raw, T defaultValue) {
+        public static T ConvertFromStringOrDefault<T>(string raw, T defaultValue) {
             if (TryConvertFromString(raw, typeof(T), out object? value)) {
                 return (T)value!;
             }
@@ -774,7 +799,7 @@ namespace SimpleW {
         /// <param name="targetType"></param>
         /// <param name="value"></param>
         /// <returns></returns>
-        private static bool TryConvertFromString(string raw, Type targetType, out object? value) {
+        public static bool TryConvertFromString(string raw, Type targetType, out object? value) {
             value = null;
 
             Type? underlying = Nullable.GetUnderlyingType(targetType);
@@ -992,7 +1017,7 @@ namespace SimpleW {
         /// <param name="resultHandler"></param>
         /// <param name="result"></param>
         /// <returns></returns>
-        public static ValueTask InvokeResultHandler(HttpSession session, HttpResultHandler resultHandler, object? result) {
+        public static ValueTask CallResultHandler(HttpSession session, HttpResultHandler resultHandler, object? result) {
             if (result == null) {
                 return default;
             }

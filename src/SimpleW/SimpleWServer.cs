@@ -35,6 +35,7 @@ namespace SimpleW {
         public SimpleWServer(EndPoint endpoint) {
             EndPoint = endpoint;
             Router = new Router();
+            ControllerActionExecutorFactory = RouteExecutorFactory.CreateControllerActionExecutor;
             Engine = new SimpleWEngine();
             Options = new SimpleWSServerOptions();
         }
@@ -607,6 +608,34 @@ namespace SimpleW {
 
         #endregion router
 
+        #region executor factory
+
+        /// <summary>
+        /// Factory used to create controller action executors.
+        /// </summary>
+        public ControllerActionExecutorFactory ControllerActionExecutorFactory { get; private set; }
+
+        /// <summary>
+        /// Replaces the factory used to create controller action executors.
+        /// Must be called before the server starts.
+        /// </summary>
+        /// <param name="factory"></param>
+        /// <returns></returns>
+        public SimpleWServer UseControllerActionExecutorFactory(ControllerActionExecutorFactory factory) {
+            ArgumentNullException.ThrowIfNull(factory);
+
+            if (IsStarted) {
+                InvalidOperationException ex = new("Controller action executor factory must be configured before starting the server.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
+
+            ControllerActionExecutorFactory = factory;
+            return this;
+        }
+
+        #endregion executor factory
+
         #region map delegate
 
         /// <summary>
@@ -734,7 +763,7 @@ namespace SimpleW {
         /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
         /// <returns></returns>
         public SimpleWServer MapController<TController>(string? basePrefix = null) where TController : Controller {
-            RouteExecutorFactory.RegisterController(typeof(TController), Router, basePrefix);
+            RouteExecutorFactory.RegisterController(typeof(TController), Router, basePrefix, ControllerActionExecutorFactory);
             return this;
         }
 
@@ -768,7 +797,7 @@ namespace SimpleW {
                                                                      && baseType.IsAssignableFrom(t)
                                                                      && !excluded.Contains(t))
             ) {
-                RouteExecutorFactory.RegisterController(type, Router, basePrefix);
+                RouteExecutorFactory.RegisterController(type, Router, basePrefix, ControllerActionExecutorFactory);
             }
 
             return this;

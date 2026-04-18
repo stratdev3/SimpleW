@@ -1,4 +1,6 @@
-﻿namespace SimpleW {
+﻿using System.Reflection;
+
+namespace SimpleW {
 
     #region handlers for map delegate
 
@@ -6,6 +8,14 @@
     /// Executor for a Route
     /// </summary>
     public delegate ValueTask HttpRouteExecutor(HttpSession session, HttpResultHandler resultHandler);
+
+    /// <summary>
+    /// Creates the route executor used for a controller action.
+    /// </summary>
+    /// <param name="controllerType"></param>
+    /// <param name="method"></param>
+    /// <returns></returns>
+    public delegate HttpRouteExecutor ControllerActionExecutorFactory(Type controllerType, MethodInfo method);
 
     #endregion handlers for map delegate
 

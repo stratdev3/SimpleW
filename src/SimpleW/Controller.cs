@@ -9,7 +9,7 @@ namespace SimpleW {
         /// <summary>
         /// Gets the current HttpSession
         /// </summary>
-        public HttpSession Session { get; internal set; } = default!;
+        public HttpSession Session { get; set; } = default!;
 
         /// <summary>
         /// Gets the current HttpRequest
