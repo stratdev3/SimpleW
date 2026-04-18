@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0;</TargetFrameworks>
+    <OutputType>Library</OutputType>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+
+    <!-- nuget metadata -->
+    <Authors>Christophe CHATEAU</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Dependency injection helpers for SimpleW with per-request scopes and DI-friendly controller activation.</Description>
+    <PackageTags>simplew;dependency-injection;di;controllers;activatorutilities;scoped-services</PackageTags>
+    <PackageProjectUrl>https://simplew.net</PackageProjectUrl>
+    <PackageIcon>logo-transparent.png</PackageIcon>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Stratdev3/SimpleW</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- versioning -->
+    <AssemblyVersion>26.0.0</AssemblyVersion>
+    <FileVersion>26.0.0</FileVersion>
+    <Version>26.0.0</Version>
+
+    <!-- build options -->
+    <PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- ci/cd -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+
+    <!-- debug options-->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <DebugType>portable</DebugType>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+
+    <!-- no useless ref -->
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseLocalSimpleW)' == 'true'">
+    <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseLocalSimpleW)' != 'true'">
+    <PackageReference Include="SimpleW" Version="$(SimpleWCompatVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\SimpleW\logo-transparent.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+      <Link>logo-transparent.png</Link>
+    </None>
+    <None Include="readme.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
