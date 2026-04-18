@@ -33,6 +33,11 @@ namespace SimpleW.Helper.Hosting {
         private Action<SimpleWServer>? _configureApp;
 
         /// <summary>
+        /// ConfigureApp with access to the built service provider.
+        /// </summary>
+        private Action<IServiceProvider, SimpleWServer>? _configureAppWithServices;
+
+        /// <summary>
         /// ConfigureServer
         /// </summary>
         private Action<SimpleWSServerOptions>? _configureServer;
@@ -67,8 +72,18 @@ namespace SimpleW.Helper.Hosting {
         /// Configure SimpleW
         /// </summary>
         public SimpleWHostApplicationBuilder ConfigureSimpleW(Action<SimpleWServer> configureApp, Action<SimpleWSServerOptions>? configureServer = null) {
-            _configureApp = configureApp ?? throw new ArgumentNullException(nameof(configureApp));
-            _configureServer = configureServer;
+            _configureApp += configureApp ?? throw new ArgumentNullException(nameof(configureApp));
+            _configureServer += configureServer;
+            return this;
+        }
+
+        /// <summary>
+        /// Configure SimpleW with access to the built service provider.
+        /// The service-provider-aware callback always runs before the classic configureApp callback.
+        /// </summary>
+        public SimpleWHostApplicationBuilder ConfigureSimpleW(Action<IServiceProvider, SimpleWServer> configureApp, Action<SimpleWSServerOptions>? configureServer = null) {
+            _configureAppWithServices += configureApp ?? throw new ArgumentNullException(nameof(configureApp));
+            _configureServer += configureServer;
             return this;
         }
 
@@ -93,6 +108,7 @@ namespace SimpleW.Helper.Hosting {
                     server.Configure(_configureServer);
                 }
 
+                _configureAppWithServices?.Invoke(sp, server);
                 _configureApp?.Invoke(server);
 
                 return server;
