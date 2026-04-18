@@ -70,7 +70,7 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }
@@ -292,7 +292,7 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

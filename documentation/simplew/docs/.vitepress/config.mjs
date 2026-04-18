@@ -129,6 +129,7 @@ export default defineConfig({
                     text: 'Helpers',
                     items: [
                         { text: 'BasicAuth', link: '/addons/helper-basicauth' },
+                        { text: 'Dependency Injection', link: '/addons/helper-dependency-injection' },
                         { text: 'Hosting', link: '/addons/helper-hosting' },
                         { text: 'Jwt', link: '/addons/helper-jwt' },
                         { text: 'Log4net', link: '/addons/helper-log4net' },

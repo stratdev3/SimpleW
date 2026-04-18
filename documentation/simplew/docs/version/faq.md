@@ -2,7 +2,7 @@
 
 > Is this a toy or production-ready ?
 
-I've been working in web application development for the past 20 years. SimpleW is the result of experiments, successes, failures, and lessons learned. It covers my own needs, and I've been using it in all my SaaS products for the last 5 years.
+I've been working in web application development for the past 20 years. SimpleW is the result of experiments, successes, failures, and lessons learned. It covers my own needs, and I've been using it in all my [SaaS products for the last 5 years](../guide/what-is-simplew.md#why-this-library).
 All core components are production-ready.
 
 > Why open-source this tool ?
@@ -15,7 +15,7 @@ Github is just a mirror. Ping me, if your code is interesting and still MIT lice
 
 > Do I need the ASP.NET runtime ?
 
-Hell no. SimpleW targets the standard .NET runtime : no ASP.NET overhead, no bloat.
+Hell no. SimpleW targets the [standard .NET runtime](../guide/what-is-simplew.md#architecture) : no ASP.NET overhead, no bloat.
 That said, if you want to run both side by side, nothing stops you from using the ASP.NET runtime. SimpleW will work just fine.
 
 > Why do you hate ASP.NET Core ?
@@ -26,17 +26,21 @@ I don't hate it, but I don't like it (see the paragraph about [Why this library 
 
 Kestrel is an awesome server. I just want a serious alternative to its hegemony.
 
-> Why is there no DI in SimpleW like in ASP.NET Core?
+> Why the DI in SimpleW is provided as a package ?
 
-I really deeply hate how Dependency Injection works in ASP.NET Core. I hate how the framework resolves the full dependency graph recursively and instantiates everything through a DI container :
+When people mention DI, they’re usually referring to the one in ASP.NET Core.
+I really deeply hate how dependency injection works in ASP.NET Core.
+I dislike how the framework resolves the entire dependency graph recursively and instantiates everything through a DI container :
 
 - I’m not a fan of the _magic_ instantiation model where objects are created implicitly by the framework (except the controller itself)
 - It tends to hide the actual object graph, which can make the execution flow harder to understand and debug
 - It usually introduces a fair amount of boilerplate and configuration for relatively simple use cases
 
+That said, I understand that, to ease migration from ASP.NET, I need to provide some of its features. So DI is only available through a [dedicated package](../addons/helper-dependency-injection.md), and it doesn’t pollute the core.
+
 > Minimal API or Controller architecture ?
 
-To my opinion, minimal-api is just a toy you use for prototyping or for a showcase. No only it has less options than the controller but it simply does not scale. Always prefer the controller architecture when you have more than ten routes.
+To my opinion, minimal-api is good for prototyping or for a showcase. No only it has less options than the controller but it simply does not scale. Always prefer the controller architecture when you have more than ten routes.
 
 > What is the primary goal of SimpleW ?
 
@@ -60,7 +64,7 @@ I want to keep the core simple and lightweight so that :
 - The code can be reviewed by a developer in a few hours
 - Or fully ingested (and reasoned about) by an AI in a few seconds
 
-Addons are the place for everything that does not belong in the core.
+[Addons](../addons/addons.md) are the place for everything that does not belong in the core.
 Also, a product is much easier to adopt when there is a healthy ecosystem around it.
 
 That's my [philosophy](../guide/what-is-simplew.md#philosophy)
@@ -71,4 +75,9 @@ I spent a **crazy** amount of time writing documentation. Please, [RTFM](https:/
 
 > I still have questions ?
 
-If you still have questions, [ping me on Discord](https://discord.gg/mDNRjyV8Ak) and I'll take a look.
+If you still have questions:
+- open a [github issue](https://github.com/stratdev3/SimpleW/issues)
+- [ping me on Discord](https://discord.gg/mDNRjyV8Ak)
+- send me a email
+
+...and I'll take a look.

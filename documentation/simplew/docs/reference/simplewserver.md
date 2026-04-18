@@ -241,6 +241,19 @@ The [`Router`](./router) property contains all routes handled by the web server.
 You can list them with `Router.Routes`.
 
 
+## UseControllerActionExecutorFactory
+
+```csharp
+/// <summary>
+/// Replaces the factory used to create controller action executors.
+/// Must be called before the server starts.
+/// </summary>
+/// <param name="factory"></param>
+/// <returns></returns>
+public SimpleWServer UseControllerActionExecutorFactory(ControllerActionExecutorFactory factory)
+```
+
+
 ## Map
 
 For a rapid prototyping, [`handler`](../guide/handler.md) can be set inline.

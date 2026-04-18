@@ -35,7 +35,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-rc.20260417-1773
+$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0-rc.20260418-1789
 ```
 
 
@@ -141,6 +141,17 @@ builder.ConfigureSimpleW(
     configureServer: options => {
         options.TcpNoDelay = true;
         options.ReuseAddress = true;
+    }
+);
+```
+
+When you need access to the built `IServiceProvider` during server configuration, use the overload below.
+This is especially useful for packages that plug into `SimpleWServer` before routes are mapped.
+
+```csharp
+builder.ConfigureSimpleW(
+    configureApp: (services, server) => {
+        // configure SimpleW with access to the host service provider
     }
 );
 ```

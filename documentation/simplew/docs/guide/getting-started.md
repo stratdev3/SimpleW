@@ -13,7 +13,7 @@ Stop talking, show me the code !
 Using the NuGet package, always prefer the latest version.
 
 ```sh
-$ dotnet add package SimpleW --version 26.0.0-rc.20260417-1773
+$ dotnet add package SimpleW --version 26.0.0-rc.20260418-1789
 ```
 
 ::: tip NOTE
@@ -49,7 +49,7 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }
@@ -92,7 +92,7 @@ namespace Sample {
             // find all classes based on Controller class, and serve on the "/api" endpoint
             server.MapControllers<Controller>("/api");
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }
@@ -161,7 +161,7 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }
@@ -221,7 +221,7 @@ namespace Sample {
                 options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
             });
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

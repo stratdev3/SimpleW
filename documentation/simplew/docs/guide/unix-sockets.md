@@ -26,7 +26,7 @@ namespace Sample {
 
             Console.WriteLine(@"server available on : unix:C:\www\server.sock");
 
-            // start a blocking background server
+            // run server
             await server.RunAsync();
         }
     }

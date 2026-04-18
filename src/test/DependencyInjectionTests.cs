@@ -219,7 +219,7 @@ namespace test {
                 server.MapController<HostedScopedRequestController>("/api");
             });
 
-            await using IHost host = builder.Build();
+            using IHost host = builder.Build();
 
             try {
                 await host.StartAsync();
