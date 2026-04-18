@@ -38,7 +38,7 @@ export default defineConfig({
             {
                 text: 'v16.1.0',
                 items: [
-                    { text: 'v26.0-rc', link: 'https://simplew.net/' },
+                    { text: 'v26.0.0', link: 'https://simplew.net/' },
                     { text: 'Changelog', link: 'https://simplew.net/blob/master/release.md' },
                 ]
             },

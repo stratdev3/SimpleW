@@ -34,7 +34,7 @@ It allows you to:
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Service.BasicAuth --version 26.0.0-rc.20260418-1789
+$ dotnet add package SimpleW.Service.BasicAuth --version 26.0.0
 ```
 
 

@@ -17,50 +17,91 @@ Notes :
 - HTTP/3 quic
 
 
-## v26.0.0-beta - _(2026-??-??)_
 
-This version is a major release :
-- a complete rewrite of the project (start from scratch no more netcoreserver override)
-- the core is simple as possible and delivers good performances !
-- there is a very good extensibility.
-- so there are addons !
+## v26.0.0 - _(2026-04-26)_
+
+After months of rewrite, testing, release candidates, breaking changes, documentation work, and a few painful but necessary design decisions, **SimpleW v26 is finally ready**.
+
+This release is not just an update. It is a **complete rewrite** of SimpleW.
+
+The old version was built on top of NetCoreServer, mostly through overrides and custom extensions. It worked, it was fast, and it served the project well for a long time. But over time, SimpleW needed its own HTTP architecture: something simpler, cleaner, easier to extend, and easier to maintain.
+
+So v26 was rebuilt from scratch.
+
+The result is a smaller and more explicit core, still focused on performance, but now designed around SimpleW's own model: middleware, modules, addons, a cleaner request/response lifecycle, better routing, better observability, stronger request protection, and a much better foundation for real applications.
+
+### Highlights
+
+- Complete rewrite from scratch
+- New middleware and module architecture
+- New addon ecosystem
+- Cleaner routing, including host-based routing
+- Sync and async handlers with request cancellation
+- Better static files support with cache, Last-Modified, ETag and Content-Range
+- WebSocket and SSE modules with room-based broadcasting
+- New Principal / Identity authentication model
+- Logging, traces, metrics and enrichment per server instance
+- Better malformed request protection
+- Easier extensibility with custom router and engine support
+- Updated documentation and migration guide
+
+Several addons are already available, including BasicAuth, Jwt, OpenID, Firewall, Hosting, Razor, Swagger, LetsEncrypt, Templates, Serilog, Log4net and Dependency Injection.
+
+SimpleW v26 is now minimal by default, fast by design, and much easier to compose for production applications.
+
+Thank you to everyone who followed the rewrite, tested the prereleases, read the documentation, reported issues, or simply waited patiently.
+
+Now the real fun begins.
 
 ### breakingChange
 
-There is a [complete migration guide](https://simplew.net/guide/migrate-from-v16.html). But for short : even if some high level classes/methods has been renamed, your understanding of their role remains quite the same and the bump version should not be a pain. I've migrated a full project (thirty controllers / four hundred methods) on a couple of hours.
+There is a [complete migration guide](https://simplew.net/guide/migrate-from-v16.html).
 
 ### feature / comparison
 
-You can find a [complete list of features](https://simplew.net/version/changelog.html).
-
-- NET8 but should consider NET9/NET10 for better perfs and RAM usage under heady load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
-- Middleware
-- Modules
-- Extensibility : middleware, module, callback, subclass
-- Response Builder : status, contentType, contentLength, headers, body, cookies, compression
-- Handler (Expression Tree): sync and async + RequestAborted
-- Routing : minimal, attribute, querystring, path, wildcard
-- Minimal API
-- Controllers
-- SSL / HTTPS : SslContext and mutual authentication
-- WebSocket smart broadcast using "rooms"
-- Server-Sent Events (SSE)
-- Basic Auth
-- JWT auth
-- Unix socket
-- Static files : Cache, FileWatcher, Last-Modified, Etag
-- Cross-Origin Resource Sharing (CORS)
-- Body parsing : JSON, form-urlencoded, multipart/form-data
-- WebUser / Identity
-- Custom JSON engine
-- HTTP pipelining
-- Idle Timeout
-- Request Protection
-- Observability : traces, metrics, enrich per SimpleWServer instance
-- Documentation : [simplew.net](https://simplew.net)
-- Tests
-- Support: [Discord](https://discord.gg/mDNRjyV8Ak)
-- Addons : Chaos, Firewall, Hosting, Latency, OpenID, Razor, Swagger
+| Feature / Aspect                     | SimpleW v16 (old) | SimpleW v26 (new) |
+|--------------------------------------|-------------------------|-----------------------------|
+| NET runtime                          | NET8                       | NET8 but should consider NET9/NET10 for better perfs and RAM usage under heavy load (e.g: NET8 400Mo, NET9 100Mo, NET10 70Mo)|
+| Core architecture                    | ⚠️ (tied to NetCoreServer)| ✅ from scratch (custom, simple, clean) |
+| Code readability                     | ⚠️                        | ✅                           |
+| Overall design philosophy            | ⚠️ wrapper                | ✅ minimal, custom, fast     |
+| Long-term maintainability            | ⚠️ harder                 | ✅ much easier               |
+| Performance                          | ✅ (very high)            | ✅  (very high)              |
+| Middleware                           | ❌                        | ✅                           |
+| Modules                              | ❌                        | ✅                           |
+| Extensibility                        | ⚠️ (callback, subclass)   | ✅ middleware, module, callback, subclass     |
+| Custom Router / Engine               | ❌                        | ✅ `UseRouter()`, `UseEngine()`               |
+| Response Builder                     | ✅(status, contentType, headers, body, cookies)   | ✅    (status, contentType, contentLength, headers, body, cookies, compression)  |
+| Result Handler                       | ❌                        | ✅ configurable response pipeline                |
+| Handler (Expression Tree)            | ✅ sync  ❌async         | ✅ sync ✅ async + RequestAborted                |
+| Handler metadata                     | ❌                        | ✅ metadata attributes for middleware and addons |
+| Routing                              | ✅ (minimal, attribute, querystring, regexp, path, wildcard) | ✅ (minimal, attribute, querystring, path, wildcard, host) |
+| Minimal API                          | ✅                       | ✅                                           |
+| Controllers                          | ✅                       | ✅                                           |
+| Dependency Injection                 | ❌                       | ✅ (using the Dependency Injection addon)    |
+| SSL / HTTPS                          | ✅ (SslContext)          | ✅ (SslContext, mutual authentication)       |
+| WebSocket                            | ✅ (full broadcast)      | ✅ (smart broadcast using "rooms")           |
+| Server-Sent Events (SSE)             | ✅                       | ✅ (smart broadcast using "rooms")           |
+| Unix socket                          | ✅                       | ✅                                           |
+| Static files                         | ✅ (Cache, FileWatcher)  | ✅ (Cache, FileWatcher, Last-Modified, Etag) |
+| Cross-Origin Resource Sharing (CORS) | ✅                       | ✅                                           |
+| Body parsing (JSON)                  | ✅                       | ✅                                           |
+| Body parsing (form-urlencoded)       | ✅                       | ✅                                           |
+| Body parsing (multipart/form-data)   | ✅                       | ✅ + streaming parser                        |
+| Bag                                  | ❌                       | ✅ (share data between middleware)           |
+| Auth                                 | ⚠️ custom IWebUser       | ✅ Principal / Identity                      |
+| Custom JSON engine                   | ✅                       | ✅                                           |
+| HTTP pipelining                      | ❌                       | ✅                                           |
+| Content Range                        | ❌                       | ✅                                           |
+| Idle Timeout                         | ❌                       | ✅                                           |
+| Request Protection                   | ❌                       | ✅(malformed)                                |
+| Observability                        | ✅ (traces) & global to all processes  | ✅  (traces, metrics, enrich)  per SimpleWServer instance   |
+| Logging                              | ❌                                     | ✅ sinks, levels, lazy logging, bridges                     |
+| Listener reload                      | ❌                                     | ✅ `ReloadListenerAsync()`                                  |
+| Documentation                        | ✅                                     | ✅ [simplew.net](https://simplew.net/v26/)                  |
+| Tests                                | ✅                                     | ✅ (more tests)                                             |
+| Support                              | ❌                                     | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                 |
+| Addons                               | ❌                                     | ✅ BasicAuth, Chaos, Firewall, Hosting, Jwt, Latency, Log4net, OpenID, Razor, Swagger, LetsEncrypt, Templates, Serilog, DependencyInjection, Newtonsoft |
 
 
 

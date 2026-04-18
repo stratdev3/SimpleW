@@ -449,7 +449,7 @@ server.MapControllers<Controller>("/api", new Type[] { typeof(MaintenanceControl
 
 #### Example
 
-Suppose you have [subclass](../guide/callback.md#subclass) the `Controller` class to add properties or methods of your own in a new `BaseController`. To call all your controllers based on you custome class : 
+Suppose you have [subclass](../guide/callback.md#subclass) the `Controller` class to add properties or methods of your own in a new `BaseController`. To call all your controllers based on you custom class : 
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);

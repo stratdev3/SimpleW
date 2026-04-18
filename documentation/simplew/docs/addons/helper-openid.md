@@ -33,7 +33,7 @@ That policy stays in your own custom middleware, which makes this package a good
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.OpenID --version 26.0.0-rc.20260202-1339
+$ dotnet add package SimpleW.Helper.OpenID --version 26.0.0
 ```
 
 

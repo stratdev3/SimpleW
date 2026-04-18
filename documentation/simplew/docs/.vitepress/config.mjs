@@ -40,7 +40,7 @@ export default defineConfig({
             },
             //{ text: '📖✨ Features', link: '/features' },
             {
-                text: 'v26.0-rc',
+                text: 'v26.0.0',
                 items: [
                     { text: 'v16.1.0', link: 'https://simplew.net/v16/' },
                     { text: 'Changelog', link: '/version/changelog' },

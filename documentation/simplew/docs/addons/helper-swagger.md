@@ -33,7 +33,7 @@ No external dependencies.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Swagger --version 26.0.0-rc.20260202-1339
+$ dotnet add package SimpleW.Helper.Swagger --version 26.0.0
 ```
 
 

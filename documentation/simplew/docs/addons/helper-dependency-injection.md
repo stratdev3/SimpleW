@@ -29,7 +29,7 @@ Route discovery, `[Route]` attributes, and route metadata stay in the SimpleW co
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.DependencyInjection --version 26.0.0-rc.20260418-1789
+$ dotnet add package SimpleW.Helper.DependencyInjection --version 26.0.0
 ```
 
 
