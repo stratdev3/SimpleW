@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using NFluent;
@@ -69,6 +70,84 @@ namespace test {
         }
 
         #endregion constructor
+
+        #region controller action executor factory
+
+        [Fact]
+        public void UseControllerActionExecutorFactory_Should_Replace_Default_Factory_Before_Start() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, 5001);
+            var factoryTracker = new FakeControllerActionExecutorFactory();
+            ControllerActionExecutorFactory factory = factoryTracker.Create;
+
+            server.UseControllerActionExecutorFactory(factory);
+
+            Check.That(server.ControllerActionExecutorFactory).IsSameReferenceAs(factory);
+        }
+
+        [Fact]
+        public async Task UseControllerActionExecutorFactory_AfterStart_Should_Throw() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", () => new { ok = true });
+
+            await server.StartAsync();
+
+            Assert.Throws<InvalidOperationException>(() => server.UseControllerActionExecutorFactory((_, _) => static (session, resultHandler) => resultHandler(session, new { ok = true })));
+
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public async Task MapController_Should_Use_Custom_ControllerActionExecutorFactory() {
+
+            int port = PortManager.GetFreePort();
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var factoryTracker = new FakeControllerActionExecutorFactory();
+
+            server.UseControllerActionExecutorFactory(factoryTracker.Create);
+            server.MapController<FakeActionFactoryController>("/api");
+
+            try {
+                await server.StartAsync();
+
+                var client = new HttpClient();
+                var response = await client.GetAsync($"http://{server.Address}:{server.Port}/api/factory/ping");
+                var content = await response.Content.ReadAsStringAsync();
+
+                Check.That(factoryTracker.CallCount).IsEqualTo(1);
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { ok = true, mode = "custom-executor-factory" }));
+            }
+            finally {
+                await server.StopAsync();
+                PortManager.ReleasePort(port);
+            }
+        }
+
+        private sealed class FakeControllerActionExecutorFactory {
+
+            public int CallCount { get; private set; }
+
+            public HttpRouteExecutor Create(Type controllerType, MethodInfo method) {
+                CallCount++;
+                return static (session, resultHandler) => resultHandler(session, new { ok = true, mode = "custom-executor-factory" });
+            }
+
+        }
+
+        [Route("/factory")]
+        private sealed class FakeActionFactoryController : Controller {
+
+            [Route("GET", "/ping")]
+            public object Ping() {
+                return new { ok = false };
+            }
+
+        }
+
+        #endregion controller action executor factory
 
         #region engine
 
