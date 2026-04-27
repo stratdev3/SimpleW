@@ -408,7 +408,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD testing nuget
+- name: CD all nugets
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -428,7 +428,7 @@ jobs:
       commands: |
         cd src/SimpleW
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.csproj; fi
         dotnet pack -c Release SimpleW.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -442,7 +442,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj; fi
         dotnet pack -c Release SimpleW.Helper.BasicAuth.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -456,7 +456,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.DependencyInjection
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
         dotnet pack -c Release SimpleW.Helper.DependencyInjection.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -470,7 +470,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Hosting
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Hosting.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -484,7 +484,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Jwt.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -498,7 +498,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Log4net
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Log4net.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -512,7 +512,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj; fi
         dotnet pack -c Release SimpleW.Helper.OpenID.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -526,7 +526,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Swagger
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Swagger.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -540,7 +540,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Razor
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Razor.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -554,7 +554,7 @@ jobs:
       commands: |
         cd src/SimpleW.Helper.Serilog
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Serilog.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -568,7 +568,7 @@ jobs:
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj; fi
         dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -582,7 +582,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Background
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Background.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Background.csproj; fi
         dotnet pack -c Release SimpleW.Service.Background.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -596,7 +596,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj; fi
         dotnet pack -c Release SimpleW.Service.BasicAuth.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -610,7 +610,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Chaos
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj; fi
         dotnet pack -c Release SimpleW.Service.Chaos.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -624,7 +624,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Firewall
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj; fi
         dotnet pack -c Release SimpleW.Service.Firewall.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -638,7 +638,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj; fi
         dotnet pack -c Release SimpleW.Service.Jwt.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -652,7 +652,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.Latency
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Latency.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Latency.csproj; fi
         dotnet pack -c Release SimpleW.Service.Latency.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -666,7 +666,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.LetsEncrypt
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj; fi
         dotnet pack -c Release SimpleW.Service.LetsEncrypt.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -680,7 +680,7 @@ jobs:
       commands: |
         cd src/SimpleW.Service.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj; fi
         dotnet pack -c Release SimpleW.Service.OpenID.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -694,10 +694,10 @@ jobs:
       commands: |
         cd src/SimpleW.Templates
         TS=$(date +"%Y%m%d")-@build_number@
-        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Templates.csproj
-        sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:testing@.${TS}\"#g" templates/SimpleW.AspNetCore/ModuleName.csproj
-        sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:testing@.${TS}\"#g" templates/SimpleW.Controller/ModuleName.csproj
-        sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:testing@.${TS}\"#g" templates/SimpleW.Minimal/ModuleName.csproj
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Templates.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.AspNetCore/ModuleName.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Controller/ModuleName.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Minimal/ModuleName.csproj; fi
         dotnet pack -c Release SimpleW.Templates.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1064,7 +1064,7 @@ jobs:
     optional: false
   paramSpecs:
   - type: ChoiceParam
-    name: testing
+    name: version
     allowMultiple: false
     allowEmpty: false
     choiceProvider:
@@ -1075,6 +1075,8 @@ jobs:
       - value: beta
         color: '#0d87e9'
       - value: rc
+        color: '#0d87e9'
+      - value: release
         color: '#0d87e9'
     defaultValueProvider:
       type: SpecifiedDefaultValue
@@ -1093,7 +1095,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW
+- name: CD nuget SimpleW
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1112,6 +1114,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.csproj; fi
         dotnet pack -c Release SimpleW.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1134,6 +1138,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1148,7 +1171,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.BasicAuth
+- name: CD nuget SimpleW.Helper.BasicAuth
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1167,6 +1190,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.BasicAuth
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.BasicAuth.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1189,6 +1214,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1203,7 +1247,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.DependencyInjection
+- name: CD nuget SimpleW.Helper.DependencyInjection
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1222,6 +1266,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.DependencyInjection
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.DependencyInjection.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1244,6 +1290,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1258,7 +1323,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.Hosting
+- name: CD nuget SimpleW.Helper.Hosting
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1277,6 +1342,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Hosting
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Hosting.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1299,6 +1366,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1313,7 +1399,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.Jwt
+- name: CD nuget SimpleW.Helper.Jwt
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1332,6 +1418,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Jwt
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Jwt.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1354,6 +1442,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1368,7 +1475,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.Log4net
+- name: CD nuget SimpleW.Helper.Log4net
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1387,6 +1494,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Log4net
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Log4net.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1409,6 +1518,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1423,7 +1551,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.OpenID
+- name: CD nuget SimpleW.Helper.OpenID
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1442,6 +1570,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.OpenID
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.OpenID.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1464,6 +1594,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1478,7 +1627,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.Razor
+- name: CD nuget SimpleW.Helper.Razor
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1497,6 +1646,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Razor
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Razor.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1519,6 +1670,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1533,7 +1703,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.Serilog
+- name: CD nuget SimpleW.Helper.Serilog
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1552,6 +1722,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Serilog
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Serilog.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1574,6 +1746,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1588,7 +1779,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Helper.Swagger
+- name: CD nuget SimpleW.Helper.Swagger
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1607,6 +1798,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Helper.Swagger
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Swagger.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1629,6 +1822,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1643,7 +1855,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.JsonEngine.Newtonsoft
+- name: CD nuget SimpleW.JsonEngine.Newtonsoft
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1662,6 +1874,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.JsonEngine.Newtonsoft.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1684,6 +1898,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1698,7 +1931,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.Background
+- name: CD nuget SimpleW.Service.Background
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1717,6 +1950,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Background
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Background.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Background.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1739,6 +1974,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1753,7 +2007,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.BasicAuth
+- name: CD nuget SimpleW.Service.BasicAuth
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1772,6 +2026,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.BasicAuth
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.BasicAuth.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1794,6 +2050,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1808,7 +2083,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.Jwt
+- name: CD nuget SimpleW.Service.Jwt
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1827,6 +2102,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Jwt
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Jwt.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1849,6 +2126,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1863,7 +2159,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.Chaos
+- name: CD nuget SimpleW.Service.Chaos
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1882,6 +2178,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Chaos
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Chaos.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1904,6 +2202,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1918,7 +2235,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.Firewall
+- name: CD nuget SimpleW.Service.Firewall
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1937,6 +2254,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Firewall
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Firewall.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -1959,6 +2278,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -1973,7 +2311,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.Latency
+- name: CD nuget SimpleW.Service.Latency
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1992,6 +2330,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.Latency
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Latency.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Latency.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -2014,6 +2354,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -2028,7 +2387,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.LetsEncrypt
+- name: CD nuget SimpleW.Service.LetsEncrypt
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -2047,6 +2406,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.LetsEncrypt
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.LetsEncrypt.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -2069,6 +2430,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -2083,7 +2463,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Service.OpenID
+- name: CD nuget SimpleW.Service.OpenID
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -2102,6 +2482,8 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Service.OpenID
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.OpenID.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -2124,6 +2506,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
@@ -2138,7 +2539,7 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
-- name: CD production nuget SimpleW.Templates
+- name: CD nuget SimpleW.Templates
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -2157,6 +2558,11 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.Templates
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Templates.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.AspNetCore/ModuleName.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Controller/ModuleName.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Minimal/ModuleName.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Templates.csproj
     useTTY: false
     condition: SUCCESSFUL
@@ -2179,6 +2585,25 @@ jobs:
     useTTY: false
     condition: SUCCESSFUL
     optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
   jobDependencies:
   - jobName: CI
     requireSuccessful: true
