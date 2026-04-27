@@ -63,7 +63,7 @@ $ dotnet add package SimpleW.Service.Firewall --version 26.0.0
 | RateLimitOptions.SlidingWindow | `false` | `false` = fixed window counter. `true` = sliding-ish window (stores timestamps). |
 
 
-## Minimal Example
+## Minimal example
 
 ```csharp
 using System.Net;

@@ -126,7 +126,7 @@ Already authenticated users survive a server restart while the provider `id_toke
 | `Principal` | Authenticated principal when `IsSuccess` is `true`. |
 
 
-## Minimal Example
+## Minimal example
 
 This example shows the intended architecture:
 - an `OpenIDHelper` handles the OpenID Connect protocol

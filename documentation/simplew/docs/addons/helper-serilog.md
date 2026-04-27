@@ -46,7 +46,7 @@ $ dotnet add package SimpleW.Helper.Serilog --version 26.0.0
 | Enricher | `null` | Optional function allowing custom enrichment of the Serilog logger per log entry. Receives `(ILogger logger, LogEntry entry)` and must return the enriched `ILogger`. |
 
 
-## Minimal Example
+## Minimal example
 
 Create your Serilog logger normally :
 

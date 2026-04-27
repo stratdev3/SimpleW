@@ -345,6 +345,10 @@ This allows exiting gracefully without throwing an exception.
 - Always pass `session.RequestAborted` to long-running I/O operations.
 - Use `ThrowIfAborted()` for CPU-bound loops or custom processing.
 
+::: tip
+If the work should continue even after the HTTP response is sent, use the [Background service](../addons/service-background.md) instead. It lets the handler return quickly, typically with `202 Accepted`, while the task continues in a background worker.
+:::
+
 
 ## Direct Response Control
 

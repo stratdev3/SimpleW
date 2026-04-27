@@ -21,7 +21,7 @@ Follow this [guide](./migrate-from-v16) if you migrate from v16.
 :::
 
 
-## Minimal Example
+## Minimal example
 
 The following minimal example can be used for rapid prototyping :
 

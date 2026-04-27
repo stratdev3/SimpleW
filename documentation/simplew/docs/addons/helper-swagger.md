@@ -49,7 +49,7 @@ $ dotnet add package SimpleW.Helper.Swagger --version 26.0.0
 | UiHtmlFactory | `null` | Optional factory to fully customize the Swagger UI HTML page. Receives the generated OpenAPI JSON string and must return the final HTML. If `null`, the built-in Swagger UI template is used. |
 
 
-## Minimal Example
+## Minimal example
 
 ```csharp
 using System.Net;

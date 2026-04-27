@@ -78,7 +78,7 @@ $ dotnet add package SimpleW.Helper.Jwt --version 26.0.0
 | `Scheme` | Authorization scheme used by the helper. |
 
 
-## Minimal Example
+## Minimal example
 
 This example shows the intended architecture:
 - a `JwtBearerHelper` handles JWT creation and validation

@@ -45,7 +45,7 @@ $ dotnet add package SimpleW.Helper.Log4net --version 26.0.0
 | Enricher            | `null`             | Optional callback allowing custom enrichment of the log4net properties for each log entry. Receives `(IDictionary<string, object?> properties, LogEntry entry)`. |
 
 
-## Minimal Example
+## Minimal example
 
 Configure a simple log4net console logger in code :
 

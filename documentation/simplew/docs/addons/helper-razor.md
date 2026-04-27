@@ -49,7 +49,7 @@ $ dotnet add package SimpleW.Helper.Razor --version 26.0.0
 | OnAfterRender | `null` | Optional hook executed after rendering a Razor view. Useful for logging, metrics, or post-processing the output. |
 
 
-## Minimal Example
+## Minimal example
 
 ### 1. Folder Structure
 

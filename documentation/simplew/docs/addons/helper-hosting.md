@@ -39,7 +39,7 @@ $ dotnet add package SimpleW.Helper.Hosting --version 26.0.0
 ```
 
 
-## Minimal Example
+## Minimal example
 
 ```csharp
 using Microsoft.Extensions.Hosting;

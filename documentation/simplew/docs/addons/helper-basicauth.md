@@ -68,7 +68,7 @@ The helper package does not provide a handler metadata attribute.
 In a helper-only integration, you define your own `BasicAuthAttribute` in the application.
 
 
-## Minimal Example
+## Minimal example
 
 This example shows the intended architecture:
 - a `BasicAuthHelper` handles the Basic auth protocol

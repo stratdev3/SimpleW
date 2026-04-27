@@ -117,6 +117,7 @@ export default defineConfig({
                     text: 'Services',
                     items: [
                         { text: 'BasicAuth', link: '/addons/service-basicauth' },
+                        { text: 'Background', link: '/addons/service-background' },
                         { text: 'Chaos', link: '/addons/service-chaos' },
                         { text: 'Firewall', link: '/addons/service-firewall' },
                         { text: 'Jwt', link: '/addons/service-jwt' },

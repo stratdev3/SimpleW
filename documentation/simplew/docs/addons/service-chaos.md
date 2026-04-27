@@ -46,7 +46,7 @@ $ dotnet add package SimpleW.Service.Chaos --version 26.0.0
 | BodyTemplate | `"CHAOS: simulated error {code} {text}"` | Response body template for HTTP errors. `{code}` and `{text}` placeholders are replaced. If null or empty, no body is sent. |
 
 
-## Minimal Example
+## Minimal example
 
 ```csharp
 using System.Net;

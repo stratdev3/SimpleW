@@ -41,7 +41,7 @@ $ dotnet add package SimpleW.Service.Latency --version 26.0.0
 | LatencyRule.Latency* | - | Artificial delay for the rule. Must be `>= 0`. `TimeSpan.Zero` rules are dropped (ignored). |
 
 
-## Minimal Example
+## Minimal example
 
 ```csharp
 using System.Net;

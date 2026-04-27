@@ -51,7 +51,7 @@ $ dotnet add package SimpleW.Service.Letsencrypt --version 26.0.0
 | KeyStorageFlags | OS-dependent | How private keys are stored/loaded in `X509Certificate2`. Default is OS-aware (Windows user/machine key store, Linux/macOS ephemeral + exportable). |
 
 
-## Minimal Example
+## Minimal example
 
 ```csharp
 using System.Net;
