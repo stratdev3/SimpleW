@@ -156,6 +156,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Service.Background
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Background/
+        dotnet build -c @param:build_configuration@ SimpleW.Service.Background.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Service.BasicAuth
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -315,6 +327,12 @@ jobs:
     name: publish artifact SimpleW.JsonEngine.Newtonsoft
     sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.JsonEngine.Newtonsoft.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Background
+    sourcePath: src/SimpleW.Service.Background/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Service.Background.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
@@ -556,6 +574,20 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: pack SimpleW.Service.Background
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Background
+        TS=$(date +"%Y%m%d")-@build_number@
+        sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:testing@.${TS}</Version>#g" SimpleW.Service.Background.csproj
+        dotnet pack -c Release SimpleW.Service.Background.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: pack SimpleW.Service.BasicAuth
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -737,6 +769,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Background
+    sourcePath: src/SimpleW.Service.Background/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.BasicAuth
     sourcePath: src/SimpleW.Service.BasicAuth/bin/Release/
     artifacts: '*.*nupkg'
@@ -912,6 +950,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Service.Background to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Background/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -1630,6 +1680,61 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: CD production nuget SimpleW.Service.Background
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Service.Background
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Background
+        dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Background.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Service.Background
+    sourcePath: src/SimpleW.Service.Background/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Service.Background to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Service.Background/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL

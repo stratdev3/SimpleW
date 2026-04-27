@@ -23,6 +23,7 @@
     <ProjectReference Include="..\SimpleW.Helper.DependencyInjection\SimpleW.Helper.DependencyInjection.csproj" />
     <ProjectReference Include="..\SimpleW.Helper.Hosting\SimpleW.Helper.Hosting.csproj" />
     <ProjectReference Include="..\SimpleW.Service.Jwt\SimpleW.Service.Jwt.csproj" />
+    <ProjectReference Include="..\SimpleW.Service.Background\SimpleW.Service.Background.csproj" />
     <ProjectReference Include="..\SimpleW.Helper.Jwt\SimpleW.Helper.Jwt.csproj" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
     <ProjectReference Include="..\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
