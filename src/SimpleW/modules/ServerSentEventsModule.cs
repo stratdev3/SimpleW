@@ -55,6 +55,11 @@ namespace SimpleW.Modules {
         public string? AutoJoinRoom { get; set; } = "__all";
 
         /// <summary>
+        /// Optional authorization callback. Return false to reject the SSE handshake.
+        /// </summary>
+        public Func<HttpSession, bool>? Authorize { get; set; }
+
+        /// <summary>
         /// Global hub to allow broadcasts to rooms (and/or an "all" room)
         /// You can store a reference to it and broadcast from anywhere
         /// </summary>
@@ -151,6 +156,11 @@ namespace SimpleW.Modules {
 
             if (!string.Equals(session.Request.Method, "GET", StringComparison.OrdinalIgnoreCase)) {
                 await session.Response.Status(405).Text("Method Not Allowed").SendAsync().ConfigureAwait(false);
+                return;
+            }
+
+            if (_options.Authorize != null && !_options.Authorize(session)) {
+                await session.Response.Status(403).Text("Forbidden").SendAsync().ConfigureAwait(false);
                 return;
             }
 

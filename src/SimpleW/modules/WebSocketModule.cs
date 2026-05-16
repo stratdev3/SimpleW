@@ -53,6 +53,11 @@ namespace SimpleW.Modules {
         public string? RequiredSubProtocol { get; set; }
 
         /// <summary>
+        /// Optional authorization callback. Return false to reject the WebSocket handshake.
+        /// </summary>
+        public Func<HttpSession, bool>? Authorize { get; set; }
+
+        /// <summary>
         /// If set, periodically send ping to keep proxies/load balancers happy
         /// </summary>
         public TimeSpan? KeepAliveInterval { get; set; }
@@ -186,6 +191,11 @@ namespace SimpleW.Modules {
 
             if (!IsWebSocketUpgrade(session.Request, out string? wsKey, out string? wsVersion, out string? wsProtocols)) {
                 await session.Response.Status(400).Text("Bad Request (expected WebSocket upgrade)").SendAsync().ConfigureAwait(false);
+                return;
+            }
+
+            if (_options.Authorize != null && !_options.Authorize(session)) {
+                await session.Response.Status(403).Text("Forbidden").SendAsync().ConfigureAwait(false);
                 return;
             }
 

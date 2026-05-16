@@ -61,6 +61,11 @@ namespace SimpleW.Modules {
             public TimeSpan? CacheTimeout { get; set; }
 
             /// <summary>
+            /// Optional authorization callback. Return false to reject the request before serving a file.
+            /// </summary>
+            public Func<HttpSession, bool>? Authorize { get; set; }
+
+            /// <summary>
             /// Maximum size (in bytes) of a single file allowed to be stored in memory cache.
             /// Null means unlimited. (default 4MiB)
             /// </summary>
@@ -211,6 +216,11 @@ namespace SimpleW.Modules {
             /// <param name="session"></param>
             /// <returns></returns>
             private async ValueTask HandlerAsync(HttpSession session) {
+                if (_options.Authorize != null && !_options.Authorize(session)) {
+                    await session.Response.Status(403).Text("Forbidden").SendAsync().ConfigureAwait(false);
+                    return;
+                }
+
                 HttpRequest request = session.Request;
 
                 // resolve FS target (no disk hit here)

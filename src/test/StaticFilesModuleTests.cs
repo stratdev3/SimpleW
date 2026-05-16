@@ -1,5 +1,7 @@
 ﻿using System.IO;
+using System.IO.Compression;
 using System.Net;
+using System.Text;
 using NFluent;
 using SimpleW;
 using SimpleW.Modules;
@@ -14,6 +16,36 @@ namespace test {
     public class StaticFilesModuleTests {
 
         #region no_cache
+
+        [Fact]
+        public async Task Get_StaticContent_Should_Return_Forbidden_When_Authorize_Denies() {
+
+            int port = PortManager.GetFreePort();
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.Authorize = _ => false;
+            });
+
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = new HttpClient();
+                using var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.dll");
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.Forbidden);
+            }
+            finally {
+                if (started) {
+                    await server.StopAsync();
+                }
+                PortManager.ReleasePort(port);
+            }
+        }
 
         [Fact]
         public async Task Get_StaticContent_NoCache_NoIndex_404() {
@@ -320,6 +352,223 @@ namespace test {
         }
 
         #endregion proper header
+
+        #region compressed cache
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_Compressed_Gzip_200() {
+
+            string path = CreateStaticFilesTestDirectory(nameof(Get_StaticContent_Cache_Compressed_Gzip_200));
+            string expected = "gzip:" + new string('a', 4096);
+            File.WriteAllText(Path.Combine(path, "app.txt"), expected);
+
+            int port;
+            var server = CreateCachedStaticServer(path, out port);
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = CreateRawClient();
+                using var response = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "app.txt"), "gzip");
+                string content = await ReadDecodedContentAsync(response);
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
+                Check.That(response.Headers.Vary).Contains("Accept-Encoding");
+                Check.That(content).IsEqualTo(expected);
+            }
+            finally {
+                await StopAndReleaseAsync(server, port, started);
+                TryDeleteDirectory(path);
+            }
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_Compressed_Gzip_Hit_200() {
+
+            string path = CreateStaticFilesTestDirectory(nameof(Get_StaticContent_Cache_Compressed_Gzip_Hit_200));
+            string expected = "gzip-hit:" + new string('b', 4096);
+            File.WriteAllText(Path.Combine(path, "app.txt"), expected);
+
+            int port;
+            var server = CreateCachedStaticServer(path, out port);
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = CreateRawClient();
+                using var response1 = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "app.txt"), "gzip");
+                string content1 = await ReadDecodedContentAsync(response1);
+                using var response2 = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "app.txt"), "gzip");
+                string content2 = await ReadDecodedContentAsync(response2);
+
+                Check.That(response1.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(response2.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(response1.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
+                Check.That(response2.Content.Headers.ContentEncoding.First()).IsEqualTo("gzip");
+                Check.That(content1).IsEqualTo(expected);
+                Check.That(content2).IsEqualTo(expected);
+            }
+            finally {
+                await StopAndReleaseAsync(server, port, started);
+                TryDeleteDirectory(path);
+            }
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_Compressed_Brotli_When_Preferred_200() {
+
+            string path = CreateStaticFilesTestDirectory(nameof(Get_StaticContent_Cache_Compressed_Brotli_When_Preferred_200));
+            string expected = "brotli:" + new string('c', 4096);
+            File.WriteAllText(Path.Combine(path, "app.txt"), expected);
+
+            int port;
+            var server = CreateCachedStaticServer(path, out port);
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = CreateRawClient();
+                using var response = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "app.txt"), "gzip;q=0.5, br;q=1.0");
+                string content = await ReadDecodedContentAsync(response);
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(response.Content.Headers.ContentEncoding.First()).IsEqualTo("br");
+                Check.That(content).IsEqualTo(expected);
+            }
+            finally {
+                await StopAndReleaseAsync(server, port, started);
+                TryDeleteDirectory(path);
+            }
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_Does_Not_Compress_When_Not_Eligible() {
+
+            string path = CreateStaticFilesTestDirectory(nameof(Get_StaticContent_Cache_Does_Not_Compress_When_Not_Eligible));
+            byte[] image = Enumerable.Range(0, 2048).Select(i => (byte)(i % 251)).ToArray();
+            string small = "tiny";
+            string large = "large:" + new string('d', 4096);
+            File.WriteAllBytes(Path.Combine(path, "image.png"), image);
+            File.WriteAllText(Path.Combine(path, "small.txt"), small);
+            File.WriteAllText(Path.Combine(path, "large.txt"), large);
+
+            int port;
+            var server = CreateCachedStaticServer(path, out port);
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = CreateRawClient();
+                using var imageResponse = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "image.png"), "gzip");
+                byte[] imageContent = await imageResponse.Content.ReadAsByteArrayAsync();
+                using var smallResponse = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "small.txt"), "gzip");
+                string smallContent = await smallResponse.Content.ReadAsStringAsync();
+                using var unknownResponse = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "large.txt"), "zstd");
+                string unknownContent = await unknownResponse.Content.ReadAsStringAsync();
+
+                Check.That(imageResponse.Content.Headers.ContentEncoding).IsEmpty();
+                Check.That(imageContent.SequenceEqual(image)).IsTrue();
+                Check.That(smallResponse.Content.Headers.ContentEncoding).IsEmpty();
+                Check.That(smallContent).IsEqualTo(small);
+                Check.That(unknownResponse.Content.Headers.ContentEncoding).IsEmpty();
+                Check.That(unknownContent).IsEqualTo(large);
+            }
+            finally {
+                await StopAndReleaseAsync(server, port, started);
+                TryDeleteDirectory(path);
+            }
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_Compressed_Validators_Return_304() {
+
+            string path = CreateStaticFilesTestDirectory(nameof(Get_StaticContent_Cache_Compressed_Validators_Return_304));
+            string expected = "validators:" + new string('e', 4096);
+            File.WriteAllText(Path.Combine(path, "app.txt"), expected);
+
+            int port;
+            var server = CreateCachedStaticServer(path, out port);
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = CreateRawClient();
+                using var warmResponse = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "app.txt"), "gzip");
+                string warmContent = await ReadDecodedContentAsync(warmResponse);
+                string etag = warmResponse.Headers.ETag!.Tag!;
+                warmResponse.Content.Headers.TryGetValues("Last-Modified", out var modifiedSinces);
+                string lastModified = modifiedSinces!.First();
+
+                using var etagRequest = new HttpRequestMessage(HttpMethod.Get, StaticUrl(server, "app.txt"));
+                etagRequest.Headers.TryAddWithoutValidation("Accept-Encoding", "gzip");
+                etagRequest.Headers.TryAddWithoutValidation("If-None-Match", etag);
+                using var etagResponse = await client.SendAsync(etagRequest);
+
+                using var modifiedRequest = new HttpRequestMessage(HttpMethod.Get, StaticUrl(server, "app.txt"));
+                modifiedRequest.Headers.TryAddWithoutValidation("Accept-Encoding", "gzip");
+                modifiedRequest.Headers.TryAddWithoutValidation("If-Modified-Since", lastModified);
+                using var modifiedResponse = await client.SendAsync(modifiedRequest);
+
+                Check.That(warmContent).IsEqualTo(expected);
+                Check.That(etagResponse.StatusCode).Is(HttpStatusCode.NotModified);
+                Check.That(etagResponse.Content.Headers.ContentEncoding).IsEmpty();
+                Check.That(modifiedResponse.StatusCode).Is(HttpStatusCode.NotModified);
+                Check.That(modifiedResponse.Content.Headers.ContentEncoding).IsEmpty();
+            }
+            finally {
+                await StopAndReleaseAsync(server, port, started);
+                TryDeleteDirectory(path);
+            }
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Cache_Compressed_File_Modified_ReturnsUpdatedContent() {
+
+            string path = CreateStaticFilesTestDirectory(nameof(Get_StaticContent_Cache_Compressed_File_Modified_ReturnsUpdatedContent));
+            string filePath = Path.Combine(path, "app.txt");
+            string v1 = "v1:" + new string('f', 4096);
+            string v2 = "v2:" + new string('g', 5000);
+            File.WriteAllText(filePath, v1);
+
+            int port;
+            var server = CreateCachedStaticServer(path, out port);
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = CreateRawClient();
+                using var warmResponse = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "app.txt"), "gzip");
+                string warmContent = await ReadDecodedContentAsync(warmResponse);
+
+                File.WriteAllText(filePath, v2);
+
+                string updatedContent = string.Empty;
+                for (int i = 0; i < 20; i++) {
+                    await Task.Delay(100);
+                    using var response = await GetWithAcceptEncodingAsync(client, StaticUrl(server, "app.txt"), "gzip");
+                    updatedContent = await ReadDecodedContentAsync(response);
+                    if (updatedContent == v2) {
+                        break;
+                    }
+                }
+
+                Check.That(warmContent).IsEqualTo(v1);
+                Check.That(updatedContent).IsEqualTo(v2);
+            }
+            finally {
+                await StopAndReleaseAsync(server, port, started);
+                TryDeleteDirectory(path);
+            }
+        }
+
+        #endregion compressed cache
 
         #region hit 304
 
@@ -691,6 +940,75 @@ namespace test {
         }
 
         #endregion watcher
+
+        private static SimpleWServer CreateCachedStaticServer(string path, out int port, Action<StaticFilesModuleExtension.StaticFilesOptions>? configure = null) {
+            port = PortManager.GetFreePort();
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+            server.UseStaticFilesModule(options => {
+                options.Path = path;
+                options.Prefix = "/files";
+                options.CacheTimeout = TimeSpan.FromDays(1);
+                configure?.Invoke(options);
+            });
+            return server;
+        }
+
+        private static HttpClient CreateRawClient() {
+            return new HttpClient(new HttpClientHandler {
+                AutomaticDecompression = DecompressionMethods.None
+            });
+        }
+
+        private static async Task<HttpResponseMessage> GetWithAcceptEncodingAsync(HttpClient client, string url, string acceptEncoding) {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.TryAddWithoutValidation("Accept-Encoding", acceptEncoding);
+            return await client.SendAsync(request);
+        }
+
+        private static async Task<string> ReadDecodedContentAsync(HttpResponseMessage response) {
+            byte[] payload = await response.Content.ReadAsByteArrayAsync();
+            string? encoding = response.Content.Headers.ContentEncoding.FirstOrDefault();
+            if (encoding == null) {
+                return Encoding.UTF8.GetString(payload);
+            }
+
+            using var input = new MemoryStream(payload);
+            using Stream decoded = encoding switch {
+                "gzip" => new GZipStream(input, CompressionMode.Decompress),
+                "deflate" => new DeflateStream(input, CompressionMode.Decompress),
+                "br" => new BrotliStream(input, CompressionMode.Decompress),
+                _ => throw new InvalidOperationException($"Unsupported content encoding '{encoding}'.")
+            };
+            using var reader = new StreamReader(decoded, Encoding.UTF8);
+            return await reader.ReadToEndAsync();
+        }
+
+        private static string CreateStaticFilesTestDirectory(string testName) {
+            string root = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "";
+            string path = Path.Combine(root, $"{testName}_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        private static string StaticUrl(SimpleWServer server, string fileName) {
+            return $"http://{server.Address}:{server.Port}/files/{fileName}";
+        }
+
+        private static async Task StopAndReleaseAsync(SimpleWServer server, int port, bool started) {
+            if (started) {
+                await server.StopAsync();
+            }
+            PortManager.ReleasePort(port);
+        }
+
+        private static void TryDeleteDirectory(string path) {
+            try {
+                if (Directory.Exists(path)) {
+                    Directory.Delete(path, recursive: true);
+                }
+            }
+            catch { }
+        }
 
     }
 
