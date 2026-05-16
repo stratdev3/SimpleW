@@ -49,6 +49,13 @@ public TimeSpan? CacheTimeout { get; set; }
 
 ```csharp
 /// <summary>
+/// Optional authorization callback. Return false to reject the request before serving a file.
+/// </summary>
+public Func<HttpSession, bool>? Authorize { get; set; }
+```
+
+```csharp
+/// <summary>
 /// If true, serves a minimal directory listing when no default document exists.
 /// </summary>
 public bool AutoIndex { get; set; } = false;

@@ -18,3 +18,17 @@ public static SimpleWServer UseServerSentEventsModule(this SimpleWServer server,
 ## Example
 
 See [examples](../guide/serversentevents.md) of use.
+
+
+## Authorization
+
+Use `ServerSentEventsOptions.Authorize` to reject an SSE connection before the handshake:
+
+```csharp
+server.UseServerSentEventsModule(options => {
+    options.Prefix = "/events";
+    options.Authorize = session => session.Principal.IsAuthenticated;
+});
+```
+
+When the callback returns `false`, the module responds with `403 Forbidden` and does not switch the HTTP session to SSE streaming.

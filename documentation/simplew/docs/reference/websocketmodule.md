@@ -39,6 +39,13 @@ public string? RequiredSubProtocol { get; set; }
 
 ```csharp
 /// <summary>
+/// Optional authorization callback. Return false to reject the WebSocket handshake.
+/// </summary>
+public Func<HttpSession, bool>? Authorize { get; set; }
+```
+
+```csharp
+/// <summary>
 /// If set, periodically send ping to keep proxies/load balancers happy
 /// </summary>
 public TimeSpan? KeepAliveInterval  { get; set; }
@@ -105,6 +112,20 @@ public void OnUnknown(WebSocketMessageHandler handler);
 /// </summary>
 public void OnBinary(Func<WebSocketConnection, WebSocketContext, ReadOnlyMemory<byte>, ValueTask> handler)
 ```
+
+
+## Authorization
+
+Use `WebSocketOptions.Authorize` to reject a WebSocket connection before the handshake:
+
+```csharp
+server.UseWebSocketModule(options => {
+    options.Prefix = "/ws";
+    options.Authorize = session => session.Principal.IsAuthenticated;
+});
+```
+
+When the callback returns `false`, the module responds with `403 Forbidden` and does not switch the HTTP session to WebSocket.
 
 
 ## Envelope
