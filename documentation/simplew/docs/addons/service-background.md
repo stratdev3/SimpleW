@@ -40,6 +40,8 @@ The queue is **memory-only**. Jobs do not survive process restart.
 $ dotnet add package SimpleW.Service.Background --version 26.0.0-alpha.20260428-1831
 ```
 
+See the [changelog](./service-background-changelog.md)
+
 
 ## Minimal example
 

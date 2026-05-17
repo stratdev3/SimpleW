@@ -13,6 +13,7 @@ export default {
   '../../src/SimpleW.Helper.Serilog/changelog.md': 'docs/addons/helper-serilog-changelog.md',
   '../../src/SimpleW.Helper.Swagger/changelog.md': 'docs/addons/helper-swagger-changelog.md',
   '../../src/SimpleW.JsonEngine.Newtonsoft/changelog.md': 'docs/addons/jsonengine-newtonsoft-changelog.md',
+  '../../src/SimpleW.Service.Background/changelog.md': 'docs/addons/service-background-changelog.md',
   '../../src/SimpleW.Service.BasicAuth/changelog.md': 'docs/addons/service-basicauth-changelog.md',
   '../../src/SimpleW.Service.Chaos/changelog.md': 'docs/addons/service-chaos-changelog.md',
   '../../src/SimpleW.Service.Firewall/changelog.md': 'docs/addons/service-firewall-changelog.md',
