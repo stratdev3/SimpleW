@@ -16,6 +16,7 @@ export default {
   '../../src/SimpleW.Service.Background/changelog.md': 'docs/addons/service-background-changelog.md',
   '../../src/SimpleW.Service.BasicAuth/changelog.md': 'docs/addons/service-basicauth-changelog.md',
   '../../src/SimpleW.Service.Chaos/changelog.md': 'docs/addons/service-chaos-changelog.md',
+  '../../src/SimpleW.Service.FileBrowser/changelog.md': 'docs/addons/service-filebrowser-changelog.md',
   '../../src/SimpleW.Service.Firewall/changelog.md': 'docs/addons/service-firewall-changelog.md',
   '../../src/SimpleW.Service.Jwt/changelog.md': 'docs/addons/service-jwt-changelog.md',
   '../../src/SimpleW.Service.Latency/changelog.md': 'docs/addons/service-latency-changelog.md',

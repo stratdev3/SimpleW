@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SimpleW File Browser</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+<header>
+  <h1>Files</h1>
+  <div class="toolbar">
+    <button id="refresh">Refresh</button>
+    <button id="newFolder">New folder</button>
+    <button id="rename" disabled>Rename</button>
+    <button id="move" disabled>Move</button>
+    <button id="delete" class="danger" disabled>Delete</button>
+    <button id="upload">Upload</button>
+    <button id="toggleOperations" class="icon-button operations-toggle" aria-label="Operations" aria-expanded="false" title="Operations">
+      <span class="operations-glyph" aria-hidden="true"></span>
+      <span id="operationCount" class="badge">0</span>
+    </button>
+  </div>
+</header>
+<main id="main">
+  <section class="pane">
+    <div id="crumbs" class="crumbs"></div>
+    <table>
+      <thead><tr><th>Name</th><th>Size</th><th>Modified</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+  <aside id="operationsPanel" class="operations-panel" hidden>
+    <div class="operations-header">
+      <h2>Operations</h2>
+      <div class="operations-actions">
+        <button id="cancelOperations" class="icon-button" aria-label="Cancel running operations" title="Cancel running operations" disabled>
+          <span class="cancel-glyph" aria-hidden="true"></span>
+        </button>
+        <button id="clearOperations" class="icon-button danger" aria-label="Clear operation history" title="Clear operation history" disabled>
+          <span class="trash-glyph" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+    <progress id="globalProgress" value="0" max="100"></progress>
+    <div id="operations" class="operations"></div>
+  </aside>
+</main>
+<footer id="status">Ready</footer>
+</div>
+<div id="uploadModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-upload></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
+    <header class="modal-header">
+      <h2 id="uploadTitle">Upload</h2>
+      <button id="closeUpload" aria-label="Close">Close</button>
+    </header>
+    <div id="uploadDrop" class="drop">Drop files or folders</div>
+    <div class="modal-actions">
+      <button id="chooseFiles" class="primary">Select files</button>
+      <button id="chooseFolder">Select folder</button>
+    </div>
+  </section>
+</div>
+<input id="files" type="file" multiple>
+<input id="folder" type="file" multiple webkitdirectory>
+<script src="app.js"></script>
+</body>
+</html>

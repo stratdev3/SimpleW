@@ -118,6 +118,7 @@ export default defineConfig({
                         { text: 'BasicAuth', link: '/addons/service-basicauth' },
                         { text: 'Background', link: '/addons/service-background' },
                         { text: 'Chaos', link: '/addons/service-chaos' },
+                        { text: 'FileBrowser', link: '/addons/service-filebrowser' },
                         { text: 'Firewall', link: '/addons/service-firewall' },
                         { text: 'Jwt', link: '/addons/service-jwt' },
                         { text: 'Latency', link: '/addons/service-latency' },
