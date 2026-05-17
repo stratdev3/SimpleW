@@ -1,68 +1,28 @@
 # Firewall
 
-The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.Firewall) package provides an **application-level firewall module** for the SimpleW web server. It is implemented as a SimpleW middleware.
-
+The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.Firewall) package provides an application-level firewall module for SimpleW. It runs as middleware and reads SimpleW handler metadata for route-specific rules.
 
 ## Features
 
-It allows you to :
-- Allow or deny requests based on **client IP**
-- Allow or deny requests based on **client country** (GeoIP2 / MaxMind, optional)
-- Define global rules and **path-based overrides**
-- Use **CIDR notation** (IPv4 and IPv6)
-- Apply **rate limiting** :
-  - fixed window
-  - sliding window
-- Automatically clean internal state using **TTL + hard caps**
-- Protect sensitive endpoints with minimal overhead
-
-
-## Requirements
-
-- .NET 8.0
-- SimpleW (core server)
-- MaxMind.GeoIP2 (automatically included)
-
-Optional dependency if you enable GeoIP country filtering :
-- a MaxMind `.mmdb` database (ex: GeoLite2-Country.mmdb)
-
+- Allow or deny requests by client IP or CIDR
+- Allow or deny requests by client country with optional MaxMind GeoIP2
+- Configure global rules once on the module
+- Declare handler-specific rules with attributes
+- Apply fixed-window or sliding-window rate limits
+- Bypass rate limits for trusted IP/CIDR clients
+- Clean internal per-IP state with TTL and hard caps
+- Emit optional telemetry
 
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Firewall --version 26.0.0
+dotnet add package SimpleW.Service.Firewall --version 26.0.1
 ```
 
-
-## Configuration options
-
-| Option | Default | Description |
-|---|---|---|
-| PathRules | `[]` | Path-based overrides (**first match wins**). Each rule targets a URL prefix and can define its own allow/deny/country/rate-limit rules. When a path rule matches, it handles allow/deny/country checks for that request. |
-| AllowRules | `[]` | Global allow list by IP/CIDR. **If not empty:** everything not matching an allow rule is **denied by default**. |
-| DenyRules | `[]` | Global deny list by IP/CIDR (checked against the resolved client IP). |
-| GlobalRateLimit | `null` | Global rate limit policy. `null` disables global rate limiting. |
-| StateTtl | `10 minutes` | Retention for inactive IP state (used for internal tracking / cleanup). Must be `> 0`. |
-| MaxTrackedIps | `50000` | Safety cap on how many IPs can be tracked internally. Must be `> 0`. |
-| CleanupEveryNRequests | `10000` | Opportunistic cleanup frequency (every N requests). Must be `> 0`. |
-| EnableTelemetry | `false` | Enables module telemetry (note: the underlying `SimpleWServer.Telemetry` must also be enabled). |
-| MaxMindCountryDbPath | `null` | Optional MaxMind GeoIP2 country database path (`.mmdb`). If `null`/empty, country rules cannot be evaluated (treated as unknown). |
-| TreatUnknownCountryAsMatchable | `true` | If `true`, unresolved country can match `CountryRule.Unknown()`. If `false`, unknown country never matches country rules. |
-| CountryCacheTtl | `null` | Cache duration for IP -> country resolution. If `null`, the module uses `StateTtl`. Must be `> 0` when set. |
-| AllowCountries | `[]` | Global allow list by country (ISO2 like `"FR"`, `"US"`). **If not empty:** default deny for non-matching countries (same behavior as `AllowRules`). |
-| DenyCountries | `[]` | Global deny list by country (ISO2 like `"FR"`, `"US"`). |
-| PathRule.Prefix | `"/"` | Prefix to match. Used to apply path-based overrides. |
-| PathRule.Allow | `[]` | Allow list by IP/CIDR for this path. **If not empty:** default deny for this path if no allow match. |
-| PathRule.Deny | `[]` | Deny list by IP/CIDR for this path. |
-| PathRule.AllowCountries | `[]` | Allow list by country for this path. **If not empty:** default deny for this path if no allow match. |
-| PathRule.DenyCountries | `[]` | Deny list by country for this path. |
-| PathRule.RateLimit | `null` | Rate limit policy for this path. If `null`, the matching path uses `GlobalRateLimit` when it is configured. |
-| RateLimitOptions.Limit | `100` | Max number of requests allowed within the window. Must be `> 0` (practically). |
-| RateLimitOptions.Window | `10 seconds` | Time window for rate limiting. Must be `> 0`. |
-| RateLimitOptions.SlidingWindow | `false` | `false` = fixed window counter. `true` = sliding-ish window (stores timestamps). |
+See the [changelog](./service-firewall-changelog.md)
 
 
-## Minimal example
+## Minimal Example
 
 ```csharp
 using System.Net;
@@ -72,22 +32,85 @@ using SimpleW.Service.Firewall;
 var server = new SimpleWServer(IPAddress.Any, 8080);
 
 server.UseFirewallModule(options => {
-    // allow only private networks (default deny)
-    options.AllowRules.Add(IpRule.Cidr("192.168.0.0/16"));
     options.AllowRules.Add(IpRule.Cidr("10.0.0.0/8"));
+    options.AllowRules.Add(IpRule.Single("127.0.0.1"));
 });
 
+server.MapController<ApiController>("/api");
+
 await server.RunAsync();
+
+[Route("/admin")]
+public sealed class ApiController : Controller
+{
+    [FirewallAllowIp("192.168.1.0/24")]
+    [FirewallRateLimit(20, 10, FirewallRateLimitWindowUnit.Seconds)]
+    [Route("GET", "/dashboard")]
+    public object Dashboard()
+    {
+        return new { ok = true };
+    }
+}
 ```
 
-In this configuration :
-- Any IP **not matching the allowlist** is rejected
-- Requests are blocked **before routing**
+## Configuration Options
 
+| Option | Default | Description |
+|---|---:|---|
+| `AllowRules` | `[]` | Global allow list by IP/CIDR. If not empty, non-matching requests are denied. |
+| `DenyRules` | `[]` | Global deny list by IP/CIDR. |
+| `GlobalRateLimit` | `null` | Global rate limit policy. |
+| `RateLimitWhitelistRules` | `[]` | IP/CIDR rules that bypass global and handler rate limits without bypassing allow or deny rules. |
+| `StateTtl` | `10 minutes` | Retention for inactive per-IP state. |
+| `MaxTrackedIps` | `50000` | Safety cap for tracked IP entries. |
+| `CleanupEveryNRequests` | `10000` | Opportunistic cleanup frequency. |
+| `EnableTelemetry` | `false` | Enables firewall metrics when server telemetry is enabled too. |
+| `MaxMindCountryDbPath` | `null` | Optional MaxMind `.mmdb` country database path. |
+| `TreatUnknownCountryAsMatchable` | `true` | Lets unknown countries match `CountryRule.Unknown()` and unknown-country attributes. |
+| `CountryCacheTtl` | `null` | IP to country cache duration. Uses `StateTtl` when null. |
+| `AllowCountries` | `[]` | Global allow list by ISO2 country. If not empty, non-matching requests are denied. |
+| `DenyCountries` | `[]` | Global deny list by ISO2 country. |
 
-## IP allow / deny rules
+## Handler Attributes
 
-### Global rules
+Handler-specific rules use attributes implementing SimpleW `IHandlerMetadata`.
+
+| Attribute | Description |
+|---|---|
+| `[FirewallAllowIp("192.168.1.0/24", "127.0.0.1")]` | Allows matching IP/CIDR rules. If present, non-matching requests are denied. |
+| `[FirewallDenyIp("203.0.113.10")]` | Denies matching IP/CIDR rules. |
+| `[FirewallAllowCountry("FR", "BE")]` | Allows matching resolved countries. If present, non-matching requests are denied. |
+| `[FirewallDenyCountry("RU", "CN")]` | Denies matching resolved countries. |
+| `[FirewallAllowUnknownCountry]` | Allows requests whose country cannot be resolved. |
+| `[FirewallDenyUnknownCountry]` | Denies requests whose country cannot be resolved. |
+| `[FirewallRateLimit(5, 30, FirewallRateLimitWindowUnit.Seconds, slidingWindow: true)]` | Declares a handler rate limit. |
+
+Attributes can be used on controller classes, controller methods, and non-inline delegate methods.
+Inline lambdas cannot be decorated with C# attributes.
+
+## Rule Resolution
+
+Global rules apply when a handler has no firewall metadata.
+
+When a handler has at least one firewall attribute:
+
+- handler allow/deny/country rules replace global allow/deny/country rules
+- handler rate limit replaces `GlobalRateLimit`
+- if no handler rate limit is declared, `GlobalRateLimit` is still used
+
+This mirrors the old path-override model: repeat global allow rules on the handler when the handler should keep the same allow list.
+
+Decision order:
+
+1. missing client IP returns `403`
+2. deny IP rules return `403`
+3. deny country rules return `403`
+4. allow rules miss returns `403`
+5. rate-limit whitelist skips rate limiting for matching IP/CIDR rules
+6. rate limit returns `429`
+7. otherwise the request continues
+
+## IP Rules
 
 ```csharp
 server.UseFirewallModule(options => {
@@ -96,322 +119,128 @@ server.UseFirewallModule(options => {
 });
 ```
 
-Rules support :
-- single IPs
-- CIDR notation
-- IPv4 and IPv6
+Supported formats:
 
-If `AllowRules` is not empty, the firewall operates in **default deny** mode.
+- single IPv4 or IPv6 address
+- IPv4 or IPv6 CIDR notation
 
-
-### Per-path rules
-
-Rules can be applied to specific URL prefixes.
+Attributes also accept either format:
 
 ```csharp
-server.UseFirewallModule(options => {
-
-    options.PathRules.Add(new PathRule {
-        Prefix = "/admin",
-        Allow = {
-            IpRule.Cidr("192.168.1.0/24")
-        }
-    });
-
-});
+[FirewallAllowIp("10.0.0.0/8", "127.0.0.1")]
 ```
 
-### Rule resolution
+## Country Rules
 
-- Path rules are matched using `StartsWith`
-- The **most specific prefix wins**
-- Prefixes are automatically sorted by length at startup
-- A matching `PathRule` overrides global allow/deny/country checks for that request
-- Rate limiting is resolved separately: path `RateLimit` first, then `GlobalRateLimit`
-
-Example :
-- `/api/admin` is evaluated before `/api`
-- `/api` is evaluated before `/`
-
-If you combine a global allowlist with a path rule, repeat the required allow rules inside that path rule. Otherwise the path rule becomes the allow/deny policy for that prefix.
-
-
-## GeoIP country filtering (MaxMind)
-
-The firewall can optionally filter requests based on the **client country**, resolved from the client IP using a **MaxMind GeoIP2 database**.
-
-This feature is **disabled by default**.
-When enabled, the firewall resolves the client IP to a two-letter country code, then compares that code with your country rules.
-
-In practice:
-1. You provide a MaxMind country database path with `MaxMindCountryDbPath`.
-2. The firewall resolves the client IP to an ISO2 country code such as `FR`, `US`, or `DE`.
-3. `DenyCountries` blocks matching countries first.
-4. If `AllowCountries` is not empty, only matching countries are allowed.
-
-`PathRule` also exposes country allow/deny lists, but there is a limitation: the module only resolves the country when the top-level `AllowCountries` or `DenyCountries` lists are not empty. If you only define country rules inside a `PathRule`, the request country is not resolved, so those path country rules cannot work reliably by themselves.
-
-### Enabling GeoIP
+Country filtering requires a MaxMind country database to resolve real countries.
+If no database is configured, the country is unresolved.
 
 ```csharp
 server.UseFirewallModule(options => {
-    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb"; // adjust path depending on your mmdb location
-});
-```
-
-### Country rules (global)
-
-Country codes use ISO2 format (examples: `"FR"`, `"US"`, `"DE"`).
-
-Block a few countries:
-
-```csharp
-server.UseFirewallModule(options => {
-
-    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb"; // adjust path depending on your mmdb location
-
-    // Deny RU and CN globally
+    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb";
     options.DenyCountries.Add(CountryRule.Any("RU", "CN"));
 });
 ```
 
-Allow only a few countries:
+Handler-level country rules:
 
 ```csharp
-server.UseFirewallModule(options => {
-
-    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb"; // adjust path depending on your mmdb location
-
-    // If AllowCountries is not empty => default deny for all other countries
-    options.AllowCountries.Add(CountryRule.Any("FR", "BE", "CH"));
-});
+[FirewallAllowCountry("FR", "BE", "CH")]
+[Route("GET", "/billing")]
+public object Billing()
+{
+    return new { ok = true };
+}
 ```
 
-Behavior :
-- If `AllowCountries` is not empty, the firewall operates in **default deny** mode for countries (same behavior as AllowRules for IPs).
-- `DenyCountries` is always evaluated first.
-
-### Country rules (per-path)
-
-You can define country allow/deny rules for specific prefixes :
-
-```csharp
-server.UseFirewallModule(options => {
-
-    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country.mmdb"; // adjust path depending on your mmdb location
-
-    options.PathRules.Add(new PathRule {
-        Prefix = "/admin",
-
-        // Only allow admin access from FR/BE/CH
-        AllowCountries = { CountryRule.Any("FR", "BE", "CH") }
-    });
-
-});
-```
-
-Per-path behavior :
-- Path rules are evaluated first (most specific prefix wins).
-- If a path rule has `AllowCountries`, it becomes **default deny** for that path unless a country matches.
-- Path-only country rules cannot work reliably by themselves because the country is not resolved unless the top-level country lists are configured. Prefer top-level country rules until this limitation is fixed.
-
-### Unknown / unresolved country
-
-Sometimes a country cannot be resolved :
-- database not configured
-- IP not in the database
-- lookup error
-
-In that case, the resolved country is `unknown`.
-
-You can choose how the firewall treats unknown countries:
+Unknown country behavior:
 
 ```csharp
 options.TreatUnknownCountryAsMatchable = true; // default
 ```
 
-If `TreatUnknownCountryAsMatchable` is true, you can explicitly match unknown countries:
+When enabled, unknown countries can match:
 
 ```csharp
 options.DenyCountries.Add(CountryRule.Unknown());
 ```
 
-If `TreatUnknownCountryAsMatchable` is false, unknown countries will **never match** any country rule.
-
-### Caching and performance
-
-Country resolution is cached :
-- IP -> Country ISO2 is cached in-memory
-- TTL is controlled by:
-  - `CountryCacheTtl` (if set)
-  - otherwise `StateTtl`
+or:
 
 ```csharp
-options.CountryCacheTtl = TimeSpan.FromMinutes(10);
+[FirewallDenyUnknownCountry]
 ```
 
-The cache is bounded by the same memory safety mechanisms :
-- TTL eviction
-- hard cap (`MaxTrackedIps`)
-- opportunistic cleanup (`CleanupEveryNRequests`)
+Country lookups are cached per IP. Set `CountryCacheTtl` to tune cache duration.
 
-This ensures GeoIP support remains fast and safe under load.
+## Rate Limiting
 
-
-## Rate limiting
-
-### Global rate limiting
+Global rate limit:
 
 ```csharp
 server.UseFirewallModule(options => {
-
     options.GlobalRateLimit = new RateLimitOptions {
         Limit = 100,
-        Window = TimeSpan.FromSeconds(10)
+        Window = TimeSpan.FromSeconds(10),
+        SlidingWindow = false
     };
 
+    // Trusted internal clients bypass both global and handler rate limits.
+    options.RateLimitWhitelistRules.Add(IpRule.Single("127.0.0.1"));
+    options.RateLimitWhitelistRules.Add(IpRule.Cidr("10.0.0.0/8"));
 });
 ```
 
-This limits each client IP to **100 requests per 10 seconds**.
-
-
-### Per-path rate limiting
+Handler rate limit:
 
 ```csharp
-server.UseFirewallModule(options => {
-
-    options.PathRules.Add(new PathRule {
-        Prefix = "/login",
-        RateLimit = new RateLimitOptions {
-            Limit = 5,
-            Window = TimeSpan.FromSeconds(30),
-            SlidingWindow = true
-        }
-    });
-
-});
+[FirewallRateLimit(5, 30, FirewallRateLimitWindowUnit.Seconds, slidingWindow: true)]
+[Route("POST", "/login")]
+public object Login()
+{
+    return new { ok = true };
+}
 ```
 
-This configuration :
-- uses the `/login` policy when the path matches
-- prevents burst abuse
-- falls back to `GlobalRateLimit` only when `PathRule.RateLimit` is `null`
+Fixed window is faster and uses less memory. Sliding window is more precise and better for sensitive endpoints.
+Rate-limit state is keyed by client IP. `RateLimitWhitelistRules` only skips rate limiting; matching clients still go through deny rules, country rules, and allow-list checks.
 
-Rate-limit state is keyed by client IP. Global and path rate-limit policies for the same IP share the same internal state, so avoid mixing different windows or limits when you need strict independent quotas.
+## Client IP Resolution
 
-
-## Fixed window vs Sliding window
-
-### Fixed window (default)
-
-- Very fast
-- Minimal memory usage
-- Allows small bursts at window boundaries
-
-Best suited for :
-- internal APIs
-- LAN traffic
-- general protection
-
-```csharp
-SlidingWindow = false
-```
-
-
-### Sliding window
-
-- More precise
-- Prevents burst exploits
-- Slightly higher memory and CPU cost
-
-Best suited for :
-- authentication endpoints
-- public APIs
-- sensitive routes
-
-```csharp
-SlidingWindow = true
-```
-
-
-## Memory safety and cleanup
-
-The firewall automatically manages its internal per-IP state.
-
-### Built-in protections
-
-- Per-IP state uses a **time-to-live (TTL)**
-- Hard limit on the number of tracked IPs
-- Opportunistic cleanup during request handling
-- No background threads or timers
-
-`MaxTrackedIps` caps the number of tracked IP entries. Sliding-window mode stores timestamps per tracked IP, so keep sliding windows short on very high-traffic endpoints.
-
-### Default values
-
-```csharp
-options.StateTtl = TimeSpan.FromMinutes(10);
-options.MaxTrackedIps = 50_000;
-options.CleanupEveryNRequests = 10_000;
-```
-
-These defaults are safe for most deployments and can be tuned if needed.
-
-
-## Client IP resolution
-
-By default, the firewall uses :
+The firewall uses:
 
 ```csharp
 session.ClientIpAddress
 ```
 
-You can override this behavior if needed with [`ConfigureClientIPResolver`](../reference/simplewserver.md#configureclientipresolver).
-This is a `SimpleWServer` configuration method, not a `FirewallOptions` property :
+For reverse proxies, configure SimpleW explicitly:
 
 ```csharp
 server.ConfigureClientIPResolver(session => {
-
-    // 1. look for X-Real-IP from a trusted reverse proxy
-    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp)
-        && IPAddress.TryParse(xRealIp, out IPAddress? forwardedIp)
-    ) {
+    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? value)
+        && IPAddress.TryParse(value, out IPAddress? forwardedIp)) {
         return forwardedIp;
     }
 
-    // 2. client ip (fallback)
-    if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+    if (session.Socket.RemoteEndPoint is not IPEndPoint endpoint) {
         return null;
     }
-    return ep.Address;
+
+    return endpoint.Address;
 });
 ```
 
-This is useful when integrating with reverse proxies or custom transports.
+Only trust forwarded IP headers from trusted proxy infrastructure.
 
+## Static Files And Fallbacks
 
-## HTTP responses
+`PathRule` / `PathRules` has been removed.
 
-When a request is blocked :
-- **403 Forbidden** is returned for allow/deny rules
-- **429 Too Many Requests** is returned for rate limiting
+Static files and fallback routes usually do not carry custom attributes directly, so protect them with global firewall rules. If a fallback or static-like handler is mapped through a decorated method, handler metadata works normally.
 
-Requests are rejected **before** routing and controller execution.
+## Telemetry
 
-
-## Telemetry & Counters
-
-The firewall module can optionally emit **metrics** to help you observe its behavior in production.
-
-When enabled, the module exposes :
-- counters and histograms for allowed, denied, and rate-limited requests
-- gauges for tracked IP state and rule counts
-- minimal overhead when disabled
-
-Telemetry is fully optional and disabled by default.
-
-### Enabling telemetry
+Enable telemetry:
 
 ```csharp
 server.UseFirewallModule(options => {
@@ -419,13 +248,10 @@ server.UseFirewallModule(options => {
 });
 ```
 
-### What is tracked
+The underlying `SimpleWServer` telemetry must also be enabled.
 
-When `EnableTelemetry` is set to `true`, the firewall reports :
+Metrics:
 
-**Metrics**
-
-Counters and histograms :
 - `simplew.firewall.decision.count`
 - `simplew.firewall.block.count`
 - `simplew.firewall.ratelimit.count`
@@ -433,39 +259,20 @@ Counters and histograms :
 - `simplew.firewall.match.deny.count`
 - `simplew.firewall.match.allow_miss.count`
 - `simplew.firewall.decision.duration`
-
-Observable gauges :
 - `simplew.firewall.tracked_ips.fixed`
 - `simplew.firewall.tracked_ips.sliding`
 - `simplew.firewall.tracked_ips.total`
 - `simplew.firewall.tracked_ips.country_cache`
-- `simplew.firewall.rules.paths`
 - `simplew.firewall.rules.allow.global`
 - `simplew.firewall.rules.deny.global`
 - `simplew.firewall.rules.allow_countries.global`
 - `simplew.firewall.rules.deny_countries.global`
 
-Decision metrics use low-cardinality tags such as :
-- `result`
-- `reason`
-- `scope`
-- `window`
-- `path_prefix`
+Decision tags use low-cardinality values such as `result`, `reason`, `scope`, and `window`.
 
-These metrics can be exported through the same observability pipeline used by SimpleW.
+## HTTP Responses
 
-### Performance impact
+- `403 Forbidden` for missing IP, deny matches, and allow misses
+- `429 Too Many Requests` for rate limiting
 
-- When disabled, telemetry adds **near-zero overhead**
-- When enabled, all instruments are designed to be allocation-light
-- No background threads are introduced
-
-### When to enable
-
-Recommended for :
-- production environments
-- tuning rate limits
-- diagnosing unexpected blocks
-- validating new firewall rules
-
-For extremely latency-sensitive deployments, telemetry can remain disabled.
+Requests are rejected before controller execution.
