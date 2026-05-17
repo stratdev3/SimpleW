@@ -1,11 +1,43 @@
 # Changelog
 
-Notes :
-- It does not strictly follow the semver convention.
-- No technical debt : code that needs to be refactored/broken, will be.
-- When something breaks, it's documented and a migration guide is provided.
-- No long-term support or backports for major versions, just stick to the latest update.
-- Found a bug or a way to optimize? Feel free to submit a patch.
+## v26.0.1 - _(2026-05-??)_
+
+Maintenance release for handler-level firewall rules.
+
+### feature
+
+- Add handler metadata attributes to declare firewall rules directly on controllers and methods (#383):
+  - `FirewallAllowIpAttribute`
+  - `FirewallDenyIpAttribute`
+  - `FirewallAllowCountryAttribute`
+  - `FirewallDenyCountryAttribute`
+  - `FirewallAllowUnknownCountryAttribute`
+  - `FirewallDenyUnknownCountryAttribute`
+  - `FirewallRateLimitAttribute`
+- Add `FirewallRateLimitWindowUnit` to configure attribute-based rate-limit windows in milliseconds, seconds, minutes, or hours.
+- Allow controller-level and method-level firewall metadata to be combined.
+- Allow `UseFirewallModule(...)` to update the firewall configuration while installing the middleware only once per server.
+
+### changed
+
+- Replace path-based firewall overrides with handler metadata rules.
+- Handler firewall metadata now replaces global allow/deny/country rules for the decorated handler.
+- Handler rate-limit metadata overrides the global rate limit; when no handler rate limit is declared, the global rate limit still applies.
+- Move rate limiting, rule evaluation, policy resolution, telemetry, and GeoIP country resolution into dedicated internal components.
+- Update documentation and README examples to use handler attributes instead of `PathRule`.
+
+### fix
+
+- Fix country deny rules so unresolved countries can be denied through `CountryRule.Unknown()` and `FirewallDenyUnknownCountryAttribute`. (#379)
+- Fix country rule evaluation so handler-level country attributes trigger country resolution even when no global country rules are configured.
+- Normalize `MaxMindCountryDbPath` and validate firewall configuration before publishing it to the running module.
+
+### breakingChange
+
+- `PathRule` / `PathRules` has been removed. Use firewall attributes on controller classes, controller methods, or non-inline delegate methods.
+- Static files, fallback routes, and inline lambdas cannot carry C# attributes directly. Protect those routes with global firewall rules, or route them through decorated handlers.
+
+
 
 ## v26.0.0 - _(2026-04-26)_
 

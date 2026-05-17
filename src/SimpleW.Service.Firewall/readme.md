@@ -5,74 +5,77 @@
 [![NuGet Package](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/SimpleW)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](licence)
-<br/>
-[![Linux](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml)
-[![MacOS](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml)
-[![Windows (Visual Studio)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-windows.yml)
 
-### Features
+## Features
 
-This package provides IP-based filtering, rate limiting, connection rules and security policies to protect your server from unwanted or abusive traffic for SimpleW.
+This package provides an application-level firewall for SimpleW:
 
-### Getting Started
+- global allow and deny rules by IP/CIDR
+- global allow and deny rules by country with MaxMind GeoIP2
+- handler-level firewall rules using SimpleW handler metadata attributes
+- fixed-window and sliding-window rate limiting
+- bounded per-IP state with TTL cleanup
+- optional telemetry counters and gauges
 
-The minimal API
+## Getting Started
 
-```cs
+```csharp
 using System.Net;
 using SimpleW;
-using SimpleW.Observability;
 using SimpleW.Service.Firewall;
 
-namespace Sample {
-    class Program {
+var server = new SimpleWServer(IPAddress.Any, 2015);
 
-        static async Task Main() {
+server.UseFirewallModule(fw => {
+    fw.AllowRules.Add(IpRule.Cidr("10.0.0.0/8"));
+    fw.AllowRules.Add(IpRule.Single("127.0.0.1"));
 
-            // debug log
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+    fw.GlobalRateLimit = new RateLimitOptions {
+        Limit = 200,
+        Window = TimeSpan.FromSeconds(10)
+    };
+});
 
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
+server.MapController<AdminController>("/api");
 
-            // minimal api
-            server.MapGet("/api/test", () => {
-                return new { message = "Hello World !" };
-            });
-            server.MapGet("/api/admin", () => {
-                return new { message = "Administration" };
-            });
+await server.RunAsync();
 
-            // firewall
-            server.UseFirewallModule(fw => {
-
-                // global allowlist => default deny
-                fw.AllowRules.Add(IpRule.Cidr("192.168.0.0/16"));
-                fw.AllowRules.Add(IpRule.Cidr("10.0.0.0/8"));
-
-                // global rate limit
-                fw.GlobalRateLimit = new RateLimitOptions {
-                    Limit = 200,
-                    Window = TimeSpan.FromSeconds(10),
-                    SlidingWindow = false
-                };
-
-                fw.PathRules.Add(new PathRule {
-                    Prefix = "/api/admin",
-                    RateLimit = new RateLimitOptions { Limit = 20, Window = TimeSpan.FromSeconds(10) }
-                });
-
-            });
-
-            // run server
-            await server.RunAsync();
-        }
+[Route("/admin")]
+public sealed class AdminController : Controller
+{
+    [FirewallAllowIp("192.168.1.0/24")]
+    [FirewallRateLimit(20, 10, FirewallRateLimitWindowUnit.Seconds)]
+    [Route("GET", "/dashboard")]
+    public object Dashboard()
+    {
+        return new { ok = true };
     }
-
 }
 ```
 
-When a `PathRule` matches, it handles allow/deny/country checks for that prefix. Repeat global allow rules inside the path rule when the prefix must keep the same allowlist.
+Global rules apply to handlers that do not declare firewall metadata.
+As soon as a handler has at least one firewall attribute, its handler policy replaces global allow/deny/country rules. Handler rate limits override the global rate limit; if no handler rate limit is declared, the global rate limit still applies.
+
+## Handler Attributes
+
+```csharp
+[FirewallAllowIp("192.168.1.0/24", "127.0.0.1")]
+[FirewallDenyIp("203.0.113.10")]
+[FirewallAllowCountry("FR", "BE", "CH")]
+[FirewallDenyCountry("RU", "CN")]
+[FirewallAllowUnknownCountry]
+[FirewallDenyUnknownCountry]
+[FirewallRateLimit(5, 30, FirewallRateLimitWindowUnit.Seconds, slidingWindow: true)]
+```
+
+Attributes work on controller classes, controller methods, and non-inline delegate methods.
+Class metadata is evaluated before method metadata; method rate-limit metadata wins when both class and method declare one.
+
+## Notes
+
+- `PathRule` / `PathRules` has been removed in favor of handler metadata.
+- Static files, fallback routes, and anonymous inline lambdas cannot carry attributes directly. Use global rules for those, or route through decorated handlers.
+- The firewall uses `session.ClientIpAddress`, so reverse proxy setups should configure `server.ConfigureClientIPResolver(...)`.
 
 ## Documentation
 
@@ -80,11 +83,8 @@ To check out docs, visit [simplew.net](https://simplew.net).
 
 ## Changelog
 
-Detailed changes for each release are documented in the [CHANGELOG](https://github.com/stratdev3/SimpleW/blob/master/release.md).
-
-## Contribution
-
-Feel free to report issue.
+Detailed changes for each release are documented in the [CHANGELOG](https://github.com/Stratdev3/SimpleW/blob/master/release.md).
 
 ## License
+
 This library is under the MIT License.
