@@ -171,24 +171,26 @@ namespace SimpleW {
         /// </summary>
         /// <param name="e"></param>
         private void AcceptSocket(SocketAsyncEventArgs e) {
-            if (_listenSocket == null || _server == null || _server.IsStopping) {
-                return;
-            }
+            while (CanAcceptMore()) {
+                // socket must be cleared since the context object is being reused
+                e.AcceptSocket = null;
 
-            // socket must be cleared since the context object is being reused
-            e.AcceptSocket = null;
+                bool pending;
+                try {
+                    // async accept a new client connection
+                    pending = _listenSocket!.AcceptAsync(e);
+                }
+                catch (ObjectDisposedException) {
+                    return;
+                }
 
-            bool pending;
-            try {
-                // async accept a new client connection
-                pending = _listenSocket.AcceptAsync(e);
-            }
-            catch (ObjectDisposedException) {
-                return;
-            }
+                if (pending) {
+                    return;
+                }
 
-            if (!pending) {
-                ProcessAcceptSocket(e);
+                if (!ProcessAcceptSocket(e)) {
+                    return;
+                }
             }
         }
 
@@ -196,7 +198,8 @@ namespace SimpleW {
         /// Process accepted client connection.
         /// </summary>
         /// <param name="e"></param>
-        private void ProcessAcceptSocket(SocketAsyncEventArgs e) {
+        /// <returns>True when the accept loop can continue.</returns>
+        private bool ProcessAcceptSocket(SocketAsyncEventArgs e) {
             if (e.SocketError == SocketError.Success && e.AcceptSocket != null && _connectionHandler != null) {
                 // handle connection (create a HttpSession)
                 _ = _connectionHandler(e.AcceptSocket);
@@ -211,9 +214,7 @@ namespace SimpleW {
             }
 
             // accept new client (except if socket is closed)
-            if (CanAcceptMore()) {
-                AcceptSocket(e);
-            }
+            return CanAcceptMore();
         }
 
         /// <summary>
@@ -226,7 +227,9 @@ namespace SimpleW {
                 return;
             }
 
-            ProcessAcceptSocket(e);
+            if (ProcessAcceptSocket(e)) {
+                AcceptSocket(e);
+            }
         }
 
         /// <summary>
