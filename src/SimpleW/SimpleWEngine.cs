@@ -211,7 +211,7 @@ namespace SimpleW {
             }
 
             // accept new client (except if socket is closed)
-            if (_listenSocket != null && !_listenSocket.SafeHandle.IsInvalid && _server != null && !_server.IsStopping) {
+            if (CanAcceptMore()) {
                 AcceptSocket(e);
             }
         }
@@ -222,11 +222,22 @@ namespace SimpleW {
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void OnAcceptSocketCompleted(object? sender, SocketAsyncEventArgs e) {
-            if (_listenSocket == null || _server == null || _listenSocket.SafeHandle.IsInvalid || _server.IsStopping) {
+            if (!CanAcceptMore()) {
                 return;
             }
 
             ProcessAcceptSocket(e);
+        }
+
+        /// <summary>
+        /// Indicates whether the listener can accept another socket.
+        /// </summary>
+        /// <returns></returns>
+        private bool CanAcceptMore() {
+            return _listenSocket != null
+                && !_listenSocket.SafeHandle.IsInvalid
+                && _server != null
+                && !_server.IsStopping;
         }
 
     }
