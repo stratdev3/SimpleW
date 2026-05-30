@@ -964,14 +964,7 @@ namespace SimpleW {
                     throw new InvalidOperationException("Concurrent SendAsync on same session");
                 }
                 if (_sslStream != null) {
-                    // HTTPS : write each segment to sslStream
-                    foreach (ArraySegment<byte> seg in segments) {
-                        if (seg.Array == null || seg.Count == 0) {
-                            continue;
-                        }
-                        await _sslStream.WriteAsync(seg.Array, seg.Offset, seg.Count).ConfigureAwait(false);
-                        _response.BytesSent += seg.Count;
-                    }
+                    await _SendTlsSegmentsAsync(segments).ConfigureAwait(false);
                 }
                 else {
                     int bytesSent = await _socket.SendAsync(segments, SocketFlags.None).ConfigureAwait(false);
@@ -1003,15 +996,9 @@ namespace SimpleW {
                     throw new InvalidOperationException("Concurrent SendAsync on same session");
                 }
                 if (_sslStream != null) {
-                    // HTTPS : write each segment to sslStream
-                    if (header.Array != null && header.Count > 0) {
-                        await _sslStream.WriteAsync(header.Array, header.Offset, header.Count).ConfigureAwait(false);
-                        _response.BytesSent += header.Count;
-                    }
-                    if (body.Array != null && body.Count > 0) {
-                        await _sslStream.WriteAsync(body.Array, body.Offset, body.Count).ConfigureAwait(false);
-                        _response.BytesSent += body.Count;
-                    }
+                    _sendSegments2[0] = header;
+                    _sendSegments2[1] = body;
+                    await _SendTlsSegmentsAsync(_sendSegments2).ConfigureAwait(false);
                 }
                 else {
                     _sendSegments2[0] = header;
@@ -1063,6 +1050,61 @@ namespace SimpleW {
                 Volatile.Write(ref _sending, 0);
             }
         }
+
+        #region send tls optimization
+
+        /// <summary>
+        /// Coalesce small TLS scatter/gather writes into one SslStream write; larger payloads avoid an extra copy.
+        /// </summary>
+        private const int TlsCoalesceThresholdBytes = 64 * 1024;
+
+        private async ValueTask _SendTlsSegmentsAsync(ArraySegment<byte>[] segments) {
+            int total = 0;
+            foreach (ArraySegment<byte> seg in segments) {
+                if (seg.Array == null || seg.Count <= 0) {
+                    continue;
+                }
+                if (seg.Count > TlsCoalesceThresholdBytes - total) {
+                    await _SendTlsSegmentsIndividuallyAsync(segments).ConfigureAwait(false);
+                    return;
+                }
+                total += seg.Count;
+            }
+
+            if (total == 0) {
+                return;
+            }
+
+            byte[] buffer = _bufferPool.Rent(total);
+            try {
+                int offset = 0;
+                foreach (ArraySegment<byte> seg in segments) {
+                    if (seg.Array == null || seg.Count <= 0) {
+                        continue;
+                    }
+                    Buffer.BlockCopy(seg.Array, seg.Offset, buffer, offset, seg.Count);
+                    offset += seg.Count;
+                }
+
+                await _sslStream!.WriteAsync(buffer.AsMemory(0, total)).ConfigureAwait(false);
+                _response.BytesSent += total;
+            }
+            finally {
+                _bufferPool.Return(buffer);
+            }
+        }
+
+        private async ValueTask _SendTlsSegmentsIndividuallyAsync(ArraySegment<byte>[] segments) {
+            foreach (ArraySegment<byte> seg in segments) {
+                if (seg.Array == null || seg.Count <= 0) {
+                    continue;
+                }
+                await _sslStream!.WriteAsync(seg.AsMemory()).ConfigureAwait(false);
+                _response.BytesSent += seg.Count;
+            }
+        }
+
+        #endregion send tls optimization
 
         #endregion SendAsync
 
