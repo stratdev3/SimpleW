@@ -17,6 +17,23 @@ Notes :
 - HTTP/3 quic
 
 
+## v26.0.1 / _(2026-06-19)_
+Maintenance
+
+### fix
+
+- fix(SimpleW): stack overflow on synchronous socket accepts under heavy load (#385)
+
+### feature
+
+- feature(SimpleW): add new Authorize options in StaticFiles, ServerSentEvents and WebSocket modules (#381)
+- feature(SimpleW): improve TLS performances (#384)
+- feature(SimpleW): StaticFileModule caches compressed variant (#386)
+- feature(SimpleW): call `Router.NormalizeHost()` only if a host route exists (#387)
+- feature(SimpleW): ignore case when searching for host route (#388)
+- feature(SimpleW): support `CompressedDiskCache` in StaticFilesModule (#391)
+
+
 
 ## v26.0.0 - _(2026-04-26)_
 
