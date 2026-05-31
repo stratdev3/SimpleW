@@ -1,5 +1,7 @@
 ﻿using System.Collections.Concurrent;
+using System.Buffers;
 using System.Globalization;
+using System.IO.Compression;
 using System.Net;
 using System.Text;
 using SimpleW.Observability;
@@ -162,7 +164,7 @@ namespace SimpleW.Modules {
             private readonly ConcurrentDictionary<string, CacheEntry> _cache = new(PathComparer);
 
             /// <summary>
-            /// Current total bytes held by the file cache.
+            /// Current total bytes held by the file cache, including compressed variants.
             /// </summary>
             private long _cacheBytes;
 
@@ -233,8 +235,9 @@ namespace SimpleW.Modules {
                 if (_options.CacheTimeout.HasValue) {
                     if (endsWithSlash) {
                         string dirKey = NormalizeDirKey(fullPath);
-                        if (_cache.TryGetValue(Path.Combine(dirKey, _options.DefaultDocument), out CacheEntry entry) && !entry.IsExpired) {
-                            await SendCacheEntryAsync(session, request, entry).ConfigureAwait(false);
+                        string defaultFile = Path.Combine(dirKey, _options.DefaultDocument);
+                        if (_cache.TryGetValue(defaultFile, out CacheEntry? entry) && entry != null && !entry.IsExpired) {
+                            await SendCacheEntryAsync(session, request, defaultFile, entry).ConfigureAwait(false);
                             return;
                         }
                         if (_options.AutoIndex && _dirIndexCache.TryGetValue(dirKey, out DirIndexCacheEntry cached) && !cached.IsExpired) {
@@ -243,8 +246,8 @@ namespace SimpleW.Modules {
                         }
                     }
                     else {
-                        if (_cache.TryGetValue(fullPath, out CacheEntry entry) && !entry.IsExpired) {
-                            await SendCacheEntryAsync(session, request, entry).ConfigureAwait(false);
+                        if (_cache.TryGetValue(fullPath, out CacheEntry? entry) && entry != null && !entry.IsExpired) {
+                            await SendCacheEntryAsync(session, request, fullPath, entry).ConfigureAwait(false);
                             return;
                         }
                     }
@@ -397,8 +400,8 @@ namespace SimpleW.Modules {
                     int cacheSeconds = (int)_options.CacheTimeout.Value.TotalSeconds;
 
                     // 1) cache hit
-                    if (_cache.TryGetValue(filePath, out CacheEntry entry) && !entry.IsExpired) {
-                        await SendCacheEntryAsync(session, request, entry).ConfigureAwait(false);
+                    if (_cache.TryGetValue(filePath, out CacheEntry? entry) && entry != null && !entry.IsExpired) {
+                        await SendCacheEntryAsync(session, request, filePath, entry).ConfigureAwait(false);
                         return;
                     }
 
@@ -441,19 +444,21 @@ namespace SimpleW.Modules {
                         return;
                     }
 
-                    // 3) fill cache
-                    TryCacheFile(filePath, data, len, contentType, etag2, lastModified);
+                    // 3) fill cache and send
+                    if (TryCacheFile(filePath, data, len, contentType, etag2, lastModified, out CacheEntry cachedEntry)) {
+                        await SendCacheEntryAsync(session, request, filePath, cachedEntry).ConfigureAwait(false);
+                    }
+                    else {
+                        session.Response.AddHeader("ETag", etag2);
 
-                    // 4) send
-                    session.Response.AddHeader("ETag", etag2);
-
-                    await SendBytesAsync(
-                        session,
-                        contentType: contentType,
-                        body: data.AsMemory(0, len),
-                        lastModifiedUtc: lastModified,
-                        cacheSeconds: cacheSeconds
-                    ).ConfigureAwait(false);
+                        await SendBytesAsync(
+                            session,
+                            contentType: contentType,
+                            body: data.AsMemory(0, len),
+                            lastModifiedUtc: lastModified,
+                            cacheSeconds: cacheSeconds
+                        ).ConfigureAwait(false);
+                    }
 
                     return;
                 }
@@ -489,8 +494,9 @@ namespace SimpleW.Modules {
             /// <param name="body"></param>
             /// <param name="lastModifiedUtc"></param>
             /// <param name="cacheSeconds"></param>
+            /// <param name="disableCompression"></param>
             /// <returns></returns>
-            private async ValueTask SendBytesAsync(HttpSession session, string? contentType, ReadOnlyMemory<byte> body, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
+            private async ValueTask SendBytesAsync(HttpSession session, string? contentType, ReadOnlyMemory<byte> body, DateTimeOffset lastModifiedUtc, int? cacheSeconds, bool disableCompression = false) {
                 long len = body.Length;
 
                 session.Response
@@ -507,10 +513,11 @@ namespace SimpleW.Modules {
                                  .ConfigureAwait(false);
                 }
                 else {
-                    await session.Response
-                                 .Body(body, contentType)
-                                 .SendAsync()
-                                 .ConfigureAwait(false);
+                    HttpResponse response = session.Response.Body(body, contentType);
+                    if (disableCompression) {
+                        response.NoCompression();
+                    }
+                    await response.SendAsync().ConfigureAwait(false);
                 }
             }
 
@@ -519,14 +526,40 @@ namespace SimpleW.Modules {
             /// </summary>
             /// <param name="session"></param>
             /// <param name="request"></param>
+            /// <param name="filePath"></param>
             /// <param name="entry"></param>
             /// <returns></returns>
-            private async ValueTask SendCacheEntryAsync(HttpSession session, HttpRequest request, CacheEntry entry) {
+            private async ValueTask SendCacheEntryAsync(HttpSession session, HttpRequest request, string filePath, CacheEntry entry) {
                 int cacheSeconds = (int)_options.CacheTimeout!.Value.TotalSeconds;
 
                 // 304 ?
                 if (ShouldReturnNotModified(request, entry.Etag, entry.LastModifiedUtc)) {
                     await SendNotModifiedAsync(session, entry.LastModifiedUtc, entry.Etag, cacheSeconds).ConfigureAwait(false);
+                    return;
+                }
+
+                if (TrySelectCompression(request, entry, out HttpResponse.NegotiatedEncoding encoding)) {
+                    if (entry.TryGetCompressed(encoding, out CompressedCacheEntry compressed)) {
+                        await SendCompressedBytesAsync(session, entry, compressed, cacheSeconds).ConfigureAwait(false);
+                        return;
+                    }
+
+                    if (TryCreateCompressedCacheEntry(entry, encoding, out compressed)) {
+                        TryCacheCompressedFile(filePath, entry, compressed);
+                        await SendCompressedBytesAsync(session, entry, compressed, cacheSeconds).ConfigureAwait(false);
+                        return;
+                    }
+
+                    // Compression was negotiated but not beneficial; avoid recompressing in HttpResponse.
+                    session.Response.AddHeader("ETag", entry.Etag);
+                    await SendBytesAsync(
+                        session,
+                        contentType: entry.ContentType,
+                        body: entry.Data.AsMemory(0, entry.Length),
+                        lastModifiedUtc: entry.LastModifiedUtc,
+                        cacheSeconds: cacheSeconds,
+                        disableCompression: true
+                    ).ConfigureAwait(false);
                     return;
                 }
 
@@ -542,6 +575,28 @@ namespace SimpleW.Modules {
                 ).ConfigureAwait(false);
 
                 return;
+            }
+
+            /// <summary>
+            /// Send a pre-compressed cache entry.
+            /// </summary>
+            /// <param name="session"></param>
+            /// <param name="entry"></param>
+            /// <param name="compressed"></param>
+            /// <param name="cacheSeconds"></param>
+            /// <returns></returns>
+            private async ValueTask SendCompressedBytesAsync(HttpSession session, CacheEntry entry, CompressedCacheEntry compressed, int cacheSeconds) {
+                session.Response
+                       .AddHeader("ETag", entry.Etag)
+                       .AddHeader("Last-Modified", entry.LastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                       .AddHeader("Cache-Control", $"public, max-age={cacheSeconds}")
+                       .AddHeader("Content-Encoding", ContentEncodingHeaderValue(compressed.Encoding))
+                       .AddHeader("Vary", "Accept-Encoding");
+
+                await session.Response
+                             .Body(compressed.Data.AsMemory(0, compressed.Length), entry.ContentType)
+                             .SendAsync()
+                             .ConfigureAwait(false);
             }
 
             /// <summary>
@@ -883,10 +938,8 @@ namespace SimpleW.Modules {
                     return;
                 }
 
-                if (_cache.TryRemove(e.FullPath, out CacheEntry removed)) {
-                    lock (_cacheEvictionLock) {
-                        _cacheBytes -= removed.Length;
-                    }
+                lock (_cacheEvictionLock) {
+                    RemoveCacheEntryLocked(e.FullPath);
                 }
 
                 // invalidate directory index cache for the parent directory
@@ -905,10 +958,8 @@ namespace SimpleW.Modules {
             /// <param name="e"></param>
             private void OnFsRenamed(object sender, RenamedEventArgs e) {
                 if (!string.IsNullOrWhiteSpace(e.OldFullPath)) {
-                    if (_cache.TryRemove(e.OldFullPath, out CacheEntry oldRemoved)) {
-                        lock (_cacheEvictionLock) {
-                            _cacheBytes -= oldRemoved.Length;
-                        }
+                    lock (_cacheEvictionLock) {
+                        RemoveCacheEntryLocked(e.OldFullPath);
                     }
 
                     string? oldParent = Path.GetDirectoryName(e.OldFullPath);
@@ -920,10 +971,8 @@ namespace SimpleW.Modules {
                 }
 
                 if (!string.IsNullOrWhiteSpace(e.FullPath)) {
-                    if (_cache.TryRemove(e.FullPath, out CacheEntry newRemoved)) {
-                        lock (_cacheEvictionLock) {
-                            _cacheBytes -= newRemoved.Length;
-                        }
+                    lock (_cacheEvictionLock) {
+                        RemoveCacheEntryLocked(e.FullPath);
                     }
                     string? newParent = Path.GetDirectoryName(e.FullPath);
                     if (!string.IsNullOrEmpty(newParent)) {
@@ -950,14 +999,100 @@ namespace SimpleW.Modules {
             /// <summary>
             /// Cache Entry
             /// </summary>
-            /// <param name="Data"></param>
-            /// <param name="Length"></param>
-            /// <param name="ContentType"></param>
-            /// <param name="Etag"></param>
-            /// <param name="LastModifiedUtc"></param>
-            /// <param name="ExpiresUtc"></param>
-            private readonly record struct CacheEntry(byte[] Data, int Length, string ContentType, string Etag, DateTimeOffset LastModifiedUtc, DateTimeOffset ExpiresUtc) {
+            private sealed class CacheEntry {
+
+                private CompressedCacheEntry? _gzip;
+                private CompressedCacheEntry? _deflate;
+                private CompressedCacheEntry? _brotli;
+
+                public CacheEntry(byte[] data, int length, string contentType, string etag, DateTimeOffset lastModifiedUtc, DateTimeOffset expiresUtc) {
+                    Data = data;
+                    Length = length;
+                    ContentType = contentType;
+                    Etag = etag;
+                    LastModifiedUtc = lastModifiedUtc;
+                    ExpiresUtc = expiresUtc;
+                }
+
+                public byte[] Data { get; }
+
+                public int Length { get; }
+
+                public string ContentType { get; }
+
+                public string Etag { get; }
+
+                public DateTimeOffset LastModifiedUtc { get; }
+
+                public DateTimeOffset ExpiresUtc { get; }
+
                 public bool IsExpired => DateTimeOffset.UtcNow >= ExpiresUtc;
+
+                public int TotalLength => Length + GetCompressedLength(HttpResponse.NegotiatedEncoding.Gzip)
+                                                 + GetCompressedLength(HttpResponse.NegotiatedEncoding.Deflate)
+                                                 + GetCompressedLength(HttpResponse.NegotiatedEncoding.Brotli);
+
+                public bool TryGetCompressed(HttpResponse.NegotiatedEncoding encoding, out CompressedCacheEntry entry) {
+                    CompressedCacheEntry? candidate = encoding switch {
+                        HttpResponse.NegotiatedEncoding.Gzip => _gzip,
+                        HttpResponse.NegotiatedEncoding.Deflate => _deflate,
+                        HttpResponse.NegotiatedEncoding.Brotli => _brotli,
+                        _ => null
+                    };
+
+                    if (candidate != null) {
+                        entry = candidate;
+                        return true;
+                    }
+
+                    entry = null!;
+                    return false;
+                }
+
+                public int GetCompressedLength(HttpResponse.NegotiatedEncoding encoding) {
+                    return encoding switch {
+                        HttpResponse.NegotiatedEncoding.Gzip => _gzip?.Length ?? 0,
+                        HttpResponse.NegotiatedEncoding.Deflate => _deflate?.Length ?? 0,
+                        HttpResponse.NegotiatedEncoding.Brotli => _brotli?.Length ?? 0,
+                        _ => 0
+                    };
+                }
+
+                public int SetCompressed(CompressedCacheEntry entry) {
+                    int oldLength = GetCompressedLength(entry.Encoding);
+                    switch (entry.Encoding) {
+                        case HttpResponse.NegotiatedEncoding.Gzip:
+                            _gzip = entry;
+                            break;
+                        case HttpResponse.NegotiatedEncoding.Deflate:
+                            _deflate = entry;
+                            break;
+                        case HttpResponse.NegotiatedEncoding.Brotli:
+                            _brotli = entry;
+                            break;
+                        default:
+                            return 0;
+                    }
+                    return entry.Length - oldLength;
+                }
+            }
+
+            /// <summary>
+            /// Compressed cache entry.
+            /// </summary>
+            private sealed class CompressedCacheEntry {
+
+                public CompressedCacheEntry(byte[] data, int length, HttpResponse.NegotiatedEncoding encoding) {
+                    Data = data;
+                    Length = length;
+                    Encoding = encoding;
+                }
+
+                public byte[] Data { get; }
+
+                public int Length { get; }
+
+                public HttpResponse.NegotiatedEncoding Encoding { get; }
             }
 
             /// <summary>
@@ -988,6 +1123,124 @@ namespace SimpleW.Modules {
             }
 
             /// <summary>
+            /// Select compression for a cache entry.
+            /// </summary>
+            /// <param name="request"></param>
+            /// <param name="entry"></param>
+            /// <param name="encoding"></param>
+            /// <returns></returns>
+            private static bool TrySelectCompression(HttpRequest request, CacheEntry entry, out HttpResponse.NegotiatedEncoding encoding) {
+                encoding = HttpResponse.NegotiatedEncoding.None;
+
+                if (!string.Equals(request.Method, "GET", StringComparison.Ordinal)) {
+                    return false;
+                }
+                if (entry.Length < HttpResponse.DefaultCompressionMinSize) {
+                    return false;
+                }
+                if (!HttpResponse.IsCompressibleContentType(entry.ContentType)) {
+                    return false;
+                }
+
+                encoding = HttpResponse.NegotiateEncoding(
+                    request.Headers.AcceptEncoding,
+                    allowGzip: true,
+                    allowDeflate: true,
+                    allowBrotli: true
+                );
+
+                return encoding != HttpResponse.NegotiatedEncoding.None;
+            }
+
+            /// <summary>
+            /// Try create a compressed variant from a raw cache entry.
+            /// </summary>
+            /// <param name="entry"></param>
+            /// <param name="encoding"></param>
+            /// <param name="compressed"></param>
+            /// <returns></returns>
+            private static bool TryCreateCompressedCacheEntry(CacheEntry entry, HttpResponse.NegotiatedEncoding encoding, out CompressedCacheEntry compressed) {
+                compressed = null!;
+
+                try {
+                    using var writer = HttpResponse.CompressToPooledWriter(
+                        ArrayPool<byte>.Shared,
+                        entry.Data.AsMemory(0, entry.Length),
+                        encoding,
+                        CompressionLevel.Fastest
+                    );
+
+                    if (writer.Length >= entry.Length) {
+                        return false;
+                    }
+
+                    byte[] data = new byte[writer.Length];
+                    System.Buffer.BlockCopy(writer.Buffer, 0, data, 0, writer.Length);
+                    compressed = new CompressedCacheEntry(data, data.Length, encoding);
+                    return true;
+                }
+                catch {
+                    return false;
+                }
+            }
+
+            /// <summary>
+            /// Try attach a compressed variant to a raw cache entry while enforcing the shared byte budget.
+            /// </summary>
+            /// <param name="filePath"></param>
+            /// <param name="rawEntry"></param>
+            /// <param name="entry"></param>
+            /// <returns></returns>
+            private bool TryCacheCompressedFile(string filePath, CacheEntry rawEntry, CompressedCacheEntry entry) {
+                if (_options.MaxCacheTotalBytes.HasValue && entry.Length > _options.MaxCacheTotalBytes.Value) {
+                    return false;
+                }
+
+                lock (_cacheEvictionLock) {
+                    EvictExpiredLocked();
+
+                    if (!_cache.TryGetValue(filePath, out CacheEntry? current) || current == null || !ReferenceEquals(current, rawEntry) || current.IsExpired) {
+                        return false;
+                    }
+
+                    int delta = entry.Length - current.GetCompressedLength(entry.Encoding);
+
+                    if (_options.MaxCacheTotalBytes.HasValue && delta > 0) {
+                        while (_cacheBytes + delta > _options.MaxCacheTotalBytes.Value) {
+                            if (!EvictOneLocked(exceptKey: filePath)) {
+                                return false;
+                            }
+                            if (!_cache.TryGetValue(filePath, out current) || current == null || !ReferenceEquals(current, rawEntry) || current.IsExpired) {
+                                return false;
+                            }
+                            delta = entry.Length - current.GetCompressedLength(entry.Encoding);
+                            if (delta <= 0) {
+                                break;
+                            }
+                        }
+                    }
+
+                    _cacheBytes += current.SetCompressed(entry);
+                }
+
+                return true;
+            }
+
+            /// <summary>
+            /// Convert a negotiated encoding to the HTTP header value.
+            /// </summary>
+            /// <param name="encoding"></param>
+            /// <returns></returns>
+            private static string ContentEncodingHeaderValue(HttpResponse.NegotiatedEncoding encoding) {
+                return encoding switch {
+                    HttpResponse.NegotiatedEncoding.Gzip => "gzip",
+                    HttpResponse.NegotiatedEncoding.Deflate => "deflate",
+                    HttpResponse.NegotiatedEncoding.Brotli => "br",
+                    _ => throw new ArgumentOutOfRangeException(nameof(encoding))
+                };
+            }
+
+            /// <summary>
             /// Try to cache an entry while enforcing cache limits (max file size / max total size / max entries).
             /// Best-effort eviction (expired first, then arbitrary) to make room.
             /// </summary>
@@ -997,8 +1250,10 @@ namespace SimpleW.Modules {
             /// <param name="contentType"></param>
             /// <param name="etag"></param>
             /// <param name="lastModifiedUtc"></param>
+            /// <param name="entry"></param>
             /// <returns></returns>
-            private bool TryCacheFile(string filePath, byte[] data, int len, string contentType, string etag, DateTimeOffset lastModifiedUtc) {
+            private bool TryCacheFile(string filePath, byte[] data, int len, string contentType, string etag, DateTimeOffset lastModifiedUtc, out CacheEntry entry) {
+                entry = null!;
 
                 // enforce MaxCachedFileBytes
                 if (_options.MaxCachedFileBytes.HasValue && len > _options.MaxCachedFileBytes.Value) {
@@ -1010,14 +1265,18 @@ namespace SimpleW.Modules {
                 }
 
                 DateTimeOffset expires = DateTimeOffset.UtcNow + _options.CacheTimeout!.Value;
+                CacheEntry newEntry = new(data, len, contentType, etag, lastModifiedUtc, expires);
 
                 lock (_cacheEvictionLock) {
 
                     EvictExpiredLocked();
+                    _cache.TryGetValue(filePath, out CacheEntry? oldEntry);
+                    long oldLength = oldEntry?.TotalLength ?? 0;
+                    bool isUpdate = oldEntry != null;
 
                     // enforce MaxCacheEntries
                     if (_options.MaxCacheEntries.HasValue) {
-                        while (_cache.Count >= _options.MaxCacheEntries.Value) {
+                        while (!isUpdate && _cache.Count >= _options.MaxCacheEntries.Value) {
                             if (!EvictOneLocked(exceptKey: filePath))
                                 return false;
                         }
@@ -1025,24 +1284,20 @@ namespace SimpleW.Modules {
 
                     // enforce MaxCacheTotalBytes before adding cache
                     if (_options.MaxCacheTotalBytes.HasValue) {
-                        while (_cacheBytes + len > _options.MaxCacheTotalBytes.Value) {
+                        while (_cacheBytes - oldLength + len > _options.MaxCacheTotalBytes.Value) {
                             if (!EvictOneLocked(exceptKey: filePath)) {
                                 return false;
                             }
+                            _cache.TryGetValue(filePath, out oldEntry);
+                            oldLength = oldEntry?.TotalLength ?? 0;
                         }
                     }
 
-                    _cache.AddOrUpdate(
-                        filePath,
-                        addValueFactory: _ => {
-                            _cacheBytes += len;
-                            return new CacheEntry(data, len, contentType, etag, lastModifiedUtc, expires);
-                        },
-                        updateValueFactory: (_, old) => {
-                            _cacheBytes += (len - old.Length);
-                            return new CacheEntry(data, len, contentType, etag, lastModifiedUtc, expires);
-                        }
-                    );
+                    if (_cache.TryGetValue(filePath, out oldEntry)) {
+                        _cacheBytes -= oldEntry.TotalLength;
+                    }
+                    _cache[filePath] = newEntry;
+                    _cacheBytes += newEntry.TotalLength;
 
                     // enforce MaxCacheTotalBytes after added cache
                     if (_options.MaxCacheTotalBytes.HasValue) {
@@ -1054,6 +1309,7 @@ namespace SimpleW.Modules {
                     }
                 }
 
+                entry = newEntry;
                 return true;
             }
 
@@ -1063,9 +1319,7 @@ namespace SimpleW.Modules {
             private void EvictExpiredLocked() {
                 foreach (KeyValuePair<string, CacheEntry> kv in _cache) {
                     if (kv.Value.IsExpired) {
-                        if (_cache.TryRemove(kv.Key, out CacheEntry removed)) {
-                            _cacheBytes -= removed.Length;
-                        }
+                        RemoveCacheEntryLocked(kv.Key);
                     }
                 }
             }
@@ -1083,10 +1337,8 @@ namespace SimpleW.Modules {
                         continue;
                     }
                     if (kv.Value.IsExpired) {
-                        if (_cache.TryRemove(kv.Key, out CacheEntry removed)) {
-                            _cacheBytes -= removed.Length;
-                            return true;
-                        }
+                        RemoveCacheEntryLocked(kv.Key);
+                        return true;
                     }
                 }
 
@@ -1095,13 +1347,21 @@ namespace SimpleW.Modules {
                     if (kv.Key == exceptKey) {
                         continue;
                     }
-                    if (_cache.TryRemove(kv.Key, out CacheEntry removed)) {
-                        _cacheBytes -= removed.Length;
-                        return true;
-                    }
+                    RemoveCacheEntryLocked(kv.Key);
+                    return true;
                 }
 
                 return false;
+            }
+
+            /// <summary>
+            /// Remove a raw cache entry and all compressed variants. Caller must hold _cacheEvictionLock.
+            /// </summary>
+            /// <param name="filePath"></param>
+            private void RemoveCacheEntryLocked(string filePath) {
+                if (_cache.TryRemove(filePath, out CacheEntry? removed) && removed != null) {
+                    _cacheBytes -= removed.TotalLength;
+                }
             }
 
             /// <summary>
