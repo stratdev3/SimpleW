@@ -80,7 +80,7 @@ namespace SimpleW {
         /// <summary>
         /// The minimum body size, in bytes, before automatic compression is applied. Defaults to 512.
         /// </summary>
-        private int _compressionMinSize = 512;
+        private int _compressionMinSize = DefaultCompressionMinSize;
 
         /// <summary>
         /// The compression level. Defaults to Fastest.
@@ -1394,7 +1394,7 @@ namespace SimpleW {
             _connection = null;
 
             _compressionMode = ResponseCompressionMode.Auto;
-            _compressionMinSize = 512;
+            _compressionMinSize = DefaultCompressionMinSize;
             _compressionLevel = CompressionLevel.Fastest;
 
             DisposeBody();
@@ -1632,9 +1632,14 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// The default minimum body size, in bytes, before automatic compression is applied.
+        /// </summary>
+        internal const int DefaultCompressionMinSize = 512;
+
+        /// <summary>
         /// The content encoding selected for the response.
         /// </summary>
-        private enum NegotiatedEncoding : byte { None = 0, Gzip = 1, Deflate = 2, Brotli = 3 }
+        internal enum NegotiatedEncoding : byte { None = 0, Gzip = 1, Deflate = 2, Brotli = 3 }
 
         /// <summary>
         /// Returns true if the response contains a header with the specified name.
@@ -1685,7 +1690,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="contentType">The content type to evaluate.</param>
         /// <returns>True if compression is allowed; otherwise false.</returns>
-        private static bool IsCompressibleContentType(string? contentType) {
+        internal static bool IsCompressibleContentType(string? contentType) {
             if (string.IsNullOrEmpty(contentType)) {
                 return true;
             }
@@ -1723,7 +1728,7 @@ namespace SimpleW {
         /// <param name="allowDeflate">Whether deflate is allowed.</param>
         /// <param name="allowBrotli">Whether Brotli is allowed.</param>
         /// <returns>The selected encoding.</returns>
-        private static NegotiatedEncoding NegotiateEncoding(string? acceptEncoding, bool allowGzip, bool allowDeflate, bool allowBrotli) {
+        internal static NegotiatedEncoding NegotiateEncoding(string? acceptEncoding, bool allowGzip, bool allowDeflate, bool allowBrotli) {
             if (string.IsNullOrEmpty(acceptEncoding)) {
                 return NegotiatedEncoding.None;
             }
@@ -1810,7 +1815,7 @@ namespace SimpleW {
         /// <param name="encoding">The encoding to apply.</param>
         /// <param name="level">The compression level.</param>
         /// <returns>A pooled writer containing the compressed payload.</returns>
-        private static PooledBufferWriter CompressToPooledWriter(ArrayPool<byte> pool, ReadOnlyMemory<byte> input, NegotiatedEncoding encoding, CompressionLevel level) {
+        internal static PooledBufferWriter CompressToPooledWriter(ArrayPool<byte> pool, ReadOnlyMemory<byte> input, NegotiatedEncoding encoding, CompressionLevel level) {
             int init = input.Length <= 0 ? 256 : Math.Min(Math.Max(256, input.Length / 2), 64 * 1024);
             PooledBufferWriter output = new(pool, initialSize: init);
 
