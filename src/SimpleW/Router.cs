@@ -43,7 +43,7 @@
                 _globalRouter = new Router(isRootRouter: false);
                 _globalRouter._resultHandler = _resultHandler;
 
-                _hostRouters = new Dictionary<string, Router>(StringComparer.Ordinal);
+                _hostRouters = new Dictionary<string, Router>(StringComparer.OrdinalIgnoreCase);
             }
         }
 
@@ -394,7 +394,7 @@
         }
 
         /// <summary>
-        /// Normalizes a host name by trimming whitespace, removing any port, and converting it to lowercase.
+        /// Normalizes a host name by trimming whitespace and removing any port.
         /// </summary>
         /// <param name="host"></param>
         /// <returns></returns>
@@ -409,10 +409,10 @@
             if (host.Length > 0 && host[0] == '[') {
                 int endBracket = host.IndexOf(']');
                 if (endBracket > 0) {
-                    return host.Substring(0, endBracket + 1).ToLowerInvariant();
+                    return host.Substring(0, endBracket + 1);
                 }
 
-                return host.ToLowerInvariant();
+                return host;
             }
 
             // host:port
@@ -421,7 +421,7 @@
                 host = host.Substring(0, colonIndex);
             }
 
-            return host.ToLowerInvariant();
+            return host;
         }
 
         #endregion Add Route
@@ -447,12 +447,12 @@
             // 1. host routes
             if (_hasHostRouters) {
                 string? host = NormalizeHost(session.Request.Headers.Host);
-            if (host != null
-                && _hostRouters!.TryGetValue(host, out Router? hostRouter)
-                && hostRouter.TryResolveLocal(session, out HttpRouteExecutor? hostExecutor) && hostExecutor != null
-            ) {
-                return ExecutePipelineAsync(session, hostExecutor);
-            }
+                if (host != null
+                    && _hostRouters!.TryGetValue(host, out Router? hostRouter)
+                    && hostRouter.TryResolveLocal(session, out HttpRouteExecutor? hostExecutor) && hostExecutor != null
+                ) {
+                    return ExecutePipelineAsync(session, hostExecutor);
+                }
             }
 
             // 2. global routes
