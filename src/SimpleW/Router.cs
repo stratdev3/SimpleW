@@ -23,6 +23,11 @@
         private readonly Dictionary<string, Router>? _hostRouters;
 
         /// <summary>
+        /// True once at least one host-specific route has been registered.
+        /// </summary>
+        private bool _hasHostRouters;
+
+        /// <summary>
         /// Initializes a new root router.
         /// </summary>
         public Router() : this(isRootRouter: true) { }
@@ -312,6 +317,7 @@
                     if (!_hostRouters!.TryGetValue(host, out Router? hostRouter)) {
                         hostRouter = new Router(isRootRouter: false) { _resultHandler = _resultHandler };
                         _hostRouters[host] = hostRouter;
+                        _hasHostRouters = true;
                     }
                     // rewrite the route and add it to the host router
                     hostRouter.AddRouteLocal(new Route(
@@ -438,14 +444,15 @@
                 throw new InvalidOperationException("DispatchAsync must be called on the root router only.");
             }
 
-            string? host = NormalizeHost(session.Request.Headers.Host);
-
             // 1. host routes
+            if (_hasHostRouters) {
+                string? host = NormalizeHost(session.Request.Headers.Host);
             if (host != null
                 && _hostRouters!.TryGetValue(host, out Router? hostRouter)
                 && hostRouter.TryResolveLocal(session, out HttpRouteExecutor? hostExecutor) && hostExecutor != null
             ) {
                 return ExecutePipelineAsync(session, hostExecutor);
+            }
             }
 
             // 2. global routes
