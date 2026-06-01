@@ -128,6 +128,7 @@
   --routing-hit-x: calc(var(--belt-routing) / 2);
 
   --dot: 7px;
+  --req-idle: #94a3b8;
 
   --violet: #8b5cf6;
   --violet-2: #a855f7;
@@ -477,36 +478,117 @@
   box-shadow: 0 0 10px currentColor;
 }
 
-.pass { color: var(--cyan); }
-.route { color: var(--routing-main); }
-.block-fw { color: var(--fw-main); }
-.block-auth { color: var(--auth-main); }
+.pass { --req-active: var(--cyan); }
+.route { --req-active: var(--routing-main); }
+.block-fw { --req-active: var(--fw-main); }
+.block-auth { --req-active: var(--auth-main); }
 
 /* particle bindings */
-.p1  { color: var(--violet);   animation: pass-1 1.9s linear infinite; }
-.p2  { color: var(--cyan);     animation: pass-2 1.4s linear infinite; }
-.p3  { color: var(--violet-2); animation: pass-3 2.1s linear infinite; }
-.p4  { color: var(--cyan-2);   animation: pass-4 1.6s linear infinite; }
-.p5  { color: var(--violet);   animation: pass-5 2.4s linear infinite; }
-.p6  { color: var(--cyan);     animation: pass-6 1.3s linear infinite; }
-.p7  { color: var(--violet-2); animation: pass-7 1.8s linear infinite; }
-.p8  { color: var(--cyan-2);   animation: pass-8 2.2s linear infinite; }
-.p9  { color: var(--violet);   animation: pass-9 1.5s linear infinite; }
-.p10 { color: var(--cyan);     animation: pass-10 2s linear infinite; }
-.p11 { color: var(--cyan-2);   animation: pass-11 1.7s linear infinite; }
-.p12 { color: var(--violet-2); animation: pass-12 2.5s linear infinite; }
+.p1  { --req-active: var(--violet);   animation: pass-1 1.9s linear infinite, color-at-42 1.9s linear infinite; }
+.p2  { --req-active: var(--cyan);     animation: pass-2 1.4s linear infinite, color-at-40 1.4s linear infinite; }
+.p3  { --req-active: var(--violet-2); animation: pass-3 2.1s linear infinite, color-at-45 2.1s linear infinite; }
+.p4  { --req-active: var(--cyan-2);   animation: pass-4 1.6s linear infinite, color-at-44 1.6s linear infinite; }
+.p5  { --req-active: var(--violet);   animation: pass-5 2.4s linear infinite, color-at-49 2.4s linear infinite; }
+.p6  { --req-active: var(--cyan);     animation: pass-6 1.3s linear infinite, color-at-39 1.3s linear infinite; }
+.p7  { --req-active: var(--violet-2); animation: pass-7 1.8s linear infinite, color-at-52 1.8s linear infinite; }
+.p8  { --req-active: var(--cyan-2);   animation: pass-8 2.2s linear infinite, color-at-54 2.2s linear infinite; }
+.p9  { --req-active: var(--violet);   animation: pass-9 1.5s linear infinite, color-at-46 1.5s linear infinite; }
+.p10 { --req-active: var(--cyan);     animation: pass-10 2s linear infinite, color-at-48 2s linear infinite; }
+.p11 { --req-active: var(--cyan-2);   animation: pass-11 1.7s linear infinite, color-at-42 1.7s linear infinite; }
+.p12 { --req-active: var(--violet-2); animation: pass-12 2.5s linear infinite, color-at-50 2.5s linear infinite; }
 
-.r1 { animation: route-1 4.2s linear infinite; }
-.r2 { animation: route-2 5.4s linear infinite; }
-.r3 { animation: route-3 6.1s linear infinite; }
+.r1 { animation: route-1 4.2s linear infinite, color-at-52 4.2s linear infinite; }
+.r2 { animation: route-2 5.4s linear infinite, color-at-58 5.4s linear infinite; }
+.r3 { animation: route-3 6.1s linear infinite, color-at-68 6.1s linear infinite; }
 
-.fw1 { animation: block-fw-1 4.8s linear infinite; }
-.fw2 { animation: block-fw-2 6.3s linear infinite; }
-.fw3 { animation: block-fw-3 7.4s linear infinite; }
+.fw1 { animation: block-fw-1 4.8s linear infinite, color-at-50 4.8s linear infinite; }
+.fw2 { animation: block-fw-2 6.3s linear infinite, color-at-56 6.3s linear infinite; }
+.fw3 { animation: block-fw-3 7.4s linear infinite, color-at-62 7.4s linear infinite; }
 
-.a1 { animation: block-auth-1 5.2s linear infinite; }
-.a2 { animation: block-auth-2 6.8s linear infinite; }
-.a3 { animation: block-auth-3 8.1s linear infinite; }
+.a1 { animation: block-auth-1 5.2s linear infinite, color-at-52 5.2s linear infinite; }
+.a2 { animation: block-auth-2 6.8s linear infinite, color-at-58 6.8s linear infinite; }
+.a3 { animation: block-auth-3 8.1s linear infinite, color-at-64 8.1s linear infinite; }
+
+/* particles start neutral, then adopt the color of the ring they touch */
+@keyframes color-at-39 {
+  0%, 38.9% { color: var(--req-idle); }
+  39%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-40 {
+  0%, 39.9% { color: var(--req-idle); }
+  40%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-42 {
+  0%, 41.9% { color: var(--req-idle); }
+  42%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-44 {
+  0%, 43.9% { color: var(--req-idle); }
+  44%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-45 {
+  0%, 44.9% { color: var(--req-idle); }
+  45%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-46 {
+  0%, 45.9% { color: var(--req-idle); }
+  46%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-48 {
+  0%, 47.9% { color: var(--req-idle); }
+  48%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-49 {
+  0%, 48.9% { color: var(--req-idle); }
+  49%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-50 {
+  0%, 49.9% { color: var(--req-idle); }
+  50%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-52 {
+  0%, 51.9% { color: var(--req-idle); }
+  52%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-54 {
+  0%, 53.9% { color: var(--req-idle); }
+  54%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-56 {
+  0%, 55.9% { color: var(--req-idle); }
+  56%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-58 {
+  0%, 57.9% { color: var(--req-idle); }
+  58%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-62 {
+  0%, 61.9% { color: var(--req-idle); }
+  62%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-64 {
+  0%, 63.9% { color: var(--req-idle); }
+  64%, 100% { color: var(--req-active); }
+}
+
+@keyframes color-at-68 {
+  0%, 67.9% { color: var(--req-idle); }
+  68%, 100% { color: var(--req-active); }
+}
 
 /* =========================================================
    Traffic trajectories - pass through
