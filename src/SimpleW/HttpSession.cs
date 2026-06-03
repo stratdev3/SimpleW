@@ -57,11 +57,6 @@ namespace SimpleW {
         private bool _receiving;
 
         /// <summary>
-        /// Receive buffer.
-        /// </summary>
-        private byte[] _recvBuffer;
-
-        /// <summary>
         /// Parsing buffer.
         /// </summary>
         private byte[] _parseBuffer;
@@ -175,7 +170,6 @@ namespace SimpleW {
             _bufferPool = bufferPool;
             _router = router;
 
-            _recvBuffer = _bufferPool.Rent(server.Options.ReceiveBufferSize);
             _parseBuffer = _bufferPool.Rent(server.Options.ReceiveBufferSize);
             _parseBufferCount = 0;
 
@@ -446,8 +440,7 @@ namespace SimpleW {
 
         /// <summary>
         /// Main Process Loop :
-        ///  - read from Socket or SslStream to _recvBuffer
-        ///  - BlockCopy in _parseBuffer
+        ///  - read from Socket or SslStream directly into _parseBuffer
         ///  - Parse with HttpRequestParserState
         ///  - HttpRouter Dispatch
         ///  - Enforce request header/body receive deadlines to mitigate slowloris
@@ -479,11 +472,14 @@ namespace SimpleW {
 
                 int bytesRead;
                 try {
+                    EnsureParseBufferCapacity(Server.Options.ReceiveBufferSize);
+                    int receiveLength = Math.Min(Server.Options.ReceiveBufferSize, _parseBuffer.Length - _parseBufferCount);
+                    Memory<byte> receiveMemory = _parseBuffer.AsMemory(_parseBufferCount, receiveLength);
                     if (IsSsl) {
-                        bytesRead = await _sslStream!.ReadAsync(_recvBuffer, 0, _recvBuffer.Length).ConfigureAwait(false);
+                        bytesRead = await _sslStream!.ReadAsync(receiveMemory).ConfigureAwait(false);
                     }
                     else {
-                        bytesRead = await _socket.ReceiveAsync(_recvBuffer.AsMemory(0, _recvBuffer.Length), SocketFlags.None).ConfigureAwait(false);
+                        bytesRead = await _socket.ReceiveAsync(receiveMemory, SocketFlags.None).ConfigureAwait(false);
                     }
                 }
                 catch (IOException ex)
@@ -537,8 +533,6 @@ namespace SimpleW {
                 }
 
                 // byte operations
-                EnsureParseBufferCapacity(bytesRead);
-                Buffer.BlockCopy(_recvBuffer, 0, _parseBuffer, _parseBufferCount, bytesRead);
                 _parseBufferCount += bytesRead;
 
                 #endregion read
@@ -1140,10 +1134,6 @@ namespace SimpleW {
             try { _sslStream?.Dispose(); } catch { }
             _sslStream = null;
 
-            if (_recvBuffer != null) {
-                _bufferPool.Return(_recvBuffer);
-                _recvBuffer = null!;
-            }
 
             if (_parseBuffer != null) {
                 _bufferPool.Return(_parseBuffer);
