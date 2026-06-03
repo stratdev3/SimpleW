@@ -51,6 +51,15 @@ The bombardier command is run three times, and the best result is kept.
 
 ## Performance-Oriented Configuration
 
+The most important performance setting is `ServerGarbageCollection` in your `.csproj`.
+It is the setting that usually has the biggest impact and can improve performance by up to x2:
+
+```xml
+<PropertyGroup>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+</PropertyGroup>
+```
+
 To get the best performance, enable the following options :
 
 ```csharp
