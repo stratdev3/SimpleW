@@ -157,6 +157,21 @@ When cache is enabled, an internal filesystem watcher is keeping this cache up-t
 It supports realtime file editing even when specific lock/write occurs.
 :::
 
+## Compressed disk cache
+
+To avoid compressing the same static file on every request without keeping its content in memory, enable the compressed disk cache:
+
+```csharp
+server.UseStaticFilesModule(options => {
+    options.Path = @"C:\www\";
+    options.CompressedDiskCache = true;
+});
+```
+
+The module generates gzip and Brotli variants on demand next to the original file, then streams those variants directly from disk. The compression extension is appended to the source name: `assets/app.js.br` or `assets/app.js.gz`. Stale variants are regenerated when the source modification date changes and remain available across server restarts.
+
+Range requests always use the original uncompressed file.
+
 
 ## Range Requests (Streaming Support)
 

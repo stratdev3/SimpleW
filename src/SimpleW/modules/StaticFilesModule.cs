@@ -63,6 +63,12 @@ namespace SimpleW.Modules {
             public TimeSpan? CacheTimeout { get; set; }
 
             /// <summary>
+            /// If true, compressed gzip/Brotli variants are generated next to the source file and streamed from disk.
+            /// ".br" or ".gz" is appended to the original file name.
+            /// </summary>
+            public bool CompressedDiskCache { get; set; } = false;
+
+            /// <summary>
             /// Optional authorization callback. Return false to reject the request before serving a file.
             /// </summary>
             public Func<HttpSession, bool>? Authorize { get; set; }
@@ -177,6 +183,16 @@ namespace SimpleW.Modules {
             /// Cache HTML of auto-index (dir full path)
             /// </summary>
             private readonly ConcurrentDictionary<string, DirIndexCacheEntry> _dirIndexCache = new(PathComparer);
+
+            /// <summary>
+            /// In-flight compressed disk variant creation tasks.
+            /// </summary>
+            private readonly ConcurrentDictionary<string, Lazy<Task<CompressedDiskEntry?>>> _compressedDiskTasks = new(PathComparer);
+
+            /// <summary>
+            /// Source versions that did not benefit from disk compression.
+            /// </summary>
+            private readonly ConcurrentDictionary<string, CompressedDiskRejectedEntry> _compressedDiskRejected = new(PathComparer);
 
             /// <summary>
             /// Add static content
@@ -334,6 +350,8 @@ namespace SimpleW.Modules {
                 _cache.Clear();
                 _dirIndexCache.Clear();
                 _kindCache.Clear();
+                _compressedDiskTasks.Clear();
+                _compressedDiskRejected.Clear();
                 lock (_cacheEvictionLock) { _cacheBytes = 0; }
             }
 
@@ -423,9 +441,10 @@ namespace SimpleW.Modules {
                     }
 
                     if (_options.MaxCachedFileBytes.HasValue && fi.Length > _options.MaxCachedFileBytes.Value) {
-                        // validators
-                        // 304?
-                        // sinon stream direct (sans cache mémoire)
+                        if (await TrySendCompressedDiskFileAsync(session, request, fi, contentType, etag2, lastModified, cacheSeconds).ConfigureAwait(false)) {
+                            return;
+                        }
+
                         session.Response.AddHeader("ETag", etag2);
                         await SendFileAsync(session, fi, contentType, lastModified, cacheSeconds).ConfigureAwait(false);
                         return;
@@ -480,9 +499,12 @@ namespace SimpleW.Modules {
                     return;
                 }
 
+                if (await TrySendCompressedDiskFileAsync(session, request, fi2, ct2, etag3, lastModified2, cacheSeconds: null).ConfigureAwait(false)) {
+                    return;
+                }
+
                 // 200
                 session.Response.AddHeader("ETag", etag3);
-
                 await SendFileAsync(session, fi2, ct2, lastModified2, cacheSeconds: null).ConfigureAwait(false);
             }
 
@@ -600,6 +622,190 @@ namespace SimpleW.Modules {
             }
 
             /// <summary>
+            /// Try to serve a compressed variant stored next to the source file.
+            /// </summary>
+            private async ValueTask<bool> TrySendCompressedDiskFileAsync(HttpSession session, HttpRequest request, FileInfo source, string contentType, string etag, DateTimeOffset lastModifiedUtc, int? cacheSeconds) {
+                if (!_options.CompressedDiskCache
+                    || !string.Equals(request.Method, "GET", StringComparison.Ordinal)
+                    || request.Headers.TryGetValue("Range", out _)
+                    || IsCompressedDiskSidecar(source.FullName)
+                    || source.Length < HttpResponse.DefaultCompressionMinSize
+                    || !HttpResponse.IsCompressibleContentType(contentType)
+                ) {
+                    return false;
+                }
+
+                HttpResponse.NegotiatedEncoding encoding = HttpResponse.NegotiateEncoding(
+                    request.Headers.AcceptEncoding,
+                    allowGzip: true,
+                    allowDeflate: false,
+                    allowBrotli: true
+                );
+                if (encoding == HttpResponse.NegotiatedEncoding.None) {
+                    return false;
+                }
+
+                string cachePath = CompressedDiskCacheFilePath(source, encoding);
+                CompressedDiskEntry? entry;
+
+                if (TryGetCurrentCompressedDiskCacheFile(cachePath, lastModifiedUtc, out FileInfo compressedFile)) {
+                    entry = new CompressedDiskEntry(compressedFile, encoding);
+                }
+                else if (_compressedDiskRejected.TryGetValue(cachePath, out CompressedDiskRejectedEntry rejected)
+                         && rejected.Matches(source.Length, lastModifiedUtc)
+                ) {
+                    return false;
+                }
+                else {
+                    Lazy<Task<CompressedDiskEntry?>> lazyTask = _compressedDiskTasks.GetOrAdd(
+                        cachePath,
+                        _ => new Lazy<Task<CompressedDiskEntry?>>(
+                            () => CreateCompressedDiskEntryAsync(source.FullName, source.Length, lastModifiedUtc, cachePath, encoding)
+                        )
+                    );
+                    try {
+                        entry = await lazyTask.Value.ConfigureAwait(false);
+                    }
+                    finally {
+                        _compressedDiskTasks.TryRemove(cachePath, out _);
+                    }
+                }
+
+                if (entry == null) {
+                    return false;
+                }
+
+                byte[]? body = null;
+                if (_options.MaxCachedFileBytes.HasValue && entry.File.Length <= _options.MaxCachedFileBytes.Value) {
+                    try {
+                        body = await File.ReadAllBytesAsync(entry.File.FullName).ConfigureAwait(false);
+                    }
+                    catch {
+                        return false;
+                    }
+                }
+
+                session.Response
+                       .AddHeader("ETag", etag)
+                       .AddHeader("Last-Modified", lastModifiedUtc.UtcDateTime.ToString("r", CultureInfo.InvariantCulture))
+                       .AddHeader("Cache-Control", (cacheSeconds.HasValue && cacheSeconds.Value > 0) ? $"public, max-age={cacheSeconds.Value}" : "no-cache")
+                       .AddHeader("Content-Encoding", ContentEncodingHeaderValue(entry.Encoding))
+                       .AddHeader("Vary", "Accept-Encoding");
+
+                if (body != null) {
+                    await session.Response
+                                 .Body(body, contentType)
+                                 .NoCompression()
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
+                else {
+                    await session.Response
+                                 .File(entry.File, contentType)
+                                 .NoCompression()
+                                 .SendAsync()
+                                 .ConfigureAwait(false);
+                }
+                return true;
+            }
+
+            /// <summary>
+            /// Create a compressed disk variant and publish it atomically.
+            /// </summary>
+            private async Task<CompressedDiskEntry?> CreateCompressedDiskEntryAsync(string sourcePath, long sourceLength, DateTimeOffset sourceLastModifiedUtc, string cachePath, HttpResponse.NegotiatedEncoding encoding) {
+                string tempPath = cachePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                try {
+                    Directory.CreateDirectory(Path.GetDirectoryName(cachePath)!);
+
+                    await using (FileStream input = new(
+                        sourcePath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.Read,
+                        bufferSize: 64 * 1024,
+                        options: FileOptions.Asynchronous | FileOptions.SequentialScan
+                    )) {
+                        await using FileStream output = new(
+                            tempPath,
+                            FileMode.CreateNew,
+                            FileAccess.Write,
+                            FileShare.None,
+                            bufferSize: 64 * 1024,
+                            options: FileOptions.Asynchronous | FileOptions.SequentialScan
+                        );
+                        await using Stream compressor = encoding switch {
+                            HttpResponse.NegotiatedEncoding.Gzip => new GZipStream(output, CompressionLevel.Fastest, leaveOpen: false),
+                            HttpResponse.NegotiatedEncoding.Brotli => new BrotliStream(output, CompressionLevel.Fastest, leaveOpen: false),
+                            _ => throw new ArgumentOutOfRangeException(nameof(encoding))
+                        };
+                        await input.CopyToAsync(compressor).ConfigureAwait(false);
+                    }
+
+                    FileInfo compressed = new(tempPath);
+                    FileInfo source = new(sourcePath);
+                    if (!compressed.Exists
+                        || !source.Exists
+                        || source.Length != sourceLength
+                        || source.LastWriteTimeUtc != sourceLastModifiedUtc.UtcDateTime
+                    ) {
+                        TryDeleteFile(tempPath);
+                        return null;
+                    }
+                    if (compressed.Length >= sourceLength) {
+                        TryDeleteFile(tempPath);
+                        TryDeleteFile(cachePath);
+                        _compressedDiskRejected[cachePath] = new CompressedDiskRejectedEntry(sourceLength, sourceLastModifiedUtc);
+                        return null;
+                    }
+
+                    File.Move(tempPath, cachePath, overwrite: true);
+                    File.SetLastWriteTimeUtc(cachePath, sourceLastModifiedUtc.UtcDateTime);
+                    _compressedDiskRejected.TryRemove(cachePath, out _);
+                    return new CompressedDiskEntry(new FileInfo(cachePath), encoding);
+                }
+                catch {
+                    TryDeleteFile(tempPath);
+                    return null;
+                }
+            }
+
+            /// <summary>
+            /// Build the compressed disk cache path by appending the encoding extension to the source file.
+            /// </summary>
+            private static string CompressedDiskCacheFilePath(FileInfo source, HttpResponse.NegotiatedEncoding encoding) {
+                string extension = encoding == HttpResponse.NegotiatedEncoding.Brotli ? ".br" : ".gz";
+                return source.FullName + extension;
+            }
+
+            /// <summary>
+            /// Return true when the path is a compressed disk cache sidecar for an existing source file.
+            /// </summary>
+            private static bool IsCompressedDiskSidecar(string path) {
+                string? sourcePath = null;
+                if (path.EndsWith(".br", StringComparison.OrdinalIgnoreCase)) {
+                    sourcePath = path[..^3];
+                }
+                else if (path.EndsWith(".gz", StringComparison.OrdinalIgnoreCase)) {
+                    sourcePath = path[..^3];
+                }
+                return sourcePath != null && File.Exists(sourcePath);
+            }
+
+            /// <summary>
+            /// Return the compressed disk cache file when it matches the source modification date.
+            /// </summary>
+            private static bool TryGetCurrentCompressedDiskCacheFile(string path, DateTimeOffset sourceLastModifiedUtc, out FileInfo file) {
+                try {
+                    file = new FileInfo(path);
+                    return file.Exists && file.LastWriteTimeUtc == sourceLastModifiedUtc.UtcDateTime;
+                }
+                catch {
+                    file = null!;
+                    return false;
+                }
+            }
+
+            /// <summary>
             /// Send File Stream
             /// </summary>
             /// <param name="session"></param>
@@ -623,11 +829,15 @@ namespace SimpleW.Modules {
                                  .ConfigureAwait(false);
                 }
                 // header + body file
-                else if (_options.MaxCachedFileBytes.HasValue && fi.Length <= _options.MaxCachedFileBytes.Value) {
-                    await session.Response
-                                 .Body(await File.ReadAllBytesAsync(fi.FullName).ConfigureAwait(false), contentType)
-                                 .SendAsync()
-                                 .ConfigureAwait(false);
+                else if (!session.Request.Headers.TryGetValue("Range", out _)
+                         && _options.MaxCachedFileBytes.HasValue
+                         && fi.Length <= _options.MaxCachedFileBytes.Value) {
+                    byte[] body = await File.ReadAllBytesAsync(fi.FullName).ConfigureAwait(false);
+                    HttpResponse response = session.Response.Body(body, contentType);
+                    if (_options.CompressedDiskCache) {
+                        response.NoCompression();
+                    }
+                    await response.SendAsync().ConfigureAwait(false);
                 }
                 // header + stream file
                 else {
@@ -1096,6 +1306,20 @@ namespace SimpleW.Modules {
             }
 
             /// <summary>
+            /// Compressed disk cache entry.
+            /// </summary>
+            private sealed record CompressedDiskEntry(FileInfo File, HttpResponse.NegotiatedEncoding Encoding);
+
+            /// <summary>
+            /// Source version that did not benefit from disk compression.
+            /// </summary>
+            private readonly record struct CompressedDiskRejectedEntry(long SourceLength, DateTimeOffset SourceLastModifiedUtc) {
+                public bool Matches(long sourceLength, DateTimeOffset sourceLastModifiedUtc) {
+                    return SourceLength == sourceLength && SourceLastModifiedUtc == sourceLastModifiedUtc;
+                }
+            }
+
+            /// <summary>
             /// DirIndex Cache Entry
             /// </summary>
             /// <param name="Html"></param>
@@ -1238,6 +1462,19 @@ namespace SimpleW.Modules {
                     HttpResponse.NegotiatedEncoding.Brotli => "br",
                     _ => throw new ArgumentOutOfRangeException(nameof(encoding))
                 };
+            }
+
+            /// <summary>
+            /// Best-effort delete of a temporary file.
+            /// </summary>
+            private static void TryDeleteFile(string? path) {
+                if (string.IsNullOrWhiteSpace(path)) {
+                    return;
+                }
+                try {
+                    File.Delete(path);
+                }
+                catch { }
             }
 
             /// <summary>

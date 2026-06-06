@@ -49,6 +49,14 @@ public TimeSpan? CacheTimeout { get; set; }
 
 ```csharp
 /// <summary>
+/// If true, compressed gzip/Brotli variants are generated next to the source file and streamed from disk.
+/// ".br" or ".gz" is appended to the original file name.
+/// </summary>
+public bool CompressedDiskCache { get; set; } = false;
+```
+
+```csharp
+/// <summary>
 /// Optional authorization callback. Return false to reject the request before serving a file.
 /// </summary>
 public Func<HttpSession, bool>? Authorize { get; set; }
