@@ -14,6 +14,7 @@ This package provides an application-level firewall for SimpleW:
 - global allow and deny rules by country with MaxMind GeoIP2
 - handler-level firewall rules using SimpleW handler metadata attributes
 - fixed-window and sliding-window rate limiting
+- IP/CIDR whitelist for trusted clients that bypass rate limiting
 - bounded per-IP state with TTL cleanup
 - optional telemetry counters and gauges
 
@@ -34,6 +35,7 @@ server.UseFirewallModule(fw => {
         Limit = 200,
         Window = TimeSpan.FromSeconds(10)
     };
+    fw.RateLimitWhitelistRules.Add(IpRule.Cidr("10.0.0.0/8"));
 });
 
 server.MapController<AdminController>("/api");
@@ -54,7 +56,7 @@ public sealed class AdminController : Controller
 ```
 
 Global rules apply to handlers that do not declare firewall metadata.
-As soon as a handler has at least one firewall attribute, its handler policy replaces global allow/deny/country rules. Handler rate limits override the global rate limit; if no handler rate limit is declared, the global rate limit still applies.
+As soon as a handler has at least one firewall attribute, its handler policy replaces global allow/deny/country rules. Handler rate limits override the global rate limit; if no handler rate limit is declared, the global rate limit still applies. IP/CIDR entries in `RateLimitWhitelistRules` bypass both global and handler rate limits, but they do not bypass allow or deny rules.
 
 ## Handler Attributes
 

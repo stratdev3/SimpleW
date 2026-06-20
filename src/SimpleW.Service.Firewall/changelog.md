@@ -1,8 +1,14 @@
 # Changelog
 
-## v26.0.1 - _(2026-05-??)_
+## v26.0.1 - _(2026-06-20)_
 
 Maintenance release for handler-level firewall rules.
+
+### fix
+
+- Fix country deny rules so unresolved countries can be denied through `CountryRule.Unknown()` and `FirewallDenyUnknownCountryAttribute`. (#379)
+- Fix country rule evaluation so handler-level country attributes trigger country resolution even when no global country rules are configured.
+- Normalize `MaxMindCountryDbPath` and validate firewall configuration before publishing it to the running module.
 
 ### feature
 
@@ -25,12 +31,6 @@ Maintenance release for handler-level firewall rules.
 - Handler rate-limit metadata overrides the global rate limit; when no handler rate limit is declared, the global rate limit still applies.
 - Move rate limiting, rule evaluation, policy resolution, telemetry, and GeoIP country resolution into dedicated internal components.
 - Update documentation and README examples to use handler attributes instead of `PathRule`.
-
-### fix
-
-- Fix country deny rules so unresolved countries can be denied through `CountryRule.Unknown()` and `FirewallDenyUnknownCountryAttribute`. (#379)
-- Fix country rule evaluation so handler-level country attributes trigger country resolution even when no global country rules are configured.
-- Normalize `MaxMindCountryDbPath` and validate firewall configuration before publishing it to the running module.
 
 ### breakingChange
 
