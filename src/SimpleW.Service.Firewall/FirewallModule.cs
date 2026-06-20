@@ -76,6 +76,12 @@ namespace SimpleW.Service.Firewall {
             public RateLimitOptions? GlobalRateLimit { get; set; }
 
             /// <summary>
+            /// IP/CIDR rules that bypass global and handler rate limiting.
+            /// These rules do not bypass allow or deny firewall rules.
+            /// </summary>
+            public List<IpRule> RateLimitWhitelistRules { get; } = new();
+
+            /// <summary>
             /// Retention for inactive per-IP state.
             /// </summary>
             public TimeSpan StateTtl { get; set; } = TimeSpan.FromMinutes(10);
@@ -189,7 +195,8 @@ namespace SimpleW.Service.Firewall {
         bool EnableTelemetry,
         string? MaxMindCountryDbPath,
         bool TreatUnknownCountryAsMatchable,
-        TimeSpan? CountryCacheTtl
+        TimeSpan? CountryCacheTtl,
+        IpRule[] RateLimitWhitelistRules
     ) {
 
         public static ModuleConfiguration FromOptions(FirewallModuleExtension.FirewallOptions options) {
@@ -203,7 +210,8 @@ namespace SimpleW.Service.Firewall {
                 EnableTelemetry: options.EnableTelemetry,
                 MaxMindCountryDbPath: options.MaxMindCountryDbPath,
                 TreatUnknownCountryAsMatchable: options.TreatUnknownCountryAsMatchable,
-                CountryCacheTtl: options.CountryCacheTtl
+                CountryCacheTtl: options.CountryCacheTtl,
+                RateLimitWhitelistRules: options.RateLimitWhitelistRules.ToArray()
             );
         }
 
@@ -324,7 +332,9 @@ namespace SimpleW.Service.Firewall {
             }
 
             RateLimitOptions? rateLimit = policy.RateLimit ?? (policy.IsHandlerPolicy ? configuration.GlobalPolicy.RateLimit : null);
-            if (rateLimit != null && _rateLimiter.IsRateLimited(ip, rateLimit)) {
+            if (rateLimit != null
+                && !MatchesAny(configuration.RateLimitWhitelistRules, ip)
+                && _rateLimiter.IsRateLimited(ip, rateLimit)) {
                 TagList tags = CreateTags("rate_limited", "rate_limited", scope);
                 tags.Add("window", rateLimit.SlidingWindow ? "sliding" : "fixed");
 
@@ -359,6 +369,16 @@ namespace SimpleW.Service.Firewall {
             return FirewallPolicy.TryFromMetadata(metadata, out FirewallPolicy? handlerPolicy)
                        ? handlerPolicy!
                        : configuration.GlobalPolicy;
+        }
+
+        private static bool MatchesAny(IpRule[] rules, IPAddress ip) {
+            for (int i = 0; i < rules.Length; i++) {
+                if (rules[i].Match(ip)) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private FirewallTelemetry? EnsureTelemetry(bool enable, SimpleWServer server) {

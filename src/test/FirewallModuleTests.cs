@@ -137,6 +137,101 @@ namespace test {
         }
 
         [Fact]
+        public async Task Firewall_RateLimitWhitelist_Should_Bypass_Global_RateLimit() {
+            int port = PortManager.GetFreePort();
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+
+            server.ConfigureClientIPResolver(ResolveTestClientIp);
+            server.UseFirewallModule(options => {
+                options.GlobalRateLimit = new RateLimitOptions {
+                    Limit = 1,
+                    Window = TimeSpan.FromMinutes(1)
+                };
+                options.RateLimitWhitelistRules.Add(IpRule.Cidr("203.0.113.0/24"));
+            });
+            server.MapGet("/firewall/global-limited", () => new { ok = true });
+
+            try {
+                await server.StartAsync();
+
+                using HttpClient client = new();
+                string url = $"http://{server.Address}:{server.Port}/firewall/global-limited";
+                HttpResponseMessage normalFirst = await GetWithClientIpAsync(client, url, "198.51.100.10");
+                HttpResponseMessage normalSecond = await GetWithClientIpAsync(client, url, "198.51.100.10");
+                HttpResponseMessage whitelistedFirst = await GetWithClientIpAsync(client, url, "203.0.113.10");
+                HttpResponseMessage whitelistedSecond = await GetWithClientIpAsync(client, url, "203.0.113.10");
+                HttpResponseMessage whitelistedThird = await GetWithClientIpAsync(client, url, "203.0.113.10");
+
+                Check.That(normalFirst.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(normalSecond.StatusCode).Is((HttpStatusCode)429);
+                Check.That(whitelistedFirst.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(whitelistedSecond.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(whitelistedThird.StatusCode).Is(HttpStatusCode.OK);
+            }
+            finally {
+                await server.StopAsync();
+                PortManager.ReleasePort(port);
+            }
+        }
+
+        [Fact]
+        public async Task Firewall_RateLimitWhitelist_Should_Bypass_Handler_RateLimit() {
+            int port = PortManager.GetFreePort();
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+
+            server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
+            server.UseFirewallModule(options => {
+                options.RateLimitWhitelistRules.Add(IpRule.Single("203.0.113.10"));
+            });
+            server.MapController<FirewallMetadataController>("/api");
+
+            try {
+                await server.StartAsync();
+
+                using HttpClient client = new();
+                HttpResponseMessage first = await client.GetAsync($"http://{server.Address}:{server.Port}/api/firewall/limited");
+                HttpResponseMessage second = await client.GetAsync($"http://{server.Address}:{server.Port}/api/firewall/limited");
+
+                Check.That(first.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(second.StatusCode).Is(HttpStatusCode.OK);
+            }
+            finally {
+                await server.StopAsync();
+                PortManager.ReleasePort(port);
+            }
+        }
+
+        [Fact]
+        public async Task Firewall_RateLimitWhitelist_Should_Not_Bypass_DenyRules() {
+            int port = PortManager.GetFreePort();
+            var server = new SimpleWServer(IPAddress.Loopback, port);
+
+            server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
+            server.UseFirewallModule(options => {
+                options.DenyRules.Add(IpRule.Single("203.0.113.10"));
+                options.RateLimitWhitelistRules.Add(IpRule.Single("203.0.113.10"));
+                options.GlobalRateLimit = new RateLimitOptions {
+                    Limit = 1,
+                    Window = TimeSpan.FromMinutes(1)
+                };
+            });
+            server.MapGet("/firewall/deny-whitelisted", () => new { ok = true });
+
+            try {
+                await server.StartAsync();
+
+                using HttpClient client = new();
+                HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}/firewall/deny-whitelisted");
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.Forbidden);
+            }
+            finally {
+                await server.StopAsync();
+                PortManager.ReleasePort(port);
+            }
+        }
+
+        [Fact]
         public async Task Firewall_Metadata_Should_Combine_Controller_And_Method_Rules() {
             int port = PortManager.GetFreePort();
             var server = new SimpleWServer(IPAddress.Loopback, port);
@@ -209,6 +304,21 @@ namespace test {
                 await server.StopAsync();
                 PortManager.ReleasePort(port);
             }
+        }
+
+        private static IPAddress ResolveTestClientIp(HttpSession session) {
+            if (session.Request.Headers.TryGetValue("X-Test-Client-IP", out string? value)
+                && IPAddress.TryParse(value, out IPAddress? ip)) {
+                return ip;
+            }
+
+            return IPAddress.Loopback;
+        }
+
+        private static async Task<HttpResponseMessage> GetWithClientIpAsync(HttpClient client, string url, string ip) {
+            using HttpRequestMessage request = new(HttpMethod.Get, url);
+            request.Headers.TryAddWithoutValidation("X-Test-Client-IP", ip);
+            return await client.SendAsync(request).ConfigureAwait(false);
         }
 
         [Route("/firewall")]
