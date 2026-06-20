@@ -140,42 +140,4 @@ public class TestController : Controller {
 }
 ```
 
-```csharp:line-numbers [ASP.NET-like]
-var builder = SimpleWHost.CreateApplicationBuilder(args)
-                         .UseMicrosoftLogging();
-
-builder.ConfigureSimpleW(server => {
-    configureApp: server => {
-        // razor
-        server.UseRazorModule(options => {
-            options.ViewsPath = "Views";
-        });
-        // OpenAPI JSON
-        server.MapGet("/swagger.json", static (HttpSession session) => {
-            return Swagger.Json(session);
-        });
-        // Swagger UI
-        server.MapGet("/swagger", static (HttpSession session) => {
-            return Swagger.UI(session);
-        });
-        // routes
-        server.MapGet("/hello", () => {
-            return new { message = "Hello World !" };
-        });
-        // ssl
-        X509Certificate2 cert = new(@"/app/ssl/domain.pfx", "password");
-        var sslcontext = new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert, clientCertificateRequired: false, checkCertificateRevocation: false);
-        server.UseHttps(sslcontext);
-    },
-    configureServer: options => {
-        options.TcpNoDelay = true;
-        options.ReuseAddress = true;
-        options.TcpKeepAlive = true;
-    }
-});
-
-var host = builder.Build();
-await host.RunAsync();
-```
-
 :::

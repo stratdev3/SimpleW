@@ -27,7 +27,7 @@ The following minimal example can be used for rapid prototyping :
 
 ::: code-group
 
-```csharp [Program.cs]
+```csharp:line-numbers [Program.cs]
 using System;
 using System.Net;
 using SimpleW;
@@ -73,7 +73,7 @@ The following example builds a REST API with clear routing using a structured co
 
 ::: code-group
 
-```csharp [Program.cs]
+```csharp:line-numbers [Program.cs]
 using System.Net;
 using SimpleW;
 using SimpleW.Observability;
@@ -100,7 +100,7 @@ namespace Sample {
 }
 ```
 
-```csharp [TestController.cs]
+```csharp:line-numbers [TestController.cs]
 using System.Net;
 using SimpleW;
 
@@ -135,7 +135,7 @@ The following example serves static files from your `c:\www` directory.
 
 ::: code-group
 
-```csharp [Program.cs]
+```csharp:line-numbers [Program.cs]
 using System;
 using System.Net;
 using SimpleW;
@@ -192,7 +192,7 @@ The following example serves both static files from your `c:\www` directory and 
 
 ::: code-group
 
-```csharp [Program.cs]
+```csharp:line-numbers [Program.cs]
 using System;
 using System.Net;
 using SimpleW;
@@ -229,7 +229,7 @@ namespace Sample {
 }
 ```
 
-```csharp [TestController.cs]
+```csharp:line-numbers [TestController.cs]
 using System;
 using System.Net;
 using SimpleW;

@@ -24,8 +24,7 @@ using SimpleW;
 
 var server1 = new SimpleWServer(IPAddress.Loopback, 8080);
 
-var endpoint = new IPEndPoint(IPAddress.Any, 8081);
-var server2 = new SimpleWServer(endpoint);
+var server2 = new SimpleWServer(new IPEndPoint(IPAddress.Any, 8081));
 ```
 
 
