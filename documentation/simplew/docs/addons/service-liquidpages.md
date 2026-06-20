@@ -1,4 +1,4 @@
-# Liquid Pages
+# Liquid Pages <Badge type="info" text="Community" />
 
 ## Features
 LiquidPages is an open-source C# library that brings a Razor Pages–style MVVM framework to Liquid templates. This SimpleW companion package provides a module for integrating LiquidPages into your SimpleW webserver.

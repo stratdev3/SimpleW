@@ -123,6 +123,7 @@ export default defineConfig({
                         { text: 'Jwt', link: '/addons/service-jwt' },
                         { text: 'Latency', link: '/addons/service-latency' },
                         { text: 'LetsEncrypt', link: '/addons/service-letsencrypt' },
+                        { text: 'LiquidPages', link: '/addons/service-liquidpages' },
                         { text: 'OpenID', link: '/addons/service-openid' },
                     ]
                 },
