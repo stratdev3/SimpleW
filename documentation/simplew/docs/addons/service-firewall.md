@@ -1,4 +1,4 @@
-# Firewall
+# Firewall <Badge type="tip" text="Official" />
 
 The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.Firewall) package provides an application-level firewall module for SimpleW. It runs as middleware and reads SimpleW handler metadata for route-specific rules.
 

@@ -1,4 +1,4 @@
-# Razor
+# Razor <Badge type="tip" text="Official" />
 
 The [`SimpleW.Helper.Razor`](https://www.nuget.org/packages/SimpleW.Helper.Razor) is a Razor templating module for the SimpleW web server.
 It enables server-side HTML rendering using Razor syntax (via RazorLight) and integrates with SimpleW’s routing/controller system by introducing a ViewResult that the module can render into an HTTP response.

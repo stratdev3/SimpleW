@@ -1,4 +1,4 @@
-# Background
+# Background <Badge type="tip" text="Official" />
 
 The [`SimpleW.Service.Background`](https://www.nuget.org/packages/SimpleW.Service.Background) package provides an **in-process background job queue** and a **cron scheduler** for SimpleW.
 

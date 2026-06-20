@@ -1,4 +1,4 @@
-# Dependency Injection
+# Dependency Injection <Badge type="tip" text="Official" />
 
 The [`SimpleW.Helper.DependencyInjection`](https://www.nuget.org/packages/SimpleW.Helper.DependencyInjection) package adds dependency injection support for SimpleW controllers.
 

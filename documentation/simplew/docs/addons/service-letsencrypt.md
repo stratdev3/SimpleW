@@ -1,4 +1,4 @@
-# LetsEncrypt
+# LetsEncrypt <Badge type="tip" text="Official" />
 
 The [`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) package provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**. It is implemented as a SimpleW middleware.
 

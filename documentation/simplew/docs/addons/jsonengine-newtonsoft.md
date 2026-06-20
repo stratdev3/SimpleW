@@ -1,4 +1,4 @@
-# Newtonsoft
+# Newtonsoft <Badge type="tip" text="Official" />
 
 The [`SimpleW.JsonEngine.Newtonsoft`](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) is an optional integration package that replaces the default SimpleW JSON engine with **Newtonsoft.Json**.
 

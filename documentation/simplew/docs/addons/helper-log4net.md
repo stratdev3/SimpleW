@@ -1,4 +1,4 @@
-# Log4net
+# Log4net <Badge type="tip" text="Official" />
 
 The [`SimpleW.Helper.Log4net`](https://www.nuget.org/packages/SimpleW.Helper.Log4net) package provides a **bridge between the SimpleW internal logging system and log4net**.
 

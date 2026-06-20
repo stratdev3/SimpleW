@@ -1,4 +1,4 @@
-# Jwt
+# Jwt <Badge type="tip" text="Official" />
 
 The [`SimpleW.Service.Jwt`](https://www.nuget.org/packages/SimpleW.Service.Jwt) package provides a ready-to-use JWT Bearer module for SimpleW.
 

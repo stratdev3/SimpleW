@@ -1,4 +1,4 @@
-# BasicAuth
+# BasicAuth <Badge type="tip" text="Official" />
 
 The [`SimpleW.Service.BasicAuth`](https://www.nuget.org/packages/SimpleW.Service.BasicAuth) package provides a ready-to-use Basic authentication module for SimpleW.
 

@@ -1,4 +1,4 @@
-# Hosting
+# Hosting <Badge type="tip" text="Official" />
 
 The [`SimpleW.Helper.Hosting`](https://www.nuget.org/packages/SimpleW.Helper.Hosting) package provides a helper that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
 

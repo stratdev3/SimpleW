@@ -1,4 +1,4 @@
-# Latency
+# Latency <Badge type="tip" text="Official" />
 
 The [`SimpleW.Service.Latency`](https://www.nuget.org/packages/SimpleW.Service.Latency) package provides a **latency injection module** for the SimpleW web server.
  It is implemented as a SimpleW middleware.

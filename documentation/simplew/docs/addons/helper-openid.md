@@ -1,4 +1,4 @@
-# OpenID
+# OpenID <Badge type="tip" text="Official" />
 
 The [`SimpleW.Helper.OpenID`](https://www.nuget.org/packages/SimpleW.Helper.OpenID) package provides a lightweight OpenID Connect helper for SimpleW.
 

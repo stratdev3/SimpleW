@@ -1,4 +1,4 @@
-# Templates
+# Templates <Badge type="tip" text="Official" />
 
 
 The [`SimpleW.Templates`](https://www.nuget.org/packages/SimpleW.Templates) package provides a simple and efficient way to scaffold new

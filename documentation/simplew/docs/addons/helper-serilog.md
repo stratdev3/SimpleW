@@ -1,4 +1,4 @@
-# Serilog
+# Serilog <Badge type="tip" text="Official" />
 
 
 The [`SimpleW.Helper.Serilog`](https://www.nuget.org/packages/SimpleW.Helper.Serilog) package provides a **bridge between the SimpleW internal logging system and Serilog**.

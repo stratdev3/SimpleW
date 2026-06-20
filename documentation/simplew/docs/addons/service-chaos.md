@@ -1,4 +1,4 @@
-# Chaos
+# Chaos <Badge type="tip" text="Official" />
 
 The [`SimpleW.Service.Chaos`](https://www.nuget.org/packages/SimpleW.Service.Chaos) package provides a [**chaos engineering module**](https://en.wikipedia.org/wiki/Chaos_engineering) for the SimpleW web server. It is implemented as a SimpleW middleware.
 
