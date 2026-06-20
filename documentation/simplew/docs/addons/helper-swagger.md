@@ -27,8 +27,6 @@ It allows you to :
 - .NET 8.0
 - SimpleW (core server)
 
-No external dependencies.
-
 
 ## Installation
 

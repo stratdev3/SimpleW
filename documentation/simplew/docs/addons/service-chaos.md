@@ -18,8 +18,6 @@ This module is designed to test **client resilience, retry logic, timeouts**, an
 - .NET 8.0
 - SimpleW (core server)
 
-No external dependencies.
-
 
 ## Installation
 
