@@ -285,6 +285,7 @@ namespace SimpleW.Service.Firewall {
 
             IPAddress? ip = session.ClientIpAddress;
             if (ip == null) {
+                AddFirewallBlockedEvent(telemetry, session, null, "no_ip", "global");
                 RecordDecision(telemetry, ts0, "blocked", "no_ip", "global");
                 telemetry?.BlockedTotal.Add(1, CreateTags("blocked", "no_ip", "global"));
                 await session.Response.Status(403).SendAsync().ConfigureAwait(false);
@@ -301,6 +302,7 @@ namespace SimpleW.Service.Firewall {
                                       : null;
 
             if (policy.MatchesDenyIp(ip)) {
+                AddFirewallBlockedEvent(telemetry, session, ip, $"{scope}_deny", scope);
                 RecordDecision(telemetry, ts0, "blocked", $"{scope}_deny", scope);
                 telemetry?.BlockedTotal.Add(1, CreateTags("blocked", $"{scope}_deny", scope));
                 telemetry?.DenyMatchTotal.Add(1, CreateMatchTags(scope));
@@ -309,6 +311,7 @@ namespace SimpleW.Service.Firewall {
             }
 
             if (policy.MatchesDenyCountry(countryIso2, configuration.TreatUnknownCountryAsMatchable)) {
+                AddFirewallBlockedEvent(telemetry, session, ip, $"{scope}_country_deny", scope);
                 RecordDecision(telemetry, ts0, "blocked", $"{scope}_country_deny", scope);
                 telemetry?.BlockedTotal.Add(1, CreateTags("blocked", $"{scope}_country_deny", scope));
                 telemetry?.DenyMatchTotal.Add(1, CreateMatchTags(scope));
@@ -321,6 +324,7 @@ namespace SimpleW.Service.Firewall {
                                     || policy.MatchesAllowCountry(countryIso2, configuration.TreatUnknownCountryAsMatchable);
 
                 if (!allowMatched) {
+                    AddFirewallBlockedEvent(telemetry, session, ip, $"{scope}_allow_miss", scope);
                     RecordDecision(telemetry, ts0, "blocked", $"{scope}_allow_miss", scope);
                     telemetry?.BlockedTotal.Add(1, CreateTags("blocked", $"{scope}_allow_miss", scope));
                     telemetry?.AllowMissTotal.Add(1, CreateMatchTags(scope));
@@ -341,6 +345,7 @@ namespace SimpleW.Service.Firewall {
                 telemetry?.DecisionsTotal.Add(1, tags);
                 telemetry?.RateLimitedTotal.Add(1, tags);
                 telemetry?.DecisionDurationMs.Record(Stopwatch.GetElapsedTime(ts0).TotalMilliseconds, tags);
+                AddFirewallRateLimitedEvent(telemetry, session, ip, scope, rateLimit);
 
                 await session.Response.Status(429).SendAsync().ConfigureAwait(false);
                 return;
@@ -400,6 +405,48 @@ namespace SimpleW.Service.Firewall {
                 _telemetry ??= new FirewallTelemetry(telemetry.Meter, this);
                 return _telemetry;
             }
+        }
+
+        private static void AddFirewallBlockedEvent(FirewallTelemetry? telemetry, HttpSession session, IPAddress? ip, string reason, string scope) {
+            if (telemetry == null) {
+                return;
+            }
+
+            Activity? activity = Activity.Current;
+            if (activity == null) {
+                return;
+            }
+
+            ActivityTagsCollection tags = CreateEventTags(session, ip, reason, scope);
+            activity.AddEvent(new ActivityEvent("firewall.blocked", default, tags));
+        }
+
+        private static void AddFirewallRateLimitedEvent(FirewallTelemetry? telemetry, HttpSession session, IPAddress ip, string scope, RateLimitOptions rateLimit) {
+            if (telemetry == null) {
+                return;
+            }
+
+            Activity? activity = Activity.Current;
+            if (activity == null) {
+                return;
+            }
+
+            ActivityTagsCollection tags = CreateEventTags(session, ip, "rate_limited", scope);
+            tags.Add("limit", rateLimit.Limit);
+            tags.Add("window", rateLimit.Window.ToString());
+            tags.Add("window_type", rateLimit.SlidingWindow ? "sliding" : "fixed");
+            activity.AddEvent(new ActivityEvent("firewall.rate_limited", default, tags));
+        }
+
+        private static ActivityTagsCollection CreateEventTags(HttpSession session, IPAddress? ip, string reason, string scope) {
+            return new ActivityTagsCollection() {
+                { "reason", reason },
+                { "ip", ip?.ToString() ?? string.Empty },
+                { "method", session.Request.Method },
+                { "path", session.Request.Path },
+                { "route", session.Request.RouteTemplate ?? string.Empty },
+                { "scope", scope }
+            };
         }
 
         private static void RecordDecision(FirewallTelemetry? telemetry, long ts0, string result, string reason, string scope) {
