@@ -11,66 +11,6 @@ using SimpleW.Observability;
 namespace SimpleW.Helper.Razor {
 
     /// <summary>
-    /// RazorModuleExtension
-    /// </summary>
-    /// <example>
-    /// server.UseRazorModule(o => {
-    ///     //o.ViewsPath = "Views";
-    /// });
-    /// </example>
-    public static class RazorModuleExtension {
-
-        /// <summary>
-        /// Use Razor Module
-        /// </summary>
-        /// <param name="server"></param>
-        /// <param name="configure"></param>
-        /// <returns></returns>
-        public static SimpleWServer UseRazorModule(this SimpleWServer server, Action<RazorOptions>? configure = null) {
-            ArgumentNullException.ThrowIfNull(server);
-
-            RazorOptions options = new();
-            configure?.Invoke(options);
-
-            server.UseModule(new RazorModule(options));
-            return server;
-        }
-
-    }
-
-    /// <summary>
-    /// RazorOptions
-    /// </summary>
-    public sealed class RazorOptions {
-
-        /// <summary>
-        /// Base directory for views (default: "./Views").
-        /// </summary>
-        public string ViewsPath { get; set; } = "Views";
-
-        /// <summary>
-        /// Base directory for layouts (default: "./Shared").
-        /// </summary>
-        public string LayoutsPath { get; set; } = "Shared";
-
-        /// <summary>
-        /// Base directory for partials (default: "./Partials").
-        /// </summary>
-        public string PartialsPath { get; set; } = "Partials";
-
-        /// <summary>
-        /// File extension for templates.
-        /// </summary>
-        public string ViewExtension { get; set; } = ".cshtml";
-
-        /// <summary>
-        /// Auto Append File Extension
-        /// </summary>
-        public bool AutoAppendExtension { get; set; } = true;
-
-    }
-
-    /// <summary>
     /// RazorModule
     /// </summary>
     public sealed class RazorModule : IHttpModule {
