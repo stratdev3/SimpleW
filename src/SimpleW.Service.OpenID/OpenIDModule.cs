@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using SimpleW.Helper.OpenID;
 using SimpleW.Modules;
 using SimpleW.Observability;
@@ -11,7 +10,7 @@ namespace SimpleW.Service.OpenID {
     /// </summary>
     public static class OpenIDModuleExtension {
 
-        private static readonly ConditionalWeakTable<SimpleWServer, ModuleState> _states = new();
+        private static readonly ModuleStateRegistry<ModuleConfiguration> _states = new();
 
         /// <summary>
         /// Logger
@@ -33,26 +32,28 @@ namespace SimpleW.Service.OpenID {
             configure?.Invoke(options);
             options.ValidateAndNormalize();
 
-            ModuleState state = _states.GetValue(server, static _ => new ModuleState());
-            state.SetConfiguration(ModuleConfiguration.FromOptions(options));
+            ModuleState<ModuleConfiguration> state = _states.Get(server);
+            state.SetConfiguration(ModuleConfiguration.FromOptions(options), ValidateReplacement);
 
             EnsureInstalled(server, state);
             _log.Info($"installed with base path {state.Snapshot!.BasePath}");
             return server;
         }
 
-        private static void EnsureInstalled(SimpleWServer server, ModuleState state) {
+        private static void EnsureInstalled(SimpleWServer server, ModuleState<ModuleConfiguration> state) {
             ModuleConfiguration configuration = state.Snapshot ?? throw new InvalidOperationException("OpenID module configuration is missing.");
 
-            lock (state.SyncRoot) {
-                if (state.IsInstalled) {
-                    return;
-                }
-
-                state.IsInstalled = true;
+            if (!state.TryMarkInstalled()) {
+                return;
             }
 
             server.UseModule(new OpenIDModule(state, configuration.LoginPath, configuration.CallbackPath, configuration.LogoutPath));
+        }
+
+        private static void ValidateReplacement(ModuleConfiguration current, ModuleConfiguration next) {
+            if (!string.Equals(current.BasePath, next.BasePath, StringComparison.Ordinal)) {
+                throw new InvalidOperationException($"OpenID module base path is already fixed to '{current.BasePath}' for this server.");
+            }
         }
 
         /// <summary>
@@ -165,31 +166,6 @@ namespace SimpleW.Service.OpenID {
         }
 
         #region registry / configuration
-
-        /// <summary>
-        /// Per-server OpenID module state.
-        /// </summary>
-        private sealed class ModuleState {
-
-            public object SyncRoot { get; } = new();
-
-            public bool IsInstalled { get; set; }
-
-            private volatile ModuleConfiguration? _configuration;
-
-            public ModuleConfiguration? Snapshot => _configuration;
-
-            public void SetConfiguration(ModuleConfiguration configuration) {
-                lock (SyncRoot) {
-                    if (_configuration != null && !string.Equals(_configuration.BasePath, configuration.BasePath, StringComparison.Ordinal)) {
-                        throw new InvalidOperationException($"OpenID module base path is already fixed to '{_configuration.BasePath}' for this server.");
-                    }
-
-                    _configuration = configuration;
-                }
-            }
-
-        }
 
         /// <summary>
         /// Immutable runtime snapshot used by the module.
@@ -326,7 +302,7 @@ namespace SimpleW.Service.OpenID {
             /// <summary>
             /// State
             /// </summary>
-            private readonly ModuleState _state;
+            private readonly ModuleState<ModuleConfiguration> _state;
 
             /// <summary>
             /// LoginPath
@@ -351,7 +327,7 @@ namespace SimpleW.Service.OpenID {
             /// <param name="callbackPath"></param>
             /// <param name="logoutPath"></param>
             /// <exception cref="ArgumentNullException"></exception>
-            public OpenIDModule(ModuleState state, string loginPath, string callbackPath, string logoutPath) {
+            public OpenIDModule(ModuleState<ModuleConfiguration> state, string loginPath, string callbackPath, string logoutPath) {
                 _state = state ?? throw new ArgumentNullException(nameof(state));
                 _loginPath = loginPath ?? throw new ArgumentNullException(nameof(loginPath));
                 _callbackPath = callbackPath ?? throw new ArgumentNullException(nameof(callbackPath));
@@ -381,7 +357,7 @@ namespace SimpleW.Service.OpenID {
             /// <param name="next"></param>
             /// <param name="state"></param>
             /// <returns></returns>
-            private static async ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next, ModuleState state) {
+            private static async ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next, ModuleState<ModuleConfiguration> state) {
                 ModuleConfiguration? configuration = state.Snapshot;
                 if (configuration == null) {
                     await next().ConfigureAwait(false);
