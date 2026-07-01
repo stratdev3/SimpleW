@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using SimpleW.Helper.Jwt;
 using SimpleW.Modules;
 using SimpleW.Observability;
@@ -11,7 +10,7 @@ namespace SimpleW.Service.Jwt {
     /// </summary>
     public static class JwtModuleExtension {
 
-        private static readonly ConditionalWeakTable<SimpleWServer, ModuleState> _states = new();
+        private static readonly ModuleStateRegistry<ModuleConfiguration> _states = new();
 
         /// <summary>
         /// Logger
@@ -33,7 +32,7 @@ namespace SimpleW.Service.Jwt {
             configure?.Invoke(options);
             options.ValidateAndNormalize();
 
-            ModuleState state = _states.GetValue(server, static _ => new ModuleState());
+            ModuleState<ModuleConfiguration> state = _states.Get(server);
             state.SetConfiguration(ModuleConfiguration.FromOptions(options));
 
             EnsureInstalled(server, state);
@@ -41,13 +40,9 @@ namespace SimpleW.Service.Jwt {
             return server;
         }
 
-        private static void EnsureInstalled(SimpleWServer server, ModuleState state) {
-            lock (state.SyncRoot) {
-                if (state.IsInstalled) {
-                    return;
-                }
-
-                state.IsInstalled = true;
+        private static void EnsureInstalled(SimpleWServer server, ModuleState<ModuleConfiguration> state) {
+            if (!state.TryMarkInstalled()) {
+                return;
             }
 
             server.UseModule(new JwtModule(state));
@@ -212,27 +207,6 @@ namespace SimpleW.Service.Jwt {
         #region registry / configuration
 
         /// <summary>
-        /// Per-server JWT module state.
-        /// </summary>
-        private sealed class ModuleState {
-
-            public object SyncRoot { get; } = new();
-
-            public bool IsInstalled { get; set; }
-
-            private volatile ModuleConfiguration? _configuration;
-
-            public ModuleConfiguration? Snapshot => _configuration;
-
-            public void SetConfiguration(ModuleConfiguration configuration) {
-                lock (SyncRoot) {
-                    _configuration = configuration;
-                }
-            }
-
-        }
-
-        /// <summary>
         /// Immutable runtime snapshot used by the module.
         /// </summary>
         private sealed record ModuleConfiguration(
@@ -293,14 +267,14 @@ namespace SimpleW.Service.Jwt {
             /// <summary>
             /// State
             /// </summary>
-            private readonly ModuleState _state;
+            private readonly ModuleState<ModuleConfiguration> _state;
 
             /// <summary>
             /// Constructor
             /// </summary>
             /// <param name="state"></param>
             /// <exception cref="ArgumentNullException"></exception>
-            public JwtModule(ModuleState state) {
+            public JwtModule(ModuleState<ModuleConfiguration> state) {
                 _state = state ?? throw new ArgumentNullException(nameof(state));
             }
 
@@ -324,7 +298,7 @@ namespace SimpleW.Service.Jwt {
             /// <param name="next"></param>
             /// <param name="state"></param>
             /// <returns></returns>
-            private static async ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next, ModuleState state) {
+            private static async ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next, ModuleState<ModuleConfiguration> state) {
                 ModuleConfiguration? configuration = state.Snapshot;
                 if (configuration == null) {
                     await next().ConfigureAwait(false);
