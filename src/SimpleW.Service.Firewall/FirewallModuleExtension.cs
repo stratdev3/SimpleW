@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using SimpleW.Modules;
 using SimpleW.Observability;
 
 
@@ -9,7 +9,7 @@ namespace SimpleW.Service.Firewall {
     /// </summary>
     public static class FirewallModuleExtension {
 
-        private static readonly ConditionalWeakTable<SimpleWServer, ModuleState> _states = new();
+        private static readonly ModuleStateRegistry<ModuleConfiguration> _states = new();
 
         private static readonly ILogger _log = new Logger<FirewallModule>();
 
@@ -27,7 +27,7 @@ namespace SimpleW.Service.Firewall {
             configure?.Invoke(options);
             options.ValidateAndNormalize();
 
-            ModuleState state = _states.GetValue(server, static _ => new ModuleState());
+            ModuleState<ModuleConfiguration> state = _states.Get(server);
             state.SetConfiguration(ModuleConfiguration.FromOptions(options));
 
             EnsureInstalled(server, state);
@@ -35,13 +35,9 @@ namespace SimpleW.Service.Firewall {
             return server;
         }
 
-        private static void EnsureInstalled(SimpleWServer server, ModuleState state) {
-            lock (state.SyncRoot) {
-                if (state.IsInstalled) {
-                    return;
-                }
-
-                state.IsInstalled = true;
+        private static void EnsureInstalled(SimpleWServer server, ModuleState<ModuleConfiguration> state) {
+            if (!state.TryMarkInstalled()) {
+                return;
             }
 
             server.UseModule(new FirewallModule(state));

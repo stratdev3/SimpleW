@@ -7,27 +7,6 @@ using SimpleW.Observability;
 namespace SimpleW.Service.Firewall {
 
     /// <summary>
-    /// Per-server firewall module state.
-    /// </summary>
-    internal sealed class ModuleState {
-
-        public object SyncRoot { get; } = new();
-
-        public bool IsInstalled { get; set; }
-
-        private volatile ModuleConfiguration? _configuration;
-
-        public ModuleConfiguration? Snapshot => _configuration;
-
-        public void SetConfiguration(ModuleConfiguration configuration) {
-            lock (SyncRoot) {
-                _configuration = configuration;
-            }
-        }
-
-    }
-
-    /// <summary>
     /// Immutable runtime configuration used by the middleware.
     /// </summary>
     internal sealed record ModuleConfiguration(
@@ -69,7 +48,7 @@ namespace SimpleW.Service.Firewall {
 
         private readonly ILogger _log = new Logger<FirewallModule>();
 
-        private readonly ModuleState _state;
+        private readonly ModuleState<ModuleConfiguration> _state;
 
         private readonly FirewallRateLimiter _rateLimiter = new();
 
@@ -81,7 +60,7 @@ namespace SimpleW.Service.Firewall {
 
         private readonly object _telemetryLock = new();
 
-        public FirewallModule(ModuleState state) {
+        public FirewallModule(ModuleState<ModuleConfiguration> state) {
             _state = state ?? throw new ArgumentNullException(nameof(state));
         }
 
