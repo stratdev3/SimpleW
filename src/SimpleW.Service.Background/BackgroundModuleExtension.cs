@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+using SimpleW.Modules;
 
 
 namespace SimpleW.Service.Background {
@@ -8,7 +8,7 @@ namespace SimpleW.Service.Background {
     /// </summary>
     public static class BackgroundModuleExtension {
 
-        private static readonly ConditionalWeakTable<SimpleWServer, IBackgroundService> _services = new();
+        private static readonly ModuleInstanceRegistry<IBackgroundService> _instances = new();
 
         /// <summary>
         /// Enables the in-process background service.
@@ -59,8 +59,8 @@ namespace SimpleW.Service.Background {
         public static IBackgroundService GetBackgroundService(this SimpleWServer server) {
             ArgumentNullException.ThrowIfNull(server);
 
-            if (_services.TryGetValue(server, out IBackgroundService? service)) {
-                return service;
+            if (_instances.TryGet(server, out IBackgroundService? instance) && instance != null) {
+                return instance;
             }
 
             throw new InvalidOperationException("Background module is not installed. Call UseBackgroundModule(...) before using background jobs.");
@@ -86,12 +86,15 @@ namespace SimpleW.Service.Background {
             return controller.Session.GetBackgroundService();
         }
 
-        internal static void Register(SimpleWServer server, IBackgroundService service) {
-            try {
-                _services.Add(server, service);
-            }
-            catch (ArgumentException ex) {
-                throw new InvalidOperationException("Background module is already installed for this server.", ex);
+        /// <summary>
+        /// Register the background service attached to the current server.
+        /// </summary>
+        /// <param name="server"></param>
+        /// <param name="instance"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        internal static void Register(SimpleWServer server, IBackgroundService instance) {
+            if (!_instances.TryAdd(server, instance)) {
+                throw new InvalidOperationException("Background module is already installed for this server.");
             }
         }
 
