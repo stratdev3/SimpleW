@@ -12,6 +12,6 @@
     <!--
     I want all my package use the same "Major.Minor" version
     -->
-    <SimpleWCompatVersion>[26.0.0,26.1.0)</SimpleWCompatVersion>
+    <SimpleWCompatVersion>[26.1.0,26.2.0)</SimpleWCompatVersion>
   </PropertyGroup>
 </Project>
