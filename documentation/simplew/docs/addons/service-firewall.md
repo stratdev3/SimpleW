@@ -222,7 +222,7 @@ server.ConfigureClientIPResolver(session => {
         return forwardedIp;
     }
 
-    if (session.Socket.RemoteEndPoint is not IPEndPoint endpoint) {
+    if (session.RemoteEndPoint is not IPEndPoint endpoint) {
         return null;
     }
 

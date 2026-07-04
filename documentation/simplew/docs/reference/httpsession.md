@@ -5,6 +5,16 @@ The `HttpSession` is class responsible of receiving and sending data to a client
 - The sending data are structured as a `HttpResponse` in the [`Response`](#response) property.
 
 
+## Constructor
+
+```csharp
+public HttpSession(SimpleWServer server, ISimpleWEngine transport, ArrayPool<byte> bufferPool)
+```
+
+`HttpSession` is usually created by [`SimpleWServer.CreateSessionAsync(...)`](./simplewserver.md).
+Custom engines should pass accepted connections to `CreateSessionAsync(...)` instead of creating sessions directly.
+
+
 ## Server
 
 ```csharp
@@ -121,24 +131,23 @@ public X509Certificate2? ClientCertificate
 ## SendAsync
 
 ::: warning
-The `SendAsync` methods bellow are the lowest level to send data to client. They are barely aliases of `Socket.SendAsync()` with a thread-safe guard.
+The `SendAsync` methods bellow are the lowest level to send data to client. They write to the current `ISimpleWEngine` output, then update `Response.BytesSent` from the byte count returned by the transport output. The transport output owns the single-writer guard.
 You should never need to use them but instead use the `Response` property to send data to a client.
 :::
 
 ```csharp
 /// <summary>
-/// SendAsync native to socket (thread safe)
+/// SendAsync native to transport
 /// Lower level of sending
 /// </summary>
 /// <param name="buffer"></param>
 /// <returns></returns>
-/// <exception cref="InvalidOperationException"></exception>
 public async ValueTask SendAsync(ReadOnlyMemory<byte> buffer)
 ```
 
 ```csharp
 /// <summary>
-/// SendAsync to socket (thread safe)
+/// SendAsync to transport
 /// Lower level of sending
 /// </summary>
 /// <param name="segments"></param>
@@ -148,7 +157,7 @@ public async ValueTask SendAsync(ArraySegment<byte>[] segments)
 
 ```csharp
 /// <summary>
-/// SendAsync to socket (thread safe)
+/// SendAsync to transport
 /// Lower level of sending
 /// </summary>
 /// <param name="header"></param>
@@ -159,34 +168,52 @@ public async ValueTask SendAsync(ArraySegment<byte> header, ArraySegment<byte> b
 
 ```csharp
 /// <summary>
-/// SendAsync to socket (thread safe)
+/// SendAsync to transport
 /// Lower level of sending
 /// </summary>
 /// <param name="buffer"></param>
 /// <returns></returns>
-/// <exception cref="InvalidOperationException"></exception>
 public async ValueTask SendAsync(ArraySegment<byte> buffer)
 ```
 
 
-## Socket
+## LocalEndPoint
 
 ```csharp
 /// <summary>
-/// Gets the underlying socket.
+/// Local endpoint when the transport exposes one.
 /// </summary>
-public Socket Socket { get; }
+public EndPoint? LocalEndPoint { get; }
 ```
 
 
-## TransportStream
+## RemoteEndPoint
 
 ```csharp
 /// <summary>
-/// Gets the underlying transport as a <see cref="Stream"/> (<see cref="NetworkStream"/> or <see cref="SslStream"/>).
-/// Callers must not dispose this stream, as doing so would close the socket.
+/// Remote endpoint when the transport exposes one.
 /// </summary>
-public Stream TransportStream { get; }
+public EndPoint? RemoteEndPoint { get; }
+```
+
+
+## IsSsl
+
+```csharp
+/// <summary>
+/// Gets a value indicating whether this session uses an encrypted transport.
+/// </summary>
+public bool IsSsl { get; }
+```
+
+
+## AbortConnectionAsync
+
+```csharp
+/// <summary>
+/// Aborts the underlying connection.
+/// </summary>
+public ValueTask AbortConnectionAsync(bool reset = false, CancellationToken cancellationToken = default)
 ```
 
 

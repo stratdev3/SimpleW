@@ -160,6 +160,7 @@ export default defineConfig({
                     items: [
                         { text: 'SimpleWServer', link: '/reference/simplewserver' },
                         { text: 'SimpleWServerOptions', link: '/reference/simplewserveroptions' },
+                        { text: 'SimpleWEngineOptions', link: '/reference/simplewengineoptions' },
                         { text: 'HttpSession', link: '/reference/httpsession' },
                         { text: 'HttpRequest', link: '/reference/httprequest' },
                         { text: 'HttpResponse', link: '/reference/httpresponse' },

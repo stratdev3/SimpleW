@@ -93,7 +93,7 @@ class Program {
         });
 
         // socket tuning
-        server.Configure(options => {
+        server.UseEngine(options => {
             options.TcpNoDelay = true;
             options.ReuseAddress = true;
             options.TcpKeepAlive = true;

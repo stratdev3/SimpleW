@@ -230,7 +230,7 @@ This approach means :
 
 ::: warning
 [`Session.SendAsync()`](../reference/httpsession.md#sendasync) is a very low-level primitive :
-- It is close to `Socket.SendAsync()` and thread-safe.
+- It writes to the current `ISimpleWEngine`; the transport output enforces one active write per connection.
 - It bypasses the middleware pipeline
 - It should almost never be used
 

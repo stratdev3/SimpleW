@@ -90,13 +90,12 @@ Example :
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 8080);
 server.Configure(options => {
-    options.ReuseAddress = true;
-    options.TcpNoDelay = true;
-    options.TcpKeepAlive = true;
+    options.MaxRequestBodySize = 100 * 1024 * 1024;
+    options.SessionTimeout = TimeSpan.FromSeconds(30);
 });
 ```
 
-See [`SimpleWSServerOptions`](./simplewserveroptions.md) for more information on all options and an [example](../guide/server#configuration)
+See [`SimpleWSServerOptions`](./simplewserveroptions.md) for server options and [`SimpleWEngineOptions`](./simplewengineoptions.md) for default engine options.
 
 
 ## UseEngine
@@ -120,12 +119,20 @@ By default, `SimpleWServer` uses `SimpleWEngine`.
 public SimpleWServer UseEngine(ISimpleWEngine engine)
 ```
 
-Use this method when you want to replace the default network engine with your own implementation.
-
-Example :
+Use `UseEngine(Action<SimpleWEngineOptions>)` to configure the default socket engine.
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 8080);
+server.UseEngine(options => {
+    options.ReuseAddress = true;
+    options.TcpNoDelay = true;
+    options.TcpKeepAlive = true;
+});
+```
+
+Use `UseEngine(ISimpleWEngine)` when you want to replace the default network engine with your own implementation.
+
+```csharp
 server.UseEngine(new MyCustomEngine());
 ```
 
@@ -573,14 +580,14 @@ See an [example](../guide/principal.md).
 /// Client IP Resolver
 /// </summary>
 internal Func<HttpSession, IPAddress?> ClientIpResolver { get; private set; } = (session) => {
-    if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+    if (session.RemoteEndPoint is not IPEndPoint ep) {
         return null;
     }
     return ep.Address;
 }
 ```
 
-This property defines the Client IPAddress Resolver. The default client IPAddress resolver is the current `Socket.RemoteEndPoint.Address`.
+This property defines the Client IPAddress Resolver. The default client IPAddress resolver is the current `HttpSession.RemoteEndPoint.Address`.
 
 ```csharp
 /// <summary>

@@ -235,8 +235,8 @@ As headers can be forged on the client side, you should only accept X-Headers if
 
 ## Custom Client IP Resolution
 
-By default, SimpleW determines the client IP address directly from the underlying TCP socket
-(`Socket.RemoteEndPoint`).
+By default, SimpleW determines the client IP address directly from the session remote endpoint
+(`HttpSession.RemoteEndPoint`).
 
 To support these scenarios, SimpleW allows you to **fully customize how the client IP address
 is resolved** by configuring a custom `ClientIpResolver`.
@@ -252,7 +252,7 @@ server.ConfigureClientIPResolver(session => {
     }
 
     // 2. client ip (fallback)
-    if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+    if (session.RemoteEndPoint is not IPEndPoint ep) {
         return null;
     }
     return ep.Address;

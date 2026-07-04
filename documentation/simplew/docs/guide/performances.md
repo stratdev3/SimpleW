@@ -64,7 +64,7 @@ To get the best performance, enable the following options :
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
-server.Configure(options => {
+server.UseEngine(options => {
     // Always beneficial socket options
     options.TcpNoDelay = true;
     options.ReuseAddress = true;

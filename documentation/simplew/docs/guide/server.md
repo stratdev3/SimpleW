@@ -36,9 +36,8 @@ var server2 = new SimpleWServer(new IPEndPoint(IPAddress.Any, 8081));
 
 ```csharp
 server.Configure(options => {
-    // Example: set options here (depends on SimpleWSServerOptions fields)
-    options.TcpNoDelay = true;
     options.MaxRequestBodySize = 100 * 1024 * 1024; // 100Mo
+    options.SessionTimeout = TimeSpan.FromSeconds(30);
 });
 ```
 
@@ -64,19 +63,29 @@ await server.RunAsync();
 ```
 
 
-## Optional: replace the default Engine
+## Optional: configure or replace the default Engine
 
 By default, `SimpleWServer` uses `SimpleWEngine` as its network engine.
 
-If you need a custom transport/listener implementation, you can replace it with `UseEngine(...)` before starting the server.
+Configure the default socket engine with `UseEngine(Action<SimpleWEngineOptions>)` before starting the server.
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 8080);
 
+server.UseEngine(options => {
+    options.TcpNoDelay = true;
+    options.ReuseAddress = true;
+    options.TcpKeepAlive = true;
+});
+```
+
+If you need a custom transport/listener implementation, replace it with `UseEngine(ISimpleWEngine)`.
+
+```csharp
 server.UseEngine(new MyCustomEngine());
 ```
 
-Your custom engine must implement [`ISimpleWEngine`](../reference/isimplewengine.md).
+Your custom engine only needs to implement [`ISimpleWEngine`](../reference/isimplewengine.md). The engine owns its accept loop; for each accepted connection, wrap it as an `ISimpleWEngine` and call `server.CreateSessionAsync(...)`.
 
 Typical use cases :
 - Customize how incoming connections are accepted

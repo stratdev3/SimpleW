@@ -24,7 +24,7 @@ The module performs an SSE handshake and takes ownership of the underlying `Http
 - disables compression + content-length
 - also adds `X-Accel-Buffering: no` (NGINX proxy buffering killer) 
 
-It then calls `TryTakeTransportOwnership()` to stop the normal HTTP parsing loop and switch to stream ownership. 
+It then calls `TryTakeTransportOwnership()` to stop the normal HTTP parsing loop and switch to transport ownership.
 
 
 ### 3) Hub and Rooms

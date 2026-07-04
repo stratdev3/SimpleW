@@ -133,16 +133,19 @@ Unlike Kestrel, SimpleW can listen on only one port at a time. To listen on anot
 
 You can configure both :
 - the **application** (routes, modules)
-- the **server options** (socket behavior, low-level tuning)
+- the **server options** and engine options
 
 ```csharp
 builder.ConfigureSimpleW(
     configureApp: server => {
         // routes, modules, static files, etc.
+        server.UseEngine(options => {
+            options.TcpNoDelay = true;
+            options.ReuseAddress = true;
+        });
     },
     configureServer: options => {
-        options.TcpNoDelay = true;
-        options.ReuseAddress = true;
+        options.SessionTimeout = TimeSpan.FromSeconds(30);
     }
 );
 ```
