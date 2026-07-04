@@ -28,6 +28,14 @@ namespace ModuleName {
                     // find all classes based on Controller class, and serve on the "/api" endpoint
                     server.MapControllers<RazorController>("");
 
+                    // network options for better performances
+                    server.UseEngine(options => {
+                        options.ReuseAddress = true;
+                        options.TcpNoDelay = true;
+                        options.TcpKeepAlive = true;
+                        options.AcceptPerCore = true;
+                    });
+
                     // subscribe to events
                     server.OnStarted(s => {
                         Process.Start(new ProcessStartInfo {
@@ -35,13 +43,6 @@ namespace ModuleName {
                             UseShellExecute = true
                         });
                     });
-                },
-                configureServer: options => {
-                    // network options for better performances
-                    options.ReuseAddress = true;
-                    options.TcpNoDelay = true;
-                    options.TcpKeepAlive = true;
-                    options.AcceptPerCore = true;
                 }
             );
 

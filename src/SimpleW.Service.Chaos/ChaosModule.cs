@@ -1,4 +1,3 @@
-using System.Net.Sockets;
 using SimpleW.Modules;
 using SimpleW.Observability;
 
@@ -97,13 +96,13 @@ namespace SimpleW.Service.Chaos {
             if (_options.CloseConnectionProbability > 0 && _rng.NextDouble() < _options.CloseConnectionProbability) {
                 try {
 
-                    if (_options.AbortWithRst) {
-                        // Force TCP RST on close
-                        session.Socket.LingerState = new LingerOption(enable: true, seconds: 0);
-                    }
-
                     // No response, just bye-bye.
-                    session.Dispose();
+                    if (_options.AbortWithRst) {
+                        await session.AbortConnectionAsync(reset: true).ConfigureAwait(false);
+                    }
+                    else {
+                        session.Dispose();
+                    }
                 }
                 catch {
                     // swallow: this is chaos, not a church

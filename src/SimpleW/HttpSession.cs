@@ -1,8 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.Net;
-using System.Net.Security;
-using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using SimpleW.Observability;
@@ -27,44 +25,29 @@ namespace SimpleW {
         public readonly SimpleWServer Server;
 
         /// <summary>
-        /// Gets the server JSON engine.
+        /// Local endpoint when the transport exposes one.
         /// </summary>
-        public IJsonEngine JsonEngine => Server.JsonEngine;
+        public EndPoint? LocalEndPoint => _transport.LocalEndPoint;
 
         /// <summary>
-        /// Underlying client socket.
+        /// Remote endpoint when the transport exposes one.
         /// </summary>
-        private readonly Socket _socket;
+        public EndPoint? RemoteEndPoint => _transport.RemoteEndPoint;
+
+        /// <summary>
+        /// Underlying transport.
+        /// </summary>
+        internal ISimpleWEngine Transport => _transport;
+
+        /// <summary>
+        /// Internal transport.
+        /// </summary>
+        private readonly ISimpleWEngine _transport;
 
         /// <summary>
         /// Array pool used for buffers.
         /// </summary>
         private readonly ArrayPool<byte> _bufferPool;
-
-        /// <summary>
-        /// Router used to Dispatch. requests.
-        /// </summary>
-        private readonly IRouter _router;
-
-        /// <summary>
-        /// Gets a value indicating whether observability features are enabled.
-        /// </summary>
-        private bool IsObservability => Server.IsTelemetryEnabled || Log.IsEnabledFor(LogLevel.Error);
-
-        /// <summary>
-        /// Flag to avoid multiple Connect() call
-        /// </summary>
-        private bool _receiving;
-
-        /// <summary>
-        /// Parsing buffer.
-        /// </summary>
-        private byte[] _parseBuffer;
-
-        /// <summary>
-        /// Number of bytes currently stored in the parse buffer.
-        /// </summary>
-        private int _parseBufferCount;
 
         /// <summary>
         /// Parser reused for this session.
@@ -90,6 +73,11 @@ namespace SimpleW {
         /// Gets the current response.
         /// </summary>
         private readonly HttpResponse _response;
+
+        /// <summary>
+        /// Gets the server JSON engine.
+        /// </summary>
+        public IJsonEngine JsonEngine => Server.JsonEngine;
 
         /// <summary>
         /// Current user principal.
@@ -140,49 +128,31 @@ namespace SimpleW {
         public HandlerMetadataCollection Metadata { get; internal set; } = HandlerMetadataCollection.Empty;
 
         /// <summary>
-        /// Gets the underlying socket.
-        /// </summary>
-        public Socket Socket => _socket;
-
-        /// <summary>
-        /// Transport stream.
-        /// </summary>
-        private Stream? _transportStream;
-
-        /// <summary>
-        /// Gets the underlying transport as a <see cref="Stream"/> (<see cref="NetworkStream"/> or <see cref="SslStream"/>).
-        /// Callers must not dispose this stream, as doing so would close the socket.
-        /// </summary>
-        public Stream TransportStream => _transportStream ??= new NetworkStream(_socket, ownsSocket: false);
-
-        /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="server"></param>
-        /// <param name="socket"></param>
+        /// <param name="transport"></param>
         /// <param name="bufferPool"></param>
-        /// <param name="router"></param>
-        public HttpSession(SimpleWServer server, Socket socket, ArrayPool<byte> bufferPool, IRouter router) {
+        public HttpSession(SimpleWServer server, ISimpleWEngine transport, ArrayPool<byte> bufferPool) {
             Id = Guid.NewGuid();
 
             Server = server;
-            _socket = socket;
+            _transport = transport;
             _bufferPool = bufferPool;
-            _router = router;
-
-            _parseBuffer = _bufferPool.Rent(server.Options.ReceiveBufferSize);
-            _parseBufferCount = 0;
 
             _request = new HttpRequest(_bufferPool, server.JsonEngine, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
             _parser = new HttpRequestParser(_bufferPool, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
             _response = new HttpResponse(this, _bufferPool);
 
-            SocketOptions();
-
             Server.MarkSession(this);
         }
 
         #region Connect
+
+        /// <summary>
+        /// Flag to avoid multiple Connect() call
+        /// </summary>
+        private bool _receiving;
 
         /// <summary>
         /// Connect
@@ -192,34 +162,6 @@ namespace SimpleW {
                 return;
             }
             _receiving = true;
-        }
-
-        /// <summary>
-        /// Configure Socket Options
-        /// </summary>
-        private void SocketOptions() {
-
-            // enable=false : normal "graceful" close par défaut (send FIN and flush buffer)
-            // enable=true, seconds=0 : abort and send immediate RST
-            // enable=true, seconds>0 : wait flush buffer for X second, abort and send RST
-            _socket.LingerState = new LingerOption(enable: false, seconds: 0);
-
-            if (Server.Options.TcpKeepAlive) {
-                _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-            }
-            if (Server.Options.TcpKeepAliveTime >= 0) {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, Server.Options.TcpKeepAliveTime);
-            }
-            if (Server.Options.TcpKeepAliveInterval >= 0) {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, Server.Options.TcpKeepAliveInterval);
-            }
-            if (Server.Options.TcpKeepAliveRetryCount >= 0) {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, Server.Options.TcpKeepAliveRetryCount);
-            }
-            if (Server.Options.TcpNoDelay) {
-                _socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, true);
-            }
-
         }
 
         #endregion Connect
@@ -242,6 +184,14 @@ namespace SimpleW {
                 TryStartDisconnectWatcherForCurrentDispatch();
                 return _abortCts.Token;
             }
+        }
+
+        /// <summary>
+        /// Aborts the underlying connection.
+        /// </summary>
+        public ValueTask AbortConnectionAsync(bool reset = false, CancellationToken cancellationToken = default) {
+            Abort();
+            return _transport.AbortAsync(reset, cancellationToken);
         }
 
         /// <summary>
@@ -312,13 +262,13 @@ namespace SimpleW {
             // only check if handler is not completed
             while (!awaitedHandlerTask.IsCompleted) {
                 if (_abortCts.IsCancellationRequested || IsTransportOwned) {
-                    // stop the watcher if an Abort() has been called or Transported by another process
+                    // stop the watcher if an Abort() has been called or owned by another component
                     return;
                 }
 
                 try {
                     // FIN flag socket : selectRead + available == 0
-                    if (_socket.Poll(0, SelectMode.SelectRead) && _socket.Available == 0) {
+                    if (_transport.TryCheckConnectionClosed(out bool isClosed) && isClosed) {
                         Abort();
                         return;
                     }
@@ -346,57 +296,14 @@ namespace SimpleW {
         #region ssl
 
         /// <summary>
-        /// Gets a value indicating whether this session uses HTTPS.
+        /// Gets a value indicating whether this session uses an encrypted transport.
         /// </summary>
-        public bool IsSsl => _sslStream != null;
-
-        /// <summary>
-        /// SslStream
-        /// </summary>
-        private SslStream? _sslStream;
+        public bool IsSsl => _transport.IsEncrypted;
 
         /// <summary>
         /// Gets the client certificate when available.
         /// </summary>
-        public X509Certificate2? ClientCertificate {
-            get {
-                if (_sslStream?.RemoteCertificate is X509Certificate2 x509) {
-                    return x509;
-                }
-                if (_sslStream?.RemoteCertificate is X509Certificate cert) {
-                    return new X509Certificate2(cert);
-                }
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Enables HTTPS for this session.
-        /// </summary>
-        /// <param name="sslContext"></param>
-        /// <returns></returns>
-        public async Task UseHttps(SslContext sslContext) {
-            if (IsSsl) {
-                return;
-            }
-
-            // SslStream above NetworkStream
-            SslStream sslStream = new(
-                innerStream: TransportStream,
-                leaveInnerStreamOpen: false,
-                userCertificateValidationCallback: sslContext.ClientCertificateValidation
-            );
-
-            // server side TLS Handshake
-            await sslStream.AuthenticateAsServerAsync(
-                serverCertificate: sslContext.Certificate,
-                clientCertificateRequired: sslContext.ClientCertificateRequired,
-                enabledSslProtocols: sslContext.Protocols,
-                checkCertificateRevocation: sslContext.CheckCertificateRevocation
-            ).ConfigureAwait(false);
-
-            _sslStream = sslStream;
-        }
+        public X509Certificate2? ClientCertificate => _transport.GetFeature<ISimpleWTransportTlsFeature>()?.ClientCertificate;
 
         #endregion ssl
 
@@ -434,16 +341,17 @@ namespace SimpleW {
         internal bool TryTakeTransportOwnership() => Interlocked.Exchange(ref _isTransportOwned, 1) == 0;
 
         /// <summary>
-        /// Transport ownership flag. to close Marks the session as Read phase.y to receive data.ion after Response
+        /// Marks whether the transport should be closed after the current response.
         /// </summary>
         public bool CloseAfterResponse { get; private set; }
 
         /// <summary>
         /// Main Process Loop :
-        ///  - read from Socket or SslStream directly into _parseBuffer
-        ///  - Parse with HttpRequestParserState
-        ///  - HttpRouter Dispatch
-        ///  - Enforce request header/body receive deadlines to mitigate slowloris
+        ///  - read native transport buffers
+        ///  - parse directly from ReadOnlySequence byte
+        ///  - advance the transport input by consumed and examined bytes
+        ///  - dispatch through the HttpRouter
+        ///  - enforce request header/body receive deadlines to mitigate slowloris
         /// </summary>
         public async Task ProcessAsync() {
 
@@ -470,31 +378,12 @@ namespace SimpleW {
                     return;
                 }
 
-                int bytesRead;
+                SimpleWTransportReadResult readResult;
                 try {
-                    EnsureParseBufferCapacity(Server.Options.ReceiveBufferSize);
-                    int receiveLength = Math.Min(Server.Options.ReceiveBufferSize, _parseBuffer.Length - _parseBufferCount);
-                    Memory<byte> receiveMemory = _parseBuffer.AsMemory(_parseBufferCount, receiveLength);
-                    if (IsSsl) {
-                        bytesRead = await _sslStream!.ReadAsync(receiveMemory).ConfigureAwait(false);
-                    }
-                    else {
-                        bytesRead = await _socket.ReceiveAsync(receiveMemory, SocketFlags.None).ConfigureAwait(false);
-                    }
+                    readResult = await _transport.Input.ReadAsync().ConfigureAwait(false);
                 }
-                catch (IOException ex)
-                        when (ex.InnerException is SocketException se
-                              && (se.SocketErrorCode == SocketError.ConnectionReset
-                                  || se.SocketErrorCode == SocketError.ConnectionAborted)
-                    ) {
+                catch (IOException) {
                     // client a reset/abort (consider as a normal closed)
-                    Abort();
-                    return;
-                }
-                catch (SocketException se)
-                    when (se.SocketErrorCode == SocketError.ConnectionReset
-                          || se.SocketErrorCode == SocketError.ConnectionAborted
-                ) {
                     Abort();
                     return;
                 }
@@ -508,10 +397,14 @@ namespace SimpleW {
                     return;
                 }
 
-                if (bytesRead == 0) {
-                    // remote closed
-                    Abort();
-                    return;
+                ReadOnlySequence<byte> buffer = readResult.Buffer;
+                if (buffer.Length == 0) {
+                    if (readResult.IsCompleted) {
+                        // remote closed
+                        Abort();
+                        return;
+                    }
+                    continue;
                 }
 
                 // reset idle timer
@@ -527,36 +420,41 @@ namespace SimpleW {
                 if (_requestReceivePhase == RequestReceivePhase.None) {
                     StartHeadersReceiveDeadline();
                 }
-                // slow request protection : if we are already in body phase, count the newly received body bytes
+                // slow request protection : if we are already in body phase, count newly observed body bytes
                 if (_requestReceivePhase == RequestReceivePhase.Body) {
-                    AddBodyBytesReceived(bytesRead);
+                    AddBodyBytesReceivedFromBuffer(buffer.Length);
                 }
-
-                // byte operations
-                _parseBufferCount += bytesRead;
 
                 #endregion read
 
                 #region parse & process
+                long consumedTotal = 0;
+                long examinedTotal = buffer.Length;
+                long advancedTotal = 0;
                 try {
-                    int offset = 0;
 
                     //
                     // parse HttpRequest loop (http pipelining support)
                     //
-                    while (true) {
+                    while (consumedTotal < buffer.Length) {
                         if (IsTransportOwned) {
                             return;
                         }
 
-                        if (!_parser.TryReadHttpRequest(new ReadOnlySequence<byte>(_parseBuffer, offset, _parseBufferCount - offset), _request, out long consumed, out bool foundHeaderEnd)) {
+                        ReadOnlySequence<byte> parseBuffer = buffer.Slice(consumedTotal);
+                        if (!_parser.TryReadHttpRequest(parseBuffer, _request, out long consumed, out bool foundHeaderEnd)) {
                             // slow request protection : request incomplete => detect whether we are waiting for headers or body
-                            RefreshReceiveStateFromCurrentBuffer(offset, foundHeaderEnd);
+                            RefreshReceiveStateFromCurrentBuffer(parseBuffer.Length, foundHeaderEnd);
                             // need/wait for more data
                             break;
                         }
 
-                        offset += (int)consumed;
+                        consumedTotal += consumed;
+                        long consumedDelta = consumedTotal - advancedTotal;
+                        if (consumedDelta > 0) {
+                            _transport.Input.AdvanceTo(consumedDelta, consumedDelta);
+                            advancedTotal = consumedTotal;
+                        }
 
                         // slow request protection : current request is complete, clear deadline
                         ResetReceiveDeadline();
@@ -593,10 +491,10 @@ namespace SimpleW {
 
                             // RequestAborted disabled
                             if (Server.Options.SocketDisconnectPollInterval == TimeSpan.Zero) {
-                                await _router.DispatchAsync(this).ConfigureAwait(false);
+                                await Server.Router.DispatchAsync(this).ConfigureAwait(false);
                             }
                             else {
-                                ValueTask dispatch = _router.DispatchAsync(this);
+                                ValueTask dispatch = Server.Router.DispatchAsync(this);
                                 // sync
                                 if (dispatch.IsCompletedSuccessfully) {
                                     // need to consume
@@ -652,16 +550,13 @@ namespace SimpleW {
                         }
 
                         // slow request protection : if another pipelined request is already buffered, arm header deadline for it
-                        if (offset < _parseBufferCount) {
+                        if (consumedTotal < buffer.Length) {
                             StartHeadersReceiveDeadline();
                         }
                     }
 
-                    // compress buffer
-                    CompressParseBuffer(offset);
-
-                    // slow request protection:  if buffer is empty after compression, no in-flight request remains
-                    if (_parseBufferCount == 0) {
+                    // slow request protection: if the buffer was fully consumed, no in-flight request remains
+                    if (consumedTotal == buffer.Length) {
                         ResetReceiveDeadline();
                     }
                 }
@@ -672,6 +567,13 @@ namespace SimpleW {
                 catch (Exception ex) {
                     await HandleErrorResponseAsync(ex, 500, "Internal Server Error", "HTTP process");
                     return;
+                }
+                finally {
+                    long consumedRemaining = consumedTotal - advancedTotal;
+                    long examinedRemaining = examinedTotal - advancedTotal;
+                    if (!IsTransportOwned && (consumedRemaining != 0 || examinedRemaining != 0)) {
+                        _transport.Input.AdvanceTo(consumedRemaining, examinedRemaining);
+                    }
                 }
                 #endregion parse & process
             }
@@ -768,6 +670,11 @@ namespace SimpleW {
         private long _requestBodyBytesReceived;
 
         /// <summary>
+        /// Last observed transport buffer length while tracking body receive rate.
+        /// </summary>
+        private long _requestBodyObservedBufferLength;
+
+        /// <summary>
         /// Start the deadline for receiving HTTP request headers.
         /// </summary>
         private void StartHeadersReceiveDeadline() {
@@ -784,12 +691,13 @@ namespace SimpleW {
         /// <summary>
         /// Enter body receive phase and initialize body rate tracking.
         /// </summary>
-        private void StartBodyReceiveRateTracking() {
+        private void StartBodyReceiveRateTracking(long observedBufferLength = 0) {
             _requestReceivePhase = RequestReceivePhase.Body;
             _requestReceiveDeadlineTick = 0;
 
             _requestBodyStartTick = Environment.TickCount64;
             _requestBodyBytesReceived = 0;
+            _requestBodyObservedBufferLength = observedBufferLength;
         }
 
         /// <summary>
@@ -800,6 +708,7 @@ namespace SimpleW {
             _requestReceiveDeadlineTick = 0;
             _requestBodyStartTick = 0;
             _requestBodyBytesReceived = 0;
+            _requestBodyObservedBufferLength = 0;
         }
 
         /// <summary>
@@ -816,17 +725,16 @@ namespace SimpleW {
         /// If headers are complete, switch to body rate tracking.
         /// Otherwise stay in header timeout mode.
         /// </summary>
-        /// <param name="offset"></param>
+        /// <param name="available"></param>
         /// <param name="foundHeaderEnd"></param>
-        private void RefreshReceiveStateFromCurrentBuffer(int offset, bool foundHeaderEnd) {
-            int available = _parseBufferCount - offset;
+        private void RefreshReceiveStateFromCurrentBuffer(long available, bool foundHeaderEnd) {
             if (available <= 0) {
                 ResetReceiveDeadline();
                 return;
             }
             if (foundHeaderEnd) {
                 if (_requestReceivePhase != RequestReceivePhase.Body) {
-                    StartBodyReceiveRateTracking();
+                    StartBodyReceiveRateTracking(available);
                 }
             }
             else {
@@ -837,15 +745,17 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Add newly received body bytes to the current body rate tracker.
+        /// Add newly observed body bytes to the current body rate tracker.
         /// </summary>
-        /// <param name="bytesRead"></param>
-        private void AddBodyBytesReceived(int bytesRead) {
-            if (bytesRead <= 0) {
+        /// <param name="currentBufferLength"></param>
+        private void AddBodyBytesReceivedFromBuffer(long currentBufferLength) {
+            long delta = currentBufferLength - _requestBodyObservedBufferLength;
+            if (delta <= 0) {
                 return;
             }
 
-            _requestBodyBytesReceived += bytesRead;
+            _requestBodyBytesReceived += delta;
+            _requestBodyObservedBufferLength = currentBufferLength;
         }
 
         /// <summary>
@@ -903,202 +813,73 @@ namespace SimpleW {
         #region SendAsync
 
         /// <summary>
-        /// State Gate for SendAsync thread-safe
-        /// </summary>
-        private int _sending;
-
-        /// <summary>
-        /// Storage Segment Array for SendAsync(header, body)
-        /// </summary>
-        private readonly ArraySegment<byte>[] _sendSegments2 = new ArraySegment<byte>[2];
-
-        /// <summary>
-        /// SendAsync native to socket (thread safe)
-        /// Lower level of sending
-        /// You should call NotifyResponseSent() once you finished sending reponse
+        /// SendAsync to transport.
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
         public async ValueTask SendAsync(ReadOnlyMemory<byte> buffer) {
             try {
-                if (Interlocked.Exchange(ref _sending, 1) != 0) {
-                    throw new InvalidOperationException("Concurrent SendAsync on same session");
-                }
-                if (_sslStream != null) {
-                    await _sslStream.WriteAsync(buffer).ConfigureAwait(false);
-                    _response.BytesSent += buffer.Length;
-                }
-                else {
-                    int bytesSent = await _socket.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
-                    _response.BytesSent += bytesSent;
-                }
+                _response.BytesSent += await _transport.Output.WriteAsync(buffer).ConfigureAwait(false);
             }
             catch (ObjectDisposedException) {
                 Abort();
             }
-            catch (SocketException) {
+            catch (IOException) {
                 Abort();
-            }
-            finally {
-                Volatile.Write(ref _sending, 0);
             }
         }
 
         /// <summary>
-        /// SendAsync to socket (thread safe)
-        /// Lower level of sending
-        /// You should call NotifyResponseSent() once you finished sending reponse
+        /// SendAsync to transport.
         /// </summary>
         /// <param name="segments"></param>
         /// <returns></returns>
         public async ValueTask SendAsync(ArraySegment<byte>[] segments) {
             try {
-                if (Interlocked.Exchange(ref _sending, 1) != 0) {
-                    throw new InvalidOperationException("Concurrent SendAsync on same session");
-                }
-                if (_sslStream != null) {
-                    await _SendTlsSegmentsAsync(segments).ConfigureAwait(false);
-                }
-                else {
-                    int bytesSent = await _socket.SendAsync(segments, SocketFlags.None).ConfigureAwait(false);
-                    _response.BytesSent += bytesSent;
-                }
+                _response.BytesSent += await _transport.Output.WriteAsync(segments).ConfigureAwait(false);
             }
             catch (ObjectDisposedException) {
                 Abort();
             }
-            catch (SocketException) {
+            catch (IOException) {
                 Abort();
-            }
-            finally {
-                Volatile.Write(ref _sending, 0);
             }
         }
 
         /// <summary>
-        /// SendAsync to socket (thread safe)
-        /// Lower level of sending
-        /// You should call NotifyResponseSent() once you finished sending reponse
+        /// SendAsync to transport.
         /// </summary>
         /// <param name="header"></param>
         /// <param name="body"></param>
         /// <returns></returns>
         public async ValueTask SendAsync(ArraySegment<byte> header, ArraySegment<byte> body) {
             try {
-                if (Interlocked.Exchange(ref _sending, 1) != 0) {
-                    throw new InvalidOperationException("Concurrent SendAsync on same session");
-                }
-                if (_sslStream != null) {
-                    _sendSegments2[0] = header;
-                    _sendSegments2[1] = body;
-                    await _SendTlsSegmentsAsync(_sendSegments2).ConfigureAwait(false);
-                }
-                else {
-                    _sendSegments2[0] = header;
-                    _sendSegments2[1] = body;
-                    int bytesSent = await _socket.SendAsync(_sendSegments2, SocketFlags.None).ConfigureAwait(false);
-                    _response.BytesSent += bytesSent;
-                }
+                _response.BytesSent += await _transport.Output.WriteAsync(header, body).ConfigureAwait(false);
             }
             catch (ObjectDisposedException) {
                 Abort();
             }
-            catch (SocketException) {
+            catch (IOException) {
                 Abort();
-            }
-            finally {
-                Volatile.Write(ref _sending, 0);
             }
         }
 
         /// <summary>
-        /// SendAsync to socket (thread safe)
-        /// Lower level of sending
-        /// You should call NotifyResponseSent() once you finished sending reponse
+        /// SendAsync to transport.
         /// </summary>
         /// <param name="buffer"></param>
         /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
         public async ValueTask SendAsync(ArraySegment<byte> buffer) {
             try {
-                if (Interlocked.Exchange(ref _sending, 1) != 0) {
-                    throw new InvalidOperationException("Concurrent SendAsync on same session");
-                }
-                if (_sslStream != null) {
-                    await _sslStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
-                    _response.BytesSent += buffer.Count;
-                }
-                else {
-                    int bytesSent = await _socket.SendAsync(buffer.AsMemory(), SocketFlags.None).ConfigureAwait(false);
-                    _response.BytesSent += bytesSent;
-                }
+                _response.BytesSent += await _transport.Output.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
             }
             catch (ObjectDisposedException) {
                 Abort();
             }
-            catch (SocketException) {
+            catch (IOException) {
                 Abort();
             }
-            finally {
-                Volatile.Write(ref _sending, 0);
-            }
         }
-
-        #region send tls optimization
-
-        /// <summary>
-        /// Coalesce small TLS scatter/gather writes into one SslStream write; larger payloads avoid an extra copy.
-        /// </summary>
-        private const int TlsCoalesceThresholdBytes = 64 * 1024;
-
-        private async ValueTask _SendTlsSegmentsAsync(ArraySegment<byte>[] segments) {
-            int total = 0;
-            foreach (ArraySegment<byte> seg in segments) {
-                if (seg.Array == null || seg.Count <= 0) {
-                    continue;
-                }
-                if (seg.Count > TlsCoalesceThresholdBytes - total) {
-                    await _SendTlsSegmentsIndividuallyAsync(segments).ConfigureAwait(false);
-                    return;
-                }
-                total += seg.Count;
-            }
-
-            if (total == 0) {
-                return;
-            }
-
-            byte[] buffer = _bufferPool.Rent(total);
-            try {
-                int offset = 0;
-                foreach (ArraySegment<byte> seg in segments) {
-                    if (seg.Array == null || seg.Count <= 0) {
-                        continue;
-                    }
-                    Buffer.BlockCopy(seg.Array, seg.Offset, buffer, offset, seg.Count);
-                    offset += seg.Count;
-                }
-
-                await _sslStream!.WriteAsync(buffer.AsMemory(0, total)).ConfigureAwait(false);
-                _response.BytesSent += total;
-            }
-            finally {
-                _bufferPool.Return(buffer);
-            }
-        }
-
-        private async ValueTask _SendTlsSegmentsIndividuallyAsync(ArraySegment<byte>[] segments) {
-            foreach (ArraySegment<byte> seg in segments) {
-                if (seg.Array == null || seg.Count <= 0) {
-                    continue;
-                }
-                await _sslStream!.WriteAsync(seg.AsMemory()).ConfigureAwait(false);
-                _response.BytesSent += seg.Count;
-            }
-        }
-
-        #endregion send tls optimization
 
         #endregion SendAsync
 
@@ -1122,24 +903,7 @@ namespace SimpleW {
             // ensure Abort is signaled for in-flight work
             Abort();
 
-            try {
-                if (_socket.Connected) {
-                    _socket.Shutdown(SocketShutdown.Both);
-                }
-            }
-            catch { }
-
-            try { _socket.Dispose(); } catch { }
-
-            try { _sslStream?.Dispose(); } catch { }
-            _sslStream = null;
-
-
-            if (_parseBuffer != null) {
-                _bufferPool.Return(_parseBuffer);
-                _parseBuffer = null!;
-                _parseBufferCount = 0;
-            }
+            try { _transport.Dispose(); } catch { }
 
             try { _abortCts.Dispose(); } catch { }
         }
@@ -1147,45 +911,6 @@ namespace SimpleW {
         #endregion IDisposable
 
         #region helper
-
-        /// <summary>
-        /// Enlarge Parse Buffer if needed
-        /// </summary>
-        /// <param name="additionalBytes">number of bytes to add</param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsureParseBufferCapacity(int additionalBytes) {
-            int required = _parseBufferCount + additionalBytes;
-            if (_parseBuffer.Length >= required) {
-                return;
-            }
-
-            int newSize = _parseBuffer.Length * 2;
-            if (newSize < required) {
-                newSize = required;
-            }
-
-            byte[] newBuffer = _bufferPool.Rent(newSize);
-            Buffer.BlockCopy(_parseBuffer, 0, newBuffer, 0, _parseBufferCount);
-            _bufferPool.Return(_parseBuffer);
-            _parseBuffer = newBuffer;
-        }
-
-        /// <summary>
-        /// Compacts the parse buffer after consumed bytes are removed.
-        /// </summary>
-        /// <param name="offset"></param>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CompressParseBuffer(int offset) {
-            if (offset <= 0) {
-                return;
-            }
-
-            int remaining = _parseBufferCount - offset;
-            if (remaining > 0) {
-                Buffer.BlockCopy(_parseBuffer, offset, _parseBuffer, 0, remaining);
-            }
-            _parseBufferCount = remaining;
-        }
 
         /// <summary>
         /// Creates a fake request for testing purposes.
@@ -1223,6 +948,11 @@ namespace SimpleW {
         #endregion ip
 
         #region telemetry
+
+        /// <summary>
+        /// Gets a value indicating whether observability features are enabled.
+        /// </summary>
+        private bool IsObservability => Server.IsTelemetryEnabled || Log.IsEnabledFor(LogLevel.Error);
 
         /// <summary>
         /// Request start: first byte received for the current request

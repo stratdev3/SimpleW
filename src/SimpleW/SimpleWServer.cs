@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
@@ -56,9 +56,7 @@ namespace SimpleW {
         /// <returns></returns>
         /// <example>
         /// server.Configure(options => {
-        ///     options.ReuseAddress = true;
-        ///     options.TcpNoDelay = true;
-        ///     options.TcpKeepAlive = true;
+        ///     options.SessionTimeout = TimeSpan.FromSeconds(30);
         /// });
         /// </example>
         public SimpleWServer Configure(Action<SimpleWSServerOptions> configure) {
@@ -73,7 +71,6 @@ namespace SimpleW {
             configure(Options);
             return this;
         }
-
 
         #endregion options
 
@@ -204,6 +201,27 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Configure and use the default socket-based network engine.
+        /// Must be called before the server starts.
+        /// </summary>
+        /// <param name="configure"></param>
+        /// <returns></returns>
+        public SimpleWServer UseEngine(Action<SimpleWEngineOptions> configure) {
+            ArgumentNullException.ThrowIfNull(configure);
+
+            if (IsStarted) {
+                InvalidOperationException ex = new("Engine must be configured before starting the server.");
+                _log.Fatal(ex.Message, ex);
+                throw ex;
+            }
+
+            SimpleWEngineOptions options = new();
+            configure(options);
+            Engine = new SimpleWEngine(options);
+            return this;
+        }
+
+        /// <summary>
         /// Start the server (not blocking)
         /// </summary>
         /// <param name="cancellationToken"></param>
@@ -222,7 +240,7 @@ namespace SimpleW {
 
             try {
                 // refresh the endpoint property based on the actual endpoint created
-                EndPoint = await Engine.StartAsync(this, Options, CreateSessionAsync, _lifetimeCts.Token).ConfigureAwait(false) ?? EndPoint;
+                EndPoint = await Engine.StartAsync(this, _lifetimeCts.Token).ConfigureAwait(false) ?? EndPoint;
                 StartSessionTimeoutLoop(_lifetimeCts.Token);
 
                 IsStarted = true;
@@ -370,7 +388,7 @@ namespace SimpleW {
                     // callback
                     reconfigure(this);
                     // new listener + restart accept loop(s)
-                    EndPoint = await Engine.StartAsync(this, Options, CreateSessionAsync, cancellationToken).ConfigureAwait(false) ?? EndPoint;
+                    EndPoint = await Engine.StartAsync(this, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                     _log.Warn($"server reloaded at {_listenUrl}");
                 }
                 catch (Exception ex) {
@@ -381,7 +399,7 @@ namespace SimpleW {
                         EndPoint = oldEndPoint;
                         SslContext = oldSsl;
                         _log.Warn($"server restoring at {_listenUrl}", ex);
-                        EndPoint = await Engine.StartAsync(this, Options, CreateSessionAsync, cancellationToken).ConfigureAwait(false) ?? EndPoint;
+                        EndPoint = await Engine.StartAsync(this, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                         _log.Warn($"server restored at {_listenUrl}");
                     }
                     catch (Exception exx) {
@@ -857,20 +875,25 @@ namespace SimpleW {
         private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
 
         /// <summary>
-        /// Handle Connection and create HttpSession
+        /// Handle Transport and Create HttpSession
         /// </summary>
-        /// <param name="socket"></param>
+        /// <param name="transport">receive/send transport</param>
         /// <returns></returns>
-        private async Task CreateSessionAsync(Socket socket) {
+        public async Task CreateSessionAsync(ISimpleWEngine transport) {
 
-            // context
-            HttpSession session = new(this, socket, _bufferPool, Router);
-            RegisterSession(session);
+            HttpSession? session = null;
 
             try {
                 if (SslContext != null) {
-                    await session.UseHttps(SslContext).ConfigureAwait(false);
+                    ISimpleWTransportTlsFeature? tls = transport.GetFeature<ISimpleWTransportTlsFeature>()
+                                                       ?? throw new InvalidOperationException("The configured transport does not support server-side TLS.");
+                    transport = await tls.UseTlsAsync(SslContext).ConfigureAwait(false);
                 }
+
+                // context
+                session = new(this, transport, _bufferPool);
+                RegisterSession(session);
+
                 session.Connect();                                       // receive data
                 await session.ProcessAsync().ConfigureAwait(false);      // handle data
             }
@@ -878,7 +901,12 @@ namespace SimpleW {
                 _log.Warn("session error", ex);
             }
             finally {
-                CloseSession(session);
+                if (session != null) {
+                    CloseSession(session);
+                }
+                else {
+                    try { transport.Dispose(); } catch { }
+                }
             }
         }
 
@@ -1121,7 +1149,7 @@ namespace SimpleW {
         /// Client IP Resolver
         /// </summary>
         internal Func<HttpSession, IPAddress?> ClientIpResolver { get; private set; } = (session) => {
-            if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
+            if (session.RemoteEndPoint is not IPEndPoint ep) {
                 return null;
             }
             return ep.Address;
@@ -1197,70 +1225,6 @@ namespace SimpleW {
 
         #endregion security
 
-        #region socket
-
-        /// <summary>
-        /// This option will set the maximum length of the pending connections queue.
-        /// </summary>
-        public int ListenBacklog { get; set; } = 8192;
-
-        /// <summary>
-        /// Specifies whether the Socket is a dual-mode socket used for both IPv4 and IPv6.
-        /// Will work only if socket is bound on IPv6 address.
-        /// </summary>
-        public bool DualMode { get; set; }
-
-        /// <summary>
-        /// This option will enable/disable Nagle's algorithm for TCP protocol
-        /// </summary>
-        public bool TcpNoDelay { get; set; }
-
-        /// <summary>
-        /// This option will enable/disable SO_REUSEADDR if the OS support this feature
-        /// </summary>
-        public bool ReuseAddress { get; set; }
-
-        /// <summary>
-        /// This option will enable/disable SO_EXCLUSIVEADDRUSE if the OS support this feature
-        /// </summary>
-        public bool ExclusiveAddressUse { get; set; }
-
-        /// <summary>
-        /// This option will enable SO_REUSEPORT if the OS support this feature (linux only)
-        /// </summary>
-        public bool ReusePort { get; set; }
-
-        /// <summary>
-        /// This option will run the accept socket on each machine's core
-        /// </summary>
-        public bool AcceptPerCore { get; set; }
-
-        /// <summary>
-        /// This option will setup SO_KEEPALIVE if the OS support this feature
-        /// </summary>
-        public bool TcpKeepAlive { get; set; }
-
-        /// <summary>
-        /// The number of seconds a TCP connection will remain alive/idle before keepalive probes are sent to the remote
-        /// </summary>
-        public int TcpKeepAliveTime { get; set; } = -1;
-
-        /// <summary>
-        /// The number of seconds a TCP connection will wait for a keepalive response before sending another keepalive probe
-        /// </summary>
-        public int TcpKeepAliveInterval { get; set; } = -1;
-
-        /// <summary>
-        /// The number of TCP keep alive probes that will be sent before the connection is terminated
-        /// </summary>
-        public int TcpKeepAliveRetryCount { get; set; } = -1;
-
-        /// <summary>
-        /// Option: receive buffer size
-        /// </summary>
-        public int ReceiveBufferSize { get; set; } = 16 * 1024;
-
-        #endregion socket
 
         #region session
 
@@ -1317,39 +1281,10 @@ namespace SimpleW {
                 _log.Fatal(ex.Message, ex);
                 throw ex;
             }
-            if (ListenBacklog <= 0) {
-                ArgumentOutOfRangeException ex = new(nameof(ListenBacklog), "Must be > 0.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
-            if (ReceiveBufferSize <= 0) {
-                ArgumentOutOfRangeException ex = new(nameof(ReceiveBufferSize), "Must be > 0.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
             if (SessionTimeout != TimeSpan.MinValue && SessionTimeout < TimeSpan.Zero) {
                 ArgumentOutOfRangeException ex = new(nameof(SessionTimeout), "Must be >= 0 or TimeSpan.MinValue to disable.");
                 _log.Fatal(ex.Message, ex);
                 throw ex;
-            }
-
-            // sanity checks
-            if (ReuseAddress && ExclusiveAddressUse) {
-                ArgumentException ex = new($"{nameof(ReuseAddress)} and {nameof(ExclusiveAddressUse)} are mutually exclusive.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
-            if (ReusePort) {
-                if (!OperatingSystem.IsLinux()) {
-                    PlatformNotSupportedException ex = new($"{nameof(ReusePort)} is only supported on Linux.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-                if (!AcceptPerCore) {
-                    ArgumentException ex = new($"{nameof(ReusePort)} is only useful on Linux when {nameof(AcceptPerCore)} is enabled.");
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
             }
 
             // optimize properties

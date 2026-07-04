@@ -228,6 +228,91 @@ namespace test {
             }
         }
 
+        [Fact]
+        public void UseEngine_WithOptions_Should_Configure_Default_Engine() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, 5001);
+
+            server.UseEngine(options => {
+                options.TcpNoDelay = true;
+                options.ReuseAddress = true;
+            });
+
+            Check.That(server.Engine).IsInstanceOf<SimpleWEngine>();
+        }
+
+        [Fact]
+        public async Task UseEngine_WithOptions_AfterStart_Should_Throw() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            server.MapGet("/", () => new { ok = true });
+
+            await server.StartAsync();
+
+            Assert.Throws<InvalidOperationException>(() => server.UseEngine(options => {
+                options.TcpNoDelay = true;
+            }));
+
+            await server.StopAsync();
+            PortManager.ReleasePort(server.Port);
+        }
+
+        [Fact]
+        public void SimpleWEngineOptions_Should_Validate_Positive_ListenBacklog() {
+
+            var options = new SimpleWEngineOptions { ListenBacklog = 0 };
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => options.ValidateAndNormalize());
+        }
+
+        [Fact]
+        public void SimpleWEngineOptions_Should_Validate_Positive_ReceiveBufferSize() {
+
+            var options = new SimpleWEngineOptions { ReceiveBufferSize = 0 };
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => options.ValidateAndNormalize());
+        }
+
+        [Fact]
+        public void SimpleWEngineOptions_Should_Reject_ReuseAddress_With_ExclusiveAddressUse() {
+
+            var options = new SimpleWEngineOptions {
+                ReuseAddress = true,
+                ExclusiveAddressUse = true,
+            };
+
+            Assert.Throws<ArgumentException>(() => options.ValidateAndNormalize());
+        }
+
+        [Fact]
+        public void SimpleWEngineOptions_ReusePort_Should_Require_Linux() {
+
+            var options = new SimpleWEngineOptions {
+                ReusePort = true,
+                AcceptPerCore = true,
+            };
+
+            if (OperatingSystem.IsLinux()) {
+                options.ValidateAndNormalize();
+            }
+            else {
+                Assert.Throws<PlatformNotSupportedException>(() => options.ValidateAndNormalize());
+            }
+        }
+
+        [Fact]
+        public void SimpleWEngineOptions_ReusePort_Should_Require_AcceptPerCore_On_Linux() {
+
+            var options = new SimpleWEngineOptions { ReusePort = true };
+
+            if (OperatingSystem.IsLinux()) {
+                Assert.Throws<ArgumentException>(() => options.ValidateAndNormalize());
+            }
+            else {
+                Assert.Throws<PlatformNotSupportedException>(() => options.ValidateAndNormalize());
+            }
+        }
+
         private sealed class FakeEngine : ISimpleWEngine {
 
             public string Name => nameof(FakeEngine);
@@ -236,7 +321,7 @@ namespace test {
 
             public int StopCallCount { get; private set; }
 
-            public Task<EndPoint?> StartAsync(SimpleWServer server, SimpleWSServerOptions options, Func<Socket, Task> connectionHandler, CancellationToken cancellationToken = default) {
+            public Task<EndPoint?> StartAsync(SimpleWServer server, CancellationToken cancellationToken = default) {
                 StartCallCount++;
                 return Task.FromResult<EndPoint?>(server.EndPoint);
             }

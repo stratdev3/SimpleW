@@ -24,7 +24,7 @@ namespace ModuleName {
             // server
             SimpleWServer server = new(IPAddress.Any, 2015);
 
-            server.Configure(options => {
+            server.UseEngine(options => {
                 // network options for better performances
                 options.ReuseAddress = true;
                 options.TcpNoDelay = true;

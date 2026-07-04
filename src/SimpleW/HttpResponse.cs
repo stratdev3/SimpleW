@@ -141,7 +141,7 @@ namespace SimpleW {
         public int StatusCode => _statusCode;
 
         /// <summary>
-        /// Gets or sets the total number of bytes sent.
+        /// Gets or sets the total number of bytes reported as written by the transport.
         /// </summary>
         public long BytesSent { get; set; }
 

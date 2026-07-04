@@ -377,7 +377,7 @@ namespace SimpleW.Modules {
 
         /// <summary>
         /// Serializes all outbound frame writes for this connection.
-        /// This prevents concurrent sends from interleaving bytes on the underlying transport stream.
+        /// This prevents concurrent sends from interleaving bytes on the underlying transport.
         /// </summary>
         private readonly SemaphoreSlim _sendLock = new(1, 1);
 
@@ -386,6 +386,10 @@ namespace SimpleW.Modules {
         /// </summary>
         private readonly HttpSession _session;
 
+        /// <summary>
+        /// Underlying detached transport.
+        /// </summary>
+        private readonly ISimpleWEngine _transport;
         private readonly int _maxMessageBytes;
         private readonly TimeSpan? _pingInterval;
 
@@ -404,13 +408,14 @@ namespace SimpleW.Modules {
         /// <summary>
         /// Remote Endpoint
         /// </summary>
-        public EndPoint? RemoteEndPoint => _session.Socket.RemoteEndPoint;
+        public EndPoint? RemoteEndPoint => _transport.RemoteEndPoint;
 
         /// <summary>
         /// Constructor
         /// </summary>
         public WebSocketConnection(HttpSession session, int maxMessageBytes, TimeSpan? pingInterval) {
             _session = session;
+            _transport = session.Transport;
             _maxMessageBytes = maxMessageBytes;
             _pingInterval = pingInterval;
         }
@@ -883,11 +888,10 @@ namespace SimpleW.Modules {
         /// <param name="ct"></param>
         /// <returns></returns>
         private async ValueTask<Frame> ReadFrameAsync(CancellationToken ct) {
-            Stream s = _session.TransportStream;
 
             byte[] header = _pool.Rent(2);
             try {
-                if (!await ReadExactAsync(s, header.AsMemory(0, 2), ct).ConfigureAwait(false)) {
+                if (!await ReadExactAsync(_transport, header.AsMemory(0, 2), ct).ConfigureAwait(false)) {
                     return new Frame(FrameKind.EOF, false, 0, default);
                 }
 
@@ -904,7 +908,7 @@ namespace SimpleW.Modules {
                 else if (len7 == 126) {
                     byte[] ext = _pool.Rent(2);
                     try {
-                        if (!await ReadExactAsync(s, ext.AsMemory(0, 2), ct).ConfigureAwait(false)) {
+                        if (!await ReadExactAsync(_transport, ext.AsMemory(0, 2), ct).ConfigureAwait(false)) {
                             return new Frame(FrameKind.EOF, false, 0, default);
                         }
                         payloadLen = (ulong)((ext[0] << 8) | ext[1]);
@@ -916,7 +920,7 @@ namespace SimpleW.Modules {
                 else {
                     byte[] ext = _pool.Rent(8);
                     try {
-                        if (!await ReadExactAsync(s, ext.AsMemory(0, 8), ct).ConfigureAwait(false)) {
+                        if (!await ReadExactAsync(_transport, ext.AsMemory(0, 8), ct).ConfigureAwait(false)) {
                             return new Frame(FrameKind.EOF, false, 0, default);
                         }
                         payloadLen = ((ulong)ext[0] << 56)
@@ -941,7 +945,7 @@ namespace SimpleW.Modules {
                 byte[]? maskKey = null;
                 if (masked) {
                     maskKey = _pool.Rent(4);
-                    if (!await ReadExactAsync(s, maskKey.AsMemory(0, 4), ct).ConfigureAwait(false)) {
+                    if (!await ReadExactAsync(_transport, maskKey.AsMemory(0, 4), ct).ConfigureAwait(false)) {
                         _pool.Return(maskKey);
                         return new Frame(FrameKind.EOF, false, 0, default);
                     }
@@ -955,7 +959,7 @@ namespace SimpleW.Modules {
                 }
 
                 byte[] payloadBuf = _pool.Rent((int)payloadLen);
-                if (!await ReadExactAsync(s, payloadBuf.AsMemory(0, (int)payloadLen), ct).ConfigureAwait(false)) {
+                if (!await ReadExactAsync(_transport, payloadBuf.AsMemory(0, (int)payloadLen), ct).ConfigureAwait(false)) {
                     if (maskKey != null) {
                         _pool.Return(maskKey);
                     }
@@ -976,22 +980,30 @@ namespace SimpleW.Modules {
                 _pool.Return(header);
             }
         }
-
         /// <summary>
         /// ReadExactAsync
         /// </summary>
-        /// <param name="s"></param>
+        /// <param name="transport"></param>
         /// <param name="buffer"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        private static async ValueTask<bool> ReadExactAsync(Stream s, Memory<byte> buffer, CancellationToken ct) {
+        private static async ValueTask<bool> ReadExactAsync(ISimpleWEngine transport, Memory<byte> buffer, CancellationToken ct) {
+            ISimpleWTransportInput input = transport.Input;
             int readTotal = 0;
             while (readTotal < buffer.Length) {
-                int r = await s.ReadAsync(buffer.Slice(readTotal), ct).ConfigureAwait(false);
-                if (r <= 0) {
-                    return false;
+                SimpleWTransportReadResult result = await input.ReadAsync(ct).ConfigureAwait(false);
+                ReadOnlySequence<byte> source = result.Buffer;
+                if (source.Length == 0) {
+                    if (result.IsCompleted) {
+                        return false;
+                    }
+                    continue;
                 }
-                readTotal += r;
+
+                int toCopy = checked((int)Math.Min(buffer.Length - readTotal, source.Length));
+                source.Slice(0, toCopy).CopyTo(buffer.Slice(readTotal, toCopy).Span);
+                input.AdvanceTo(toCopy, toCopy);
+                readTotal += toCopy;
             }
             return true;
         }
