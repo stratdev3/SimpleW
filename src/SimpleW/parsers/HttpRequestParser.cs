@@ -7,7 +7,7 @@ namespace SimpleW.Parsers {
     /// <summary>
     /// HttpRequest Parser Instance
     /// </summary>
-    internal struct HttpRequestParser {
+    public struct HttpRequestParser {
 
         #region Constants & shared fields
 
