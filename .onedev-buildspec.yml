@@ -36,6 +36,18 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Engine.Ioxide
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Engine.Ioxide/
+        dotnet build -c @param:build_configuration@ SimpleW.Engine.Ioxide.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Helper.BasicAuth
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -270,6 +282,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Engine.Ioxide
+    sourcePath: src/SimpleW.Engine.Ioxide/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Engine.Ioxide.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.BasicAuth
     sourcePath: src/SimpleW.Helper.BasicAuth/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.BasicAuth.dll'
@@ -431,6 +449,20 @@ jobs:
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release SimpleW.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Engine.Ioxide
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Engine.Ioxide
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Engine.Ioxide.csproj; fi
+        dotnet pack -c Release SimpleW.Engine.Ioxide.csproj
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -710,6 +742,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Engine.Ioxide
+    sourcePath: src/SimpleW.Engine.Ioxide/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.BasicAuth
     sourcePath: src/SimpleW.Helper.BasicAuth/bin/Release/
     artifacts: '*.*nupkg'
@@ -831,6 +869,18 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Engine.Ioxide to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Engine.Ioxide/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
@@ -1135,6 +1185,83 @@ jobs:
       type: DefaultInterpreter
       commands: |
         cd src/SimpleW/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 3600
+- name: CD nuget SimpleW.Engine.Ioxide
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Engine.Ioxide
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Engine.Ioxide
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Engine.Ioxide.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Engine.Ioxide.csproj
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Engine.Ioxide
+    sourcePath: src/SimpleW.Engine.Ioxide/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Engine.Ioxide to nuget.org
+    runInContainer: true
+    image: docksdev/band:8.0
+    interpreter:
+      type: DefaultInterpreter
+      commands: |
+        cd src/SimpleW.Engine.Ioxide/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     useTTY: false
     condition: SUCCESSFUL
