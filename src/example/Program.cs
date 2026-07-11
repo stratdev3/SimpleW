@@ -338,11 +338,13 @@ namespace example.rewrite {
             //server.MapControllers<SubController>("/api");
             //server.MapController<HomeController>("/");
 
-            server.Configure(options => {
+            server.UseEngine(options => {
                 options.ReuseAddress = true;
                 options.TcpNoDelay = true;
                 options.TcpKeepAlive = true;
                 options.AcceptPerCore = true;
+            });
+            server.Configure(options => {
                 //options.SocketDisconnectPollInterval = TimeSpan.Zero;
                 options.SessionTimeout = TimeSpan.FromMinutes(10);
             });
