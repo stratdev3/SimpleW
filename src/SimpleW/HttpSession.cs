@@ -45,6 +45,11 @@ namespace SimpleW {
         private readonly ISimpleWEngine _transport;
 
         /// <summary>
+        /// Optional deferred flush feature exposed by the transport output.
+        /// </summary>
+        private readonly ISimpleWTransportDeferredFlushFeature? _deferredFlush;
+
+        /// <summary>
         /// Array pool used for buffers.
         /// </summary>
         private readonly ArrayPool<byte> _bufferPool;
@@ -138,6 +143,7 @@ namespace SimpleW {
 
             Server = server;
             _transport = transport;
+            _deferredFlush = transport.Output as ISimpleWTransportDeferredFlushFeature;
             _bufferPool = bufferPool;
 
             _request = new HttpRequest(_bufferPool, server.JsonEngine, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
@@ -573,6 +579,9 @@ namespace SimpleW {
                     long examinedRemaining = examinedTotal - advancedTotal;
                     if (!IsTransportOwned && (consumedRemaining != 0 || examinedRemaining != 0)) {
                         _transport.Input.AdvanceTo(consumedRemaining, examinedRemaining);
+                    }
+                    if (!IsTransportOwned && _deferredFlush != null) {
+                        await _deferredFlush.FlushDeferredAsync().ConfigureAwait(false);
                     }
                 }
                 #endregion parse & process

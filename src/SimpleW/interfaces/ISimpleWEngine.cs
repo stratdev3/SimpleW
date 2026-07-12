@@ -159,6 +159,20 @@ namespace SimpleW {
     }
 
     /// <summary>
+    /// Optional transport feature used to flush bytes staged during the current read batch.
+    /// </summary>
+    public interface ISimpleWTransportDeferredFlushFeature {
+
+        /// <summary>
+        /// Flushes bytes staged by previous WriteAsync calls.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        ValueTask FlushDeferredAsync(CancellationToken cancellationToken = default);
+
+    }
+
+    /// <summary>
     /// Optional transport feature used by the server to enable TLS before a session is created.
     /// </summary>
     public interface ISimpleWTransportTlsFeature {
