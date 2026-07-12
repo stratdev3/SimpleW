@@ -21,10 +21,12 @@ namespace SimpleW {
         /// Listener engines override this member.
         /// </summary>
         /// <param name="server"></param>
+        /// <param name="bufferPool"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         Task<EndPoint?> StartAsync(
             SimpleWServer server,
+            ArrayPool<byte> bufferPool,
             CancellationToken cancellationToken = default
         ) => throw new NotSupportedException($"{Name} cannot accept connections.");
 

@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Buffers;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Reflection;
@@ -321,7 +322,7 @@ namespace test {
 
             public int StopCallCount { get; private set; }
 
-            public Task<EndPoint?> StartAsync(SimpleWServer server, CancellationToken cancellationToken = default) {
+            public Task<EndPoint?> StartAsync(SimpleWServer server, ArrayPool<byte> bufferPool, CancellationToken cancellationToken = default) {
                 StartCallCount++;
                 return Task.FromResult<EndPoint?>(server.EndPoint);
             }

@@ -240,7 +240,7 @@ namespace SimpleW {
 
             try {
                 // refresh the endpoint property based on the actual endpoint created
-                EndPoint = await Engine.StartAsync(this, _lifetimeCts.Token).ConfigureAwait(false) ?? EndPoint;
+                EndPoint = await Engine.StartAsync(this, _bufferPool, _lifetimeCts.Token).ConfigureAwait(false) ?? EndPoint;
                 StartSessionTimeoutLoop(_lifetimeCts.Token);
 
                 IsStarted = true;
@@ -388,7 +388,7 @@ namespace SimpleW {
                     // callback
                     reconfigure(this);
                     // new listener + restart accept loop(s)
-                    EndPoint = await Engine.StartAsync(this, cancellationToken).ConfigureAwait(false) ?? EndPoint;
+                    EndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                     _log.Warn($"server reloaded at {_listenUrl}");
                 }
                 catch (Exception ex) {
@@ -399,7 +399,7 @@ namespace SimpleW {
                         EndPoint = oldEndPoint;
                         SslContext = oldSsl;
                         _log.Warn($"server restoring at {_listenUrl}", ex);
-                        EndPoint = await Engine.StartAsync(this, cancellationToken).ConfigureAwait(false) ?? EndPoint;
+                        EndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                         _log.Warn($"server restored at {_listenUrl}");
                     }
                     catch (Exception exx) {

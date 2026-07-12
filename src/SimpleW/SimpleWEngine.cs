@@ -35,6 +35,11 @@ namespace SimpleW {
         private readonly SimpleWEngineOptions _options;
 
         /// <summary>
+        /// Pool used by transports created by this engine while it is started.
+        /// </summary>
+        private ArrayPool<byte>? _bufferPool;
+
+        /// <summary>
         /// Engine display name.
         /// </summary>
         public string Name => nameof(SimpleWEngine);
@@ -51,13 +56,16 @@ namespace SimpleW {
         /// Start the engine and begin accepting connections.
         /// </summary>
         /// <param name="server"></param>
+        /// <param name="bufferPool"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public Task<EndPoint?> StartAsync(
             SimpleWServer server,
+            ArrayPool<byte> bufferPool,
             CancellationToken cancellationToken = default
         ) {
             ArgumentNullException.ThrowIfNull(server);
+            ArgumentNullException.ThrowIfNull(bufferPool);
 
             if (_server != null && !ReferenceEquals(_server, server)) {
                 throw new InvalidOperationException("This engine instance is already attached to another SimpleWServer.");
@@ -68,6 +76,7 @@ namespace SimpleW {
 
             SimpleWEngineOptions options = _options.ValidateAndNormalize();
             _server = server;
+            _bufferPool = bufferPool;
 
             try {
                 // create socket
@@ -169,6 +178,7 @@ namespace SimpleW {
 
             // release other ressources
             _server = null;
+            _bufferPool = null;
         }
 
         /// <summary>
@@ -206,13 +216,13 @@ namespace SimpleW {
         /// <returns>True when the accept loop can continue.</returns>
         private bool ProcessAcceptSocket(SocketAsyncEventArgs e) {
             if (e.SocketError == SocketError.Success && e.AcceptSocket != null) {
-                if (_server == null || _server.IsStopping) {
+                if (_server == null || _bufferPool == null || _server.IsStopping) {
                     try { e.AcceptSocket.Dispose(); }
                     catch { }
                     return CanAcceptMore();
                 }
                 // handle connection (create a HttpSession)
-                _ = _server.CreateSessionAsync(new SocketTransport(e.AcceptSocket, _options));
+                _ = _server.CreateSessionAsync(new SocketTransport(e.AcceptSocket, _options, _bufferPool));
             }
             else if (!(e.SocketError == SocketError.ConnectionAborted
                     || e.SocketError == SocketError.ConnectionRefused
@@ -377,6 +387,7 @@ namespace SimpleW {
     internal sealed class SocketTransport : ISimpleWEngine, ISimpleWTransportOutput {
 
         private readonly Socket _socket;
+        private readonly ArrayPool<byte> _bufferPool;
         private readonly BufferedTransportInput _input;
         private NetworkStream? _stream;
 
@@ -410,11 +421,13 @@ namespace SimpleW {
         /// </summary>
         /// <param name="socket"></param>
         /// <param name="options"></param>
+        /// <param name="bufferPool"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        public SocketTransport(Socket socket, SimpleWEngineOptions options) {
+        public SocketTransport(Socket socket, SimpleWEngineOptions options, ArrayPool<byte> bufferPool) {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
+            _bufferPool = bufferPool ?? throw new ArgumentNullException(nameof(bufferPool));
             ApplySocketOptions(options);
-            _input = new BufferedTransportInput(ReadSocketAsync, options.ReceiveBufferSize);
+            _input = new BufferedTransportInput(ReadSocketAsync, options.ReceiveBufferSize, _bufferPool);
         }
 
         private Stream GetStream() => _stream ??= new NetworkStream(_socket, ownsSocket: false);
@@ -695,6 +708,7 @@ namespace SimpleW {
                 // the sslStream is encapsulated in a StreamTransport
                 return new StreamTransport(
                     sslStream,
+                    _transport._bufferPool,
                     _transport.LocalEndPoint,
                     _transport.RemoteEndPoint,
                     isEncrypted: true,
@@ -747,7 +761,7 @@ namespace SimpleW {
         private readonly Stream _stream;
         private readonly ISimpleWEngine? _owner;
         private readonly BufferedTransportInput _input;
-        private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
+        private readonly ArrayPool<byte> _bufferPool;
 
         /// <summary>
         /// Local endpoint when this transport owns a connection endpoint.
@@ -778,6 +792,7 @@ namespace SimpleW {
         /// Constructor
         /// </summary>
         /// <param name="stream"></param>
+        /// <param name="bufferPool"></param>
         /// <param name="localEndPoint"></param>
         /// <param name="remoteEndPoint"></param>
         /// <param name="isEncrypted"></param>
@@ -786,6 +801,7 @@ namespace SimpleW {
         /// <exception cref="ArgumentNullException"></exception>
         public StreamTransport(
             Stream stream,
+            ArrayPool<byte> bufferPool,
             EndPoint? localEndPoint = null,
             EndPoint? remoteEndPoint = null,
             bool isEncrypted = false,
@@ -793,11 +809,12 @@ namespace SimpleW {
             int receiveBufferSize = 16 * 1024
         ) {
             _stream = stream ?? throw new ArgumentNullException(nameof(stream));
+            _bufferPool = bufferPool ?? throw new ArgumentNullException(nameof(bufferPool));
             LocalEndPoint = localEndPoint;
             RemoteEndPoint = remoteEndPoint;
             IsEncrypted = isEncrypted;
             _owner = owner;
-            _input = new BufferedTransportInput(ReadStreamAsync, receiveBufferSize);
+            _input = new BufferedTransportInput(ReadStreamAsync, receiveBufferSize, _bufferPool);
         }
 
         #region ssl
@@ -844,7 +861,7 @@ namespace SimpleW {
                 checkCertificateRevocation: sslContext.CheckCertificateRevocation
             ).ConfigureAwait(false);
 
-            return new StreamTransport(sslStream, LocalEndPoint, RemoteEndPoint, isEncrypted: true, owner: this, receiveBufferSize: _input.BufferSize);
+            return new StreamTransport(sslStream, _bufferPool, LocalEndPoint, RemoteEndPoint, isEncrypted: true, owner: this, receiveBufferSize: _input.BufferSize);
         }
 
         #endregion ssl
@@ -1109,7 +1126,7 @@ namespace SimpleW {
     internal sealed class BufferedTransportInput : ISimpleWTransportInput, IDisposable {
 
         private readonly Func<Memory<byte>, CancellationToken, ValueTask<int>> _readAsync;
-        private readonly ArrayPool<byte> _pool = ArrayPool<byte>.Shared;
+        private readonly ArrayPool<byte> _bufferPool;
         private byte[] _buffer;
         private int _start;
         private int _end;
@@ -1123,11 +1140,13 @@ namespace SimpleW {
         /// </summary>
         /// <param name="readAsync"></param>
         /// <param name="receiveBufferSize"></param>
+        /// <param name="bufferPool"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        public BufferedTransportInput(Func<Memory<byte>, CancellationToken, ValueTask<int>> readAsync, int receiveBufferSize) {
+        public BufferedTransportInput(Func<Memory<byte>, CancellationToken, ValueTask<int>> readAsync, int receiveBufferSize, ArrayPool<byte> bufferPool) {
             _readAsync = readAsync ?? throw new ArgumentNullException(nameof(readAsync));
+            _bufferPool = bufferPool ?? throw new ArgumentNullException(nameof(bufferPool));
             BufferSize = Math.Max(1, receiveBufferSize);
-            _buffer = _pool.Rent(BufferSize);
+            _buffer = _bufferPool.Rent(BufferSize);
         }
 
         /// <summary>
@@ -1217,11 +1236,11 @@ namespace SimpleW {
                 newSize = required;
             }
 
-            byte[] newBuffer = _pool.Rent(newSize);
+            byte[] newBuffer = _bufferPool.Rent(newSize);
             if (_end > 0) {
                 Buffer.BlockCopy(_buffer, 0, newBuffer, 0, _end);
             }
-            _pool.Return(_buffer);
+            _bufferPool.Return(_buffer);
             _buffer = newBuffer;
         }
 
@@ -1236,7 +1255,7 @@ namespace SimpleW {
             _buffer = Array.Empty<byte>();
             _start = 0;
             _end = 0;
-            _pool.Return(buffer);
+            _bufferPool.Return(buffer);
         }
 
     }
@@ -1292,6 +1311,7 @@ namespace SimpleW {
         /// <param name="checkConnectionClosed"></param>
         /// <param name="dispose"></param>
         /// <param name="receiveBufferSize"></param>
+        /// <param name="bufferPool"></param>
         public DelegateTransport(
             Func<Memory<byte>, CancellationToken, ValueTask<int>> readAsync,
             Func<ReadOnlyMemory<byte>, CancellationToken, ValueTask<long>> writeAsync,
@@ -1303,7 +1323,8 @@ namespace SimpleW {
             Func<Type, object?>? getFeature = null,
             Func<(bool supported, bool isClosed)>? checkConnectionClosed = null,
             Action? dispose = null,
-            int receiveBufferSize = 16 * 1024
+            int receiveBufferSize = 16 * 1024,
+            ArrayPool<byte>? bufferPool = null
         ) {
             ArgumentNullException.ThrowIfNull(readAsync);
             ArgumentNullException.ThrowIfNull(writeAsync);
@@ -1315,7 +1336,7 @@ namespace SimpleW {
             LocalEndPoint = localEndPoint;
             RemoteEndPoint = remoteEndPoint;
             IsEncrypted = isEncrypted;
-            Input = new BufferedTransportInput(readAsync, receiveBufferSize);
+            Input = new BufferedTransportInput(readAsync, receiveBufferSize, bufferPool ?? ArrayPool<byte>.Shared);
             Output = new DelegateTransportOutput(writeAsync);
         }
 
