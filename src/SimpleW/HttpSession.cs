@@ -458,6 +458,9 @@ namespace SimpleW {
                         consumedTotal += consumed;
                         long consumedDelta = consumedTotal - advancedTotal;
                         if (consumedDelta > 0) {
+                            // ReadAsync may return more than the current HTTP request:
+                            // [ HTTP request ][ next request / websocket bytes already received ]
+                            // Advance only the parsed HTTP part now, before a handler can take ownership of the transport.
                             _transport.Input.AdvanceTo(consumedDelta, consumedDelta);
                             advancedTotal = consumedTotal;
                         }
