@@ -141,6 +141,12 @@ export default defineConfig({
                     ]
                 },
                 {
+                    text: 'Engines',
+                    items: [
+                        { text: 'Ioxide', link: '/addons/engine-ioxide' },
+                    ]
+                },
+                {
                     text: 'Templates',
                     items: [
                         { text: 'SimpleW', link: '/addons/template-templates' },

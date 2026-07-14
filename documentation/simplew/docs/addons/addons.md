@@ -29,6 +29,13 @@ Helpers do not participate directly in the service lifecycle but provide reusabl
 Typical examples include utilities, helpers for request handling, configuration helpers, or small abstractions.
 
 
+## Engines
+
+**Engine addons** replace the network engine used by `SimpleWServer`.
+
+They keep the SimpleW application model intact while changing how connections are accepted, read, and written.
+
+
 ## Templates
 
 **Template addons** provide .NET project templates to quickly bootstrap SimpleW-based applications or addons.
