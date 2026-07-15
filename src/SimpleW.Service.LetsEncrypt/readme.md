@@ -38,13 +38,15 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            // once the this module load and certificate created
-            // it will listen to 443 and enable ssl
+            // once this module loads or creates a certificate,
+            // it switches to 443 and enables TLS on the selected engine
             server.UseLetsEncryptModule(options => {
                 options.Email = "letsenc@simplew.net";
                 options.Domains = [ "simplew.net", "www.simplew.net" ];
                 options.UseStaging = false;
                 options.HttpsPort = 443; // default value
+
+                // Custom engines can override OnEngineHttpsEnable / OnEngineHttpsDisable.
             });
 
             // run server

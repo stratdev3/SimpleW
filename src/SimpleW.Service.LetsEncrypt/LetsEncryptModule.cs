@@ -102,13 +102,33 @@ namespace SimpleW.Service.LetsEncrypt {
             public string? PfxPassword { get; set; }
 
             /// <summary>
-            /// If true, module will automatically call UseHttps(...) with the new certificate.
+            /// Constructor
+            /// </summary>
+            public LetsEncryptOptions() {
+                OnEngineHttpsEnable = DefaultOnEngineHttpsEnable;
+                OnEngineHttpsDisable = DefaultOnEngineHttpsDisable;
+            }
+
+            /// <summary>
+            /// If true, module will automatically configure HTTPS with the new certificate.
             /// If false, module only writes the PFX to disk.
             /// </summary>
             public bool AutoConfigureHttps { get; set; } = true;
 
             /// <summary>
-            /// TLS protocols to enable in SslContext
+            /// Callback used to enable HTTPS on the selected engine after a certificate is loaded or renewed.
+            /// The default implementation supports SimpleWEngine.
+            /// </summary>
+            public Action<SimpleWServer, X509Certificate2> OnEngineHttpsEnable { get; set; }
+
+            /// <summary>
+            /// Callback used to disable HTTPS on the selected engine before the HTTP-01 challenge.
+            /// The default implementation supports SimpleWEngine.
+            /// </summary>
+            public Action<SimpleWServer> OnEngineHttpsDisable { get; set; }
+
+            /// <summary>
+            /// TLS protocols used by the default SimpleWEngine callback.
             /// </summary>
             public SslProtocols Protocols { get; set; } = SslProtocols.Tls12 | SslProtocols.Tls13;
 
@@ -123,10 +143,36 @@ namespace SimpleW.Service.LetsEncrypt {
                                                                             : (X509KeyStorageFlags.EphemeralKeySet | X509KeyStorageFlags.Exportable);
 
             /// <summary>
-            /// (Optional) build a custom SslContext from the certificate.
-            /// If null, default SslContext is created with Protocols.
+            /// Default OnEngineHttpsEnable for SimpleWEngine
             /// </summary>
-            public Func<X509Certificate2, SslContext>? SslContextFactory { get; set; }
+            /// <param name="server"></param>
+            /// <param name="certificate"></param>
+            /// <exception cref="InvalidOperationException"></exception>
+            private void DefaultOnEngineHttpsEnable(SimpleWServer server, X509Certificate2 certificate) {
+                ArgumentNullException.ThrowIfNull(server);
+                ArgumentNullException.ThrowIfNull(certificate);
+
+                if (server.Engine is not SimpleWEngine engine) {
+                    throw new InvalidOperationException("OnEngineHttpsEnable must be configured for non-SimpleWEngine engines.");
+                }
+
+                engine.UseHttps(new SslContext(Protocols, certificate));
+            }
+
+            /// <summary>
+            /// Default OnEngineHttpsDisable for SimpleWEngine
+            /// </summary>
+            /// <param name="server"></param>
+            /// <exception cref="InvalidOperationException"></exception>
+            private static void DefaultOnEngineHttpsDisable(SimpleWServer server) {
+                ArgumentNullException.ThrowIfNull(server);
+
+                if (server.Engine is not SimpleWEngine engine) {
+                    throw new InvalidOperationException("OnEngineHttpsDisable must be configured for non-SimpleWEngine engines.");
+                }
+
+                engine.DisableHttps();
+            }
 
             /// <summary>
             /// Path used for ACME HTTP-01 challenge
@@ -155,6 +201,16 @@ namespace SimpleW.Service.LetsEncrypt {
                 }
                 if (HttpsPort < 1 || HttpsPort > 65535) {
                     ArgumentException ex = new($"{nameof(HttpsPort)} invalid port.");
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
+                }
+                if (OnEngineHttpsEnable == null) {
+                    ArgumentNullException ex = new(nameof(OnEngineHttpsEnable));
+                    _log.Fatal(ex.Message, ex);
+                    throw ex;
+                }
+                if (OnEngineHttpsDisable == null) {
+                    ArgumentNullException ex = new(nameof(OnEngineHttpsDisable));
                     _log.Fatal(ex.Message, ex);
                     throw ex;
                 }
@@ -434,12 +490,10 @@ namespace SimpleW.Service.LetsEncrypt {
 
                     _log.Info($"certificate : Subject = {cert.Subject}, NotAfter = {cert.NotAfter:O}, HasPrivateKey = {cert.HasPrivateKey}");
 
-                    SslContext ssl = _options.SslContextFactory?.Invoke(cert) ?? new SslContext(_options.Protocols, cert);
-
                     // Switch to HTTPS only if not already on the desired port/ssl.
                     await _server.ReloadListenerAsync(s => {
                         s.UsePort(_options.HttpsPort);
-                        s.UseHttps(ssl);
+                        _options.OnEngineHttpsEnable(s, cert);
                     }, ct).ConfigureAwait(false);
 
                     _log.Info("HTTPS listener configured");
@@ -460,7 +514,7 @@ namespace SimpleW.Service.LetsEncrypt {
                 }
 
                 await _server.ReloadListenerAsync(s => {
-                    s.DisableHttps();
+                    _options.OnEngineHttpsDisable(s);
                     s.UsePort(_options.HttpPort);
                 }, ct).ConfigureAwait(false);
 
@@ -586,11 +640,9 @@ namespace SimpleW.Service.LetsEncrypt {
 
                     // Switch back to HTTPS with fresh cert
                     if (_options.AutoConfigureHttps && _server != null) {
-                        SslContext ssl = _options.SslContextFactory?.Invoke(cert) ?? new SslContext(_options.Protocols, cert);
-
                         await _server.ReloadListenerAsync(s => {
                             s.UsePort(_options.HttpsPort);
-                            s.UseHttps(ssl);
+                            _options.OnEngineHttpsEnable(s, cert);
                         }, ct).ConfigureAwait(false);
 
                         _log.Info("listener switched back to HTTPS");
