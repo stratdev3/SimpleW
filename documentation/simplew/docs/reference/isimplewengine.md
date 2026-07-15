@@ -87,10 +87,9 @@ ValueTask<long> WriteAsync(ArraySegment<byte>[] segments, CancellationToken canc
 
 ## Optional TLS Feature
 
-If the server is configured with `UseHttps(...)`, the accepted connection must expose `ISimpleWTransportTlsFeature` through `GetFeature<ISimpleWTransportTlsFeature>()`. SimpleW calls `UseTlsAsync(...)` before creating the `HttpSession`.
+TLS handshakes are owned by listener engines before they call `SimpleWServer.CreateSessionAsync(...)`. An accepted encrypted transport can expose `ISimpleWTransportTlsFeature` through `GetFeature<ISimpleWTransportTlsFeature>()` when it has TLS metadata such as a client certificate.
 
 ```csharp
-ValueTask<ISimpleWEngine> UseTlsAsync(SslContext sslContext, CancellationToken cancellationToken = default);
 X509Certificate2? ClientCertificate { get; }
 ```
 

@@ -86,15 +86,17 @@ The URL is parsed and converted to an `IPEndPoint`.
 
 ## Enabling HTTPS
 
-HTTPS is configured directly on the SimpleWServer, using its native HTTPS support.
+HTTPS is configured by the selected SimpleW engine. With the default socket engine, assign an `SslContext` through `SimpleWEngineOptions`.
 
 To listen on HTTPS :
 1. Keep the URL configuration (`http://`) to define the IP and port
-2. Enable HTTPS on the server during configuration with [`UseHttps()`](../guide/ssl-certificate.md)
+2. Configure TLS on the engine during startup
 
-```csharp{2}
+```csharp{2-4}
 builder.ConfigureSimpleW(server => {
-    server.UseHttps(); // native SimpleW HTTPS support, see documentation
+    server.UseEngine(options => {
+        options.SslContext = sslContext;
+    });
 
     server.MapGet("/hello", () => {
         return new { message = "Hello World !" };

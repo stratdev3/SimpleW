@@ -33,8 +33,10 @@ namespace Sample {
             // create a context with certificate, support for password protection
             var context = new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert, clientCertificateRequired: false, checkCertificateRevocation: false);
 
-            // assign context
-            server.UseHttps(context);
+            // assign context to the default socket engine
+            server.UseEngine(options => {
+                options.SslContext = context;
+            });
 
             // serve static content
             server.UseStaticFilesModule(options => {
@@ -53,7 +55,7 @@ namespace Sample {
 ::: tip NOTE
 The `clientCertificateRequired` and `checkCertificateRevocation` allows better control over the SSL Context, 
 and they are set to `false` for testing purposes.
-Take a look at the [UseHttps](../reference/simplewserver.md#ssl-certificate) for more information.
+Take a look at [`SimpleWEngineOptions`](../reference/simplewengineoptions.md#tls) for more information.
 :::
 
 
@@ -96,8 +98,10 @@ namespace Sample {
             // create a context with certificate, support for password protection
             var context = new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert, clientCertificateRequired: false, checkCertificateRevocation: false);
 
-            // assign context
-            server.UseHttps(context);
+            // assign context to the default socket engine
+            server.UseEngine(options => {
+                options.SslContext = context;
+            });
 
             // minimal api
             server.MapGet("/", () => {
@@ -214,13 +218,15 @@ This uses the special method `ReloadListenerAsync` to allow such a configuration
 
 ```csharp
 await server.ReloadListenerAsync(s => {
-    s.DisableHttps();
+    if (s.Engine is SimpleWEngine engine) {
+        engine.DisableHttps();
+    }
     s.UsePort(80);
 });
 ```
 
 ::: info
-You can use the same logic to `UseHttps()` after you have already started your server without it.
+You can use the same reload shape with `SimpleWEngine.UseHttps(...)` after you have already started your server without it.
 
 :::
 

@@ -195,18 +195,18 @@ Calling `StopAsync()` multiple times is safe (it returns early if already stoppe
 
 - The server must already be started, otherwise it throws.
 - It temporarily stops accepting new connections (closes the listen socket), applies your `reconfigure(server)` callback, then starts listening again.
-- Existing sessions are not the listener: reloading focuses on the **accept loop + endpoint/TLS**.
+- Existing sessions are not the listener: reloading focuses on the **accept loop + endpoint**. Engine-specific TLS settings can also be changed if the selected engine exposes that API.
 
 ```csharp
 await server.ReloadListenerAsync(s => {
     s.UseAddress(IPAddress.Any);
     s.UsePort(9090);
-    // Optional: switch TLS config too
-    // s.UseHttps(newSslContext);
+    // Optional for the default socket engine:
+    // if (s.Engine is SimpleWEngine engine) engine.UseHttps(newSslContext);
 });
 ```
 
-If the reload fails, it will attempt a best-effort rollback to the previous endpoint/TLS
+If the reload fails, it will attempt a best-effort rollback to the previous endpoint
 and re-listen, then rethrow the exception.
 
 
@@ -231,6 +231,5 @@ Most configuration methods return `SimpleWServer`, so you can chain them :
 await new SimpleWServer(IPAddress.Any, 8080)
     .Configure(options => { /* ... */ })
     .MapGet("/", ctx => "Hello")
-    // .UseHttps(sslContext)
     .RunAsync();
 ```

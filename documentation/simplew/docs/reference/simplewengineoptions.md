@@ -98,4 +98,19 @@ public int TcpKeepAliveRetryCount { get; set; } = -1;
 public int ReceiveBufferSize { get; set; } = 16 * 1024;
 ```
 
+
+## TLS
+
+The default socket engine owns TLS. Configure `SslContext` on `SimpleWEngineOptions`; accepted sockets are wrapped in `SslStream` before the `HttpSession` is created.
+
+```csharp
+server.UseEngine(options => {
+    options.SslContext = sslContext;
+});
+```
+
+```csharp
+public SslContext? SslContext { get; set; }
+```
+
 `ReuseAddress` and `ExclusiveAddressUse` are mutually exclusive. `ReusePort` is Linux-only and requires `AcceptPerCore`.

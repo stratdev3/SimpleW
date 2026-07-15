@@ -8,11 +8,13 @@ This class exposes a **fluent API**, which means you can chain all its methods :
 // instanciate
 var server = new SimpleWServer(IPAddress.Any, 2015);
 // configure & run
-await server.UseHttps(sslContext)
-            .MapGet("/api/hello/world", () => {
-              return new { message = "Hello World !" };
-            })
-            .RunAsync();
+server.UseEngine(options => {
+          options.SslContext = sslContext;
+      })
+      .MapGet("/api/hello/world", () => {
+          return new { message = "Hello World !" };
+      })
+      .RunAsync();
 ```
 
 
@@ -166,7 +168,7 @@ public async Task StopAsync()
 
 ```csharp
 /// <summary>
-/// Reload the listener socket (port and/or TLS) without stopping the server lifetime.
+/// Reload the listener socket without stopping the server lifetime.
 /// Does NOT close existing client sessions; only affects new incoming connections.
 /// </summary>
 public async Task ReloadListenerAsync(Action<SimpleWServer> reconfigure, CancellationToken cancellationToken = default)
@@ -500,41 +502,16 @@ You can learn how to change the [`JsonEngine`](../guide/response.md#json-engine)
 :::
 
 
-## SSL Certificate
+## TLS
+
+`SimpleWServer` does not perform TLS handshakes. TLS belongs to the selected engine.
+
+For the default socket engine, configure [`SimpleWEngineOptions.SslContext`](./simplewengineoptions.md#tls):
 
 ```csharp
-/// <summary>
-/// Add SslContext
-/// </summary>
-/// <param name="sslContext"></param>
-/// <returns></returns>
-public SimpleWServer UseHttps(SslContext sslContext)
-```
-
-This methode takes an `SslContext` and use it to run an HTTPS server.
-
-::: code-group
-
-```csharp [NET8]
-X509Certificate2 cert = new(@"certifcate.pfx", "password");
-new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
-```
-
-```csharp [NET9 or above]
-X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(@"certifcate.pfx", "password");
-new SslContext(SslProtocols.Tls12 | SslProtocols.Tls13, cert);
-```
-
-:::
-
-
-```csharp
-/// <summary>
-/// Disable SslContext
-/// </summary>
-/// <returns></returns>
-/// <exception cref="InvalidOperationException"></exception>
-public SimpleWServer DisableHttps() {
+server.UseEngine(options => {
+    options.SslContext = sslContext;
+});
 ```
 
 See an [example](../guide/ssl-certificate.md#example-for-local-test).
