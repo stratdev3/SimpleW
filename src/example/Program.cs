@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
@@ -75,7 +75,9 @@ namespace example.rewrite {
                     clientCertificateRequired: false,
                     checkCertificateRevocation: false
                 );
-                server.UseHttps(sslContext);
+                server.UseEngine(options => {
+                    options.SslContext = sslContext;
+                });
             }
 #pragma warning restore CS0162 // Code inaccessible détecté
 
@@ -338,12 +340,12 @@ namespace example.rewrite {
             //server.MapControllers<SubController>("/api");
             //server.MapController<HomeController>("/");
 
-            server.UseEngine(options => {
-                options.ReuseAddress = true;
-                options.TcpNoDelay = true;
-                options.TcpKeepAlive = true;
-                options.AcceptPerCore = true;
-            });
+            //server.UseEngine(options => {
+            //    options.ReuseAddress = true;
+            //    options.TcpNoDelay = true;
+            //    options.TcpKeepAlive = true;
+            //    options.AcceptPerCore = true;
+            //});
             server.Configure(options => {
                 //options.SocketDisconnectPollInterval = TimeSpan.Zero;
                 options.SessionTimeout = TimeSpan.FromMinutes(10);
