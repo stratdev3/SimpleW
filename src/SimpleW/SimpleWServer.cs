@@ -140,7 +140,13 @@ namespace SimpleW {
         /// <summary>
         /// listen url
         /// </summary>
-        private string _listenUrl => $"http{(SslContext != null ? "s" : "")}://{Address?.ToString()}{((SslContext != null && Port == 443) || (SslContext == null && Port == 80) ? "" : $":{Port}")}";
+        private string _listenUrl {
+            get {
+                string scheme = Engine.IsEncrypted ? "https" : "http";
+                bool defaultPort = (Engine.IsEncrypted && Port == 443) || (!Engine.IsEncrypted && Port == 80);
+                return $"{scheme}://{Address?.ToString()}{(defaultPort ? "" : $":{Port}")}";
+            }
+        }
 
         #endregion endpoint
 
@@ -350,11 +356,13 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Reload the listener socket (port and/or TLS) without stopping the server lifetime.
+        /// Reload the listener socket without stopping the server lifetime.
         /// Does NOT close existing client sessions; only affects new incoming connections.
         /// <example>
         /// await server.ReloadListenerAsync(s => {
-        ///     s.DisableHttps();
+        ///     if (s.Engine is SimpleWEngine engine) {
+        ///         engine.UseHttps(newSslContext);
+        ///     }
         ///     s.UsePort(80);
         /// });
         /// </example>
@@ -373,7 +381,6 @@ namespace SimpleW {
 
             await _listenerReloadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             EndPoint? oldEndPoint = EndPoint;
-            SslContext? oldSsl = SslContext;
             try {
                 if (!IsStarted || IsStopping) {
                     return;
@@ -397,7 +404,6 @@ namespace SimpleW {
                     try {
                         await Engine.StopAsync(this, cancellationToken).ConfigureAwait(false);
                         EndPoint = oldEndPoint;
-                        SslContext = oldSsl;
                         _log.Warn($"server restoring at {_listenUrl}", ex);
                         EndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                         _log.Warn($"server restored at {_listenUrl}");
@@ -823,45 +829,6 @@ namespace SimpleW {
 
         #endregion map controllers
 
-        #region sslcontext
-
-        /// <summary>
-        /// SslContext
-        /// </summary>
-        public SslContext? SslContext { get; private set; }
-
-        /// <summary>
-        /// Add SslContext
-        /// </summary>
-        /// <param name="sslContext"></param>
-        /// <returns></returns>
-        public SimpleWServer UseHttps(SslContext sslContext) {
-            if (IsStarted && !IsListenerReloading) {
-                InvalidOperationException ex = new("SslContext must be configured before starting the server.");
-                _log.Warn(ex.Message, ex);
-                throw ex;
-            }
-            SslContext = sslContext;
-            return this;
-        }
-
-        /// <summary>
-        /// Disable SslContext
-        /// </summary>
-        /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        public SimpleWServer DisableHttps() {
-            if (IsStarted && !IsListenerReloading) {
-                InvalidOperationException ex = new("SslContext must be configured before starting the server.");
-                _log.Warn(ex.Message, ex);
-                throw ex;
-            }
-            SslContext = null;
-            return this;
-        }
-
-        #endregion sslcontext
-
         #region session
 
         /// <summary>
@@ -884,12 +851,6 @@ namespace SimpleW {
             HttpSession? session = null;
 
             try {
-                if (SslContext != null) {
-                    ISimpleWTransportTlsFeature? tls = transport.GetFeature<ISimpleWTransportTlsFeature>()
-                                                       ?? throw new InvalidOperationException("The configured transport does not support server-side TLS.");
-                    transport = await tls.UseTlsAsync(SslContext).ConfigureAwait(false);
-                }
-
                 // context
                 session = new(this, transport, _bufferPool);
                 RegisterSession(session);

@@ -15,6 +15,11 @@ namespace SimpleW {
     public class SimpleWEngine : ISimpleWEngine {
 
         /// <summary>
+        /// Logger
+        /// </summary>
+        private static readonly ILogger _log = new Logger<SimpleWEngine>();
+
+        /// <summary>
         /// Active listen socket.
         /// </summary>
         private Socket? _listenSocket;
@@ -221,8 +226,8 @@ namespace SimpleW {
                     catch { }
                     return CanAcceptMore();
                 }
-                // handle connection (create a HttpSession)
-                _ = _server.CreateSessionAsync(new SocketTransport(e.AcceptSocket, _options, _bufferPool));
+                // handle connection (prepare transport, then create a HttpSession)
+                _ = CreateSocketSessionAsync(e.AcceptSocket, _server, _bufferPool);
             }
             else if (!(e.SocketError == SocketError.ConnectionAborted
                     || e.SocketError == SocketError.ConnectionRefused
@@ -235,6 +240,32 @@ namespace SimpleW {
 
             // accept new client (except if socket is closed)
             return CanAcceptMore();
+        }
+
+        /// <summary>
+        /// Prepare an accepted socket according to this engine configuration, then pass it to SimpleW.
+        /// </summary>
+        /// <param name="socket"></param>
+        /// <param name="server"></param>
+        /// <param name="bufferPool"></param>
+        /// <returns></returns>
+        private async Task CreateSocketSessionAsync(Socket socket, SimpleWServer server, ArrayPool<byte> bufferPool) {
+            ISimpleWEngine? transport = null;
+            try {
+                SocketTransport socketTransport = new(socket, _options, bufferPool);
+                transport = socketTransport;
+
+                if (_options.SslContext != null) {
+                    transport = await socketTransport.CreateTlsTransportAsync(_options.SslContext).ConfigureAwait(false);
+                }
+
+                await server.CreateSessionAsync(transport).ConfigureAwait(false);
+            }
+            catch (Exception ex) {
+                _log.Warn("session error", ex);
+                try { transport?.Dispose(); }
+                catch { }
+            }
         }
 
         /// <summary>
@@ -262,6 +293,45 @@ namespace SimpleW {
                    && _server != null
                    && !_server.IsStopping;
         }
+
+        #region ssl
+
+        /// <summary>
+        /// Gets whether this engine already exposes encrypted bytes.
+        /// </summary>
+        public bool IsEncrypted => _options.SslContext != null;
+
+        /// <summary>
+        /// Configure TLS for newly accepted sockets.
+        /// </summary>
+        /// <param name="sslContext"></param>
+        /// <returns></returns>
+        public SimpleWEngine UseHttps(SslContext sslContext) {
+            ArgumentNullException.ThrowIfNull(sslContext);
+            if (_listenSocket != null) {
+                InvalidOperationException ex = new("TLS must be configured while the engine listener is stopped.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
+            }
+            _options.SslContext = sslContext;
+            return this;
+        }
+
+        /// <summary>
+        /// Disable TLS for newly accepted sockets.
+        /// </summary>
+        /// <returns></returns>
+        public SimpleWEngine DisableHttps() {
+            if (_listenSocket != null) {
+                InvalidOperationException ex = new("TLS must be configured while the engine listener is stopped.");
+                _log.Warn(ex.Message, ex);
+                throw ex;
+            }
+            _options.SslContext = null;
+            return this;
+        }
+
+        #endregion ssl
 
         /// <summary>
         /// Releases listener resources.
@@ -342,6 +412,12 @@ namespace SimpleW {
         /// Option: receive buffer size
         /// </summary>
         public int ReceiveBufferSize { get; set; } = 16 * 1024;
+
+        /// <summary>
+        /// Optional TLS configuration for the default socket engine.
+        /// When set, accepted sockets are wrapped in SslStream before SimpleW creates the HttpSession.
+        /// </summary>
+        public SslContext? SslContext { get; set; }
 
         /// <summary>
         /// Check Properties and return
@@ -640,63 +716,33 @@ namespace SimpleW {
         }
 
         /// <summary>
-        /// Cache for GetFeature with ISimpleWTransportTlsFeature
-        /// </summary>
-        private SocketTransportTlsFeature? _tlsFeature;
-
-        /// <summary>
         /// GetFeature
         /// </summary>
         /// <typeparam name="TFeature"></typeparam>
         /// <returns></returns>
-        public TFeature? GetFeature<TFeature>() where TFeature : class {
-            if (typeof(TFeature) == typeof(ISimpleWTransportTlsFeature)) {
-                return (_tlsFeature ??= new SocketTransportTlsFeature(this)) as TFeature;
-            }
-            return null;
-        }
+        public TFeature? GetFeature<TFeature>() where TFeature : class => null;
 
         #endregion process
 
         #region ssl
 
         /// <summary>
-        /// Hack to return a real SslStream
+        /// Wrap this socket transport in an SslStream before the HttpSession is created.
         /// </summary>
-        private sealed class SocketTransportTlsFeature : ISimpleWTransportTlsFeature {
+        /// <param name="sslContext"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async ValueTask<ISimpleWEngine> CreateTlsTransportAsync(SslContext sslContext, CancellationToken cancellationToken = default) {
+            ArgumentNullException.ThrowIfNull(sslContext);
 
-            private readonly SocketTransport _transport;
+            // SslStream above NetworkStream
+            SslStream sslStream = new(
+                innerStream: GetStream(),
+                leaveInnerStreamOpen: false,
+                userCertificateValidationCallback: sslContext.ClientCertificateValidation
+            );
 
-            /// <summary>
-            /// Constructor
-            /// </summary>
-            /// <param name="transport"></param>
-            public SocketTransportTlsFeature(SocketTransport transport) {
-                _transport = transport;
-            }
-
-            /// <summary>
-            /// only to stick to the interface,
-            /// the real ClientCertificate will be reach from the return of UseTlsAsync()
-            /// </summary>
-            public X509Certificate2? ClientCertificate => null;
-
-            /// <summary>
-            /// Return an Stream Transport with SSL inside
-            /// </summary>
-            /// <param name="sslContext"></param>
-            /// <param name="cancellationToken"></param>
-            /// <returns></returns>
-            public async ValueTask<ISimpleWEngine> UseTlsAsync(SslContext sslContext, CancellationToken cancellationToken = default) {
-                ArgumentNullException.ThrowIfNull(sslContext);
-
-                // SslStream above NetworkStream
-                SslStream sslStream = new(
-                    innerStream: _transport.GetStream(),
-                    leaveInnerStreamOpen: false,
-                    userCertificateValidationCallback: sslContext.ClientCertificateValidation
-                );
-
+            try {
                 // server side TLS Handshake
                 await sslStream.AuthenticateAsServerAsync(
                     serverCertificate: sslContext.Certificate,
@@ -704,19 +750,23 @@ namespace SimpleW {
                     enabledSslProtocols: sslContext.Protocols,
                     checkCertificateRevocation: sslContext.CheckCertificateRevocation
                 ).ConfigureAwait(false);
-
-                // the sslStream is encapsulated in a StreamTransport
-                return new StreamTransport(
-                    sslStream,
-                    _transport._bufferPool,
-                    _transport.LocalEndPoint,
-                    _transport.RemoteEndPoint,
-                    isEncrypted: true,
-                    owner: _transport,
-                    receiveBufferSize: _transport._input.BufferSize
-                );
+            }
+            catch {
+                try { sslStream.Dispose(); }
+                catch { }
+                throw;
             }
 
+            // the sslStream is encapsulated in a StreamTransport
+            return new StreamTransport(
+                sslStream,
+                _bufferPool,
+                LocalEndPoint,
+                RemoteEndPoint,
+                isEncrypted: true,
+                owner: this,
+                receiveBufferSize: _input.BufferSize
+            );
         }
 
         #endregion ssl
@@ -756,7 +806,7 @@ namespace SimpleW {
     /// <summary>
     /// Stream-backed transport, used mainly after TLS wrapping.
     /// </summary>
-    internal sealed class StreamTransport : ISimpleWEngine, ISimpleWTransportTlsFeature, ISimpleWTransportOutput {
+    internal sealed class StreamTransport : ISimpleWEngine, ISimpleWTransportOutput, ISimpleWTransportTlsFeature {
 
         private readonly Stream _stream;
         private readonly ISimpleWEngine? _owner;
@@ -835,33 +885,6 @@ namespace SimpleW {
                 }
                 return null;
             }
-        }
-
-        /// <summary>
-        /// Return an SslStream
-        /// </summary>
-        /// <param name="sslContext"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async ValueTask<ISimpleWEngine> UseTlsAsync(SslContext sslContext, CancellationToken cancellationToken = default) {
-            if (IsEncrypted) {
-                return this;
-            }
-
-            SslStream sslStream = new(
-                innerStream: _stream,
-                leaveInnerStreamOpen: false,
-                userCertificateValidationCallback: sslContext.ClientCertificateValidation
-            );
-
-            await sslStream.AuthenticateAsServerAsync(
-                serverCertificate: sslContext.Certificate,
-                clientCertificateRequired: sslContext.ClientCertificateRequired,
-                enabledSslProtocols: sslContext.Protocols,
-                checkCertificateRevocation: sslContext.CheckCertificateRevocation
-            ).ConfigureAwait(false);
-
-            return new StreamTransport(sslStream, _bufferPool, LocalEndPoint, RemoteEndPoint, isEncrypted: true, owner: this, receiveBufferSize: _input.BufferSize);
         }
 
         #endregion ssl

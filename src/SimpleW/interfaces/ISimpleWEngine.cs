@@ -175,17 +175,10 @@ namespace SimpleW {
     }
 
     /// <summary>
-    /// Optional transport feature used by the server to enable TLS before a session is created.
+    /// Optional transport feature used to expose TLS metadata for an already prepared transport.
+    /// TLS handshakes are owned by listener engines before they create the HTTP session.
     /// </summary>
     public interface ISimpleWTransportTlsFeature {
-
-        /// <summary>
-        /// Upgrades the current transport to TLS.
-        /// </summary>
-        /// <param name="sslContext"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        ValueTask<ISimpleWEngine> UseTlsAsync(SslContext sslContext, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Client certificate when provided by the peer.

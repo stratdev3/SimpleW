@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Runtime.ConstrainedExecution;
 using System.Security.Authentication;
@@ -49,7 +49,9 @@ namespace test {
 
             // server
             var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
-            server.UseHttps(sslContext);
+            server.UseEngine(options => {
+                options.SslContext = sslContext;
+            });
             server.MapGet("/", () => {
                 return new { message = "Hello World !" };
             });
