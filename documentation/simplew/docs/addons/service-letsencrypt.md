@@ -48,8 +48,10 @@ See the [changelog](./service-letsencrypt-changelog.md)
 | RenewBefore | `30 days` | Renew when certificate expires in less than this duration. |
 | CheckEvery | `12 hours` | How often the renewal loop checks certificate status. |
 | PfxPassword | `null` | Optional password used when exporting/storing PFX. |
-| AutoConfigureHttps | `true` | If `true`, the module configures SimpleW HTTPS automatically once a certificate is available. |
-| Protocols | `Tls12 | Tls13` | Enabled TLS protocols for the configured SSL context. |
+| AutoConfigureHttps | `true` | If `true`, the module calls `OnEngineHttpsEnable` / `OnEngineHttpsDisable` to configure HTTPS once a certificate is available. |
+| OnEngineHttpsEnable | Default `SimpleWEngine` callback | Called with `(SimpleWServer server, X509Certificate2 certificate)` to enable HTTPS on the selected engine. |
+| OnEngineHttpsDisable | Default `SimpleWEngine` callback | Called with `(SimpleWServer server)` to disable HTTPS before HTTP-01 challenge handling. |
+| Protocols | `Tls12 | Tls13` | Enabled TLS protocols used by the default `SimpleWEngine` callback. |
 | KeyStorageFlags | OS-dependent | How private keys are stored/loaded in `X509Certificate2`. Default is OS-aware (Windows user/machine key store, Linux/macOS ephemeral + exportable). |
 
 
@@ -125,13 +127,29 @@ The loop:
 
 If `AutoConfigureHttps` is enabled:
 
-- once a valid certificate is available, the module configures SimpleW's HTTPS settings automatically
-- TLS protocols are controlled by `Protocols`
+- once a valid certificate is available, the module calls `OnEngineHttpsEnable(server, certificate)`;
+- before HTTP-01 challenge handling, the module calls `OnEngineHttpsDisable(server)`;
+- by default, those callbacks configure the default `SimpleWEngine` using `X509Certificate2` and `SslContext`;
+- TLS protocols are controlled by `Protocols` only for the default `SimpleWEngine` callback.
+
+If you use another engine, override the callbacks:
+
+```csharp
+server.UseLetsEncryptModule(options => {
+    options.OnEngineHttpsEnable = (server, certificate) => {
+        // Convert/apply X509Certificate2 for your engine.
+    };
+
+    options.OnEngineHttpsDisable = server => {
+        // Disable HTTPS for your engine.
+    };
+});
+```
 
 If you disable `AutoConfigureHttps`:
 
-- the module still obtains/renews certificates
-- you are responsible for loading/applying the certificate to your TLS stack
+- the module still obtains/renews certificates;
+- you are responsible for loading/applying the certificate to your TLS stack.
 
 
 ## Key storage behavior
