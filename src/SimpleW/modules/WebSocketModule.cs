@@ -123,13 +123,42 @@ namespace SimpleW.Modules {
             if (KeepAliveInterval.HasValue && KeepAliveInterval.Value <= TimeSpan.Zero) {
                 KeepAliveInterval = null;
             }
+            if (string.IsNullOrWhiteSpace(RequiredSubProtocol)) {
+                RequiredSubProtocol = null;
+            }
+            else {
+                RequiredSubProtocol = RequiredSubProtocol.Trim();
+                if (!IsValidProtocolToken(RequiredSubProtocol)) {
+                    throw new ArgumentException("WebSocketOptions.RequiredSubProtocol must be a valid HTTP token.", nameof(RequiredSubProtocol));
+                }
+            }
             if (string.IsNullOrWhiteSpace(AutoJoinRoom)) {
                 AutoJoinRoom = null;
             }
             return this;
         }
 
+        /// <summary>
+        /// IsValidProtocolToken
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private static bool IsValidProtocolToken(string value) {
+            foreach (char c in value) {
+                if (c <= 0x20 || c >= 0x7F) {
+                    return false;
+                }
+
+                if (c is '(' or ')' or '<' or '>' or '@' or ',' or ';' or ':' or '\\' or '"' or '/' or '[' or ']' or '?' or '=' or '{' or '}') {
+                    return false;
+                }
+            }
+
+            return value.Length > 0;
+        }
+
         internal string PrefixWildCard => Prefix + "/*";
+
     }
 
     /// <summary>
@@ -213,7 +242,7 @@ namespace SimpleW.Modules {
             // subprotocol selection
             string? selectedProtocol = null;
             if (!string.IsNullOrWhiteSpace(_options.RequiredSubProtocol)) {
-                if (!ContainsProtocol(wsProtocols, _options.RequiredSubProtocol!)) {
+                if (!ContainsHeaderToken(wsProtocols, _options.RequiredSubProtocol!, StringComparison.Ordinal)) {
                     await session.Response
                                  .Status(400)
                                  .AddHeader("Connection", "close")
@@ -239,6 +268,7 @@ namespace SimpleW.Modules {
             }
 
             await session.Response.SendAsync().ConfigureAwait(false);
+            await FlushDeferredAsync(session.Transport.Output).ConfigureAwait(false);
 
             if (!session.TryTakeTransportOwnership()) {
                 try {
@@ -286,6 +316,19 @@ namespace SimpleW.Modules {
         }
 
         /// <summary>
+        /// ISimpleWTransportDeferredFlushFeature
+        /// </summary>
+        /// <param name="output"></param>
+        /// <returns></returns>
+        private static ValueTask FlushDeferredAsync(ISimpleWTransportOutput output) {
+            if (output is ISimpleWTransportDeferredFlushFeature deferredFlush) {
+                return deferredFlush.FlushDeferredAsync();
+            }
+
+            return ValueTask.CompletedTask;
+        }
+
+        /// <summary>
         /// IsWebSocketUpgrade
         /// </summary>
         /// <param name="req"></param>
@@ -303,12 +346,12 @@ namespace SimpleW.Modules {
             }
 
             if (!req.Headers.TryGetValue("Upgrade", out var upgrade)
-                || !string.Equals(upgrade?.Trim(), "websocket", StringComparison.OrdinalIgnoreCase)
+                || !ContainsHeaderToken(upgrade, "websocket")
             ) {
                 return false;
             }
             if (!req.Headers.TryGetValue("Connection", out var conn)
-                || conn == null || conn.IndexOf("Upgrade", StringComparison.OrdinalIgnoreCase) < 0
+                || !ContainsHeaderToken(conn, "Upgrade")
             ) {
                 return false;
             }
@@ -316,28 +359,44 @@ namespace SimpleW.Modules {
             if (!req.Headers.TryGetValue("Sec-WebSocket-Key", out wsKey) || string.IsNullOrWhiteSpace(wsKey)) {
                 return false;
             }
+            wsKey = wsKey.Trim();
+            if (!IsValidWebSocketKey(wsKey)) {
+                return false;
+            }
 
             req.Headers.TryGetValue("Sec-WebSocket-Version", out wsVersion);
+            wsVersion = wsVersion?.Trim();
             req.Headers.TryGetValue("Sec-WebSocket-Protocol", out wsProtocols);
             return true;
         }
 
         /// <summary>
-        /// ContainsProtocol
+        /// ContainsHeaderToken
         /// </summary>
         /// <param name="header"></param>
-        /// <param name="required"></param>
+        /// <param name="token"></param>
+        /// <param name="comparison"></param>
         /// <returns></returns>
-        private static bool ContainsProtocol(string? header, string required) {
+        private static bool ContainsHeaderToken(string? header, string token, StringComparison comparison = StringComparison.OrdinalIgnoreCase) {
             if (string.IsNullOrWhiteSpace(header)) {
                 return false;
             }
             foreach (string item in header.Split(',')) {
-                if (string.Equals(item.Trim(), required, StringComparison.Ordinal)) {
+                if (string.Equals(item.Trim(), token, comparison)) {
                     return true;
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// IsValidWebSocketKey
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        private static bool IsValidWebSocketKey(string key) {
+            Span<byte> decoded = stackalloc byte[16];
+            return Convert.TryFromBase64String(key, decoded, out int written) && written == 16;
         }
 
         /// <summary>
@@ -373,6 +432,17 @@ namespace SimpleW.Modules {
         private const byte OpcodePing = 0x9;
         private const byte OpcodePong = 0xA;
 
+        private const ushort CloseStatusProtocolError = 1002;
+        private const ushort CloseStatusInvalidPayloadData = 1007;
+        private const ushort CloseStatusMessageTooBig = 1009;
+
+        private const int MaxControlPayloadBytes = 125;
+        private const int MaxCloseReasonBytes = 123;
+        private const int InitialReassemblyBytes = 256;
+        private const int MaxCoalescedSendBytes = 64 * 1024;
+
+        private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
         #endregion opcodes
 
         /// <summary>
@@ -381,20 +451,18 @@ namespace SimpleW.Modules {
         /// </summary>
         private readonly SemaphoreSlim _sendLock = new(1, 1);
 
-        /// <summary>
-        /// The underlying HttpSession
-        /// </summary>
-        private readonly HttpSession _session;
 
         /// <summary>
         /// Underlying detached transport.
         /// </summary>
         private readonly ISimpleWEngine _transport;
+        private readonly ISimpleWTransportDeferredFlushFeature? _deferredFlush;
         private readonly int _maxMessageBytes;
         private readonly TimeSpan? _pingInterval;
 
         private readonly ArrayPool<byte> _pool = ArrayPool<byte>.Shared;
-        private int _closed;
+        private int _closeStarted;
+        private int _closedEventFired;
 
         /// <summary>
         /// Closed
@@ -410,12 +478,14 @@ namespace SimpleW.Modules {
         /// </summary>
         public EndPoint? RemoteEndPoint => _transport.RemoteEndPoint;
 
+        internal bool IsClosed => Volatile.Read(ref _closedEventFired) != 0;
+
         /// <summary>
         /// Constructor
         /// </summary>
         public WebSocketConnection(HttpSession session, int maxMessageBytes, TimeSpan? pingInterval) {
-            _session = session;
             _transport = session.Transport;
+            _deferredFlush = _transport.Output as ISimpleWTransportDeferredFlushFeature;
             _maxMessageBytes = maxMessageBytes;
             _pingInterval = pingInterval;
         }
@@ -506,14 +576,17 @@ namespace SimpleW.Modules {
         /// <param name="reason"></param>
         /// <returns></returns>
         public async ValueTask CloseAsync(ushort code = 1000, string? reason = null) {
-            if (Interlocked.Exchange(ref _closed, 1) != 0) {
+            if (Volatile.Read(ref _closeStarted) != 0) {
                 return;
             }
+            if (!IsValidCloseStatusCode(code)) {
+                throw new ArgumentOutOfRangeException(nameof(code), "Invalid WebSocket close status code.");
+            }
 
-            byte[] reasonBytes = string.IsNullOrEmpty(reason) ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(reason);
+            byte[] reasonBytes = EncodeCloseReason(reason);
             int len = 2 + reasonBytes.Length;
-
             byte[] buf = _pool.Rent(len);
+
             try {
                 buf[0] = (byte)(code >> 8);
                 buf[1] = (byte)(code & 0xFF);
@@ -521,18 +594,44 @@ namespace SimpleW.Modules {
                     Buffer.BlockCopy(reasonBytes, 0, buf, 2, reasonBytes.Length);
                 }
 
-                await SendFrameAsync(opcode: OpcodeClose, buf.AsMemory(0, len)).ConfigureAwait(false);
+                await SendCloseFrameAsync(buf.AsMemory(0, len)).ConfigureAwait(false);
             }
             finally {
                 _pool.Return(buf);
-                FireClosed();
             }
         }
 
         /// <summary>
-        /// FireClosed
+        /// SendCloseFrameAsync
         /// </summary>
-        private void FireClosed() {
+        /// <param name="payload"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        private async ValueTask SendCloseFrameAsync(ReadOnlyMemory<byte> payload) {
+            if (payload.Length > MaxControlPayloadBytes) {
+                throw new ArgumentOutOfRangeException(nameof(payload), "Close frame payload must be 125 bytes or less.");
+            }
+            if (Interlocked.Exchange(ref _closeStarted, 1) != 0) {
+                return;
+            }
+
+            try {
+                await SendFrameCoreAsync(OpcodeClose, payload).ConfigureAwait(false);
+            }
+            finally {
+                MarkClosed();
+            }
+        }
+
+        /// <summary>
+        /// MarkClosed
+        /// </summary>
+        private void MarkClosed() {
+            Interlocked.Exchange(ref _closeStarted, 1);
+            if (Interlocked.Exchange(ref _closedEventFired, 1) != 0) {
+                return;
+            }
+
             try {
                 Closed?.Invoke();
             }
@@ -549,8 +648,7 @@ namespace SimpleW.Modules {
         /// <param name="ct"></param>
         /// <returns></returns>
         public async IAsyncEnumerable<WebSocketMessage> ReadMessagesAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default) {
-            byte[]? reassembly = null;
-            int reassemblyLen = 0;
+            PooledMessageBuffer? reassembly = null;
             byte reassemblyOpcode = 0;
 
             using CancellationTokenSource pingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -561,115 +659,107 @@ namespace SimpleW.Modules {
 
             try {
                 while (!ct.IsCancellationRequested) {
-                    Frame frame = await ReadFrameAsync(ct).ConfigureAwait(false);
+                    Frame frame = default;
+                    WebSocketProtocolException? readError = null;
+                    try {
+                        frame = await ReadFrameAsync(ct).ConfigureAwait(false);
+                    }
+                    catch (WebSocketProtocolException ex) {
+                        readError = ex;
+                    }
+
+                    if (readError != null) {
+                        await CloseAsync(readError.CloseStatusCode, readError.Message).ConfigureAwait(false);
+                        yield break;
+                    }
                     if (frame.Kind == FrameKind.EOF) {
                         yield break;
                     }
 
-                    if (frame.Opcode == OpcodePing) {
+                    byte[]? completeMessage = null;
+                    byte completeOpcode = 0;
+                    WebSocketProtocolException? processError = null;
+                    bool stop = false;
+
+                    try {
                         try {
-                            await SendFrameAsync(OpcodePong, frame.Payload).ConfigureAwait(false);
+                            if (frame.Opcode == OpcodePing) {
+                                await SendFrameAsync(OpcodePong, frame.Payload).ConfigureAwait(false);
+                                continue;
+                            }
+
+                            if (frame.Opcode == OpcodePong) {
+                                continue;
+                            }
+
+                            if (frame.Opcode == OpcodeClose) {
+                                await SendCloseFrameAsync(frame.Payload).ConfigureAwait(false);
+                                stop = true;
+                            }
+                            else if (frame.Opcode == OpcodeContinuation) {
+                                if (reassembly == null) {
+                                    throw new WebSocketProtocolException(CloseStatusProtocolError, "unexpected continuation frame");
+                                }
+
+                                reassembly.Append(frame.Payload.Span);
+                                if (frame.Fin) {
+                                    completeMessage = reassembly.ToArray();
+                                    completeOpcode = reassemblyOpcode;
+                                    reassembly.Dispose();
+                                    reassembly = null;
+                                    reassemblyOpcode = 0;
+                                }
+                            }
+                            else {
+                                if (reassembly != null) {
+                                    throw new WebSocketProtocolException(CloseStatusProtocolError, "fragmented message interrupted");
+                                }
+
+                                if (frame.Fin) {
+                                    completeMessage = CopyPayload(frame.Payload);
+                                    completeOpcode = frame.Opcode;
+                                }
+                                else {
+                                    reassembly = new PooledMessageBuffer(_pool, _maxMessageBytes, frame.Payload.Length);
+                                    reassemblyOpcode = frame.Opcode;
+                                    reassembly.Append(frame.Payload.Span);
+                                }
+                            }
                         }
-                        finally {
-                            frame.Dispose();
+                        catch (WebSocketProtocolException ex) {
+                            processError = ex;
                         }
+                    }
+                    finally {
+                        frame.Dispose();
+                    }
+
+                    if (processError != null) {
+                        await CloseAsync(processError.CloseStatusCode, processError.Message).ConfigureAwait(false);
+                        yield break;
+                    }
+                    if (stop) {
+                        yield break;
+                    }
+                    if (completeMessage == null) {
                         continue;
                     }
 
-                    if (frame.Opcode == OpcodePong) {
-                        frame.Dispose();
-                        continue;
-                    }
-
-                    if (frame.Opcode == OpcodeClose) {
-                        frame.Dispose();
-                        FireClosed();
+                    if (completeOpcode == OpcodeText && !IsValidUtf8(completeMessage)) {
+                        await CloseAsync(CloseStatusInvalidPayloadData, "invalid utf-8").ConfigureAwait(false);
                         yield break;
                     }
 
-                    // fragmentation
-                    bool fin = frame.Fin;
-                    byte opcode = frame.Opcode;
-
-                    // continuation
-                    if (opcode == OpcodeContinuation) {
-                        if (reassembly == null) {
-                            frame.Dispose();
-                            continue; // ignore
-                        }
-
-                        if (reassemblyLen + frame.Payload.Length > _maxMessageBytes) {
-                            frame.Dispose();
-                            await CloseAsync(1009, "message too big").ConfigureAwait(false);
-                            yield break;
-                        }
-
-                        frame.Payload.Span.CopyTo(reassembly.AsSpan(reassemblyLen));
-                        reassemblyLen += frame.Payload.Length;
-                        frame.Dispose();
-
-                        // emit
-                        if (fin) {
-                            byte[] message = GC.AllocateUninitializedArray<byte>(reassemblyLen);
-                            Buffer.BlockCopy(reassembly, 0, message, 0, reassemblyLen);
-
-                            _pool.Return(reassembly);
-                            reassembly = null;
-
-                            WebSocketMessage wsMessage = reassemblyOpcode == OpcodeText
-                                ? new WebSocketMessage(WebSocketMessageKind.Text, message, default)
-                                : new WebSocketMessage(WebSocketMessageKind.Binary, default, message);
-
-                            reassemblyLen = 0;
-                            reassemblyOpcode = 0;
-
-                            yield return wsMessage;
-                        }
-
-                        continue;
+                    if (completeOpcode == OpcodeText) {
+                        yield return new WebSocketMessage(WebSocketMessageKind.Text, completeMessage, default);
                     }
-
-                    if (opcode is not (OpcodeText or OpcodeBinary)) {
-                        frame.Dispose();
-                        continue;
+                    else {
+                        yield return new WebSocketMessage(WebSocketMessageKind.Binary, default, completeMessage);
                     }
-
-                    // single frame message
-                    if (fin) {
-                        byte[] message = GC.AllocateUninitializedArray<byte>(frame.Payload.Length);
-                        if (frame.Payload.Length > 0) {
-                            frame.Payload.Span.CopyTo(message);
-                        }
-                        frame.Dispose();
-
-                        if (opcode == OpcodeText) {
-                            yield return new WebSocketMessage(WebSocketMessageKind.Text, message, default);
-                        }
-                        else {
-                            yield return new WebSocketMessage(WebSocketMessageKind.Binary, default, message);
-                        }
-
-                        continue;
-                    }
-
-                    // start reassembly
-                    if (frame.Payload.Length > _maxMessageBytes) {
-                        frame.Dispose();
-                        await CloseAsync(1009, "message too big").ConfigureAwait(false);
-                        yield break;
-                    }
-
-                    reassembly = _pool.Rent(_maxMessageBytes);
-                    reassemblyOpcode = opcode;
-                    reassemblyLen = frame.Payload.Length;
-                    frame.Payload.Span.CopyTo(reassembly);
-                    frame.Dispose();
                 }
             }
             finally {
-                if (reassembly != null) {
-                    _pool.Return(reassembly);
-                }
+                reassembly?.Dispose();
 
                 try {
                     pingCts.Cancel();
@@ -680,6 +770,36 @@ namespace SimpleW.Modules {
                     try { await pingTask.ConfigureAwait(false); }
                     catch { }
                 }
+
+                MarkClosed();
+            }
+        }
+
+        /// <summary>
+        /// CopyPayload
+        /// </summary>
+        /// <param name="payload"></param>
+        /// <returns></returns>
+        private static byte[] CopyPayload(ReadOnlyMemory<byte> payload) {
+            byte[] message = GC.AllocateUninitializedArray<byte>(payload.Length);
+            if (payload.Length > 0) {
+                payload.Span.CopyTo(message);
+            }
+            return message;
+        }
+
+        /// <summary>
+        /// IsValidUtf8
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        private static bool IsValidUtf8(ReadOnlySpan<byte> value) {
+            try {
+                StrictUtf8.GetCharCount(value);
+                return true;
+            }
+            catch (DecoderFallbackException) {
+                return false;
             }
         }
 
@@ -704,6 +824,81 @@ namespace SimpleW.Modules {
                 catch {
                     // ignore
                 }
+            }
+        }
+
+        /// <summary>
+        /// PooledMessageBuffer
+        /// </summary>
+        private sealed class PooledMessageBuffer : IDisposable {
+
+            private readonly ArrayPool<byte> _pool;
+            private readonly int _maxLength;
+            private byte[] _buffer;
+
+            public int Length { get; private set; }
+
+            /// <summary>
+            /// Constructor
+            /// </summary>
+            /// <param name="pool"></param>
+            /// <param name="maxLength"></param>
+            /// <param name="firstChunkLength"></param>
+            public PooledMessageBuffer(ArrayPool<byte> pool, int maxLength, int firstChunkLength) {
+                _pool = pool;
+                _maxLength = maxLength;
+
+                int initialCapacity = Math.Min(maxLength, Math.Max(InitialReassemblyBytes, firstChunkLength));
+                _buffer = _pool.Rent(initialCapacity);
+            }
+
+
+            public void Append(ReadOnlySpan<byte> data) {
+                if (data.Length > _maxLength - Length) {
+                    throw new WebSocketProtocolException(CloseStatusMessageTooBig, "message too big");
+                }
+
+                EnsureCapacity(Length + data.Length);
+                data.CopyTo(_buffer.AsSpan(Length));
+                Length += data.Length;
+            }
+
+            public byte[] ToArray() {
+                byte[] result = GC.AllocateUninitializedArray<byte>(Length);
+                if (Length > 0) {
+                    Buffer.BlockCopy(_buffer, 0, result, 0, Length);
+                }
+                return result;
+            }
+
+            private void EnsureCapacity(int required) {
+                if (required <= _buffer.Length) {
+                    return;
+                }
+
+                int newLength = Math.Max(required, _buffer.Length * 2);
+                if (newLength > _maxLength) {
+                    newLength = _maxLength;
+                }
+
+                byte[] next = _pool.Rent(newLength);
+                if (Length > 0) {
+                    Buffer.BlockCopy(_buffer, 0, next, 0, Length);
+                }
+
+                _pool.Return(_buffer);
+                _buffer = next;
+            }
+
+            public void Dispose() {
+                byte[] buffer = _buffer;
+                if (buffer.Length == 0) {
+                    return;
+                }
+
+                _buffer = Array.Empty<byte>();
+                Length = 0;
+                _pool.Return(buffer);
             }
         }
 
@@ -778,70 +973,167 @@ namespace SimpleW.Modules {
         }
 
         /// <summary>
+        /// WebSocketProtocolException
+        /// </summary>
+        private sealed class WebSocketProtocolException : Exception {
+
+            public ushort CloseStatusCode { get; }
+
+            public WebSocketProtocolException(ushort closeStatusCode, string message) : base(message) {
+                CloseStatusCode = closeStatusCode;
+            }
+
+        }
+
+        /// <summary>
         /// SendFrameAsync
         /// </summary>
         /// <param name="opcode"></param>
         /// <param name="payload"></param>
         /// <returns></returns>
-        private async ValueTask SendFrameAsync(byte opcode, ReadOnlyMemory<byte> payload) {
+        private ValueTask SendFrameAsync(byte opcode, ReadOnlyMemory<byte> payload) {
+            ValidateOutgoingFrame(opcode, payload.Length);
+            return SendFrameCoreAsync(opcode, payload);
+        }
 
-            // if the connection is already marked as closed, we must not send any more frames,
-            // except for the CLOSE frame (OpcodeClose).
-            if (Volatile.Read(ref _closed) != 0 && opcode != OpcodeClose) {
+        /// <summary>
+        /// SendFrameCoreAsync
+        /// </summary>
+        /// <param name="opcode"></param>
+        /// <param name="payload"></param>
+        /// <returns></returns>
+        private async ValueTask SendFrameCoreAsync(byte opcode, ReadOnlyMemory<byte> payload) {
+            if (Volatile.Read(ref _closeStarted) != 0 && opcode != OpcodeClose) {
                 return;
             }
 
+            bool writeFailed = false;
             await _sendLock.WaitAsync().ConfigureAwait(false);
             try {
-                // re-check after acquiring the send lock.
-                // another thread may have closed the connection while we were waiting.
-                if (Volatile.Read(ref _closed) != 0 && opcode != OpcodeClose) {
-                    return;
-                }
-
-                int payloadLen = payload.Length;
-
-                int headerLen = payloadLen switch {
-                    <= 125 => 2,
-                    <= ushort.MaxValue => 4,
-                    _ => 10
-                };
-
-                byte[] header = _pool.Rent(headerLen);
                 try {
-                    int writtenHeader = WriteFrameHeader(header, opcode, payloadLen);
-
-                    if (payloadLen == 0) {
-                        await _session.SendAsync(new ArraySegment<byte>(header, 0, writtenHeader)).ConfigureAwait(false);
+                    if (Volatile.Read(ref _closeStarted) != 0 && opcode != OpcodeClose) {
                         return;
                     }
 
-                    if (MemoryMarshal.TryGetArray(payload, out ArraySegment<byte> payloadSeg) && payloadSeg.Array != null) {
-                        await _session.SendAsync(
-                            new ArraySegment<byte>(header, 0, writtenHeader),
-                            payloadSeg
-                        ).ConfigureAwait(false);
-                    }
-                    else {
-                        // fallback if payload is not array-backed
-                        byte[] frame = _pool.Rent(writtenHeader + payloadLen);
-                        try {
-                            Buffer.BlockCopy(header, 0, frame, 0, writtenHeader);
-                            payload.Span.CopyTo(frame.AsSpan(writtenHeader, payloadLen));
+                    int payloadLen = payload.Length;
 
-                            await _session.SendAsync(frame.AsMemory(0, writtenHeader + payloadLen)).ConfigureAwait(false);
-                        }
-                        finally {
-                            _pool.Return(frame);
-                        }
+                    int headerLen = payloadLen switch {
+                        <= 125 => 2,
+                        <= ushort.MaxValue => 4,
+                        _ => 10
+                    };
+
+                    byte[] header = _pool.Rent(headerLen);
+                    try {
+                        int writtenHeader = WriteFrameHeader(header, opcode, payloadLen);
+
+                        await WriteFrameBytesAsync(header, writtenHeader, payload).ConfigureAwait(false);
+                        await FlushDeferredAsync().ConfigureAwait(false);
+                    }
+                    finally {
+                        _pool.Return(header);
                     }
                 }
-                finally {
-                    _pool.Return(header);
+                catch {
+                    writeFailed = true;
+                    throw;
                 }
             }
             finally {
                 _sendLock.Release();
+                if (writeFailed) {
+                    MarkClosed();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Flush deferred transport writes, when supported.
+        /// </summary>
+        private ValueTask FlushDeferredAsync() {
+            if (_deferredFlush == null) {
+                return ValueTask.CompletedTask;
+            }
+
+            return _deferredFlush.FlushDeferredAsync();
+        }
+
+        /// <summary>
+        /// WriteFrameBytesAsync
+        /// </summary>
+        /// <param name="header"></param>
+        /// <param name="headerLength"></param>
+        /// <param name="payload"></param>
+        /// <returns></returns>
+        /// <exception cref="IOException"></exception>
+        private async ValueTask WriteFrameBytesAsync(byte[] header, int headerLength, ReadOnlyMemory<byte> payload) {
+            int totalLength = headerLength + payload.Length;
+
+            if (payload.IsEmpty) {
+                long written = await _transport.Output.WriteAsync(header.AsMemory(0, headerLength)).ConfigureAwait(false);
+                if (written != headerLength) {
+                    throw new IOException("Incomplete WebSocket frame write.");
+                }
+                return;
+            }
+
+            if (totalLength <= MaxCoalescedSendBytes) {
+                byte[] frame = _pool.Rent(totalLength);
+                try {
+                    Buffer.BlockCopy(header, 0, frame, 0, headerLength);
+                    payload.Span.CopyTo(frame.AsSpan(headerLength, payload.Length));
+
+                    long written = await _transport.Output.WriteAsync(frame.AsMemory(0, totalLength)).ConfigureAwait(false);
+                    if (written != totalLength) {
+                        throw new IOException("Incomplete WebSocket frame write.");
+                    }
+                }
+                finally {
+                    _pool.Return(frame);
+                }
+                return;
+            }
+
+            if (MemoryMarshal.TryGetArray(payload, out ArraySegment<byte> payloadSegment) && payloadSegment.Array != null) {
+                long written = await _transport.Output.WriteAsync(
+                    new ArraySegment<byte>(header, 0, headerLength),
+                    payloadSegment
+                ).ConfigureAwait(false);
+                if (written != totalLength) {
+                    throw new IOException("Incomplete WebSocket frame write.");
+                }
+                return;
+            }
+
+            byte[] fallback = _pool.Rent(totalLength);
+            try {
+                Buffer.BlockCopy(header, 0, fallback, 0, headerLength);
+                payload.Span.CopyTo(fallback.AsSpan(headerLength, payload.Length));
+
+                long written = await _transport.Output.WriteAsync(fallback.AsMemory(0, totalLength)).ConfigureAwait(false);
+                if (written != totalLength) {
+                    throw new IOException("Incomplete WebSocket frame write.");
+                }
+            }
+            finally {
+                _pool.Return(fallback);
+            }
+        }
+
+        /// <summary>
+        /// ValidateOutgoingFrame
+        /// </summary>
+        /// <param name="opcode"></param>
+        /// <param name="payloadLen"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        private static void ValidateOutgoingFrame(byte opcode, int payloadLen) {
+            if (!IsKnownOpcode(opcode) || opcode == OpcodeContinuation) {
+                throw new InvalidOperationException("Invalid WebSocket opcode for outbound frame.");
+            }
+
+            if (IsControlOpcode(opcode) && payloadLen > MaxControlPayloadBytes) {
+                throw new ArgumentOutOfRangeException(nameof(payloadLen), "Control frame payload must be 125 bytes or less.");
             }
         }
 
@@ -878,6 +1170,62 @@ namespace SimpleW.Modules {
             return 10;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="opcode"></param>
+        /// <returns></returns>
+        private static bool IsKnownOpcode(byte opcode) {
+            return opcode is OpcodeContinuation or OpcodeText or OpcodeBinary or OpcodeClose or OpcodePing or OpcodePong;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="opcode"></param>
+        /// <returns></returns>
+        private static bool IsControlOpcode(byte opcode) {
+            return opcode >= 0x8;
+        }
+
+        /// <summary>
+        /// EncodeCloseReason
+        /// </summary>
+        /// <param name="reason"></param>
+        /// <returns></returns>
+        private static byte[] EncodeCloseReason(string? reason) {
+            if (string.IsNullOrEmpty(reason)) {
+                return Array.Empty<byte>();
+            }
+
+            int bytes = 0;
+            int chars = 0;
+            foreach (Rune rune in reason.EnumerateRunes()) {
+                int runeBytes = rune.Utf8SequenceLength;
+                if (bytes + runeBytes > MaxCloseReasonBytes) {
+                    break;
+                }
+
+                bytes += runeBytes;
+                chars += rune.Utf16SequenceLength;
+            }
+
+            return chars == 0 ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(chars == reason.Length ? reason : reason.Substring(0, chars));
+        }
+
+        /// <summary>
+        /// IsValidCloseStatusCode
+        /// </summary>
+        /// <param name="code"></param>
+        /// <returns></returns>
+        private static bool IsValidCloseStatusCode(ushort code) {
+            if (code is >= 1000 and <= 1014) {
+                return code is not (1004 or 1005 or 1006);
+            }
+
+            return code is >= 3000 and <= 4999;
+        }
+
         #endregion frame write
 
         #region frame read
@@ -888,98 +1236,137 @@ namespace SimpleW.Modules {
         /// <param name="ct"></param>
         /// <returns></returns>
         private async ValueTask<Frame> ReadFrameAsync(CancellationToken ct) {
-
-            byte[] header = _pool.Rent(2);
+            byte[] scratch = _pool.Rent(14);
             try {
-                if (!await ReadExactAsync(_transport, header.AsMemory(0, 2), ct).ConfigureAwait(false)) {
+                if (!await ReadExactAsync(_transport, scratch.AsMemory(0, 2), ct).ConfigureAwait(false)) {
                     return new Frame(FrameKind.EOF, false, 0, default);
                 }
 
-                bool fin = (header[0] & 0x80) != 0;
-                byte opcode = (byte)(header[0] & 0x0F);
+                byte first = scratch[0];
+                byte second = scratch[1];
+                bool fin = (first & 0x80) != 0;
+                bool reserved = (first & 0x70) != 0;
+                byte opcode = (byte)(first & 0x0F);
+                bool masked = (second & 0x80) != 0;
+                int len7 = second & 0x7F;
 
-                bool masked = (header[1] & 0x80) != 0;
-                int len7 = (header[1] & 0x7F);
+                if (reserved) {
+                    throw new WebSocketProtocolException(CloseStatusProtocolError, "reserved bits set");
+                }
+                if (!IsKnownOpcode(opcode)) {
+                    throw new WebSocketProtocolException(CloseStatusProtocolError, "unknown opcode");
+                }
+                if (!masked) {
+                    throw new WebSocketProtocolException(CloseStatusProtocolError, "client frames must be masked");
+                }
+
+                bool control = IsControlOpcode(opcode);
+                if (control && !fin) {
+                    throw new WebSocketProtocolException(CloseStatusProtocolError, "fragmented control frame");
+                }
 
                 ulong payloadLen;
                 if (len7 < 126) {
                     payloadLen = (ulong)len7;
                 }
                 else if (len7 == 126) {
-                    byte[] ext = _pool.Rent(2);
-                    try {
-                        if (!await ReadExactAsync(_transport, ext.AsMemory(0, 2), ct).ConfigureAwait(false)) {
-                            return new Frame(FrameKind.EOF, false, 0, default);
-                        }
-                        payloadLen = (ulong)((ext[0] << 8) | ext[1]);
+                    if (!await ReadExactAsync(_transport, scratch.AsMemory(2, 2), ct).ConfigureAwait(false)) {
+                        return new Frame(FrameKind.EOF, false, 0, default);
                     }
-                    finally {
-                        _pool.Return(ext);
+
+                    payloadLen = (ulong)((scratch[2] << 8) | scratch[3]);
+                    if (payloadLen < 126) {
+                        throw new WebSocketProtocolException(CloseStatusProtocolError, "non-minimal payload length");
                     }
                 }
                 else {
-                    byte[] ext = _pool.Rent(8);
-                    try {
-                        if (!await ReadExactAsync(_transport, ext.AsMemory(0, 8), ct).ConfigureAwait(false)) {
-                            return new Frame(FrameKind.EOF, false, 0, default);
-                        }
-                        payloadLen = ((ulong)ext[0] << 56)
-                                     | ((ulong)ext[1] << 48)
-                                     | ((ulong)ext[2] << 40)
-                                     | ((ulong)ext[3] << 32)
-                                     | ((ulong)ext[4] << 24)
-                                     | ((ulong)ext[5] << 16)
-                                     | ((ulong)ext[6] << 8)
-                                     | ((ulong)ext[7]);
+                    if (!await ReadExactAsync(_transport, scratch.AsMemory(2, 8), ct).ConfigureAwait(false)) {
+                        return new Frame(FrameKind.EOF, false, 0, default);
                     }
-                    finally {
-                        _pool.Return(ext);
+
+                    if ((scratch[2] & 0x80) != 0) {
+                        throw new WebSocketProtocolException(CloseStatusProtocolError, "invalid 64-bit payload length");
+                    }
+
+                    payloadLen = ((ulong)scratch[2] << 56)
+                                 | ((ulong)scratch[3] << 48)
+                                 | ((ulong)scratch[4] << 40)
+                                 | ((ulong)scratch[5] << 32)
+                                 | ((ulong)scratch[6] << 24)
+                                 | ((ulong)scratch[7] << 16)
+                                 | ((ulong)scratch[8] << 8)
+                                 | scratch[9];
+                    if (payloadLen <= ushort.MaxValue) {
+                        throw new WebSocketProtocolException(CloseStatusProtocolError, "non-minimal payload length");
                     }
                 }
 
-                if (payloadLen > (ulong)_maxMessageBytes) {
-                    await CloseAsync(1009, "message too big").ConfigureAwait(false);
+                if (control && payloadLen > MaxControlPayloadBytes) {
+                    throw new WebSocketProtocolException(CloseStatusProtocolError, "control frame too large");
+                }
+                if (!control && payloadLen > (ulong)_maxMessageBytes) {
+                    throw new WebSocketProtocolException(CloseStatusMessageTooBig, "message too big");
+                }
+
+                if (!await ReadExactAsync(_transport, scratch.AsMemory(10, 4), ct).ConfigureAwait(false)) {
                     return new Frame(FrameKind.EOF, false, 0, default);
                 }
 
-                byte[]? maskKey = null;
-                if (masked) {
-                    maskKey = _pool.Rent(4);
-                    if (!await ReadExactAsync(_transport, maskKey.AsMemory(0, 4), ct).ConfigureAwait(false)) {
-                        _pool.Return(maskKey);
-                        return new Frame(FrameKind.EOF, false, 0, default);
-                    }
-                }
-
                 if (payloadLen == 0) {
-                    if (maskKey != null) {
-                        _pool.Return(maskKey);
+                    if (opcode == OpcodeClose) {
+                        ValidateCloseFramePayload(ReadOnlySpan<byte>.Empty);
                     }
                     return new Frame(FrameKind.Data, fin, opcode, ReadOnlyMemory<byte>.Empty);
                 }
 
-                byte[] payloadBuf = _pool.Rent((int)payloadLen);
-                if (!await ReadExactAsync(_transport, payloadBuf.AsMemory(0, (int)payloadLen), ct).ConfigureAwait(false)) {
-                    if (maskKey != null) {
-                        _pool.Return(maskKey);
+                int length = checked((int)payloadLen);
+                byte[] payloadBuf = _pool.Rent(length);
+                try {
+                    if (!await ReadExactAsync(_transport, payloadBuf.AsMemory(0, length), ct).ConfigureAwait(false)) {
+                        _pool.Return(payloadBuf);
+                        return new Frame(FrameKind.EOF, false, 0, default);
                     }
+
+                    ApplyMask(payloadBuf.AsSpan(0, length), scratch.AsSpan(10, 4));
+                    if (opcode == OpcodeClose) {
+                        ValidateCloseFramePayload(payloadBuf.AsSpan(0, length));
+                    }
+
+                    return new Frame(FrameKind.Data, fin, opcode, payloadBuf, length, _pool);
+                }
+                catch {
                     _pool.Return(payloadBuf);
-                    return new Frame(FrameKind.EOF, false, 0, default);
+                    throw;
                 }
-
-                if (masked) {
-                    for (int i = 0; i < (int)payloadLen; i++) {
-                        payloadBuf[i] ^= maskKey![i & 3];
-                    }
-                    _pool.Return(maskKey!);
-                }
-
-                return new Frame(FrameKind.Data, fin, opcode, payloadBuf, (int)payloadLen, _pool);
             }
             finally {
-                _pool.Return(header);
+                _pool.Return(scratch);
             }
         }
+
+        private static void ApplyMask(Span<byte> payload, ReadOnlySpan<byte> maskKey) {
+            for (int i = 0; i < payload.Length; i++) {
+                payload[i] ^= maskKey[i & 3];
+            }
+        }
+
+        private static void ValidateCloseFramePayload(ReadOnlySpan<byte> payload) {
+            if (payload.Length == 1) {
+                throw new WebSocketProtocolException(CloseStatusProtocolError, "invalid close payload");
+            }
+            if (payload.Length < 2) {
+                return;
+            }
+
+            ushort code = (ushort)((payload[0] << 8) | payload[1]);
+            if (!IsValidCloseStatusCode(code)) {
+                throw new WebSocketProtocolException(CloseStatusProtocolError, "invalid close status code");
+            }
+            if (payload.Length > 2 && !IsValidUtf8(payload.Slice(2))) {
+                throw new WebSocketProtocolException(CloseStatusInvalidPayloadData, "invalid close reason");
+            }
+        }
+
         /// <summary>
         /// ReadExactAsync
         /// </summary>
@@ -1294,6 +1681,8 @@ namespace SimpleW.Modules {
         /// </summary>
         private readonly ConcurrentDictionary<string, HubRoom> _rooms = new(StringComparer.Ordinal);
 
+        private readonly ConcurrentDictionary<Guid, HubRegistration> _registrations = new();
+
         /// <summary>
         /// Join a Room
         /// </summary>
@@ -1307,20 +1696,19 @@ namespace SimpleW.Modules {
             }
             ArgumentNullException.ThrowIfNull(conn);
 
-            HubRoom? r = _rooms.GetOrAdd(room, static _ => new HubRoom());
-            r?.Join(conn);
+            if (conn.IsClosed) {
+                return ValueTask.CompletedTask;
+            }
 
-            // auto-cleanup on close
-            conn.Closed += () => {
-                try {
-                    r?.Leave(conn);
-                }
-                catch { }
-                // remove empty room
-                if (r?.Count == 0) {
-                    _rooms.TryRemove(room, out _);
-                }
-            };
+            HubRegistration registration = EnsureRegistration(conn);
+            registration.Join(room);
+
+            HubRoom r = _rooms.GetOrAdd(room, static _ => new HubRoom());
+            r.Join(conn);
+
+            if (conn.IsClosed) {
+                RemoveConnection(registration);
+            }
 
             return ValueTask.CompletedTask;
         }
@@ -1332,12 +1720,17 @@ namespace SimpleW.Modules {
         /// <param name="conn"></param>
         /// <returns></returns>
         public ValueTask LeaveAsync(string room, WebSocketConnection conn) {
-            if (_rooms.TryGetValue(room, out HubRoom? r) && r != null) {
-                r.Leave(conn);
-                if (r.Count == 0) {
-                    _rooms.TryRemove(room, out _);
+            ArgumentNullException.ThrowIfNull(conn);
+
+            RemoveFromRoom(room, conn);
+
+            if (_registrations.TryGetValue(conn.Id, out HubRegistration? registration)) {
+                registration.Leave(room);
+                if (registration.Count == 0) {
+                    RemoveRegistration(registration);
                 }
             }
+
             return ValueTask.CompletedTask;
         }
 
@@ -1367,6 +1760,73 @@ namespace SimpleW.Modules {
                 return;
             }
             await r.BroadcastBinaryAsync(data, except).ConfigureAwait(false);
+        }
+
+        private HubRegistration EnsureRegistration(WebSocketConnection conn) {
+            while (true) {
+                if (_registrations.TryGetValue(conn.Id, out HubRegistration? existing)) {
+                    return existing;
+                }
+
+                HubRegistration registration = new(this, conn);
+                if (_registrations.TryAdd(conn.Id, registration)) {
+                    conn.Closed += registration.OnClosed;
+                    return registration;
+                }
+            }
+        }
+
+        private void RemoveConnection(HubRegistration registration) {
+            RemoveRegistration(registration);
+
+            foreach (string room in registration.DrainRooms()) {
+                RemoveFromRoom(room, registration.Connection);
+            }
+        }
+
+        private void RemoveRegistration(HubRegistration registration) {
+            if (_registrations.TryGetValue(registration.Connection.Id, out HubRegistration? current)
+                && ReferenceEquals(current, registration)
+            ) {
+                _registrations.TryRemove(registration.Connection.Id, out _);
+                registration.Connection.Closed -= registration.OnClosed;
+            }
+        }
+
+        private void RemoveFromRoom(string room, WebSocketConnection conn) {
+            if (_rooms.TryGetValue(room, out HubRoom? r) && r != null) {
+                r.Leave(conn);
+                if (r.Count == 0) {
+                    _rooms.TryRemove(room, out _);
+                }
+            }
+        }
+
+        private sealed class HubRegistration {
+
+            private readonly WebSocketHub _hub;
+            private readonly ConcurrentDictionary<string, byte> _rooms = new(StringComparer.Ordinal);
+
+            public WebSocketConnection Connection { get; }
+
+            public int Count => _rooms.Count;
+
+            public HubRegistration(WebSocketHub hub, WebSocketConnection connection) {
+                _hub = hub;
+                Connection = connection;
+            }
+
+            public void Join(string room) => _rooms[room] = 0;
+
+            public void Leave(string room) => _rooms.TryRemove(room, out _);
+
+            public string[] DrainRooms() {
+                string[] rooms = _rooms.Keys.ToArray();
+                _rooms.Clear();
+                return rooms;
+            }
+
+            public void OnClosed() => _hub.RemoveConnection(this);
         }
 
         /// <summary>
@@ -1400,23 +1860,22 @@ namespace SimpleW.Modules {
             /// <param name="except"></param>
             /// <returns></returns>
             public async ValueTask BroadcastTextAsync(string text, WebSocketConnection? except) {
-                List<Exception>? errors = null;
-
                 foreach (KeyValuePair<Guid, WebSocketConnection> kv in _conns) {
                     WebSocketConnection c = kv.Value;
                     if (except != null && ReferenceEquals(c, except)) {
+                        continue;
+                    }
+                    if (c.IsClosed) {
+                        Leave(c);
                         continue;
                     }
 
                     try {
                         await c.SendTextAsync(text).ConfigureAwait(false);
                     }
-                    catch (Exception ex) {
-                        (errors ??= new()).Add(ex);
+                    catch {
                     }
                 }
-
-                _ = errors;
             }
 
             /// <summary>
@@ -1426,29 +1885,28 @@ namespace SimpleW.Modules {
             /// <param name="except"></param>
             /// <returns></returns>
             public async ValueTask BroadcastBinaryAsync(ReadOnlyMemory<byte> data, WebSocketConnection? except) {
-                List<Exception>? errors = null;
-
                 foreach (KeyValuePair<Guid, WebSocketConnection> kv in _conns) {
                     WebSocketConnection c = kv.Value;
                     if (except != null && ReferenceEquals(c, except)) {
+                        continue;
+                    }
+                    if (c.IsClosed) {
+                        Leave(c);
                         continue;
                     }
 
                     try {
                         await c.SendBinaryAsync(data).ConfigureAwait(false);
                     }
-                    catch (Exception ex) {
-                        (errors ??= new()).Add(ex);
+                    catch {
                     }
                 }
-
-                _ = errors;
             }
         }
     }
 
     /// <summary>
-    /// Make hub plug broadcasters into connection for a room
+    /// WebSocketHubEndpointExtensions
     /// </summary>
     internal static class WebSocketHubEndpointExtensions {
 
@@ -1477,7 +1935,6 @@ namespace SimpleW.Modules {
     /// <param name="msg"></param>
     /// <returns></returns>
     public delegate ValueTask WebSocketMessageHandler(WebSocketConnection conn, WebSocketContext ctx, WebSocketEnvelope msg);
-
 
     /// <summary>
     /// Envelope used for routing
