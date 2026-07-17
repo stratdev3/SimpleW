@@ -180,6 +180,7 @@ namespace SimpleW.Modules {
 
             // send headers now
             await session.Response.SendAsync().ConfigureAwait(false);
+            await FlushDeferredAsync(session.Transport.Output).ConfigureAwait(false);
 
             // take transport ownership (stop HttpSession loop)
             if (!session.TryTakeTransportOwnership()) {
@@ -228,6 +229,19 @@ namespace SimpleW.Modules {
                 conn.Close();
             }
         }
+
+        /// <summary>
+        /// ISimpleWTransportDeferredFlushFeature
+        /// </summary>
+        /// <param name="output"></param>
+        /// <returns></returns>
+        private static ValueTask FlushDeferredAsync(ISimpleWTransportOutput output) {
+            if (output is ISimpleWTransportDeferredFlushFeature deferredFlush) {
+                return deferredFlush.FlushDeferredAsync();
+            }
+
+            return ValueTask.CompletedTask;
+        }
     }
 
     /// <summary>
@@ -245,6 +259,7 @@ namespace SimpleW.Modules {
         /// The underlying HttpSession
         /// </summary>
         private readonly HttpSession _session;
+        private readonly ISimpleWTransportDeferredFlushFeature? _deferredFlush;
 
         /// <summary>
         /// Hub
@@ -276,6 +291,7 @@ namespace SimpleW.Modules {
         /// <param name="session"></param>
         internal ServerSentEventsConnection(HttpSession session) {
             _session = session;
+            _deferredFlush = session.Transport.Output as ISimpleWTransportDeferredFlushFeature;
         }
 
         /// <summary>
@@ -350,6 +366,7 @@ namespace SimpleW.Modules {
             try {
                 int len = Utf8NoBom.GetBytes(text.AsSpan(), buf.AsSpan());
                 await _session.SendAsync(new ReadOnlyMemory<byte>(buf, 0, len)).ConfigureAwait(false);
+                await FlushDeferredAsync().ConfigureAwait(false);
             }
             catch {
                 // On any write error => consider dead
@@ -358,6 +375,18 @@ namespace SimpleW.Modules {
             finally {
                 _pool.Return(buf);
             }
+        }
+
+        /// <summary>
+        /// FlushDeferredAsync
+        /// </summary>
+        /// <returns></returns>
+        private ValueTask FlushDeferredAsync() {
+            if (_deferredFlush == null) {
+                return ValueTask.CompletedTask;
+            }
+
+            return _deferredFlush.FlushDeferredAsync();
         }
 
         /// <summary>
