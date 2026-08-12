@@ -1,10 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Library</OutputType>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <UseLocalIoxide Condition="'$(UseLocalIoxide)' == ''">false</UseLocalIoxide>
 
     <!-- nuget metadata -->
     <Authors>Christophe CHATEAU</Authors>
@@ -46,8 +45,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ioxide" Version="0.0.17" />
-    <PackageReference Include="ioxide.tls" Version="0.0.17" />
+    <PackageReference Include="ioxide" Version="0.4.186" />
   </ItemGroup>
 
   <!-- use for dotnet build -->

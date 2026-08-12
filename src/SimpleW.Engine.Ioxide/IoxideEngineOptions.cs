@@ -1,87 +1,50 @@
-using ioxide;
+﻿using ioxide;
 using ioxide.tls;
 
 
 namespace SimpleW.Engine.Ioxide {
 
     /// <summary>
-    /// Options for the default ioxide engine.
+    /// Minimal options for the alpha ioxide engine.
     /// </summary>
     public sealed class IoxideEngineOptions {
 
         /// <summary>
-        /// ServerConfig
+        /// Native ioxide configuration. The SimpleW port replaces Tcp.Port.
         /// </summary>
-        public ServerConfig ServerConfig { get; set; } = CreateSharedRingConfig();
+        public ServerConfig ServerConfig { get; set; } = new() {
+            ReactorCount = Environment.ProcessorCount,
+            Udp = null,
+            Quic = null
+        };
 
         /// <summary>
-        /// Dedicated kTLS listener port.
-        /// </summary>
-        public ushort TlsPort { get; set; } = 443;
-
-        /// <summary>
-        /// kTLS configuration for the ioxide TLS listener.
-        /// When set, the engine starts TlsService on each reactor and routes TlsPort through ioxide.tls.
-        /// </summary>
-        public TlsOptions? Tls { get; set; }
-
-        /// <summary>
-        /// Engine execution mode.
-        /// </summary>
-        public IoxideEngineMode Mode { get; set; } = IoxideEngineMode.SimpleW;
-
-        /// <summary>
-        /// Flush policy used by the real SimpleW mode.
-        /// EndOfReadBatch keeps the response path hot by staging writes and flushing once after the current read batch.
+        /// Stage every response produced from one read and send it with one flush.
         /// </summary>
         public IoxideFlushPolicy FlushPolicy { get; set; } = IoxideFlushPolicy.EndOfReadBatch;
 
         /// <summary>
-        /// Maximum request header size used by ParserTest mode.
+        /// Native OpenSSL TLS configuration. Null keeps every TCP listener in plaintext.
+        /// When configured, TLS applies to the main port and every additional TCP port.
         /// </summary>
-        public int ParserTestMaxRequestHeaderSize { get; set; } = 64 * 1024;
+        public TlsOptions? Tls { get; set; }
+
+    }
+
+    /// <summary>
+    /// Specifies when buffered ioxide writes are flushed to the network.
+    /// </summary>
+    public enum IoxideFlushPolicy {
 
         /// <summary>
-        /// Maximum request body size used by ParserTest mode.
+        /// Flushes each completed write immediately.
         /// </summary>
-        public long ParserTestMaxRequestBodySize { get; set; } = 10 * 1024 * 1024;
-
-        #region helpers
+        Immediate,
 
         /// <summary>
-        /// Default high-throughput shared-ring configuration.
-        /// SimpleW uses ioxide pipes on top of this mode so unconsumed request bytes stay zero-copy.
+        /// Defers the flush until SimpleW finishes processing the current read batch.
         /// </summary>
-        /// <returns></returns>
-        public static ServerConfig CreateSharedRingConfig() => new() {
-            ReactorCount = Environment.ProcessorCount,
-            RingEntries = 8192,
-            ListenBacklog = 8192,
-            RecvBufferSize = 32 * 1024,
-            BufferRingEntries = 4096,
-            WriteSlabSize = 16 * 1024,
-            PoolMax = 1024,
-            RecvQueueEntries = 64,
-            Incremental = false,
-            MaxConnections = 4096,
-            ConnBufRingEntries = 16,
-            IncRecvBufferSize = 4096,
-            WriteOverflow = WriteOverflowStrategy.Segmented
-        };
-
-#if DEBUG
-
-        /// <summary>
-        /// High-throughput incremental buffer-ring configuration for Linux kernel 6.12+.
-        /// </summary>
-        /// <returns></returns>
-        public static ServerConfig CreateIncrementalConfig() => CreateSharedRingConfig() with {
-            Incremental = true
-        };
-
-#endif
-
-        #endregion helpers
+        EndOfReadBatch
 
     }
 

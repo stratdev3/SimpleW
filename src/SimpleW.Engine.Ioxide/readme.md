@@ -19,7 +19,7 @@ It lets you:
 - run SimpleW on top of the `ioxide` reactor model
 - configure the reactor count, server settings, and test mode through `IoxideEngineOptions`
 - keep the usual SimpleW routing, modules, handlers, and response APIs
-- serve HTTPS on a dedicated ioxide kTLS port through `ioxide.tls.TlsOptions`
+- serve HTTPS through the native Ioxide OpenSSL Raw API
 - use a transport designed for Linux/io_uring workloads
 
 ### Getting Started
@@ -59,7 +59,7 @@ namespace Sample {
 
 ### SSL/TLS support
 
-`SimpleW.Engine.Ioxide` implements the ioxide kTLS path from `ioxide.tls`. Configure `TlsPort` and the native `ioxide.tls.TlsOptions`; the engine adds that port to `ServerConfig.ExtraPorts`, starts `TlsService` once per reactor, runs `AcceptAsync` for TLS connections, feeds decrypted request bytes into the normal SimpleW pipeline, and keeps response writes as plaintext so kernel TLS encrypts them.
+Set `IoxideEngineOptions.Tls` to the native `ioxide.tls.TlsOptions`. TLS then applies to the main SimpleW port and every port already present in `ServerConfig.Tcp.ExtraPorts`. The implementation uses the raw Ioxide OpenSSL API directly: no `SslStream`, `PipeReader` or kTLS.
 
 ```cs
 using System.Net;
@@ -67,55 +67,72 @@ using SimpleW;
 using SimpleW.Engine.Ioxide;
 using ioxide.tls;
 
-var server = new SimpleWServer(IPAddress.Any, 8080);
+var server = new SimpleWServer(IPAddress.Any, 8443);
 
 server.UseIoxideEngine(config => {
     config.ServerConfig = config.ServerConfig with {
         ReactorCount = Environment.ProcessorCount
     };
 
-    config.TlsPort = 8443;
     config.Tls = new TlsOptions {
         CertificatePath = "/certs/server.crt", // PEM chain
         KeyPath = "/certs/server.key",         // PEM private key
-        Alpn = "http/1.1"
+        Alpn = ["http/1.1"]
     };
 
     return config;
 });
 
-server.MapGet("/", () => new { message = "Hello from SimpleW over ioxide kTLS" });
+server.MapGet("/", () => new { message = "Hello from SimpleW over ioxide TLS" });
 
 await server.RunAsync();
 ```
 
-With this configuration:
-- `http://*:8080` remains the plaintext listener.
-- `https://*:8443` is served by the ioxide kTLS listener.
-- SimpleW handlers, routing, modules, responses, and deferred flush behavior stay the same.
-- `session.IsSsl` is true for requests accepted on the TLS port.
+The same options also accept `CertificatePem` and `KeyPem` for in-memory PEM content. Exactly one certificate source and one key source must be configured. OpenSSL 3 is required; the Linux `tls` kernel module is not.
 
-The kTLS path intentionally uses PEM paths instead of `SslContext`, because `ioxide.tls` needs the certificate chain and private key as files when `TlsService` starts. It also has the ioxide constraints: TLS 1.3, OpenSSL 3, Linux `tls` kernel module, no session resumption, and kernel transmit encryption.
+This HTTP/1.x engine requires `Alpn = ["http/1.1"]`. `KernelTx` and `KernelRx` must remain `false`. The resulting transport exposes `session.IsSsl`, `NegotiatedApplicationProtocol`, `ClientCertificateSubject` and `IsClientCertificateAuthenticated`. Ioxide 0.4.184 does not expose the client certificate email separately, so `ClientCertificateEmailAddress` is `null`.
+
+#### Mutual TLS
+
+Configure client trust anchors to request and validate client certificates:
+
+```cs
+config.Tls = new TlsOptions {
+    CertificatePath = "/certs/server.crt",
+    KeyPath = "/certs/server.key",
+    ClientCaPath = "/certs/client-ca.crt",
+    RequireClientCertificate = true,
+    Alpn = ["http/1.1"]
+};
+```
+
+`RequireClientCertificate = false` permits anonymous clients but still validates every certificate that is presented. `true` rejects clients without a certificate during the handshake. `ClientCaPem` is the in-memory alternative to `ClientCaPath`.
+
+Manual scenarios:
+
+```shell
+curl -k --cert client.crt --key client.key https://127.0.0.1:8443/
+curl -k https://127.0.0.1:8443/
+curl -k --cert invalid-client.crt --key invalid-client.key https://127.0.0.1:8443/
+```
 
 #### What the engine wires internally
 
 The engine performs the same steps as the raw ioxide example:
 
 ```cs
-// simplified internal shape
 TlsService.Start(reactor, tlsOptions);
-
-if (conn.ListenerPort == config.TlsPort) {
-    TlsSession tlsSession = await reactor.GetService<TlsService>().AcceptAsync(conn);
-    await server.CreateSessionAsync(new IoxideTlsConnection(conn, tlsSession, endpoint));
-}
+TlsSession tlsSession = await reactor.GetService<TlsService>().AcceptAsync(conn);
+await server.CreateSessionAsync(new IoxideTlsConnection(conn, tlsSession, endpoint));
 ```
 
-`IoxideTlsConnection` drains plaintext produced during the handshake with `DrainPlaintext()`, decrypts inbound slices with `TlsSession.Decrypt(...)`, and writes responses with `conn.Write(...)` / `conn.FlushAsync()`. Those writes are plaintext from SimpleW's point of view; kTLS emits TLS records on the socket.
+`IoxideTlsConnection` drains plaintext produced during the handshake, decrypts inbound slices with `TlsSession.Decrypt(...)`, immediately returns ciphertext buffers to the ring, and retains plaintext fragments in one pooled buffer. Responses go through `TlsSession.Write(...)`, which encrypts directly into the Ioxide write slab, followed by the normal deferred flush.
 
 #### About SslContext
 
-`SslContext` is not the kTLS configuration surface. It maps naturally to the slower portable `SslStream + ConnectionStream` path, but the implemented ioxide fast path uses the native `TlsOptions` plus `TlsPort`, because kTLS needs `CertificatePath`, `KeyPath`, `Alpn`, and a dedicated listener port.
+`SslContext` configures only the default Socket engine. The Ioxide engine uses native `TlsOptions` because OpenSSL needs PEM certificate, key and client trust-anchor data.
+
+Ioxide 0.4.184 does not expose disposal for `TlsService`, its `SSL_CTX` or its pinned ALPN state. For that reason, a TLS-enabled `IoxideEngine` is intentionally single-start: listener reload and a second start of the same engine are rejected. Create the TLS configuration before the initial server start.
 
 ## Documentation
 
