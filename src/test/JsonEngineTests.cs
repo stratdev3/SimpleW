@@ -24,7 +24,7 @@ namespace test {
             DateOnly date = DateOnly.FromDateTime(DateTime.Now);
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => {
                 return new { i, message, date };
             });
@@ -41,14 +41,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Post_SystemTextJson_Deserialization_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/", (HttpSession session) => {
                 var user = new User_JsonEngineTests();
                 session.Request.BodyMap(user);
@@ -71,7 +70,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion systemTextJson
@@ -86,7 +84,7 @@ namespace test {
             DateOnly date = DateOnly.FromDateTime(DateTime.Now);
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.ConfigureJsonEngine(new NewtonsoftJsonEngine());
             server.MapGet("/", () => {
                 return new { i, message, date };
@@ -104,14 +102,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Post_NewtonSoft_Deserialization_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.ConfigureJsonEngine(new NewtonsoftJsonEngine());
             server.MapPost("/", (HttpSession session) => {
                 var user = new User_JsonEngineTests();
@@ -135,7 +132,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]

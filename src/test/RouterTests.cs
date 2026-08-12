@@ -20,7 +20,7 @@ namespace test {
         public async Task Router_MapGet_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapGet("/api/test/hello", () => {
                 return new { message = "Hello World !" };
@@ -37,14 +37,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Router_MapGet_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapGet("/api/test/hello", () => {
                 return new { message = "Hello World !" };
@@ -61,7 +60,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion method get
@@ -72,7 +70,7 @@ namespace test {
         public async Task Router_MapPost_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapPost("/api/test/hello", () => {
                 return new { message = "Hello World !" };
@@ -89,14 +87,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Router_MapPost_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapPost("/api/test/hello", () => {
                 return new { message = "Hello World !" };
@@ -113,7 +110,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion method post
@@ -124,7 +120,7 @@ namespace test {
         public async Task Router_MapHead_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Map("HEAD", "/api/test/hello", () => {
                 return new { message = "Hello World !" };
@@ -142,14 +138,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Router_MapHead_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Map("HEAD", "/api/test/hello", () => {
                 return new { message = "Hello World !" };
@@ -167,7 +162,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion method head
@@ -178,7 +172,7 @@ namespace test {
         public async Task Router_MapGet_Wildcard_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapGet("/api/test/*", () => {
                 return new { message = "Hello World !" };
@@ -195,14 +189,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Router_Wildcard_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapGet("/api/test/*", () => {
                 return new { message = "Hello World !" };
@@ -219,7 +212,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion route with wildcard
@@ -230,7 +222,7 @@ namespace test {
         public async Task Router_MapGet_RouteParameterName_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapGet("/api/test/hello/:name", (string name) => {
                 return new { message = $"{name}, Hello World !" };
@@ -249,14 +241,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Router_MapGet_RouteParameterName_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapGet("/api/test/hello/:name", (string name) => {
                 return new { message = $"{name}, Hello World !" };
@@ -273,7 +264,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion route parameter name
@@ -288,7 +278,7 @@ namespace test {
         public async Task Router_MapControllerGet_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerGet_200_Controller>("/api");
 
             await server.StartAsync();
@@ -302,7 +292,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerGet_200_Controller : Controller {
@@ -316,7 +305,7 @@ namespace test {
         public async Task Router_MapControllerGet_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerGet_404_Controller>("/api");
 
             await server.StartAsync();
@@ -330,7 +319,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerGet_404_Controller : Controller {
@@ -348,7 +336,7 @@ namespace test {
         public async Task Router_MapControllerPost_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerPost_200_Controller>("/api");
 
             await server.StartAsync();
@@ -362,7 +350,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerPost_200_Controller : Controller {
@@ -376,7 +363,7 @@ namespace test {
         public async Task Router_MapControllerPost_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerPost_404_Controller>("/api");
 
             await server.StartAsync();
@@ -390,7 +377,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerPost_404_Controller : Controller {
@@ -408,7 +394,7 @@ namespace test {
         public async Task Router_MapControllerHead_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerHead_200_Controller>("/api");
 
             await server.StartAsync();
@@ -423,7 +409,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerHead_200_Controller : Controller {
@@ -437,7 +422,7 @@ namespace test {
         public async Task Router_MapControllerHead_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerHead_404_Controller>("/api");
 
             await server.StartAsync();
@@ -452,7 +437,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerHead_404_Controller : Controller {
@@ -470,7 +454,7 @@ namespace test {
         public async Task Router_MapControllerGet_MethodOnly_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerGet_MethodOnly_200_Controller>("/api");
 
             await server.StartAsync();
@@ -484,7 +468,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         public class Router_MapControllerGet_MethodOnly_200_Controller : Controller {
             [Route("GET", "/hello")]
@@ -497,7 +480,7 @@ namespace test {
         public async Task Router_MapControllerGet_MethodOnly_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerGet_MethodOnly_404_Controller>("/api");
 
             await server.StartAsync();
@@ -511,7 +494,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         public class Router_MapControllerGet_MethodOnly_404_Controller : Controller {
             [Route("GET", "/hello")]
@@ -528,7 +510,7 @@ namespace test {
         public async Task Router_MapControllerGet_AbsoluteUrl_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerGet_AbsoluteUrl_200_Controller>("/api");
 
             await server.StartAsync();
@@ -542,7 +524,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerGet_AbsoluteUrl_200_Controller : Controller {
@@ -556,7 +537,7 @@ namespace test {
         public async Task Router_MapControllerGet_AbsoluteUrl_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapControllerGet_AbsoluteUrl_404_Controller>("/api");
 
             await server.StartAsync();
@@ -570,7 +551,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapControllerGet_AbsoluteUrl_404_Controller : Controller {
@@ -588,7 +568,7 @@ namespace test {
         public async Task Route_MapController_Wildcard_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapController<Route_MapController_Wildcard_200_Controller>("/api");
 
@@ -603,7 +583,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         public class Route_MapController_Wildcard_200_Controller : Controller {
             [Route("GET", "/*")]
@@ -616,7 +595,7 @@ namespace test {
         public async Task Route_MapController_Wildcard_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapController<Route_MapController_Wildcard_404_Controller>("/api");
 
@@ -631,7 +610,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         public class Route_MapController_Wildcard_404_Controller : Controller {
             [Route("GET", "/*")]
@@ -648,7 +626,7 @@ namespace test {
         public async Task Route_MapController_Wildcard_Absolute_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapController<Route_MapController_Wildcard_Absolute_200_Controller>("/api");
 
@@ -663,7 +641,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Route_MapController_Wildcard_Absolute_200_Controller : Controller {
@@ -681,7 +658,7 @@ namespace test {
         public async Task Router_MapController_RoutePamaterName_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapController_RoutePamaterName_200_Controller>("/api");
 
             await server.StartAsync();
@@ -697,7 +674,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapController_RoutePamaterName_200_Controller : Controller {
@@ -711,7 +687,7 @@ namespace test {
         public async Task Router_MapController_RoutePamaterName_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapController<Router_MapController_RoutePamaterName_404_Controller>("/api");
 
             await server.StartAsync();
@@ -725,7 +701,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         [Route("/test")]
         public class Router_MapController_RoutePamaterName_404_Controller : Controller {
@@ -745,7 +720,7 @@ namespace test {
         public async Task Router_MapControllerSubclass_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapControllers<Subclass>("/api");
 
@@ -760,7 +735,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         public class Subclass : Controller {
@@ -785,7 +759,7 @@ namespace test {
         public async Task Router_InvaludPath() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             bool exception = false;
             try {

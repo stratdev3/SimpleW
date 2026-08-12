@@ -20,8 +20,7 @@ namespace test {
         [Fact]
         public async Task Get_StaticContent_Should_Return_Forbidden_When_Authorize_Denies() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -43,7 +42,6 @@ namespace test {
                 if (started) {
                     await server.StopAsync();
                 }
-                PortManager.ReleasePort(port);
             }
         }
 
@@ -51,7 +49,7 @@ namespace test {
         public async Task Get_StaticContent_NoCache_NoIndex_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -71,14 +69,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_NoCache_File_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -98,14 +95,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_NoCache_Index_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -127,14 +123,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_NoCache_File_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -154,14 +149,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_NoCache_DefaultDocument_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_NoCache_DefaultDocument_200");
             Directory.CreateDirectory(path);
@@ -188,14 +182,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_NoCache_DefaultDocumentMaintenance_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_NoCache_DefaultDocumentMaintenance_200");
             Directory.CreateDirectory(path);
@@ -219,7 +212,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion no_cache
@@ -232,7 +224,7 @@ namespace test {
         public async Task Get_StaticContent_NoIndex_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -253,14 +245,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_Cache_File_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -281,14 +272,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_Cache_Index_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -313,7 +303,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion file exists
@@ -324,7 +313,7 @@ namespace test {
         public async Task Get_StaticContent_Cache_File_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -348,7 +337,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion proper header
@@ -362,8 +350,7 @@ namespace test {
             string expected = "gzip:" + new string('a', 4096);
             File.WriteAllText(Path.Combine(path, "app.txt"), expected);
 
-            int port;
-            var server = CreateCachedStaticServer(path, out port);
+            var server = CreateCachedStaticServer(path);
             bool started = false;
             try {
                 await server.StartAsync();
@@ -379,7 +366,7 @@ namespace test {
                 Check.That(content).IsEqualTo(expected);
             }
             finally {
-                await StopAndReleaseAsync(server, port, started);
+                await StopIfStartedAsync(server, started);
                 TryDeleteDirectory(path);
             }
         }
@@ -391,8 +378,7 @@ namespace test {
             string expected = "gzip-hit:" + new string('b', 4096);
             File.WriteAllText(Path.Combine(path, "app.txt"), expected);
 
-            int port;
-            var server = CreateCachedStaticServer(path, out port);
+            var server = CreateCachedStaticServer(path);
             bool started = false;
             try {
                 await server.StartAsync();
@@ -412,7 +398,7 @@ namespace test {
                 Check.That(content2).IsEqualTo(expected);
             }
             finally {
-                await StopAndReleaseAsync(server, port, started);
+                await StopIfStartedAsync(server, started);
                 TryDeleteDirectory(path);
             }
         }
@@ -424,8 +410,7 @@ namespace test {
             string expected = "brotli:" + new string('c', 4096);
             File.WriteAllText(Path.Combine(path, "app.txt"), expected);
 
-            int port;
-            var server = CreateCachedStaticServer(path, out port);
+            var server = CreateCachedStaticServer(path);
             bool started = false;
             try {
                 await server.StartAsync();
@@ -440,7 +425,7 @@ namespace test {
                 Check.That(content).IsEqualTo(expected);
             }
             finally {
-                await StopAndReleaseAsync(server, port, started);
+                await StopIfStartedAsync(server, started);
                 TryDeleteDirectory(path);
             }
         }
@@ -456,8 +441,7 @@ namespace test {
             File.WriteAllText(Path.Combine(path, "small.txt"), small);
             File.WriteAllText(Path.Combine(path, "large.txt"), large);
 
-            int port;
-            var server = CreateCachedStaticServer(path, out port);
+            var server = CreateCachedStaticServer(path);
             bool started = false;
             try {
                 await server.StartAsync();
@@ -479,7 +463,7 @@ namespace test {
                 Check.That(unknownContent).IsEqualTo(large);
             }
             finally {
-                await StopAndReleaseAsync(server, port, started);
+                await StopIfStartedAsync(server, started);
                 TryDeleteDirectory(path);
             }
         }
@@ -491,8 +475,7 @@ namespace test {
             string expected = "validators:" + new string('e', 4096);
             File.WriteAllText(Path.Combine(path, "app.txt"), expected);
 
-            int port;
-            var server = CreateCachedStaticServer(path, out port);
+            var server = CreateCachedStaticServer(path);
             bool started = false;
             try {
                 await server.StartAsync();
@@ -522,7 +505,7 @@ namespace test {
                 Check.That(modifiedResponse.Content.Headers.ContentEncoding).IsEmpty();
             }
             finally {
-                await StopAndReleaseAsync(server, port, started);
+                await StopIfStartedAsync(server, started);
                 TryDeleteDirectory(path);
             }
         }
@@ -536,8 +519,7 @@ namespace test {
             string v2 = "v2:" + new string('g', 5000);
             File.WriteAllText(filePath, v1);
 
-            int port;
-            var server = CreateCachedStaticServer(path, out port);
+            var server = CreateCachedStaticServer(path);
             bool started = false;
             try {
                 await server.StartAsync();
@@ -563,7 +545,7 @@ namespace test {
                 Check.That(updatedContent).IsEqualTo(v2);
             }
             finally {
-                await StopAndReleaseAsync(server, port, started);
+                await StopIfStartedAsync(server, started);
                 TryDeleteDirectory(path);
             }
         }
@@ -576,7 +558,7 @@ namespace test {
         public async Task Get_StaticContent_Cache_File_Hit_Etag_304() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -606,14 +588,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_Cache_File_Hit_ModifiedSince_304() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -643,7 +624,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion hit 304
@@ -654,7 +634,7 @@ namespace test {
         public async Task Get_StaticContent_Cache_File_Miss_Etag_304() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -684,14 +664,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_Cache_File_Miss_ModifiedSince_304() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
@@ -721,7 +700,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion miss 200
@@ -732,7 +710,7 @@ namespace test {
         public async Task Get_StaticContent_Cache_DefaultDocument_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_DefaultDocument_200");
             Directory.CreateDirectory(path);
@@ -757,14 +735,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_Cache_DefaultDocumentMaintenance_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_DefaultDocumentMaintenance_200");
             Directory.CreateDirectory(path);
@@ -789,7 +766,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion default document
@@ -802,7 +778,7 @@ namespace test {
         public async Task Get_StaticContent_Cache_File_Modified_ReturnsUpdatedContent() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_File_Modified_ReturnsUpdatedContent");
             Directory.CreateDirectory(path);
@@ -843,14 +819,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_Cache_File_Deleted_Returns404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_File_Deleted_Returns404");
             Directory.CreateDirectory(path);
@@ -890,14 +865,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Get_StaticContent_Cache_File_Created_Returns200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             string path = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "Get_StaticContent_Cache_File_Created_Returns200");
             Directory.CreateDirectory(path);
@@ -936,14 +910,12 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion watcher
 
-        private static SimpleWServer CreateCachedStaticServer(string path, out int port, Action<StaticFilesModuleExtension.StaticFilesOptions>? configure = null) {
-            port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+        private static SimpleWServer CreateCachedStaticServer(string path, Action<StaticFilesModuleExtension.StaticFilesOptions>? configure = null) {
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseStaticFilesModule(options => {
                 options.Path = path;
                 options.Prefix = "/files";
@@ -994,11 +966,10 @@ namespace test {
             return $"http://{server.Address}:{server.Port}/files/{fileName}";
         }
 
-        private static async Task StopAndReleaseAsync(SimpleWServer server, int port, bool started) {
+        private static async Task StopIfStartedAsync(SimpleWServer server, bool started) {
             if (started) {
                 await server.StopAsync();
             }
-            PortManager.ReleasePort(port);
         }
 
         private static void TryDeleteDirectory(string path) {

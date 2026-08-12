@@ -20,7 +20,7 @@ namespace test {
         public async Task MapGet_NoParameter_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => {
                 return new { message = "Hello World !" };
             });
@@ -37,14 +37,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task MapGet_ParameterName_NameHelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -61,14 +60,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task MapGet_ParameterName_Null1HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -85,14 +83,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task MapGet_ParameterName_Null2HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -109,14 +106,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task MapGet_ParameterSessionRequest_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 Check.That(session).IsNotNull();
                 Check.That(session.Request).IsNotNull();
@@ -135,14 +131,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task MapGet_ParameterSessionRequestName_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session, string? name = null) => {
                 Check.That(session).IsNotNull();
                 Check.That(session.Request).IsNotNull();
@@ -161,14 +156,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task MapGet_ParameterNameRequestSession_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (string name, HttpSession session) => {
                 Check.That(session).IsNotNull();
                 Check.That(session.Request).IsNotNull();
@@ -187,7 +181,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion MapGet
@@ -198,7 +191,7 @@ namespace test {
         public async Task BodyMap_Raw_MapPost_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/", (HttpSession session) => {
                 return Raw(session);
             });
@@ -217,7 +210,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         /*
@@ -226,7 +218,7 @@ namespace test {
         public async Task BodyMap_formurlencoded_MapPost_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/", (HttpSession session) => {
                 return HelloWorld(session);
             });
@@ -251,7 +243,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
         */
 
@@ -259,7 +250,7 @@ namespace test {
         public async Task BodyMap_Json_MapPost_HelloWorld() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/", (HttpSession session) => {
                 return HelloWorld(session);
             });
@@ -279,7 +270,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
@@ -291,7 +281,7 @@ namespace test {
             File.WriteAllText(testFilePath, testFileContent);
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/", (HttpSession session) => {
                 return FileResponse(session);
             });
@@ -315,7 +305,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         public object HelloWorld(HttpSession session) {
@@ -372,12 +361,11 @@ namespace test {
         public async Task RequestAborted_Should_Be_Cancelled_When_Client_Disconnects_During_Async_Handler() {
 
             // settings
-            int port = PortManager.GetFreePort();
             var handlerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var requestAbortedCancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Configure(options => {
                 options.SocketDisconnectPollInterval = TimeSpan.FromMilliseconds(25);
@@ -406,7 +394,7 @@ namespace test {
 
             // client socket raw pour pouvoir fermer brutalement
             using var client = new TcpClient();
-            await client.ConnectAsync(IPAddress.Loopback, port);
+            await client.ConnectAsync(IPAddress.Loopback, server.Port);
 
             using NetworkStream stream = client.GetStream();
 
@@ -433,18 +421,16 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(port);
         }
 
         [Fact]
         public async Task RequestAborted_Should_Not_Be_Cancelled_If_Client_Stays_Connected() {
 
             // settings
-            int port = PortManager.GetFreePort();
             var tokenState = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Configure(options => {
                 options.SocketDisconnectPollInterval = TimeSpan.FromMilliseconds(25);
@@ -476,19 +462,17 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(port);
         }
 
         [Fact]
         public async Task ThrowIfAborted_Should_Throw_When_Client_Disconnects() {
 
             // settings
-            int port = PortManager.GetFreePort();
             var throwDetected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var handlerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Configure(options => {
                 options.SocketDisconnectPollInterval = TimeSpan.FromMilliseconds(25);
@@ -512,7 +496,7 @@ namespace test {
             await server.StartAsync();
 
             using var client = new TcpClient();
-            await client.ConnectAsync(IPAddress.Loopback, port);
+            await client.ConnectAsync(IPAddress.Loopback, server.Port);
 
             using NetworkStream stream = client.GetStream();
 
@@ -537,7 +521,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(port);
         }
 
         #endregion RequestAborted
@@ -548,7 +531,7 @@ namespace test {
         public async Task Handler_That_Completes_Without_Sending_Response_Should_Return_500() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapGet("/api/missing-response", (HttpSession session) => {
                 // simulate a developer mistake:
@@ -570,7 +553,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion Missing user Response

@@ -17,7 +17,7 @@ namespace test {
         public async Task Response_StatusCode_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Text("Hello World !");
             });
@@ -35,14 +35,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_StatusCode_404() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.NotFound("NotFound");
             });
@@ -59,14 +58,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_StatusCode_500() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.InternalServerError("Server Error");
             });
@@ -83,14 +81,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_StatusCode_401() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Unauthorized("Unauthorized");
             });
@@ -107,14 +104,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_StatusCode_302() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Redirect($"http://{server.Address}:{server.Port}/");
             });
@@ -130,7 +126,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
     }

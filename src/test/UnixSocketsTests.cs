@@ -51,7 +51,6 @@ namespace test {
 
         //    // dispose
         //    server.Stop();
-        //    PortManager.ReleasePort(server.Port);
         //}
 
     }

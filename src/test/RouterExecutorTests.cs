@@ -18,7 +18,7 @@ namespace test {
         public async Task OnBeforeController_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.MapController<OnBeforeController>("/api");
 
@@ -35,7 +35,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Route("/test")]
@@ -61,7 +60,7 @@ namespace test {
         [Fact]
         public async Task Middleware_Can_Read_Controller_Metadata_From_Session_200() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseMiddleware((session, next) => {
                 var current = session.Metadata.Get<TestMetadataAttribute>();
@@ -89,13 +88,12 @@ namespace test {
             Check.That(response.Headers.GetValues("x-metadata-all").Single()).IsEqualTo("controller,method");
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Middleware_Can_Read_Delegate_Metadata_From_Session_200() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseMiddleware((session, next) => {
                 var all = session.Metadata.GetAll<TestMetadataAttribute>();
@@ -120,13 +118,12 @@ namespace test {
             Check.That(response.Headers.GetValues("x-metadata-all").Single()).IsEqualTo("delegate-class,delegate-method");
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Metadata_Does_Not_Leak_To_Next_Request_200() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseMiddleware((session, next) => {
                 var all = session.Metadata.GetAll<TestMetadataAttribute>();
@@ -154,7 +151,6 @@ namespace test {
             Check.That(second.Headers.Contains("x-metadata-all")).IsFalse();
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [TestMetadata("controller")]

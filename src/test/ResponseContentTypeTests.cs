@@ -16,7 +16,7 @@ namespace test {
         public async Task Response_ContentType_Text() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Text("Hello World !");
             });
@@ -34,14 +34,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_ContentType_Json() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Json(new { message = "Hello World !" });
             });
@@ -59,14 +58,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_ContentType_Html() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Html("<h1>Hello World !</h1>");
             });
@@ -84,14 +82,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_WitoutBody() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Html("<h1>Hello World !</h1>").RemoveBody();
             });
@@ -109,7 +106,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
     }

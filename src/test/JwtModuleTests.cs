@@ -22,8 +22,7 @@ namespace test {
         [Fact]
         public async Task UseJwtModule_Should_Restore_Principal_And_Honor_AllowAnonymous() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseJwtModule(options => {
                 options.SecretKey = SecretKey;
@@ -63,15 +62,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseJwtModule_Should_Redirect_To_Login_When_Configured() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseJwtModule(options => {
                 options.SecretKey = SecretKey;
@@ -97,15 +94,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseJwtModule_Should_Append_ReturnUrl_Before_LoginUrl_Fragment() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseJwtModule(options => {
                 options.SecretKey = SecretKey;
@@ -131,15 +126,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseJwtModule_Should_Return401_Without_WwwAuthenticate_When_LoginUrl_Is_Not_Configured() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseJwtModule(options => {
                 options.SecretKey = SecretKey;
@@ -163,15 +156,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseJwtModule_Should_Enforce_Roles() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseJwtModule(options => {
                 options.SecretKey = SecretKey;
@@ -214,15 +205,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseJwtModule_Should_Use_ModulePrincipalFactory() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseJwtModule(options => {
                 options.SecretKey = SecretKey;
@@ -269,14 +258,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public void UseJwtModule_Should_Reject_Helper_With_Inline_Helper_Settings() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             JwtBearerHelper helper = CreateHelper();
 
             try {
@@ -288,7 +276,6 @@ namespace test {
                 });
             }
             finally {
-                PortManager.ReleasePort(server.Port);
             }
         }
 

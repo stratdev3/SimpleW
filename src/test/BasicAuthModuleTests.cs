@@ -19,8 +19,7 @@ namespace test {
         [Fact]
         public async Task UseBasicAuthModule_Should_Restore_Principal_And_Honor_AllowAnonymous() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseBasicAuthModule(options => {
                 options.Users = [
@@ -60,15 +59,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseBasicAuthModule_Should_Send_Challenge_From_Handler_Metadata() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseBasicAuthModule(options => {
                 options.Users = [
@@ -92,15 +89,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseBasicAuthModule_Should_Bypass_Options_When_Configured() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseBasicAuthModule(options => {
                 options.Users = [
@@ -128,15 +123,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task UseBasicAuthModule_Should_Use_ModulePrincipalFactory() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseBasicAuthModule(options => {
                 options.Users = [
@@ -177,14 +170,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public void UseBasicAuthModule_Should_Reject_Helper_With_Inline_Helper_Settings() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             BasicAuthHelper helper = CreateHelper();
 
             try {
@@ -198,14 +190,13 @@ namespace test {
                 });
             }
             finally {
-                PortManager.ReleasePort(server.Port);
             }
         }
 
         [Fact]
         public void UseBasicAuthModule_Should_Reject_AutoAuthorize_Without_RestorePrincipal() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             try {
                 Assert.Throws<ArgumentException>(() => {
@@ -219,7 +210,6 @@ namespace test {
                 });
             }
             finally {
-                PortManager.ReleasePort(server.Port);
             }
         }
 

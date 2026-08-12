@@ -16,7 +16,7 @@ namespace test {
         public async Task Response_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return new { message = "Hello World !" };
             });
@@ -35,14 +35,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_ContentType() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Text("Hello World !");
             });
@@ -61,7 +60,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
@@ -71,7 +69,7 @@ namespace test {
             var now = DateTime.Now;
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response
                               .AddHeader("X-Custom", "X-Custom-Value")
@@ -94,7 +92,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
     }

@@ -16,8 +16,7 @@ namespace test {
         [Fact]
         public async Task WebSocket_Should_Return_Forbidden_When_Authorize_Denies() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseWebSocketModule(options => {
                 options.Authorize = _ => false;
@@ -45,7 +44,6 @@ namespace test {
                 if (started) {
                     await server.StopAsync();
                 }
-                PortManager.ReleasePort(port);
             }
         }
 

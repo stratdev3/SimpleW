@@ -17,19 +17,18 @@ namespace test {
 
         [Fact]
         public void GetBackgroundService_Without_Module_Should_Throw() {
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             try {
                 Assert.Throws<InvalidOperationException>(() => server.GetBackgroundService());
             }
             finally {
-                PortManager.ReleasePort(server.Port);
             }
         }
 
         [Fact]
         public void TryEnqueue_Should_Return_False_When_Queue_Is_Full() {
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseBackgroundModule(options => {
                 options.Capacity = 1;
             });
@@ -46,13 +45,11 @@ namespace test {
                 Check.That(secondHandle.Id).IsEqualTo(Guid.Empty);
             }
             finally {
-                PortManager.ReleasePort(server.Port);
             }
         }
 
         [Fact]
         public async Task Telemetry_Should_Record_Background_Counters() {
-            int port = PortManager.GetFreePort();
             ConcurrentDictionary<string, long> counters = new();
 
             using MeterListener listener = new();
@@ -67,7 +64,7 @@ namespace test {
             listener.SetMeasurementEventCallback<double>((_, _, _, _) => { });
             listener.Start();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.EnableTelemetry();
             server.UseBackgroundModule(options => {
                 options.EnableTelemetry = true;
@@ -101,16 +98,14 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Custom_JobStore_Should_Receive_Job_Snapshots() {
-            int port = PortManager.GetFreePort();
             RecordingBackgroundJobStore store = new();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseBackgroundModule(options => {
                 options.JobStore = store;
             });
@@ -133,18 +128,16 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Handler_Should_Return_Immediately_And_Run_Job_In_Background() {
-            int port = PortManager.GetFreePort();
             TaskCompletionSource<bool> jobStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
             TaskCompletionSource<bool> releaseJob = new(TaskCreationOptions.RunContinuationsAsynchronously);
             TaskCompletionSource<Guid> jobIdSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseBackgroundModule();
 
             server.MapGet("/api/background", (HttpSession session) => {
@@ -179,18 +172,16 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task ReportProgress_Should_Update_Job_Snapshot() {
-            int port = PortManager.GetFreePort();
             TaskCompletionSource<bool> progressReported = new(TaskCreationOptions.RunContinuationsAsynchronously);
             TaskCompletionSource<bool> releaseJob = new(TaskCreationOptions.RunContinuationsAsynchronously);
             TaskCompletionSource<Guid> jobIdSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseBackgroundModule();
 
             server.MapGet("/api/progress", (HttpSession session) => {
@@ -231,16 +222,14 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Failed_Job_Should_Keep_Failed_Snapshot() {
-            int port = PortManager.GetFreePort();
             TaskCompletionSource<Guid> jobIdSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseBackgroundModule();
 
             server.MapGet("/api/fail", (HttpSession session) => {
@@ -266,16 +255,14 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Cron_Schedule_Should_Enqueue_And_Run_Job() {
-            int port = PortManager.GetFreePort();
             TaskCompletionSource<bool> cronRan = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseBackgroundModule(options => {
                 options.Schedule(
                     "test-cron",
@@ -299,7 +286,6 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 

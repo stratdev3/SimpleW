@@ -15,8 +15,7 @@ namespace test {
 
         [Fact]
         public async Task UseFirewallModule_Should_Apply_Global_AllowRules() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule(options => {
@@ -34,14 +33,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_Metadata_Should_Override_Global_AllowRules() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule(options => {
@@ -61,14 +58,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_DenyIp_Metadata_Should_Block_Handler() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule();
@@ -84,14 +79,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_AllowIp_Metadata_Should_Default_Deny_When_No_Rule_Matches() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule();
@@ -107,14 +100,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_RateLimit_Metadata_Should_Block_Second_Request() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule();
@@ -132,14 +123,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_RateLimitWhitelist_Should_Bypass_Global_RateLimit() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(ResolveTestClientIp);
             server.UseFirewallModule(options => {
@@ -170,14 +159,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_RateLimitWhitelist_Should_Bypass_Handler_RateLimit() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule(options => {
@@ -197,14 +184,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_RateLimitWhitelist_Should_Not_Bypass_DenyRules() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule(options => {
@@ -227,14 +212,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_Metadata_Should_Combine_Controller_And_Method_Rules() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule();
@@ -252,14 +235,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_DenyUnknownCountry_Metadata_Should_Block_When_Country_Is_Unresolved() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule();
@@ -275,14 +256,12 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Firewall_UnknownCountry_Should_Not_Match_When_Disabled() {
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
             server.UseFirewallModule(options => {
@@ -302,7 +281,6 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 

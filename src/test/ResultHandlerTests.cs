@@ -16,7 +16,7 @@ namespace test {
         public async Task Response_200_Default_ResultHandler() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => {
                 return new { message = "Hello World !" };
             });
@@ -34,14 +34,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Custom_ResultHandler_AddHeader() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.ConfigureResultHandler(async (session, result) => {
                 await session.Response
                              .AddHeader("custom", "value")
@@ -65,7 +64,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
     }

@@ -17,7 +17,7 @@ namespace test {
         public async Task Body_MapPost_Raw() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/api/test/raw", (HttpSession session) => {
                 return session.Response.Text(session.Request.BodyString);
             });
@@ -36,14 +36,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Body_MapPost_Json() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/api/test/hello", (HttpSession session) => {
                 var user = new Body_MapPost_User();
                 session.Request.BodyMap(user);
@@ -65,7 +64,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
@@ -77,7 +75,7 @@ namespace test {
             File.WriteAllText(testFilePath, testFileContent);
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapPost("/api/test/file", object (HttpSession session) => {
                 var parser = session.Request.BodyMultipart();
                 if (parser == null || parser.Files.Count == 0) {
@@ -119,7 +117,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         public class Body_MapPost_User {

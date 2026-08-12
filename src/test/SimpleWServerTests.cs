@@ -45,7 +45,7 @@ namespace test {
         [Fact]
         public async Task UseAddress_AfterStart_Should_Throw() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             await server.StartAsync();
@@ -53,13 +53,12 @@ namespace test {
             Assert.Throws<InvalidOperationException>(() => server.UseAddress(IPAddress.Any));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task UsePort_AfterStart_Should_Throw() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             await server.StartAsync();
@@ -67,7 +66,6 @@ namespace test {
             Assert.Throws<InvalidOperationException>(() => server.UsePort(server.Port + 1));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion constructor
@@ -89,7 +87,7 @@ namespace test {
         [Fact]
         public async Task UseControllerActionExecutorFactory_AfterStart_Should_Throw() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             await server.StartAsync();
@@ -97,14 +95,12 @@ namespace test {
             Assert.Throws<InvalidOperationException>(() => server.UseControllerActionExecutorFactory((_, _) => static (session, resultHandler) => resultHandler(session, new { ok = true })));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task MapController_Should_Use_Custom_ControllerActionExecutorFactory() {
 
-            int port = PortManager.GetFreePort();
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             var factoryTracker = new FakeControllerActionExecutorFactory();
 
             server.UseControllerActionExecutorFactory(factoryTracker.Create);
@@ -123,7 +119,6 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
@@ -174,7 +169,7 @@ namespace test {
         [Fact]
         public async Task ConfigureEngine_AfterStart_Should_Throw() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             await server.StartAsync();
@@ -182,14 +177,13 @@ namespace test {
             Assert.Throws<InvalidOperationException>(() => server.UseEngine(new FakeEngine()));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task CustomEngine_Should_Be_Used_For_Start_And_Stop() {
 
             var engine = new FakeEngine();
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseEngine(engine);
 
@@ -199,17 +193,14 @@ namespace test {
             Check.That(engine.StartCallCount).IsEqualTo(1);
             Check.That(engine.StopCallCount).IsEqualTo(1);
 
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task SimpleWEngine_Should_Not_Be_Shared_By_Two_Started_Servers() {
 
-            int port1 = PortManager.GetFreePort();
-            int port2 = PortManager.GetFreePort();
             var engine = new SimpleWEngine();
-            var server1 = new SimpleWServer(IPAddress.Loopback, port1);
-            var server2 = new SimpleWServer(IPAddress.Loopback, port2);
+            var server1 = new SimpleWServer(IPAddress.Loopback, 0);
+            var server2 = new SimpleWServer(IPAddress.Loopback, 0);
 
             server1.UseEngine(engine);
             server2.UseEngine(engine);
@@ -224,8 +215,6 @@ namespace test {
             finally {
                 await server1.StopAsync();
                 await server2.StopAsync();
-                PortManager.ReleasePort(port1);
-                PortManager.ReleasePort(port2);
             }
         }
 
@@ -245,7 +234,7 @@ namespace test {
         [Fact]
         public async Task UseEngine_WithOptions_AfterStart_Should_Throw() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             await server.StartAsync();
@@ -255,7 +244,6 @@ namespace test {
             }));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
@@ -342,7 +330,7 @@ namespace test {
         [Fact]
         public async Task ConfigureResultHandler_Should_Override_Default_Handler() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureResultHandler((session, result) => {
                 return session.Response
@@ -367,7 +355,6 @@ namespace test {
             Check.That(response.Headers.GetValues("X-Result-Handler").First()).IsEqualTo("custom");
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion result handler
@@ -412,7 +399,6 @@ namespace test {
             Assert.True(read == 0 || Encoding.ASCII.GetString(buffer, 0, read).Contains("431"));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
@@ -454,7 +440,6 @@ namespace test {
             Assert.True(read == 0 || Encoding.ASCII.GetString(buffer, 0, read).Contains("413"));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion
@@ -497,7 +482,6 @@ namespace test {
             Assert.True(read == 0);
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion SessionTimeout
@@ -510,7 +494,7 @@ namespace test {
             int syncCallCount = 0;
             var asyncStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             server.OnStarted(s => {
@@ -530,7 +514,6 @@ namespace test {
             Check.That(syncCallCount).IsEqualTo(1);
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
@@ -539,7 +522,7 @@ namespace test {
             int syncCallCount = 0;
             int asyncCallCount = 0;
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             server.OnStopped(s => {
@@ -557,7 +540,6 @@ namespace test {
 
             await server.StartAsync();
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
 
             Check.That(syncCallCount).IsEqualTo(1);
             Check.That(asyncCallCount).IsEqualTo(1);
@@ -570,7 +552,7 @@ namespace test {
         [Fact]
         public async Task ConfigureClientIPResolver_Should_Override_ClientIpAddress() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigureClientIPResolver(_ => IPAddress.Parse("203.0.113.10"));
 
@@ -592,7 +574,6 @@ namespace test {
             }));
 
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion client ip resolver
@@ -603,7 +584,7 @@ namespace test {
         public async Task RequestHeadersTimeout_Should_Close_Connection_And_May_Return_408_When_Headers_Are_Too_Slow() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Configure(options => {
                 options.RequestHeadersTimeout = TimeSpan.FromMilliseconds(150);
@@ -655,7 +636,6 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(server.Port);
             }
         }
 
@@ -663,7 +643,7 @@ namespace test {
         public async Task MinRequestBodyDataRateBytesPerSecond_Should_Return_408_When_Body_Is_Too_Slow_After_GracePeriod() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Configure(options => {
                 options.RequestHeadersTimeout = TimeSpan.FromSeconds(2);
@@ -713,14 +693,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task RequestBodyGracePeriod_Should_Allow_Slow_Start_If_Body_Finishes_Before_Rate_Check_Fails() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.Configure(options => {
                 options.RequestHeadersTimeout = TimeSpan.FromSeconds(2);
@@ -771,7 +750,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion slow request protection
@@ -809,7 +787,7 @@ namespace test {
             );
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigurePrincipalResolver(session => {
                 if (!jwtHelper.TryAuthenticate(session, out HttpPrincipal principal)) {
@@ -854,7 +832,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
@@ -863,7 +840,7 @@ namespace test {
             int resolverCallCount = 0;
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigurePrincipalResolver(session => {
                 Interlocked.Increment(ref resolverCallCount);
@@ -921,7 +898,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion principal
@@ -931,7 +907,7 @@ namespace test {
         [Fact]
         public void EnableTelemetry_And_DisableTelemetry_Should_Update_Status() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             Check.That(server.IsTelemetryEnabled).IsFalse();
 
@@ -941,13 +917,12 @@ namespace test {
             server.DisableTelemetry();
             Check.That(server.IsTelemetryEnabled).IsFalse();
 
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public void ConfigureTelemetry_After_EnableTelemetry_Should_Throw() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.EnableTelemetry();
 
             Assert.Throws<InvalidOperationException>(() => {
@@ -957,7 +932,6 @@ namespace test {
             });
 
             server.DisableTelemetry();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion telemetry

@@ -17,7 +17,7 @@ namespace test {
         public async Task Response_200_Auto_ContentShouldNoBeCompressed_ClientNotSupport() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return new { message = "Hello World !" };
             });
@@ -34,14 +34,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Auto_ContentShouldNoBeCompressed_ClientSupport() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return new { message = "Hello World !" };
             });
@@ -59,14 +58,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Auto_ContentShouldBeCompressedClientNotSupport() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 string message = "Hello World";
                 for (var i = 0; i < 10; i++) {
@@ -87,14 +85,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Auto_ContentShouldBeCompressedClientSupport() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 string message = "Hello World";
                 for (var i = 0; i < 10; i++) {
@@ -116,14 +113,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Auto_ContentShouldBeCompressedToGzip() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 string message = "Hello World";
                 for (var i = 0; i < 10; i++) {
@@ -145,14 +141,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Auto_ContentShouldBeCompressedToGzipPriorityDeflate() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 string message = "Hello World";
                 for (var i = 0; i < 10; i++) {
@@ -174,14 +169,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Auto_ContentShouldBeCompressedToDeflate() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 string message = "Hello World";
                 for (var i = 0; i < 10; i++) {
@@ -203,14 +197,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_Auto_ContentShouldNotBeCompressed_ClientUnkownEncoding() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 string message = "Hello World";
                 for (var i = 0; i < 10; i++) {
@@ -232,14 +225,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_ForceNoCompression() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 string message = "Hello World";
                 for (var i = 0; i < 10; i++) {
@@ -261,14 +253,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_ForceGzip() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Json(new { message = "Hello World !" }).Compression(HttpResponse.ResponseCompressionMode.ForceGzip);
             });
@@ -286,14 +277,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_ForceDeflate() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Json(new { message = "Hello World !" }).Compression(HttpResponse.ResponseCompressionMode.ForceDeflate);
             });
@@ -311,14 +301,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task Response_200_ForceBrotli() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", (HttpSession session) => {
                 return session.Response.Json(new { message = "Hello World !" }).Compression(HttpResponse.ResponseCompressionMode.ForceBrotli);
             });
@@ -336,7 +325,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
     }

@@ -18,12 +18,11 @@ namespace test {
 
         [Fact]
         public async Task UseDependencyInjection_AfterStart_Should_Throw() {
-            int port = PortManager.GetFreePort();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/", () => new { ok = true });
 
             try {
@@ -33,19 +32,17 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task MapController_Should_Resolve_A_Scoped_Service_Per_Request_When_Di_Is_Enabled() {
-            int port = PortManager.GetFreePort();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .AddScoped<RequestMarker>()
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseDependencyInjection(rootProvider);
             server.UseMiddleware((session, next) => {
                 session.Response.AddHeader("x-request-service", session.GetRequiredRequestService<RequestMarker>().Id.ToString("N"));
@@ -78,19 +75,17 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task MapController_Should_Support_OnBeforeMethod_And_Query_Route_Binding_When_Di_Is_Enabled() {
-            int port = PortManager.GetFreePort();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .AddScoped<GreetingSuffixService>(_ => new GreetingSuffixService(" from DI"))
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseDependencyInjection(rootProvider);
             server.MapController<OnBeforeDiController>("/api");
 
@@ -106,18 +101,16 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Middleware_Can_Read_Metadata_From_Di_Controller_200() {
-            int port = PortManager.GetFreePort();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseDependencyInjection(rootProvider);
             server.UseMiddleware((session, next) => {
                 var current = session.Metadata.Get<TestDiMetadataAttribute>();
@@ -146,19 +139,17 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task MapControllers_Should_Discover_Controllers_From_Base_Type_When_Di_Is_Enabled() {
-            int port = PortManager.GetFreePort();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .AddScoped<ScanMessageService>(_ => new ScanMessageService("scan"))
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseDependencyInjection(rootProvider);
             server.MapControllers<DiScanBaseController>("/api", new[] { typeof(ExcludedDiScanController) });
 
@@ -174,19 +165,17 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task MapController_Should_Support_Task_With_Result_When_Di_Is_Enabled() {
-            int port = PortManager.GetFreePort();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .AddScoped<AsyncResultMessageService>(_ => new AsyncResultMessageService("task"))
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseDependencyInjection(rootProvider);
             server.MapController<TaskResultDiController>("/api");
 
@@ -202,19 +191,17 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task MapController_Should_Support_ValueTask_With_Result_When_Di_Is_Enabled() {
-            int port = PortManager.GetFreePort();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .AddScoped<AsyncResultMessageService>(_ => new AsyncResultMessageService("value-task"))
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseDependencyInjection(rootProvider);
             server.MapController<ValueTaskResultDiController>("/api");
 
@@ -230,20 +217,18 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task MapController_Should_Dispose_Controller_After_Request_When_Di_Is_Enabled() {
-            int port = PortManager.GetFreePort();
 
             DisposableDiController.Reset();
 
             await using ServiceProvider rootProvider = new ServiceCollection()
                                                        .BuildServiceProvider();
 
-            var server = new SimpleWServer(IPAddress.Loopback, port);
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseDependencyInjection(rootProvider);
             server.MapController<DisposableDiController>("/api");
 
@@ -258,16 +243,13 @@ namespace test {
             }
             finally {
                 await server.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 
         [Fact]
         public async Task Hosting_ConfigureSimpleW_WithServices_Should_Enable_Controller_Di_Before_MapController() {
-            int port = PortManager.GetFreePort();
-
             var builder = SimpleWHost.CreateApplicationBuilder(Array.Empty<string>());
-            builder.UseUrl($"http://127.0.0.1:{port}");
+            builder.UseUrl("http://127.0.0.1:0");
             builder.Services.AddScoped<RequestMarker>();
 
             builder.ConfigureSimpleW((services, server) => {
@@ -280,8 +262,9 @@ namespace test {
             try {
                 await host.StartAsync();
 
+                SimpleWServer server = host.Services.GetRequiredService<SimpleWServer>();
                 var client = new HttpClient();
-                var response = await client.GetAsync($"http://127.0.0.1:{port}/api/hosted/scoped");
+                var response = await client.GetAsync($"http://{server.Address}:{server.Port}/api/hosted/scoped");
                 string content = await response.Content.ReadAsStringAsync();
                 string? id = JsonDocument.Parse(content).RootElement.GetProperty("id").GetString();
 
@@ -291,7 +274,6 @@ namespace test {
             }
             finally {
                 await host.StopAsync();
-                PortManager.ReleasePort(port);
             }
         }
 

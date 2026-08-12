@@ -19,7 +19,7 @@ namespace test {
         public async Task QueryString_MapGet_String_NoDefault_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/test/hello", (HttpSession session, string name) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -36,14 +36,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task QueryString_MapGet_String_NoDefault_500() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/test/hello", (HttpSession session, string name) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -59,14 +58,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task QueryString_MapGet_Guid_NoDefault_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/user/update", (HttpSession session, Guid id) => {
                 return new { message = $"{id}" };
             });
@@ -84,14 +82,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task QueryString_MapGet_Guid_NoDefault_500() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/user/update", (HttpSession session, Guid id) => {
                 return new { message = $"{id}" };
             });
@@ -107,7 +104,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion no default
@@ -118,7 +114,7 @@ namespace test {
         public async Task QueryString_MapGet_String_DefaultNull_GetNull_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/test/hello", (HttpSession session, string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -135,14 +131,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task QueryString_MapGet_String_DefaultNull_GetEmpty_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/test/hello", (HttpSession session, string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -159,14 +154,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task QueryString_MapGet_String_DefaultNull_GetValue_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/test/hello", (HttpSession session, string? name = null) => {
                 return new { message = $"{name}, Hello World !" };
             });
@@ -183,7 +177,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion default value
@@ -194,7 +187,7 @@ namespace test {
         public async Task QueryString_MapGet_Guid_DefaultObject_GetNull_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/user/update", (HttpSession session, Guid id = new Guid()) => {
                 return new { message = $"{id}" };
             });
@@ -211,14 +204,13 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         [Fact]
         public async Task QueryString_MapGet_Guid_DefaultObject_GetValue_200() {
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.MapGet("/api/user/update", (HttpSession session, Guid id = new Guid()) => {
                 return new { message = $"{id}" };
             });
@@ -236,7 +228,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion default object

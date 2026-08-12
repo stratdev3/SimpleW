@@ -48,7 +48,7 @@ namespace test {
             );
 
             // server
-            var server = new SimpleWServer(IPAddress.Loopback, PortManager.GetFreePort());
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseEngine(options => {
                 options.SslContext = sslContext;
             });
@@ -68,7 +68,6 @@ namespace test {
 
             // dispose
             await server.StopAsync();
-            PortManager.ReleasePort(server.Port);
         }
 
         #endregion tls
