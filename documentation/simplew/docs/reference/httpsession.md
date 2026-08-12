@@ -118,14 +118,20 @@ public IPAddress? ClientIpAddress
 See the [examples](../guide/observability.md#custom-client-ip-resolution).
 
 
-## ClientCertificate
+## TLS metadata
 
 ```csharp
-/// <summary>
-/// ClientCertificate if exists in sslStream
-/// </summary>
-public X509Certificate2? ClientCertificate
+public string? NegotiatedApplicationProtocol { get; }
+public string? ClientCertificateSubject { get; }
+public string? ClientCertificateEmailAddress { get; }
+public bool? IsClientCertificateAuthenticated { get; }
 ```
+
+`IsClientCertificateAuthenticated` is `true` when a client certificate was presented and accepted by the TLS policy, `false` when TLS metadata is available but no client certificate was authenticated, and `null` when the engine exposes no TLS metadata.
+
+The client certificate subject is validated by the transport but retains the engine's native format. Do not parse it naively or assume that .NET and OpenSSL produce the same textual representation.
+
+`ClientCertificateEmailAddress` contains the certificate email address when the TLS engine exposes it. It can be `null` even when `IsClientCertificateAuthenticated` is `true`.
 
 
 ## SendAsync

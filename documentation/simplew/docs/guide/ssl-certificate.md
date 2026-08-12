@@ -138,44 +138,53 @@ var context = new SslContext(
 ```
 
 
-## Accessing the client certificate
+## Accessing client TLS metadata
 
-After a successful TLS handshake, the client certificate is available on the session:
+After a successful TLS handshake, common TLS metadata is available on the session without exposing an engine-specific certificate object:
 
 ```csharp
-var cert = session.ClientCertificate;
+if (session.IsClientCertificateAuthenticated == true) {
+    Console.WriteLine(session.ClientCertificateSubject);
+    Console.WriteLine(session.ClientCertificateEmailAddress);
+}
+
+Console.WriteLine(session.NegotiatedApplicationProtocol);
 ```
 
-This property returns an `X509Certificate2` or `null` if no client certificate was provided.
+`IsClientCertificateAuthenticated` is `false` when the TLS engine reports that no client certificate was authenticated. It is `null` when the transport does not expose TLS metadata.
+
+`ClientCertificateEmailAddress` contains the email address selected from the certificate by the TLS engine. It can be `null` for an authenticated certificate. The Socket engine uses `X509Certificate2.GetNameInfo(X509NameType.EmailName, false)`; Ioxide 0.4.184 does not expose this value yet.
+
+The subject was validated according to the listener's TLS policy, but its textual representation is native to the engine. For example, .NET and OpenSSL may format the same distinguished name differently. Do not parse it naively or compare values produced by different engines.
 
 
 ## Mapping mTLS to HttpPrincipal
 
 mTLS only validates the connection.
-To integrate with the SimpleW authentication model, you should map the client certificate to a [`HttpPrincipal`](./principal.md).
+To integrate with the SimpleW authentication model, you can map the authenticated subject to a [`HttpPrincipal`](./principal.md).
 There are two approaches to resolve the principal at request time :
 
 ::: code-group
 
 ```csharp [PrincipalResolver Approach]
 server.ConfigurePrincipalResolver(session => {
-    var cert = session.ClientCertificate;
+    string? subject = session.ClientCertificateSubject;
+    string? emailAddress = session.ClientCertificateEmailAddress;
 
-    if (cert == null) {
+    if (session.IsClientCertificateAuthenticated != true || string.IsNullOrEmpty(subject)) {
         return null;
     }
 
     return new HttpPrincipal(new HttpIdentity(
         isAuthenticated: true,
         authenticationType: "MutualTLS",
-        identifier: cert.Thumbprint,
-        name: cert.GetNameInfo(X509NameType.SimpleName, false) ?? cert.Subject,
-        email: cert.GetNameInfo(X509NameType.EmailName, false),
+        identifier: subject,
+        name: subject,
+        email: emailAddress,
         roles: Array.Empty<string>(),
         properties: [
             new IdentityProperty("auth_scheme", "mTLS"),
-            new IdentityProperty("x509.subject", cert.Subject),
-            new IdentityProperty("x509.thumbprint", cert.Thumbprint ?? string.Empty)
+            new IdentityProperty("x509.subject", subject)
         ]
     ));
 });
@@ -183,21 +192,20 @@ server.ConfigurePrincipalResolver(session => {
 
 ```csharp [Middleware Approach]
 server.UseMiddleware(async (session, next) => {
-    var cert = session.ClientCertificate;
+    string? subject = session.ClientCertificateSubject;
+    string? emailAddress = session.ClientCertificateEmailAddress;
 
-    if (cert != null) {
+    if (session.IsClientCertificateAuthenticated == true && !string.IsNullOrEmpty(subject)) {
         session.Principal = new HttpPrincipal(new HttpIdentity(
             isAuthenticated: true,
             authenticationType: "MutualTLS",
-            identifier: cert.Thumbprint,
-            name: cert.GetNameInfo(X509NameType.SimpleName, false) ?? cert.Subject,
-            email: cert.GetNameInfo(X509NameType.EmailName, false),
+            identifier: subject,
+            name: subject,
+            email: emailAddress,
             roles: Array.Empty<string>(),
             properties: [
                 new IdentityProperty("auth_scheme", "mTLS"),
-                new IdentityProperty("x509.subject", cert.Subject),
-                new IdentityProperty("x509.thumbprint", cert.Thumbprint ?? string.Empty),
-                new IdentityProperty("x509.serial_number", cert.SerialNumber ?? string.Empty)
+                new IdentityProperty("x509.subject", subject)
             ]
         ));
     }

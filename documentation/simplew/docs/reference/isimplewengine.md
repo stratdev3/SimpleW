@@ -87,10 +87,19 @@ ValueTask<long> WriteAsync(ArraySegment<byte>[] segments, CancellationToken canc
 
 ## Optional TLS Feature
 
-TLS handshakes are owned by listener engines before they call `SimpleWServer.CreateSessionAsync(...)`. An accepted encrypted transport can expose `ISimpleWTransportTlsFeature` through `GetFeature<ISimpleWTransportTlsFeature>()` when it has TLS metadata such as a client certificate.
+TLS handshakes are owned by listener engines before they call `SimpleWServer.CreateSessionAsync(...)`. An accepted encrypted transport can expose `ISimpleWTransportTlsFeature` through `GetFeature<ISimpleWTransportTlsFeature>()` when it provides TLS metadata.
 
 ```csharp
-X509Certificate2? ClientCertificate { get; }
+public interface ISimpleWTransportTlsFeature {
+    string? NegotiatedApplicationProtocol { get; }
+    string? ClientCertificateSubject { get; }
+    string? ClientCertificateEmailAddress { get; }
+    bool IsClientCertificateAuthenticated { get; }
+}
 ```
+
+`ClientCertificateSubject` is the subject validated by the TLS transport. Its representation is native to the engine and must not be parsed naively or compared directly between .NET and OpenSSL engines.
+
+For an Ioxide/OpenSSL transport, map `TlsSession.NegotiatedAlpn` to `NegotiatedApplicationProtocol`, `TlsSession.PeerSubject` to `ClientCertificateSubject`, and the presence of `PeerSubject` to `IsClientCertificateAuthenticated`. `ClientCertificateEmailAddress` remains `null` until Ioxide exposes the email address independently; implementations must not parse it from `PeerSubject`.
 
 See more [examples](../guide/server.md#optional-replace-the-default-engine).
