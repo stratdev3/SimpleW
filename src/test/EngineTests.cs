@@ -130,7 +130,7 @@ namespace test {
             using var session = new HttpSession(server, transport, ArrayPool<byte>.Shared);
 
             Task firstSend = session.SendAsync(Encoding.ASCII.GetBytes("hello")).AsTask();
-            await writeEntered.Task.ConfigureAwait(false);
+            await writeEntered.Task;
 
             try {
                 await Assert.ThrowsAsync<InvalidOperationException>(() => session.SendAsync(Encoding.ASCII.GetBytes("boom")).AsTask());
@@ -141,10 +141,56 @@ namespace test {
                 releaseWrite.SetResult(true);
             }
 
-            await firstSend.ConfigureAwait(false);
+            await firstSend;
 
             Check.That(session.Response.BytesSent).IsEqualTo(5);
             Check.That(writeCalls).IsEqualTo(1);
+        }
+
+        [Fact]
+        public void HttpSession_Should_Expose_Authenticated_Client_Certificate_Metadata() {
+            TestTlsFeature feature = new("http/1.1", "CN=client, O=SimpleW", "client@simplew.test", true);
+            using DelegateTransport transport = CreateTlsTransport(feature);
+            using var session = new HttpSession(new SimpleWServer(IPAddress.Loopback, 0), transport, ArrayPool<byte>.Shared);
+
+            Assert.Equal("http/1.1", session.NegotiatedApplicationProtocol);
+            Assert.Equal("CN=client, O=SimpleW", session.ClientCertificateSubject);
+            Assert.Equal("client@simplew.test", session.ClientCertificateEmailAddress);
+            Assert.Equal(true, session.IsClientCertificateAuthenticated);
+        }
+
+        [Fact]
+        public void HttpSession_Should_Expose_Authenticated_Client_Certificate_Without_Email() {
+            TestTlsFeature feature = new("http/1.1", "CN=client, O=SimpleW", null, true);
+            using DelegateTransport transport = CreateTlsTransport(feature);
+            using var session = new HttpSession(new SimpleWServer(IPAddress.Loopback, 0), transport, ArrayPool<byte>.Shared);
+
+            Assert.Equal("CN=client, O=SimpleW", session.ClientCertificateSubject);
+            Assert.Null(session.ClientCertificateEmailAddress);
+            Assert.Equal(true, session.IsClientCertificateAuthenticated);
+        }
+
+        [Fact]
+        public void HttpSession_Should_Expose_Absent_Client_Certificate() {
+            TestTlsFeature feature = new("http/1.1", null, null, false);
+            using DelegateTransport transport = CreateTlsTransport(feature);
+            using var session = new HttpSession(new SimpleWServer(IPAddress.Loopback, 0), transport, ArrayPool<byte>.Shared);
+
+            Assert.Equal("http/1.1", session.NegotiatedApplicationProtocol);
+            Assert.Null(session.ClientCertificateSubject);
+            Assert.Null(session.ClientCertificateEmailAddress);
+            Assert.Equal(false, session.IsClientCertificateAuthenticated);
+        }
+
+        [Fact]
+        public void HttpSession_Should_Expose_Null_Tls_Metadata_When_Feature_Is_Unavailable() {
+            using DelegateTransport transport = CreateTlsTransport(null);
+            using var session = new HttpSession(new SimpleWServer(IPAddress.Loopback, 0), transport, ArrayPool<byte>.Shared);
+
+            Assert.Null(session.NegotiatedApplicationProtocol);
+            Assert.Null(session.ClientCertificateSubject);
+            Assert.Null(session.ClientCertificateEmailAddress);
+            Assert.Null(session.IsClientCertificateAuthenticated);
         }
 
         private static DelegateTransport CreateTransport(params string[] chunks)
@@ -165,6 +211,15 @@ namespace test {
                     return new ValueTask<int>(source.Length);
                 },
                 (buffer, _) => new ValueTask<long>(buffer.Length)
+            );
+        }
+
+        private static DelegateTransport CreateTlsTransport(ISimpleWTransportTlsFeature? feature) {
+            return new DelegateTransport(
+                (_, _) => new ValueTask<int>(0),
+                (buffer, _) => new ValueTask<long>(buffer.Length),
+                isEncrypted: true,
+                getFeature: type => type == typeof(ISimpleWTransportTlsFeature) ? feature : null
             );
         }
 
@@ -287,6 +342,13 @@ namespace test {
             }
 
         }
+
+        private sealed record TestTlsFeature(
+            string? NegotiatedApplicationProtocol,
+            string? ClientCertificateSubject,
+            string? ClientCertificateEmailAddress,
+            bool IsClientCertificateAuthenticated
+        ) : ISimpleWTransportTlsFeature;
 
     }
 

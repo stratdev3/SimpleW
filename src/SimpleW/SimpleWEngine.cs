@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using SimpleW.Observability;
 
 
@@ -64,11 +65,7 @@ namespace SimpleW {
         /// <param name="bufferPool"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public Task<EndPoint?> StartAsync(
-            SimpleWServer server,
-            ArrayPool<byte> bufferPool,
-            CancellationToken cancellationToken = default
-        ) {
+        public Task<EndPoint?> StartAsync(SimpleWServer server, ArrayPool<byte> bufferPool, CancellationToken cancellationToken = default) {
             ArgumentNullException.ThrowIfNull(server);
             ArgumentNullException.ThrowIfNull(bufferPool);
 
@@ -865,25 +862,50 @@ namespace SimpleW {
             IsEncrypted = isEncrypted;
             _owner = owner;
             _input = new BufferedTransportInput(ReadStreamAsync, receiveBufferSize, _bufferPool);
+
+            if (isEncrypted && stream is SslStream sslStream) {
+                ReadOnlyMemory<byte> applicationProtocol = sslStream.NegotiatedApplicationProtocol.Protocol;
+                NegotiatedApplicationProtocol = applicationProtocol.IsEmpty ? null : Encoding.ASCII.GetString(applicationProtocol.Span);
+
+                if (sslStream.RemoteCertificate is X509Certificate clientCertificate) {
+                    ClientCertificateSubject = clientCertificate.Subject;
+                    ClientCertificateEmailAddress = GetClientCertificateEmailAddress(clientCertificate);
+                    IsClientCertificateAuthenticated = true;
+                }
+            }
         }
 
         #region ssl
 
         /// <summary>
-        /// Gets the client certificate when available.
+        /// Gets the application protocol selected by the TLS handshake.
         /// </summary>
-        public X509Certificate2? ClientCertificate {
-            get {
-                if (_stream is not SslStream sslStream) {
-                    return null;
-                }
-                if (sslStream.RemoteCertificate is X509Certificate2 x509) {
-                    return x509;
-                }
-                if (sslStream.RemoteCertificate is X509Certificate cert) {
-                    return new X509Certificate2(cert);
-                }
-                return null;
+        public string? NegotiatedApplicationProtocol { get; }
+
+        /// <summary>
+        /// Gets the validated client certificate subject in the native format of the TLS engine.
+        /// </summary>
+        public string? ClientCertificateSubject { get; }
+
+        /// <summary>
+        /// Gets the client certificate email address when available.
+        /// </summary>
+        public string? ClientCertificateEmailAddress { get; }
+
+        /// <summary>
+        /// Gets whether the accepted TLS handshake authenticated a client certificate.
+        /// </summary>
+        public bool IsClientCertificateAuthenticated { get; }
+
+        private static string? GetClientCertificateEmailAddress(X509Certificate clientCertificate) {
+            X509Certificate2? convertedCertificate = null;
+            try {
+                X509Certificate2 certificate = clientCertificate as X509Certificate2 ?? (convertedCertificate = new X509Certificate2(clientCertificate));
+                string emailAddress = certificate.GetNameInfo(X509NameType.EmailName, forIssuer: false);
+                return string.IsNullOrEmpty(emailAddress) ? null : emailAddress;
+            }
+            finally {
+                convertedCertificate?.Dispose();
             }
         }
 
@@ -1110,7 +1132,7 @@ namespace SimpleW {
         /// <typeparam name="TFeature"></typeparam>
         /// <returns></returns>
         public TFeature? GetFeature<TFeature>() where TFeature : class {
-            if (typeof(TFeature) == typeof(ISimpleWTransportTlsFeature)) {
+            if (IsEncrypted && typeof(TFeature) == typeof(ISimpleWTransportTlsFeature)) {
                 return this as TFeature;
             }
             return _owner?.GetFeature<TFeature>();

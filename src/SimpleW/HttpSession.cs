@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
 using SimpleW.Observability;
 using SimpleW.Parsers;
 
@@ -48,6 +47,11 @@ namespace SimpleW {
         /// Optional deferred flush feature exposed by the transport output.
         /// </summary>
         private readonly ISimpleWTransportDeferredFlushFeature? _deferredFlush;
+
+        /// <summary>
+        /// Optional TLS metadata exposed by the transport.
+        /// </summary>
+        private readonly ISimpleWTransportTlsFeature? _tlsFeature;
 
         /// <summary>
         /// Array pool used for buffers.
@@ -144,6 +148,7 @@ namespace SimpleW {
             Server = server;
             _transport = transport;
             _deferredFlush = transport.Output as ISimpleWTransportDeferredFlushFeature;
+            _tlsFeature = transport.GetFeature<ISimpleWTransportTlsFeature>();
             _bufferPool = bufferPool;
 
             _request = new HttpRequest(_bufferPool, server.JsonEngine, server.Options.MaxRequestHeaderSize, server.Options.MaxRequestBodySize);
@@ -307,9 +312,24 @@ namespace SimpleW {
         public bool IsSsl => _transport.IsEncrypted;
 
         /// <summary>
-        /// Gets the client certificate when available.
+        /// Gets the application protocol selected during the TLS handshake.
         /// </summary>
-        public X509Certificate2? ClientCertificate => _transport.GetFeature<ISimpleWTransportTlsFeature>()?.ClientCertificate;
+        public string? NegotiatedApplicationProtocol => _tlsFeature?.NegotiatedApplicationProtocol;
+
+        /// <summary>
+        /// Gets the subject of the authenticated client certificate in the transport's native format.
+        /// </summary>
+        public string? ClientCertificateSubject => _tlsFeature?.ClientCertificateSubject;
+
+        /// <summary>
+        /// Gets the email address of the authenticated client certificate when available.
+        /// </summary>
+        public string? ClientCertificateEmailAddress => _tlsFeature?.ClientCertificateEmailAddress;
+
+        /// <summary>
+        /// Gets whether the client certificate was authenticated, or null when the transport does not expose TLS metadata.
+        /// </summary>
+        public bool? IsClientCertificateAuthenticated => _tlsFeature?.IsClientCertificateAuthenticated;
 
         #endregion ssl
 

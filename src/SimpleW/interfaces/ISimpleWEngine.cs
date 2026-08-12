@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Net;
-using System.Security.Cryptography.X509Certificates;
 
 
 namespace SimpleW {
@@ -181,9 +180,24 @@ namespace SimpleW {
     public interface ISimpleWTransportTlsFeature {
 
         /// <summary>
-        /// Client certificate when provided by the peer.
+        /// Application protocol selected during the TLS handshake, or null when none was negotiated.
         /// </summary>
-        X509Certificate2? ClientCertificate { get; }
+        string? NegotiatedApplicationProtocol { get; }
+
+        /// <summary>
+        /// Subject of the authenticated client certificate in the transport's native format.
+        /// </summary>
+        string? ClientCertificateSubject { get; }
+
+        /// <summary>
+        /// Email address of the authenticated client certificate, or null when unavailable.
+        /// </summary>
+        string? ClientCertificateEmailAddress { get; }
+
+        /// <summary>
+        /// Gets whether the client presented a certificate accepted by the configured TLS policy.
+        /// </summary>
+        bool IsClientCertificateAuthenticated { get; }
 
     }
 
