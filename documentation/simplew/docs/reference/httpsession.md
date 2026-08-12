@@ -203,13 +203,13 @@ public EndPoint? RemoteEndPoint { get; }
 ```
 
 
-## IsSsl
+## IsEncrypted
 
 ```csharp
 /// <summary>
 /// Gets a value indicating whether this session uses an encrypted transport.
 /// </summary>
-public bool IsSsl { get; }
+public bool IsEncrypted { get; }
 ```
 
 
