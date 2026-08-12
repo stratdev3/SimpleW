@@ -309,7 +309,7 @@ namespace SimpleW {
         /// <summary>
         /// Gets a value indicating whether this session uses an encrypted transport.
         /// </summary>
-        public bool IsSsl => _transport.IsEncrypted;
+        public bool IsEncrypted => _transport.IsEncrypted;
 
         /// <summary>
         /// Gets the application protocol selected during the TLS handshake.

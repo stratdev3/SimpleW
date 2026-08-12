@@ -90,7 +90,7 @@ namespace SimpleW.Observability {
                 if (useRequest) {
                     activity.SetTag("url.path", session.Request.Path);
                     activity.SetTag("url.query", session.Request.QueryString);
-                    activity.SetTag("url.scheme", (session.IsSsl ? "https" : "http"));
+                    activity.SetTag("url.scheme", (session.IsEncrypted ? "https" : "http"));
                     activity.SetTag("url.host", session.Request.Headers.Host);
 
                     //activity.SetTag("http.route", request.Uri.AbsolutePath);

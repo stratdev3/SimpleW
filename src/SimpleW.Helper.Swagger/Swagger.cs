@@ -159,7 +159,7 @@ namespace SimpleW.Helper.Swagger {
             public static object Build(SimpleWServer server, HttpSession session, SwaggerOptions options) {
 
                 // Build base server URL (best effort)
-                string scheme = session.IsSsl ? "https" : "http";
+                string scheme = session.IsEncrypted ? "https" : "http";
                 string host = session.Request.Headers.Host ?? "localhost";
                 string serverUrl = $"{scheme}://{host}";
 
