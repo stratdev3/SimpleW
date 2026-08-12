@@ -24,7 +24,7 @@ Notes :
 
 - Replaced `ISimpleWTransportTlsFeature.ClientCertificate` and `HttpSession.ClientCertificate` with engine-neutral TLS metadata: negotiated application protocol, validated client certificate subject, client certificate email address, and authentication state.
 - Client certificate subjects retain the TLS engine's native textual format and are not portable identifiers across .NET and OpenSSL.
-
+- Rename `HttpSession.IsSsl` to `HttpSession.IsEncrypted`.
 
 
 ## v26.0.1 / _(2026-06-19)_
