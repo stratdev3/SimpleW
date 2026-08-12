@@ -206,7 +206,7 @@ namespace SimpleW.Helper.OpenID {
                 return OpenIDCallbackResult.Fail(state.Options.Name, 400, "missing_state");
             }
 
-            if (!TryReadChallengeCookie(session, stateValue, out ChallengeTicket? challenge)) {
+            if (!TryReadChallengeCookie(session, stateValue, out ChallengeTicket? challenge) || challenge is null) {
                 return OpenIDCallbackResult.Fail(state.Options.Name, 400, "invalid_state");
             }
             DeleteChallengeCookie(session, stateValue);
