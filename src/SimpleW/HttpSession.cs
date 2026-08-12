@@ -304,7 +304,7 @@ namespace SimpleW {
 
         #endregion cancellationToken
 
-        #region ssl
+        #region tls
 
         /// <summary>
         /// Gets a value indicating whether this session uses an encrypted transport.
@@ -331,7 +331,7 @@ namespace SimpleW {
         /// </summary>
         public bool? IsClientCertificateAuthenticated => _tlsFeature?.IsClientCertificateAuthenticated;
 
-        #endregion ssl
+        #endregion tls
 
         #region handle idle/read timeouts
 

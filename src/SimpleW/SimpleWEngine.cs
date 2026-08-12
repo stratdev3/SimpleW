@@ -291,7 +291,7 @@ namespace SimpleW {
                    && !_server.IsStopping;
         }
 
-        #region ssl
+        #region tls
 
         /// <summary>
         /// Gets whether this engine already exposes encrypted bytes.
@@ -328,7 +328,7 @@ namespace SimpleW {
             return this;
         }
 
-        #endregion ssl
+        #endregion tls
 
         /// <summary>
         /// Releases listener resources.
@@ -875,7 +875,7 @@ namespace SimpleW {
             }
         }
 
-        #region ssl
+        #region tls
 
         /// <summary>
         /// Gets the application protocol selected by the TLS handshake.
@@ -909,7 +909,7 @@ namespace SimpleW {
             }
         }
 
-        #endregion ssl
+        #endregion tls
 
         #region ISimpleWTransportInput
 
