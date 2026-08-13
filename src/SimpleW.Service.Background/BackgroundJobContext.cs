@@ -5,6 +5,8 @@ namespace SimpleW.Service.Background {
     /// </summary>
     public sealed class BackgroundJobContext {
 
+        #region job metadata
+
         /// <summary>
         /// Job identifier.
         /// </summary>
@@ -26,10 +28,17 @@ namespace SimpleW.Service.Background {
         public DateTimeOffset EnqueuedAtUtc { get; }
 
         /// <summary>
-        /// Cancellation token signaled when the background service stops.
+        /// Cancellation token signaled by individual cancellation, per-attempt timeout, or service shutdown.
         /// </summary>
         public CancellationToken CancellationToken { get; }
 
+        #endregion job metadata
+
+        #region callbacks and construction
+
+        /// <summary>
+        /// Callback used to update the owning mutable record and snapshot store.
+        /// </summary>
         private readonly Action<double?, string?> _reportProgress;
 
         /// <summary>
@@ -51,6 +60,10 @@ namespace SimpleW.Service.Background {
             _reportProgress = reportProgress ?? throw new ArgumentNullException(nameof(reportProgress));
         }
 
+        #endregion callbacks and construction
+
+        #region job interaction
+
         /// <summary>
         /// Throws when the background service is stopping.
         /// </summary>
@@ -68,6 +81,8 @@ namespace SimpleW.Service.Background {
         /// </summary>
         /// <param name="message"></param>
         public void ReportProgress(string message) => ReportProgress(percent: null, message);
+
+        #endregion job interaction
 
     }
 

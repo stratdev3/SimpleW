@@ -9,3 +9,7 @@ Initial release of `SimpleW.Service.Background`.
 
 - Initial `SimpleW.Service.Background` package release for SimpleW v26.
 - Add in-process background jobs and cron scheduling for SimpleW.
+- Add fixed-interval schedules with `ScheduleEvery`.
+- Add delayed jobs with `EnqueueAfter` and `EnqueueAt`.
+- Add retry policies, cooperative per-attempt timeouts, and individual cancellation.
+- Add asynchronous queue backpressure with `EnqueueAsync`.

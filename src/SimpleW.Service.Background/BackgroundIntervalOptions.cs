@@ -1,12 +1,9 @@
-using Cronos;
-
-
 namespace SimpleW.Service.Background {
 
     /// <summary>
-    /// Options for one scheduled cron job.
+    /// Options for one fixed-interval schedule.
     /// </summary>
-    public sealed class BackgroundCronOptions {
+    public sealed class BackgroundIntervalOptions {
 
         #region schedule policy
 
@@ -16,19 +13,9 @@ namespace SimpleW.Service.Background {
         public bool Enabled { get; set; } = true;
 
         /// <summary>
-        /// Cron expression format.
+        /// Allows a new occurrence to be queued while the previous occurrence is queued, running, or retrying.
         /// </summary>
-        public CronFormat CronFormat { get; set; } = CronFormat.Standard;
-
-        /// <summary>
-        /// Time zone used to calculate next occurrences.
-        /// </summary>
-        public TimeZoneInfo? TimeZone { get; set; }
-
-        /// <summary>
-        /// Allows a new occurrence to be queued while the previous one is queued, running, or retrying.
-        /// </summary>
-        public bool AllowConcurrentExecutions { get; set; } = false;
+        public bool AllowConcurrentExecutions { get; set; }
 
         /// <summary>
         /// Execution options applied to every occurrence.
@@ -42,13 +29,13 @@ namespace SimpleW.Service.Background {
         /// <summary>
         /// Constructor
         /// </summary>
-        public BackgroundCronOptions() : this(new BackgroundJobOptions()) { }
+        public BackgroundIntervalOptions() : this(new BackgroundJobOptions()) { }
 
         /// <summary>
-        /// Creates cron options around a cloned set of global job defaults.
+        /// Creates interval options around a cloned set of global job defaults.
         /// </summary>
         /// <param name="jobOptions"></param>
-        internal BackgroundCronOptions(BackgroundJobOptions jobOptions) {
+        internal BackgroundIntervalOptions(BackgroundJobOptions jobOptions) {
             JobOptions = jobOptions ?? throw new ArgumentNullException(nameof(jobOptions));
         }
 

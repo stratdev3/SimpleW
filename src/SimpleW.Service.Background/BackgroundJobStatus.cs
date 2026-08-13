@@ -28,7 +28,22 @@ namespace SimpleW.Service.Background {
         /// <summary>
         /// The job was canceled.
         /// </summary>
-        Canceled
+        Canceled,
+
+        /// <summary>
+        /// The job is waiting for its scheduled date.
+        /// </summary>
+        Scheduled,
+
+        /// <summary>
+        /// The job is waiting before another attempt.
+        /// </summary>
+        Retrying,
+
+        /// <summary>
+        /// The job exceeded its configured timeout.
+        /// </summary>
+        TimedOut
 
     }
 
