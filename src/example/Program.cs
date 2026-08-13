@@ -1,33 +1,15 @@
-using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net;
-using System.Net.Sockets;
-using System.Security.Authentication;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
-using System.Text.Json;
-using OpenTelemetry;
-using OpenTelemetry.Exporter;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
 using SimpleW;
-using SimpleW.Helper.Razor;
-using SimpleW.Helper.Swagger;
-using SimpleW.JsonEngine.Newtonsoft;
-using SimpleW.Modules;
-using SimpleW.Service.Chaos;
-using SimpleW.Service.Firewall;
-using SimpleW.Service.Latency;
-using SimpleW.Service.OpenID;
-using SimpleW.Service.LetsEncrypt;
 using SimpleW.Observability;
+#if NET10_0
+using SimpleW.Engine.Ioxide;
+#endif
 
 
-namespace example.rewrite {
+namespace example {
 
     /// <summary>
     /// Example Program
@@ -35,480 +17,804 @@ namespace example.rewrite {
     /// perf https : bombardier -c 200 -d 10s -k https://127.0.0.1:8080/api/test/hello
     /// perf jwt : bombardier -c 200 -d 10s -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjaGVmIiwiaWF0IjoxNzY3NDQxOTA4LCJleHAiOjE3Njc0NDkxMDgsInJvbGVzIjpbImJvc3MiXX0.qv9TnM7RKM1zu_QcPoTz_pmXMDzHT-OnP6xjs4nMgS4" http://127.0.0.1:8080/api/jwt/decode
     /// </summary>
-    internal class Program {
+    internal static class Program {
+
+        /// <summary>
+        /// Force Arguments
+        /// </summary>
+        private static string[] _args = [
+            //"hello",
+            //"--port", "8080" // already default
+            //"--log",
+            //"--browser"
+        ];
 
         /// <summary>
         /// EntryPoint
         /// </summary>
         /// <param name="args"></param>
-        static async Task Main(string[] args) {
-            //await ParserTest();
-            await Rewrite();
-            //await Raw();
+        public static async Task<int> Main(string[] args) {
+            string[] effectiveArgs = _args.Length > 0 ? _args : args;
+
+            if (effectiveArgs.Length == 0) {
+                PrintScenarioList();
+                return 0;
+            }
+
+            bool listRequested = effectiveArgs.Any(static arg => string.Equals(arg, "--list", StringComparison.OrdinalIgnoreCase));
+
+            if (listRequested && (effectiveArgs.Length != 1 || !string.Equals(effectiveArgs[0], "--list", StringComparison.OrdinalIgnoreCase))) {
+                ExampleConsole.Error("Option '--list' must be used on its own.");
+                return 2;
+            }
+            if (listRequested) {
+                PrintScenarioList();
+                return 0;
+            }
+
+            bool hasExplicitScenario = !effectiveArgs[0].StartsWith("--", StringComparison.Ordinal);
+            if (!hasExplicitScenario && effectiveArgs.Length == 1 && string.Equals(effectiveArgs[0], "--help", StringComparison.OrdinalIgnoreCase)) {
+                PrintScenarioList();
+                return 0;
+            }
+
+            string scenarioName = hasExplicitScenario ? effectiveArgs[0] : "hello";
+            string[] optionArgs = hasExplicitScenario ? effectiveArgs[1..] : effectiveArgs;
+
+            if (!Scenarios.TryGetValue(scenarioName, out IScenario? scenario)) {
+                ExampleConsole.Error($"Unknown scenario '{scenarioName}'.");
+                PrintScenarioList();
+                return 2;
+            }
+
+            try {
+                ExampleArguments arguments = ExampleArguments.Parse(optionArgs);
+                if (arguments.HasFlag("help")) {
+                    PrintScenarioHelp(scenario);
+                    return 0;
+                }
+
+                bool requestLoggingEnabled = arguments.HasFlag("log");
+                bool browserEnabled = arguments.HasFlag("browser");
+                bool ioxideEnabled = arguments.HasFlag("ioxide");
+                arguments.ConfigureBrowser(browserEnabled, scenario.BrowserPath);
+                arguments.ConfigureIoxide(ioxideEnabled);
+                using IDisposable? requestLogging = requestLoggingEnabled ? ExampleRequestLogging.Enable() : null;
+                using CancellationTokenSource cancellation = new();
+                ConsoleCancelEventHandler cancelHandler = (_, eventArgs) => {
+                    eventArgs.Cancel = true;
+                    cancellation.Cancel();
+                };
+
+                Console.CancelKeyPress += cancelHandler;
+                try {
+                    ExampleConsole.Scenario(scenario.Name, scenario.Description);
+                    if (requestLoggingEnabled) {
+                        ExampleConsole.Info("HTTP request logging is enabled.");
+                        ExampleConsole.BlankLine();
+                    }
+                    await scenario.RunAsync(arguments, cancellation.Token).ConfigureAwait(false);
+                    return 0;
+                }
+                finally {
+                    Console.CancelKeyPress -= cancelHandler;
+                }
+            }
+            catch (ExampleCliException ex) {
+                ExampleConsole.Error(ex.Message);
+                ExampleConsole.BlankLine(writeToError: true);
+                PrintScenarioHelp(scenario);
+                return 2;
+            }
+            catch (OperationCanceledException) {
+                return 0;
+            }
+            catch (Exception ex) {
+                ExampleConsole.Error($"Scenario '{scenario.Name}' failed: {ex.Message}");
+                return 1;
+            }
         }
 
-        static async Task Rewrite() {
+        #region scenarios
 
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Trace);
+        private static readonly IReadOnlyDictionary<string, IScenario> Scenarios = CreateScenarios();
 
-            SimpleWServer server = new(IPAddress.Any, 8080);
+        private static IReadOnlyDictionary<string, IScenario> CreateScenarios() {
+            IScenario[] scenarios = [
+                new HelloScenario(),
+            new HttpArenaScenario(),
+            new RequestScenario(),
+            new NewtonsoftJsonScenario(),
+            new StaticFilesScenario(),
+            new UploadScenario(),
+            new WebSocketScenario(),
+            new ServerSentEventsScenario(),
+            new HttpsScenario(),
+            new LetsEncryptScenario(),
+            new OpenIdScenario(),
+            new LatencyScenario(),
+            new FirewallScenario(),
+            new ChaosScenario(),
+            new RazorScenario(),
+            new SwaggerScenario(),
+            new ControllersScenario(),
+            new TelemetryScenario()
+            ];
 
-            #region https
+            return scenarios.ToDictionary(static scenario => scenario.Name, StringComparer.OrdinalIgnoreCase);
+        }
 
-#pragma warning disable CS0162 // Code inaccessible détecté
-            if (false) {
-                // echo subjectAltName=DNS:localhost,IP:127.0.0.1 > san.cnf && openssl genrsa -out privkey.pem 2048 && openssl req -new -key privkey.pem -out cert.csr -subj "/C=FR/O=SimpleW/OU=Dev/CN=localhost/emailAddress=admin@localhost" && openssl x509 -req -days 1095 -in cert.csr -signkey privkey.pem -out cert.pem -extfile san.cnf && openssl pkcs12 -export -out simplew.pfx -inkey privkey.pem -in cert.pem -password pass:secret && del san.cnf
-                string SslCertificateBase64 = "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";
-                string certificateFilePath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "simplew.pfx");
-                Directory.CreateDirectory(Path.Combine(certificateFilePath, ".."));
-                File.WriteAllBytes(certificateFilePath, Convert.FromBase64String(SslCertificateBase64));
+        #endregion scenarios
 
-                // create a context with certificate, support for password protection
-#if NET9_0_OR_GREATER
-                X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(certificateFilePath, "secret");
-#else
-                X509Certificate2 cert = new(certificateFilePath, "password");
-#endif
-                SslContext sslContext = new(
-                    SslProtocols.Tls12 | SslProtocols.Tls13,
-                    cert,
-                    clientCertificateRequired: false,
-                    checkCertificateRevocation: false
-                );
-                server.UseEngine(options => {
-                    options.SslContext = sslContext;
-                });
+        #region help
+
+        private static void PrintScenarioList() {
+            ExampleConsole.Section("Usage");
+            ExampleConsole.Command("example <scenario> [--port 8080] [--log] [--browser] [--ioxide] [options]");
+            ExampleConsole.Command("example <scenario> --help");
+            ExampleConsole.Command("example --list");
+            ExampleConsole.BlankLine();
+            ExampleConsole.Section("Scenarios");
+            foreach (IScenario scenario in Scenarios.Values.OrderBy(static scenario => scenario.Name)) {
+                ExampleConsole.Item(scenario.Name, scenario.Description);
             }
-#pragma warning restore CS0162 // Code inaccessible détecté
+            ExampleConsole.BlankLine();
+            ExampleConsole.Section("Examples");
+            ExampleConsole.Command("example hello");
+            ExampleConsole.Command("example hello --log");
+            ExampleConsole.Command("example hello --ioxide --log");
+            ExampleConsole.Command("example swagger --browser");
+            ExampleConsole.Command("example websocket --port 8081");
+            ExampleConsole.Command("example websocket --help");
+            ExampleConsole.BlankLine();
+            ExampleConsole.Section("Forced arguments");
+            ExampleConsole.Command("_args = [\"websocket\", \"--port\", \"8081\"];");
+            ExampleConsole.Muted("  Leave _args empty to use command-line arguments.");
+        }
 
-            #endregion https
+        private static void PrintScenarioHelp(IScenario scenario) {
+            ExampleConsole.Section("Usage");
+            ExampleConsole.Command($"example {scenario.Name} [--port 8080] [--log] [--browser] [--ioxide]{scenario.Usage}");
+            ExampleConsole.BlankLine();
+            ExampleConsole.Section("Scenario");
+            ExampleConsole.Item(scenario.Name, scenario.Description);
+        }
 
-            //server.ConfigureClientIPResolver(session => IPAddress.Parse("4.3.2.1"));
+        #endregion help
 
-            //server.ConfigureClientIPResolver(session => {
-            //    // override client.address with the X-Real-IP header (set by a trusted reverse proxy)
-            //    if (session.Request.Headers.TryGetValue("X-Real-IP", out string? xRealIp) && xRealIp != null) {
-            //        return IPAddress.Parse(xRealIp);
-            //    }
-            //    // fallback default socket remote endpoint
-            //    if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
-            //        return null;
-            //    }
-            //    return ep.Address;
-            //});
+    }
 
-            server.MapGet("/", (HttpSession session) => {
-                return "Hello World !";
-            });
+    #region ExampleServer
 
-            server.MapGet("/task", Task (HttpSession session) => {
-                session.Response.Status(204);
-                return Task.CompletedTask;
-            });
+    internal static class ExampleServer {
 
-            server.MapGet("/api/test/hello", object (HttpSession session) => {
-                return new { message = $"Hello World !" };
-            });
+        public static SimpleWServer Create(ExampleArguments arguments) {
+            SimpleWServer server = CreateBase(arguments);
+#if NET10_0
+            if (arguments.IoxideEnabled) {
+                server.UseIoxideEngine();
+            }
+#endif
+            return server;
+        }
 
-            //server.UseLetsEncryptModule(o => {
-            //    o.Email = "admin@simplew.net";
-            //    o.Domains = ["dev.simplew.net"];
-            //    o.StoragePath = @"C:\www\toto\acme\";
-            //    o.UseStaging = false;
-            //    o.RenewBefore = TimeSpan.FromDays(30);
-            //    o.HttpPort = server.Port;
-            //    o.HttpsPort = 4443;
-            //});
+#if NET10_0
+        public static SimpleWServer CreateIoxide(ExampleArguments arguments, Action<IoxideEngineOptions> configure) {
+            if (!arguments.IoxideEnabled) {
+                throw new InvalidOperationException("The Ioxide server factory requires the global '--ioxide' option.");
+            }
 
-            // OpenID
-            //server.UseOpenIDModule(options => {
+            SimpleWServer server = CreateBase(arguments);
+            server.UseIoxideEngine(configure);
+            return server;
+        }
+#endif
 
-            //    options.Add("google", o => {
-            //        o.Authority = "https://accounts.google.com";
-            //        o.PublicBaseUrl = "http://dev.simplew.net";
-            //    });
-
-            //    options.CookieSecure = false;
-            //});
-
-            //// route to protect
-            //server.Router.MapGet("/api/me", (HttpSession session) => {
-            //    if (!session.Request.User.Identity) {
-            //        return session.Response
-            //                      .Unauthorized()
-            //                      .SendAsync();
-            //    }
-            //    var u = session.Request.User;
-            //    return session.Response.Json(new {
-            //        authenticated = true,
-            //        id = u.Id,
-            //        login = u.Login,
-            //        mail = u.Mail,
-            //        fullName = u.FullName,
-            //        roles = u.Roles,
-            //        profile = u.Profile
-            //    }).SendAsync();
-            //});
-            //server.UseStaticFilesModule(options => {
-            //    options.Path = @"C:\www\toto\openid";
-            //    options.CacheTimeout = TimeSpan.FromMinutes(10);
-            //});
-
-
-            //server.UseStaticFilesModule(options => {
-            //    options.Prefix = "/spa";
-            //    options.Path = @"C:\www\spa\spa";
-            //    //options.CacheTimeout = TimeSpan.FromMinutes(10);
-            //});
-
-            //server.UseLatencyModule(options => {
-            //    options.GlobalLatency = TimeSpan.FromSeconds(1);
-            //    options.Rules.Add(new LatencyRule("/api/*", TimeSpan.FromSeconds(2)));
-            //});
-
-            //server.UseRazorModule(o => {
-            //    o.ViewsPath = @"C:\www\toto\views";
-            //});
-            //server.MapGet("/", () => {
-            //    return RazorResults.View("Home", new { Title = "SimpleW", Name = "chef" })
-            //                       .WithViewBag(vb => {
-            //                           vb.Title = "Ma room";
-            //                           vb.Footer = "SimpleW";
-            //                       });
-            //});
-
-            //server.UseFirewallModule(options => {
-            //    options.AllowRules.Add(IpRule.Cidr("192.168.1.0/24"));
-            //    options.AllowRules.Add(IpRule.Cidr("10.0.0.0/8"));
-            //    options.AllowRules.Add(IpRule.Single("127.0.0.1"));
-
-            //    options.ClientIpResolver = (HttpSession session) => {
-
-            //        // look for any X-Real-IP header (note: you should check this value come from a trust proxy)
-            //        if (session.Request.Headers.TryGetValue("X-Real-IP", out string? XRealIp)) {
-            //            return IPEndPoint.Parse(XRealIp).Address;
-            //        }
-
-            //        // client ip
-            //        if (session.Socket.RemoteEndPoint is not IPEndPoint ep) {
-            //            return null;
-            //        }
-            //        return ep.Address;
-            //    };
-
-            //});
-
-            //server.UseStaticFilesModule(options => {
-            //    options.Path = @"C:\www\spa\sse\";
-            //    options.Prefix = "/";
-            //    options.AutoIndex = true;
-            //    options.CacheTimeout = TimeSpan.FromDays(1);
-            //});
-
-            //server.UseChaosModule(options => {
-            //    options.Enabled = true;
-            //    options.Prefix = "/api";
-            //    options.Probability = 0.50;
-            //});
-
-            //server.MapGet("/swagger.json", static (HttpSession session) => {
-            //    return Swagger.Json(session, options => {
-            //        options.Title = "My API";
-            //        options.Version = "v1";
-            //        options.RouteFilter = r => r.Path.StartsWith("/", StringComparison.Ordinal);
-            //    });
-            //});
-            //server.MapGet("/admin/swagger", static (HttpSession session) => {
-            //    return Swagger.UI(session, options => {
-            //        options.Title = "My API";
-            //        options.Version = "v1";
-            //        options.RouteFilter = r => r.Path.StartsWith("/", StringComparison.Ordinal);
-            //    });
-            //});
-
-
-            //server.UseWebSocketModule(ws => {
-            //    ws.Prefix = "/ws";
-
-            //    // Optionnel: si tu ne veux PAS le "__all" par defaut
-            //    ws.AutoJoinRoom = null;
-
-            //    // Petit "state" par connexion (alpha style)
-            //    var userByConn = new ConcurrentDictionary<Guid, string>();
-            //    var roomByConn = new ConcurrentDictionary<Guid, string>();
-
-            //    static string ChatEvent(string kind, string room, string name, string? text = null) {
-            //        var payload = new { kind, room, name, text = text ?? "" };
-            //        var obj = new { op = "chat/event", payload };
-            //        return JsonSerializer.Serialize(obj);
-            //    }
-
-            //    ws.Map("chat/join", async (conn, ctx, msg) => {
-            //        if (!msg.TryGetPayload(out RoomName? m) || m == null) {
-            //            return;
-            //        }
-
-            //        userByConn[conn.Id] = m.name;
-            //        roomByConn[conn.Id] = m.room;
-
-            //        await ctx.JoinRoomAsync(m.room, conn);
-
-            //        // Broadcast aux autres: "X joined"
-            //        await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("join", m.room, m.name, $"{m.name} joined"), except: conn);
-
-            //        // Ack au client (facultatif)
-            //        await conn.SendTextAsync(ChatEvent("join", m.room, m.name, $"joined {m.room}"));
-            //    });
-
-            //    ws.Map("chat/leave", async (conn, ctx, msg) => {
-            //        if (!msg.TryGetPayload(out RoomName? m) || m == null) {
-            //            return;
-            //        }
-
-            //        await ctx.LeaveRoomAsync(m.room, conn);
-            //        await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("leave", m.room, m.name, $"{m.name} left"), except: conn);
-
-            //        roomByConn.TryRemove(conn.Id, out _);
-            //    });
-
-            //    ws.Map("chat/msg", async (conn, ctx, msg) => {
-            //        if (!msg.TryGetPayload(out RoomName? m) || m == null) {
-            //            return;
-            //        }
-
-            //        // Broadcast à toute la room (y compris l'émetteur ou non, au choix)
-            //        await ctx.Hub.BroadcastTextAsync(m.room, ChatEvent("msg", m.room, m.name, m.text));
-            //    });
-
-            //    ws.OnUnknown(async (conn, ctx, msg) => {
-            //        // Pratique quand tu débugges
-            //        await conn.SendTextAsync(msg.IsJson ? $"unknown op: {msg.Op}" : "bad message: expected JSON {op,payload}");
-            //    });
-
-            //    ws.OnConnect = async (conn, ctx) => {
-            //        IWebUser? user = ctx.Session.Request.User;
-            //        Console.WriteLine($"websocket connect {user?.Id} {user?.Login}");
-            //        if (user == null) {
-            //            return;
-            //        }
-            //        //await ctx.JoinRoomAsync(user.Id.ToString(), conn);
-            //        //if (user.IsInRoles("admin, task:admin")) {
-            //        //    await ctx.JoinRoomAsync("task", conn);
-            //        //}
-            //    };
-            //    ws.OnDisconnect = async (conn, ctx) => {
-            //        // cleanup
-            //        if (roomByConn.TryRemove(conn.Id, out var room) && userByConn.TryRemove(conn.Id, out var name)) {
-            //            await ctx.Hub.BroadcastTextAsync(room, ChatEvent("leave", room, name, $"{name} disconnected"), except: conn);
-            //        }
-            //    };
-            //});
-
-            //ServerSentEventsHub? hub = null;
-
-            //server.UseServerSentEventsModule(opt => {
-            //    opt.Prefix = "/sse";
-            //    opt.AllowAnyOrigin = true;                  // pratique si tu ouvres index.html en file:// ou autre origin
-            //    opt.AutoJoinRoom = "__all";                 // tout le monde dans la room globale
-            //    opt.KeepAliveInterval = TimeSpan.FromSeconds(15);
-
-            //    hub = opt.Hub;
-
-            //    opt.OnConnect = async (conn, ctx) => {
-            //        // Message de bienvenue (optionnel)
-            //        await conn.SendEventAsync("connected", @event: "status");
-            //    };
-            //});
-
-            //// Timer: broadcast toutes les 5 secondes
-            //_ = Task.Run(async () => {
-            //    int i = 0;
-            //    while (true) {
-            //        await Task.Delay(TimeSpan.FromSeconds(5));
-
-            //        if (hub == null)
-            //            continue;
-
-            //        i++;
-            //        await hub.BroadcastAsync("__all", new ServerSentEventsMessage {
-            //            Event = "tick",
-            //            Payload = $"tick #{i} @ {DateTime.UtcNow:O}"
-            //        });
-            //    }
-            //});
-
-            //server.MapControllers<SubController>("/api");
-            //server.MapController<HomeController>("/");
-
-            //server.UseEngine(options => {
-            //    options.ReuseAddress = true;
-            //    options.TcpNoDelay = true;
-            //    options.TcpKeepAlive = true;
-            //    options.AcceptPerCore = true;
-            //});
+        private static SimpleWServer CreateBase(ExampleArguments arguments) {
+            SimpleWServer server = new(IPAddress.Any, arguments.Port);
             server.Configure(options => {
-                //options.SocketDisconnectPollInterval = TimeSpan.Zero;
                 options.SessionTimeout = TimeSpan.FromMinutes(10);
             });
-            server.ConfigureTelemetry(options => {
-                options.IncludeStackTrace = true;
-            });
-            server.EnableTelemetry();
-
-            openTelemetryObserver("SimpleW*");
-
-            // start non blocking background server
-            CancellationTokenSource cts = new();
-            Console.CancelKeyPress += (_, e) => {
-                e.Cancel = true;
-                cts.Cancel();
-            };
-            await server.RunAsync(cts.Token);
-
+            return server;
         }
 
-        static async Task ParserTest() {
+        public static async Task RunAsync(SimpleWServer server, string scheme, ExampleArguments arguments, CancellationToken cancellationToken) {
+            server.OnStarted(started => {
+                ExampleConsole.Success($"Listening on {scheme}://localhost:{started.Port}/");
+                ExampleConsole.Info($"Network engine: {started.Engine.Name}.");
 
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Trace);
+                RouteInfo[] routes = started.Router.Routes
+                                            .OrderBy(static route => route.Host ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                                            .ThenBy(static route => route.Path, StringComparer.Ordinal)
+                                            .ThenBy(static route => route.Method, StringComparer.OrdinalIgnoreCase)
+                                            .ToArray();
 
-            var server = new SimpleWServer(IPAddress.Any, 8080);
-
-            // default
-            server.MapGet("/", () => "OK");
-            server.Map("HEAD", "/", () => "OK");
-            server.Map("OPTIONS", "/", (HttpSession session) => {
-                return session.Response.AddHeader("Allow", "GET, HEAD, POST, OPTIONS")
-                                       .Text("OK");
-            });
-
-            // post
-            server.MapPost("/", (HttpSession session) => session.Response.Text(session.Request.BodyString));
-
-            // echo
-            server.MapGet("/echo", (HttpSession session) => Echo(session));
-            server.MapPost("/echo", (HttpSession session) => Echo(session));
-
-            // cookie
-            server.MapGet("/cookie", (HttpSession session) => ParseCookies(session));
-            server.MapPost("/cookie", (HttpSession session) => ParseCookies(session));
-
-            static HttpResponse Echo(HttpSession session) {
-                var sb = new System.Text.StringBuilder();
-                foreach (var h in session.Request.Headers.EnumerateAll()) {
-                    sb.AppendLine($"{h.Key}: {h.Value}");
+                ExampleConsole.BlankLine();
+                ExampleConsole.Section("Available routes");
+                if (routes.Length == 0) {
+                    ExampleConsole.Muted("  (none)");
                 }
-                return session.Response.Text(sb.ToString());
+                else {
+                    foreach (RouteInfo route in routes) {
+                        ExampleConsole.Route(route);
+                    }
+                }
+
+                if (arguments.BrowserEnabled) {
+                    OpenBrowser(scheme, started.Port, arguments.BrowserPath);
+                }
+
+                ExampleConsole.BlankLine();
+                ExampleConsole.Info("Press Ctrl+C to stop.");
+            });
+            await server.RunAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        private static void OpenBrowser(string scheme, int port, string browserPath) {
+            Uri baseUri = new($"{scheme}://localhost:{port}/", UriKind.Absolute);
+            Uri browserUri = new(baseUri, browserPath);
+
+            try {
+                ExampleConsole.Info($"Opening browser: {browserUri.AbsoluteUri}");
+                _ = Process.Start(new ProcessStartInfo {
+                    FileName = browserUri.AbsoluteUri,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex) {
+                ExampleConsole.Warning($"Unable to open the browser at '{browserUri.AbsoluteUri}': {ex.Message}", writeToError: true);
+            }
+        }
+    }
+
+    #endregion ExampleServer
+
+    #region ExampleRequestLogging
+
+    internal sealed class ExampleRequestLogging : IDisposable {
+
+        private static readonly string HttpSessionSource = typeof(HttpSession).FullName ?? nameof(HttpSession);
+
+        private readonly Action<LogEntry>? _previousSink;
+
+        private readonly LogLevel _previousMinimumLevel;
+
+        private readonly Action<LogEntry> _installedSink;
+
+        private bool _disposed;
+
+        private ExampleRequestLogging() {
+            _previousSink = Log.Sink;
+            _previousMinimumLevel = Log.MinimumLevel;
+            _installedSink = WriteLogEntry;
+
+            LogLevel minimumLevel = (int)_previousMinimumLevel < (int)LogLevel.Information
+                                      ? _previousMinimumLevel
+                                      : LogLevel.Information;
+            Log.SetSink(_installedSink, minimumLevel);
+        }
+
+        public static IDisposable Enable() => new ExampleRequestLogging();
+
+        private void WriteLogEntry(LogEntry entry) {
+            if (string.Equals(entry.Source, HttpSessionSource, StringComparison.Ordinal)
+                && (int)entry.Level >= (int)LogLevel.Information) {
+                try {
+                    ExampleConsole.RequestLog(entry);
+                }
+                catch {
+                    // Request logging must never interfere with request processing.
+                }
             }
 
-            static HttpResponse ParseCookies(HttpSession session) {
-                var sb = new System.Text.StringBuilder();
-                foreach (var pair in session.Request.Headers.EnumerateCookies()) {
-                    sb.AppendLine($"{pair.Key}={pair.Value}");
+            if (_previousSink != null && (int)entry.Level >= (int)_previousMinimumLevel) {
+                _previousSink(entry);
+            }
+        }
+
+        public void Dispose() {
+            if (_disposed) {
+                return;
+            }
+            _disposed = true;
+
+            if (_previousSink == null) {
+                Log.RemoveSink(_installedSink);
+                Log.MinimumLevel = _previousMinimumLevel;
+            }
+            else {
+                Log.SetSink(_previousSink, _previousMinimumLevel);
+            }
+        }
+    }
+
+    #endregion ExampleRequestLogging
+
+    #region ExampleRuntimeFile
+
+    internal static class ExampleRuntimeFile {
+
+        private static readonly Encoding Utf8WithoutBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+        public static async Task MaterializeAsync(string path, string content, CancellationToken cancellationToken) {
+            string destinationPath = Path.GetFullPath(path);
+            string normalizedContent = content.ReplaceLineEndings(Environment.NewLine);
+
+            if (File.Exists(destinationPath)) {
+                string existingContent = await File.ReadAllTextAsync(destinationPath, Utf8WithoutBom, cancellationToken).ConfigureAwait(false);
+                if (string.Equals(existingContent, normalizedContent, StringComparison.Ordinal)) {
+                    return;
                 }
-                return session.Response.Text(sb.ToString());
             }
 
-            await server.RunAsync();
+            string? directory = Path.GetDirectoryName(destinationPath);
+            if (string.IsNullOrWhiteSpace(directory)) {
+                throw new InvalidOperationException($"Unable to resolve the directory of runtime file '{destinationPath}'.");
+            }
+
+            Directory.CreateDirectory(directory);
+            string temporaryPath = Path.Combine(directory, $".{Path.GetFileName(destinationPath)}.{Guid.NewGuid():N}.tmp");
+
+            try {
+                await File.WriteAllTextAsync(temporaryPath, normalizedContent, Utf8WithoutBom, cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                File.Move(temporaryPath, destinationPath, overwrite: true);
+            }
+            finally {
+                if (File.Exists(temporaryPath)) {
+                    try {
+                        File.Delete(temporaryPath);
+                    }
+                    catch {
+                        // Preserve the original materialization error.
+                    }
+                }
+            }
+        }
+    }
+
+    #endregion ExampleRuntimeFile
+
+    #region ExampleArguments
+
+    internal sealed class ExampleArguments {
+
+        private readonly IReadOnlyDictionary<string, string?> _options;
+
+        public int Port { get; }
+
+        public bool BrowserEnabled { get; private set; }
+
+        public string BrowserPath { get; private set; } = "/";
+
+        public bool IoxideEnabled { get; private set; }
+
+        private ExampleArguments(IReadOnlyDictionary<string, string?> options) {
+            _options = options;
+            Port = GetInt32("port", 8080, 1, 65535);
         }
 
-        static async Task Raw() {
-            RawServer.RawServer server = new(IPAddress.Any, 8080);
+        public static ExampleArguments Parse(string[] args) {
+            Dictionary<string, string?> options = new(StringComparer.OrdinalIgnoreCase);
 
-            server.OptionReuseAddress = true;
-            server.OptionNoDelay = true;
-            server.OptionKeepAlive = true;
+            for (int index = 0; index < args.Length; index++) {
+                string token = args[index];
+                if (!token.StartsWith("--", StringComparison.Ordinal) || token.Length == 2) {
+                    throw new ExampleCliException($"Unexpected argument '{token}'. Options must use the --name value form.");
+                }
 
-            // start non blocking background server
-            CancellationTokenSource cts = new();
-            Console.CancelKeyPress += (_, e) => {
-                e.Cancel = true;
-                cts.Cancel();
-            };
+                string name = token[2..];
+                if (!options.TryAdd(name, null)) {
+                    throw new ExampleCliException($"Option '--{name}' was provided more than once.");
+                }
 
-            Console.WriteLine($"server started at http://localhost:{server.Port}/api/test/hello");
-            await server.StartAsync(cts.Token);
-            Console.WriteLine("server stopped");
+                if (index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal)) {
+                    options[name] = args[++index];
+                }
+            }
+
+            return new ExampleArguments(options);
         }
 
-        private static TracerProvider? _tracerProvider;
-        private static MeterProvider? _meterProvider;
+        public void EnsureAllowed(params string[] scenarioOptions) {
+            HashSet<string> allowed = new(scenarioOptions, StringComparer.OrdinalIgnoreCase) {
+            "browser",
+            "help",
+            "ioxide",
+            "log",
+            "port"
+        };
 
-        public static void openTelemetryObserver(string source) {
-            _tracerProvider = Sdk.CreateTracerProviderBuilder()
-                                 .AddSource(source)
-                                 //.SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(0.01)))
-                                 //.AddProcessor(new LogProcessor()) // custom log processor
-                                 .AddOtlpExporter((options) => {
-                                     options.Endpoint = new Uri("https://api.uptrace.dev/v1/traces");
-                                     options.Headers = "uptrace-dsn=https://CqLctwdpOwM0Ayv64cKzVg@api.uptrace.dev?grpc=4317";
-                                     options.Protocol = OtlpExportProtocol.HttpProtobuf;
-                                 })
-                                 .SetResourceBuilder(ResourceBuilder.CreateEmpty().AddService(serviceName: "Sample", serviceVersion: "26"))
-                                 .Build();
-
-            _meterProvider = Sdk.CreateMeterProviderBuilder()
-                            //.AddMeter("*") // all meters
-                            .AddMeter(source) // only my meters
-                            .SetResourceBuilder(ResourceBuilder.CreateEmpty().AddService(serviceName: "Sample", serviceVersion: "26"))
-                            .AddOtlpExporter((exporterOptions, metricReaderOptions) => {
-                                exporterOptions.Endpoint = new Uri("https://api.uptrace.dev/v1/metrics");
-                                exporterOptions.Headers = "uptrace-dsn=https://CqLctwdpOwM0Ayv64cKzVg@api.uptrace.dev?grpc=4317";
-                                exporterOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
-                                metricReaderOptions.TemporalityPreference = MetricReaderTemporalityPreference.Delta;
-                                //metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000;
-                            })
-//#if DEBUG
-//                          .AddConsoleExporter((consoleExporterOptions, metricReaderOptions) => {
-//                              metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = ExportIntervalMilliseconds;
-//                          })
-//#endif
-                            .Build();
+            string? unknown = _options.Keys.FirstOrDefault(option => !allowed.Contains(option));
+            if (unknown != null) {
+                throw new ExampleCliException($"Unknown option '--{unknown}' for this scenario.");
+            }
         }
+
+        public bool HasFlag(string name) {
+            if (!_options.TryGetValue(name, out string? value)) {
+                return false;
+            }
+            if (value != null) {
+                throw new ExampleCliException($"Option '--{name}' is a flag and does not accept a value.");
+            }
+            return true;
+        }
+
+        public void ConfigureBrowser(bool enabled, string path) {
+            if (string.IsNullOrWhiteSpace(path) || !path.StartsWith("/", StringComparison.Ordinal)) {
+                throw new InvalidOperationException($"Scenario browser path '{path}' must start with '/'.");
+            }
+            BrowserEnabled = enabled;
+            BrowserPath = path;
+        }
+
+        public void ConfigureIoxide(bool enabled) {
+            if (!enabled) {
+                IoxideEnabled = false;
+                return;
+            }
+
+#if NET10_0
+            if (!OperatingSystem.IsLinux()) {
+                throw new ExampleCliException("Option '--ioxide' requires Linux with io_uring support.");
+            }
+            IoxideEnabled = true;
+#else
+            throw new ExampleCliException("Option '--ioxide' requires the net10.0 target.");
+#endif
+        }
+
+        public string Require(string name) {
+            if (!_options.TryGetValue(name, out string? value) || string.IsNullOrWhiteSpace(value)) {
+                throw new ExampleCliException($"Option '--{name}' requires a value.");
+            }
+            return value;
+        }
+
+        public string? Get(string name, string? defaultValue = null) {
+            if (!_options.TryGetValue(name, out string? value)) {
+                return defaultValue;
+            }
+            if (string.IsNullOrWhiteSpace(value)) {
+                throw new ExampleCliException($"Option '--{name}' requires a value.");
+            }
+            return value;
+        }
+
+        public int GetInt32(string name, int defaultValue, int minimum, int maximum) {
+            string? raw = Get(name);
+            if (raw == null) {
+                return defaultValue;
+            }
+            if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) || value < minimum || value > maximum) {
+                throw new ExampleCliException($"Option '--{name}' must be an integer between {minimum} and {maximum}.");
+            }
+            return value;
+        }
+
+        public double GetDouble(string name, double defaultValue, double minimum, double maximum) {
+            string? raw = Get(name);
+            if (raw == null) {
+                return defaultValue;
+            }
+            if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double value)
+                || !double.IsFinite(value)
+                || value < minimum
+                || value > maximum) {
+                throw new ExampleCliException($"Option '--{name}' must be a number between {minimum} and {maximum}.");
+            }
+            return value;
+        }
+
+        public Uri? GetAbsoluteUri(string name) {
+            string? raw = Get(name);
+            if (raw == null) {
+                return null;
+            }
+            if (!Uri.TryCreate(raw, UriKind.Absolute, out Uri? uri)) {
+                throw new ExampleCliException($"Option '--{name}' must be an absolute URI.");
+            }
+            return uri;
+        }
+    }
+
+    internal sealed class ExampleCliException : Exception {
+
+        public ExampleCliException(string message) : base(message) { }
 
     }
 
-    class RoomName {
-        public string room { get; set; }
-        public string name { get; set; }
-        public string text { get; set; }
-    }
+    #endregion ExampleArguments
 
-    public sealed class HomeController : Controller {
+    #region ExampleConsole
 
-        [Route("GET", "home")]
-        public object Index(string? name = null) {
-            return "Home";
-        }
+    internal static class ExampleConsole {
 
-    }
+        private static readonly object Sync = new();
 
-    public sealed class HomeRazorController : RazorController {
-
-        [Route("GET", "/index")]
-        public object Index() {
-            return View("Home", new { Title = "SimpleW", Name = "chef" })
-                   .WithViewBag(vb => {
-                        //vb.Title = "Ma room";
-                        vb.Footer = "SimpleW";
-                    });
-        }
-
-    }
-
-    class LogProcessor : BaseProcessor<Activity> {
-        // write log to console
-        public override void OnEnd(Activity activity) {
-            // WARNING : use for local debug only not production
-            Console.WriteLine(
-                 $"{activity.GetTagItem("http.request.method")} " +
-                 $"\"{activity.GetTagItem("url.path")}" +
-                 $"{(!string.IsNullOrWhiteSpace(activity.GetTagItem("url.query")?.ToString()) ? "?"+activity.GetTagItem("url.query") : "")}" +
-                 $"\" " +
-                 $"{activity.GetTagItem("http.response.status_code")} " +
-                 $"{(int)activity.Duration.TotalMilliseconds}ms "
+        public static void Scenario(string name, string description) {
+            Section("SimpleW example");
+            WriteLine(false,
+                new("  Scenario  ", ConsoleColor.DarkCyan),
+                new(name, ConsoleColor.Green)
             );
-
+            WriteLine(false,
+                new("  About     ", ConsoleColor.DarkCyan),
+                new(description, ConsoleColor.Gray)
+            );
+            BlankLine();
         }
+
+        public static void Section(string title) {
+            WriteLine(false, new Segment(title, ConsoleColor.Cyan));
+        }
+
+        public static void Command(string command) {
+            WriteLine(false,
+                new("  ", ConsoleColor.DarkGray),
+                new(command, ConsoleColor.White)
+            );
+        }
+
+        public static void Item(string name, string description, int nameWidth = 18) {
+            WriteLine(false,
+                new("  ", ConsoleColor.DarkGray),
+                new(name.PadRight(nameWidth), ConsoleColor.Green),
+                new(description, ConsoleColor.Gray)
+            );
+        }
+
+        public static void Muted(string message) {
+            WriteLine(false, new Segment(message, ConsoleColor.DarkGray));
+        }
+
+        public static void BlankLine(bool writeToError = false) {
+            WriteLine(writeToError);
+        }
+
+        public static void Info(string message) {
+            Status("INFO", ConsoleColor.Cyan, message, writeToError: false);
+        }
+
+        public static void Success(string message) {
+            Status("OK", ConsoleColor.Green, message, writeToError: false);
+        }
+
+        public static void Warning(string message, bool writeToError = false) {
+            Status("WARN", ConsoleColor.Yellow, message, writeToError);
+        }
+
+        public static void Error(string message) {
+            Status("ERROR", ConsoleColor.Red, message, writeToError: true);
+        }
+
+        public static void Route(RouteInfo route) {
+            ConsoleColor methodColor = GetMethodColor(route.Method);
+            string host = string.IsNullOrWhiteSpace(route.Host) ? string.Empty : $"[{route.Host}] ";
+            string description = string.IsNullOrWhiteSpace(route.Description) ? string.Empty : $" - {route.Description}";
+
+            WriteLine(false,
+                new("  ", ConsoleColor.DarkGray),
+                new(route.Method.PadRight(8), methodColor),
+                new(" ", ConsoleColor.DarkGray),
+                new(host, ConsoleColor.DarkYellow),
+                new(route.Path, ConsoleColor.White),
+                new(description, ConsoleColor.DarkGray)
+            );
+        }
+
+        public static void Progress(int current, int total, string path, long size) {
+            int width = total.ToString(CultureInfo.InvariantCulture).Length;
+            string counter = $"{current.ToString(CultureInfo.InvariantCulture).PadLeft(width)}/{total.ToString(CultureInfo.InvariantCulture)}";
+            string formattedSize = size.ToString("N0", CultureInfo.InvariantCulture);
+
+            WriteLine(false,
+                new("  [", ConsoleColor.DarkGray),
+                new(counter, ConsoleColor.Cyan),
+                new("] ", ConsoleColor.DarkGray),
+                new(path, ConsoleColor.Gray),
+                new($" ({formattedSize} bytes)", ConsoleColor.DarkGray)
+            );
+        }
+
+        public static void Trace(string? method, string? path, string? statusCode, double durationMilliseconds) {
+            string safeMethod = string.IsNullOrWhiteSpace(method) ? "-" : method;
+            string safePath = string.IsNullOrWhiteSpace(path) ? "-" : path;
+            string safeStatus = string.IsNullOrWhiteSpace(statusCode) ? "-" : statusCode;
+            ConsoleColor statusColor = safeStatus[0] switch {
+                '2' or '3' => ConsoleColor.Green,
+                '4' => ConsoleColor.Yellow,
+                '5' => ConsoleColor.Red,
+                _ => ConsoleColor.Gray
+            };
+
+            WriteLine(false,
+                new("[TRACE] ", ConsoleColor.Magenta),
+                new(safeMethod.PadRight(8), GetMethodColor(safeMethod)),
+                new(" ", ConsoleColor.DarkGray),
+                new(safePath, ConsoleColor.White),
+                new("  ", ConsoleColor.DarkGray),
+                new(safeStatus, statusColor),
+                new($"  {durationMilliseconds.ToString("F1", CultureInfo.InvariantCulture)} ms", ConsoleColor.DarkGray)
+            );
+        }
+
+        public static void RequestLog(LogEntry entry) {
+            bool writeToError = entry.Level is LogLevel.Error or LogLevel.Fatal;
+            string timestamp = entry.LocalTime.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+            string exception = entry.Exception == null ? string.Empty : $" - {entry.Exception.Message}";
+
+            if (!TryParseRequestLog(entry.Message, out HttpRequestLog request)) {
+                ConsoleColor levelColor = GetLogLevelColor(entry.Level);
+                WriteLine(writeToError,
+                    new(timestamp, ConsoleColor.DarkGray),
+                    new($" [{entry.LevelName3Len}] ", levelColor),
+                    new(entry.Source, ConsoleColor.DarkCyan),
+                    new(" ", ConsoleColor.DarkGray),
+                    new(entry.Message, ConsoleColor.Gray),
+                    new(exception, ConsoleColor.Red)
+                );
+                return;
+            }
+
+            WriteLine(writeToError,
+                new(timestamp, ConsoleColor.DarkGray),
+                new(" [HTTP] ", ConsoleColor.Cyan),
+                new(request.Method.PadRight(8), GetMethodColor(request.Method)),
+                new(" ", ConsoleColor.DarkGray),
+                new(request.Path, ConsoleColor.White),
+                new("  ", ConsoleColor.DarkGray),
+                new(request.StatusCode, GetStatusColor(request.StatusCode)),
+                new($"  {request.DurationMilliseconds} ms", ConsoleColor.DarkGray),
+                new($"  {request.Session}", ConsoleColor.DarkGray),
+                new($"  {request.ClientIp}", ConsoleColor.DarkGray),
+                new(exception, ConsoleColor.Red)
+            );
+        }
+
+        private static bool TryParseRequestLog(string message, out HttpRequestLog request) {
+            request = default;
+
+            int methodEnd = message.IndexOf(' ');
+            if (methodEnd <= 0 || methodEnd + 2 >= message.Length || message[methodEnd + 1] != '"') {
+                return false;
+            }
+
+            int pathStart = methodEnd + 2;
+            int pathEnd = message.IndexOf('"', pathStart);
+            if (pathEnd < pathStart) {
+                return false;
+            }
+
+            string[] fields = message[(pathEnd + 1)..]
+                                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (fields.Length < 3
+                || fields[0].Length != 3
+                || !int.TryParse(fields[0], NumberStyles.None, CultureInfo.InvariantCulture, out int statusCode)
+                || statusCode is < 100 or > 999
+                || !fields[1].EndsWith("ms", StringComparison.Ordinal)
+                || !long.TryParse(fields[1][..^2], NumberStyles.None, CultureInfo.InvariantCulture, out long durationMilliseconds)) {
+                return false;
+            }
+
+            request = new HttpRequestLog(
+                message[..methodEnd],
+                message[pathStart..pathEnd],
+                fields[0],
+                durationMilliseconds,
+                fields[2],
+                fields.Length >= 4 ? fields[3] : "-"
+            );
+            return true;
+        }
+
+        private static void Status(string label, ConsoleColor color, string message, bool writeToError) {
+            WriteLine(writeToError,
+                new($"[{label}] ", color),
+                new(message, color)
+            );
+        }
+
+        private static ConsoleColor GetMethodColor(string method) => method.ToUpperInvariant() switch {
+            "GET" => ConsoleColor.Green,
+            "POST" => ConsoleColor.Cyan,
+            "PUT" => ConsoleColor.Yellow,
+            "PATCH" => ConsoleColor.Magenta,
+            "DELETE" => ConsoleColor.Red,
+            "HEAD" => ConsoleColor.DarkCyan,
+            "OPTIONS" => ConsoleColor.DarkCyan,
+            _ => ConsoleColor.Gray
+        };
+
+        private static ConsoleColor GetStatusColor(string statusCode) => statusCode[0] switch {
+            '2' or '3' => ConsoleColor.Green,
+            '4' => ConsoleColor.Yellow,
+            '5' => ConsoleColor.Red,
+            _ => ConsoleColor.Gray
+        };
+
+        private static ConsoleColor GetLogLevelColor(LogLevel level) => level switch {
+            LogLevel.Trace => ConsoleColor.DarkGray,
+            LogLevel.Debug => ConsoleColor.Gray,
+            LogLevel.Information => ConsoleColor.Cyan,
+            LogLevel.Warning => ConsoleColor.Yellow,
+            LogLevel.Error => ConsoleColor.Red,
+            LogLevel.Fatal => ConsoleColor.Red,
+            _ => ConsoleColor.Gray
+        };
+
+        private static void WriteLine(bool writeToError, params Segment[] segments) {
+            TextWriter writer = writeToError ? Console.Error : Console.Out;
+
+            lock (Sync) {
+                if (!IsColorEnabled(writeToError) || !TryGetForegroundColor(out ConsoleColor originalColor)) {
+                    WritePlainLine(writer, segments);
+                    return;
+                }
+
+                try {
+                    foreach (Segment segment in segments) {
+                        if (segment.Color.HasValue) {
+                            TrySetForegroundColor(segment.Color.Value);
+                        }
+                        writer.Write(segment.Text);
+                    }
+                    writer.WriteLine();
+                }
+                finally {
+                    TrySetForegroundColor(originalColor);
+                }
+            }
+        }
+
+        private static void WritePlainLine(TextWriter writer, IEnumerable<Segment> segments) {
+            foreach (Segment segment in segments) {
+                writer.Write(segment.Text);
+            }
+            writer.WriteLine();
+        }
+
+        private static bool IsColorEnabled(bool writeToError) {
+            if (Environment.GetEnvironmentVariable("NO_COLOR") != null
+                || string.Equals(Environment.GetEnvironmentVariable("TERM"), "dumb", StringComparison.OrdinalIgnoreCase)) {
+                return false;
+            }
+            return writeToError ? !Console.IsErrorRedirected : !Console.IsOutputRedirected;
+        }
+
+        private static bool TryGetForegroundColor(out ConsoleColor color) {
+            try {
+                color = Console.ForegroundColor;
+                return true;
+            }
+            catch {
+                color = ConsoleColor.Gray;
+                return false;
+            }
+        }
+
+        private static void TrySetForegroundColor(ConsoleColor color) {
+            try {
+                Console.ForegroundColor = color;
+            }
+            catch {
+                // Color is cosmetic; never let an unsupported console break the example.
+            }
+        }
+
+        private readonly record struct Segment(string Text, ConsoleColor? Color = null);
+
+        private readonly record struct HttpRequestLog(
+            string Method,
+            string Path,
+            string StatusCode,
+            long DurationMilliseconds,
+            string Session,
+            string ClientIp
+        );
     }
+
+    #endregion ExampleConsole
 
 }
