@@ -16,10 +16,6 @@ Using the NuGet package, always prefer the latest version.
 $ dotnet add package SimpleW --version 26.0.1
 ```
 
-::: tip NOTE
-Follow this [guide](./migrate-from-v16) if you migrate from v16.
-:::
-
 
 ## Minimal example
 
