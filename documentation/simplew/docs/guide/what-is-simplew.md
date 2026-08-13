@@ -45,7 +45,7 @@ But there is more: the .NET environment suffers from a major issue :
 - [NetCoreServer](https://github.com/chronoxor/NetCoreServer): still the state of the art in terms of performance and design!
 - [Fast-Endpoints](https://fast-endpoints.com/): built on top of ASP.NET Core, but with a cleaner and nicer API!
 - [GenHTTP](https://github.com/Kaliumhexacyanoferrat/GenHTTP): modular at its core, its author supports many engines and contexts!
-- [Wired.IO](https://github.com/MDA2AV/Wired.IO): aims to be the fastest, and it actually is. This one delivers!
+- [Ioxide](https://mda2av.github.io/ioxide/): aims to be the fastest, and it actually is. This one delivers!
 - [EmbedIO](https://github.com/unosquare/embedio): no longer maintained, but it was one of the first. A true legacy!
 
 
