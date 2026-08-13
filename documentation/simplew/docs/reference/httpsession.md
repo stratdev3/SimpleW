@@ -52,6 +52,16 @@ When `HttpSession` receive data from a client, it parses its content into a [`Ht
 It supports http pipelining.
 
 
+## Transport
+
+```csharp
+/// <summary>
+/// Underlying transport.
+/// </summary>
+internal ISimpleWEngine Transport => _transport;
+```
+
+
 ## Response
 
 ```csharp
