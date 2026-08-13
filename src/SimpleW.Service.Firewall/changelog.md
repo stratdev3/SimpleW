@@ -1,5 +1,16 @@
 # Changelog
 
+
+## Unreleased
+
+Maintenance: compatibility with SimpleW v26.1.x.
+
+### feature
+
+- Emit OpenTelemetry events for blocks and rate limits (#395)
+
+
+
 ## v26.0.1 - _(2026-06-20)_
 
 Maintenance release for handler-level firewall rules.

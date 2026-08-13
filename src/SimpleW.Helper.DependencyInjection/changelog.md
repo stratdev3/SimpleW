@@ -1,7 +1,14 @@
 # Changelog
 
 
+## Unreleased
+
+Maintenance: compatibility with SimpleW v26.1.x.
+
+
+
 ## v26.0.1 - _(2026-05-17)_
+
 Maintenance
 
 ### fix
