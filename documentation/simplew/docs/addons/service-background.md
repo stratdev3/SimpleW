@@ -1,6 +1,6 @@
 # Background <Badge type="tip" text="Official" />
 
-The [`SimpleW.Service.Background`](https://www.nuget.org/packages/SimpleW.Service.Background) package provides an **in-process background job queue** and a **cron scheduler** for SimpleW.
+The [`SimpleW.Service.Background`](https://www.nuget.org/packages/SimpleW.Service.Background) package provides an **in-process background job queue**, delayed jobs, retries, timeouts, and recurring cron or fixed-interval schedules for SimpleW.
 
 It is designed for handlers that need to start long-running work without keeping the HTTP request open.
 
@@ -19,9 +19,12 @@ The background service solves a different problem: the handler can return quickl
 This module allows you to:
 
 - enqueue background jobs from handlers, controllers, or the server
+- wait asynchronously for queue capacity with backpressure
 - return an HTTP response immediately, typically `202 Accepted`
-- track queued, running, succeeded, failed, and canceled jobs
-- schedule recurring jobs with cron expressions
+- retry failed or timed out jobs with deterministic exponential backoff
+- cancel delayed, queued, retrying, or running jobs by id
+- track scheduled, queued, running, retrying, succeeded, failed, timed out, and canceled jobs
+- schedule recurring jobs with cron expressions or fixed intervals
 - stop workers cleanly when the SimpleW server stops
 
 The queue is **memory-only**. Jobs do not survive process restart.
@@ -29,15 +32,15 @@ The queue is **memory-only**. Jobs do not survive process restart.
 
 ## Requirements
 
-- .NET 8.0
+- .NET 8.0, 9.0, or 10.0
 - SimpleW (core server)
-- Cronos, used internally to parse cron expressions
+- Cronos (automatically included), used internally to parse cron expressions
 
 
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Background --version 26.0.0-alpha.20260428-1831
+$ dotnet add package SimpleW.Service.Background --version 26.0.0
 ```
 
 See the [changelog](./service-background-changelog.md)
@@ -85,7 +88,20 @@ The handler copies the data it needs, enqueues the work, and returns immediately
 | TimeZone | `UTC` | Default time zone used by cron schedules. |
 | JobStore | `MemoryBackgroundJobStore` | Store used for job snapshots. Can be replaced by a custom implementation. |
 | EnableTelemetry | `false` | Enables module telemetry. The underlying `SimpleWServer.Telemetry` must also be enabled. |
+| DefaultJobOptions | See below | Default timeout and retry policy copied by every job and recurring occurrence. |
 | Schedules | `[]` | Cron schedules registered with `options.Schedule(...)`. |
+| Intervals | `[]` | Fixed-interval schedules registered with `options.ScheduleEvery(...)`. |
+
+Default job options:
+
+| Option | Default | Description |
+|---|---:|---|
+| Timeout | `null` | Maximum duration of one attempt. `null` disables the timeout. |
+| RetryCount | `0` | Number of additional attempts after the first failure. |
+| RetryDelay | `1s` | Delay before the first retry. |
+| RetryBackoffFactor | `2` | Multiplier applied after each failed attempt. |
+| RetryMaxDelay | `1m` | Maximum delay between attempts. |
+| RetryOnTimeout | `true` | Allows timed out attempts to use the retry policy. |
 
 
 ## Register the module
@@ -97,6 +113,10 @@ server.UseBackgroundModule(options => {
     options.CompletedJobRetention = 2000;
     options.ShutdownTimeout = TimeSpan.FromSeconds(20);
     options.JobStore = new MemoryBackgroundJobStore();
+
+    options.DefaultJobOptions.Timeout = TimeSpan.FromMinutes(5);
+    options.DefaultJobOptions.RetryCount = 2;
+    options.DefaultJobOptions.RetryDelay = TimeSpan.FromSeconds(1);
 });
 ```
 
@@ -109,7 +129,8 @@ The module must be installed before the server starts.
 server.MapPost("/api/report", (HttpSession session) => {
     string body = session.Request.BodyString;
 
-    BackgroundJobHandle job = session.GetBackgroundService().Enqueue("report", async ctx => {
+    BackgroundJobHandle job = session.GetBackgroundService()
+                                     .Enqueue("report", async ctx => {
         await GenerateReportAsync(body, ctx.CancellationToken);
     });
 
@@ -126,7 +147,7 @@ server.MapPost("/api/report", (HttpSession session) => {
 |---|---|
 | Id | Unique job identifier. |
 | Name | Job name passed to `Enqueue`. |
-| EnqueuedAtUtc | UTC date at which the job entered the queue. |
+| EnqueuedAtUtc | UTC date at which the job record was created. |
 
 
 ## Avoid queue overflow
@@ -152,9 +173,114 @@ server.MapPost("/api/export", (HttpSession session) => {
 ```
 
 
+## Wait for queue capacity
+
+`EnqueueAsync` applies asynchronous backpressure instead of rejecting the job when the bounded queue is full. It does not block a worker thread while waiting.
+
+```csharp
+server.MapPost("/api/export", async (HttpSession session) => {
+    string payload = session.Request.BodyString;
+
+    using CancellationTokenSource acceptanceTimeout = new(TimeSpan.FromSeconds(5));
+
+    BackgroundJobHandle job = await session.GetBackgroundService()
+                                           .EnqueueAsync(
+        "export",
+        ctx => ExportAsync(payload, ctx.CancellationToken),
+        cancellationToken: acceptanceTimeout.Token
+    );
+
+    return session.Response.Status(202).Json(new {
+        jobId = job.Id
+    });
+});
+```
+
+The supplied `CancellationToken` controls **only the wait for queue capacity**. Once the job is accepted, cancel it with `Cancel(jobId)`. Canceling admission removes the temporary job record and does not leave a snapshot behind.
+
+
+## Delayed jobs
+
+Use `EnqueueAfter` to execute a job after a relative delay:
+
+```csharp
+IBackgroundService background = server.GetBackgroundService();
+
+BackgroundJobHandle reminder = background.EnqueueAfter(
+    "send-reminder",
+    TimeSpan.FromMinutes(15),
+    ctx => SendReminderAsync(ctx.CancellationToken)
+);
+```
+
+Use `EnqueueAt` for an absolute date:
+
+```csharp
+BackgroundJobHandle closing = background.EnqueueAt(
+    "close-period",
+    new DateTimeOffset(2026, 12, 31, 23, 0, 0, TimeSpan.Zero),
+    ctx => ClosePeriodAsync(ctx.CancellationToken)
+);
+```
+
+A delayed job remains `Scheduled` until its due date. A zero delay or a date in the past attempts immediate queue admission. If the queue is full when a delayed job becomes due, it waits asynchronously for capacity instead of being discarded.
+
+Delayed delegates remain in memory and are lost if the process stops.
+
+
+## Retry and timeout
+
+Every enqueue method accepts a per-job configuration callback. It starts from `DefaultJobOptions`, then applies the local overrides.
+
+```csharp
+BackgroundJobHandle import = background.Enqueue(
+    "import",
+    ctx => ImportAsync(ctx.CancellationToken),
+    job => {
+        job.Timeout = TimeSpan.FromMinutes(2);
+        job.RetryCount = 3;
+        job.RetryDelay = TimeSpan.FromSeconds(1);
+        job.RetryBackoffFactor = 2;
+        job.RetryMaxDelay = TimeSpan.FromSeconds(30);
+        job.RetryOnTimeout = true;
+    }
+);
+```
+
+`RetryCount` is the number of **additional** attempts. With `RetryCount = 3`, the job can run at most four times.
+
+Retry delay uses deterministic exponential backoff:
+
+```text
+Retry 1: 1 second
+Retry 2: 2 seconds
+Retry 3: 4 seconds
+```
+
+The delay is capped by `RetryMaxDelay`. A retry keeps the same job id, releases its worker during the delay, changes the snapshot to `Retrying`, and resets attempt-scoped progress.
+
+Timeout applies independently to every attempt. It is cooperative: the module cancels `ctx.CancellationToken`, but .NET cannot forcibly terminate a delegate that ignores that token. A retry starts only after the timed out delegate has returned.
+
+
+## Cancel a job
+
+Use the id returned in `BackgroundJobHandle`:
+
+```csharp
+bool cancellationRequested = background.Cancel(import.Id);
+```
+
+Cancellation behavior depends on the current state:
+
+- `Scheduled`, `Queued`, or `Retrying` jobs become `Canceled` immediately
+- `Running` jobs receive cancellation through `ctx.CancellationToken` and become `Canceled` when the delegate returns
+- cancellation is never retried
+- the method returns `false` for an unknown or already terminal job
+
+
 ## Track jobs
 
-The background service keeps in-memory snapshots of queued, running, and recently completed jobs.
+The background service keeps snapshots of scheduled, queued, running, retrying, and recently completed jobs.
 
 ```csharp
 server.MapGet("/api/jobs/:id", (HttpSession session, Guid id) => {
@@ -172,19 +298,35 @@ Job states:
 
 | Status | Meaning |
 |---|---|
+| Scheduled | The job is waiting for its delayed execution date. |
 | Queued | The job is waiting in the queue. |
 | Running | A worker is executing the job. |
+| Retrying | The job is waiting for its next attempt without occupying a worker. |
 | Succeeded | The job completed successfully. |
-| Failed | The job threw an exception. |
-| Canceled | The server stopped while the job was running. |
+| Failed | The job exhausted its retries after an exception. |
+| TimedOut | The final attempt exceeded its timeout and no timeout retry remains. |
+| Canceled | The job was canceled individually or during server shutdown. |
 
-Progress fields:
+Important snapshot fields:
 
 | Property | Description |
 |---|---|
+| Id | Stable identifier preserved across all attempts. |
+| Source | Job origin: `handler`, `cron`, or `interval`. |
+| EnqueuedAtUtc | Date at which the job record was created. |
+| ScheduledAtUtc | Initial due date of a delayed job. |
+| NextAttemptAtUtc | Due date of the pending retry. |
+| StartedAtUtc | Date at which the first attempt started. |
+| FinishedAtUtc | Date at which the job reached a terminal state. |
+| Attempt | Current or last completed attempt number, starting at `1`. |
+| MaxAttempts | Maximum attempts including the initial execution. |
+| Error | Terminal failure or timeout message. |
+| LastError | Error produced by the latest failed attempt, including jobs that later succeed. |
+| Timeout | Timeout applied independently to each attempt. |
 | Progress | Latest reported progress percentage, between `0` and `100`, or `null` when unknown. |
 | ProgressMessage | Latest reported progress message. |
 | UpdatedAtUtc | Last time the job status or progress changed. |
+| Duration | Elapsed time since the first attempt started, frozen at terminal completion. |
 
 
 ## Report progress
@@ -195,7 +337,8 @@ Long-running jobs can report their latest progress from inside the background wo
 server.MapPost("/api/import", (HttpSession session) => {
     string payload = session.Request.BodyString;
 
-    BackgroundJobHandle job = session.GetBackgroundService().Enqueue("import", async ctx => {
+    BackgroundJobHandle job = session.GetBackgroundService()
+                                     .Enqueue("import", async ctx => {
         ctx.ReportProgress(0, "Starting import");
 
         await ParseAsync(payload, ctx.CancellationToken);
@@ -227,6 +370,7 @@ Progress behavior:
 - percentages are normalized to the `0..100` range
 - reporting a message without a percentage keeps the previous percentage
 - when a job succeeds, an existing percentage lower than `100` is completed to `100`
+- progress is reset before each retry because it belongs to the failed attempt
 - failed and canceled jobs keep their last reported progress
 
 
@@ -299,6 +443,32 @@ server.UseBackgroundModule(options => {
 ::: info
 Important: the current module still executes in-process delegates. A custom store persists the observable job state, progress, and history, but it does not make arbitrary delegate jobs restartable after a process crash.
 :::
+
+
+## Fixed-interval schedules
+
+Use `ScheduleEvery` for recurring work expressed as a duration instead of a cron expression:
+
+```csharp
+server.UseBackgroundModule(options => {
+    options.ScheduleEvery(
+        "refresh-cache",
+        TimeSpan.FromMinutes(10),
+        ctx => RefreshCacheAsync(ctx.CancellationToken),
+        interval => {
+            interval.AllowConcurrentExecutions = false;
+            interval.JobOptions.Timeout = TimeSpan.FromMinutes(2);
+            interval.JobOptions.RetryCount = 1;
+        }
+    );
+});
+```
+
+The first occurrence runs after one complete interval. Subsequent occurrences follow fixed ticks calculated from the planned cadence rather than from the previous completion time.
+
+By default, an occurrence is skipped while the previous occurrence is queued, running, or retrying. Set `AllowConcurrentExecutions = true` only when overlapping executions are safe.
+
+Missed interval ticks are not replayed after a long execution or process restart.
 
 
 ## Cron schedules
@@ -375,7 +545,7 @@ server.UseBackgroundModule(options => {
 
 By default, the same cron schedule does not overlap with itself.
 
-If a previous occurrence is still queued or running, the next occurrence is skipped.
+If a previous occurrence is still queued, running, or retrying, the next occurrence is skipped.
 
 ```csharp
 server.UseBackgroundModule(options => {
@@ -398,6 +568,13 @@ To allow overlapping executions:
 cron.AllowConcurrentExecutions = true;
 ```
 
+Cron occurrences can also override the default retry and timeout policy:
+
+```csharp
+cron.JobOptions.Timeout = TimeSpan.FromMinutes(1);
+cron.JobOptions.RetryCount = 2;
+```
+
 
 ## Use from controllers
 
@@ -413,7 +590,8 @@ public sealed class ImportController : Controller {
     public object Import() {
         string payload = Request.BodyString;
 
-        BackgroundJobHandle job = this.GetBackgroundService().Enqueue("import", async ctx => {
+        BackgroundJobHandle job = this.GetBackgroundService()
+                                      .Enqueue("import", async ctx => {
             await ImportAsync(payload, ctx.CancellationToken);
         });
 
@@ -446,11 +624,16 @@ When enabled, the module exposes these counters:
 
 | Instrument | Unit | Description |
 |---|---|---|
-| `simplew.background.job.enqueued.count` | `job` | Jobs accepted into the queue. |
-| `simplew.background.job.rejected.count` | `job` | Handler jobs rejected because the queue is full. |
-| `simplew.background.job.started.count` | `job` | Jobs picked up by a worker. |
-| `simplew.background.job.completed.count` | `job` | Jobs completed with `succeeded`, `failed`, or `canceled`. |
+| `simplew.background.job.enqueued.count` | `job` | Work items admitted to the ready queue, including retries. |
+| `simplew.background.job.rejected.count` | `job` | Immediate enqueue operations rejected because the queue is full. |
+| `simplew.background.job.started.count` | `job` | Jobs that started their first attempt. |
+| `simplew.background.job.attempted.count` | `attempt` | Attempts started, including retries. |
+| `simplew.background.job.attempt.completed.count` | `attempt` | Attempts completed, tagged with their result. |
+| `simplew.background.job.completed.count` | `job` | Jobs that reached a terminal state. |
 | `simplew.background.job.progress.count` | `report` | Calls to `ctx.ReportProgress(...)`. |
+| `simplew.background.job.retried.count` | `retry` | Retries scheduled after exceptions or timeouts. |
+| `simplew.background.job.timed_out.count` | `attempt` | Attempts that exceeded their configured timeout. |
+| `simplew.background.job.canceled.count` | `job` | Jobs that reached `Canceled`. |
 
 And these duration instruments:
 
@@ -466,21 +649,23 @@ Observable gauges:
 | `simplew.background.queue.length` | `job` | Current number of queued jobs. |
 | `simplew.background.queue.capacity` | `job` | Configured queue capacity. |
 | `simplew.background.job.running` | `job` | Current number of running jobs. |
+| `simplew.background.job.scheduled` | `job` | Delayed jobs and retries waiting in the timed scheduler. |
 | `simplew.background.job.tracked` | `job` | Current number of tracked job snapshots. |
 | `simplew.background.worker.count` | `worker` | Configured worker count. |
 | `simplew.background.cron.schedule.enabled` | `schedule` | Enabled cron schedules. |
+| `simplew.background.interval.schedule.enabled` | `schedule` | Enabled fixed-interval schedules. |
 
 Metric tags are intentionally low-cardinality:
 
 | Tag | Values |
 |---|---|
-| `source` | `handler`, `cron`, `unknown` |
-| `result` | `succeeded`, `failed`, `canceled` |
-| `reason` | `queue_full` |
+| `source` | `handler`, `cron`, `interval`, `unknown` |
+| `result` | `succeeded`, `failed`, `timed_out`, `canceled`, `retry` |
+| `reason` | `queue_full`, `exception`, `timeout` |
 
 The module does not tag metrics with job ids, job names, cron expressions, or progress messages. This keeps the metric stream safe for production exporters.
 
-Cron occurrences are counted when they are actually enqueued and executed with `source = cron`; skipped cron occurrences and cron enqueue failures are not reported as separate metrics.
+Recurring occurrences are counted when they are actually enqueued. Skipped cron or interval occurrences are logged but are not reported as separate metrics.
 
 
 ## Important behavior notes
@@ -488,9 +673,12 @@ Cron occurrences are counted when they are actually enqueued and executed with `
 - Jobs are in-process and memory-only.
 - With the default store, job snapshots are lost when the process stops or crashes.
 - A custom `IBackgroundJobStore` can persist snapshots, but not replay arbitrary delegate jobs.
-- Cron schedules do not catch up missed occurrences after restart.
+- Delayed jobs and retry delays do not survive process restart.
+- Cron and fixed-interval schedules do not catch up missed occurrences after restart.
 - Do not capture `HttpSession`, `HttpRequest`, or `HttpResponse` in background jobs.
 - Copy the required request data before calling `Enqueue`.
-- The cancellation token is triggered when the background service stops.
-- Exceptions are caught by the worker and stored in the job snapshot as `Failed`.
+- The job cancellation token is triggered by individual cancellation, per-attempt timeout, or server shutdown.
+- Cancellation and timeout are cooperative; delegates must observe `ctx.CancellationToken`.
+- Exceptions and timeouts use the configured retry policy before becoming terminal.
+- Retry delays and delayed jobs do not occupy worker slots.
 - Progress is a latest-known snapshot, not an event history.
