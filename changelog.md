@@ -20,11 +20,17 @@ Notes :
 
 ## Unreleased
 
+This major release completely rewrites `ISimpleWEngine` so alternative engines can be provided as addons, and introduces Ioxide as the first alternative engine implementation.
+
+
 ### breakingChange
 
-- Replaced `ISimpleWTransportTlsFeature.ClientCertificate` and `HttpSession.ClientCertificate` with engine-neutral TLS metadata: negotiated application protocol, validated client certificate subject, client certificate email address, and authentication state.
-- Client certificate subjects retain the TLS engine's native textual format and are not portable identifiers across .NET and OpenSSL.
-- Rename `HttpSession.IsSsl` to `HttpSession.IsEncrypted`.
+- Renamed `HttpSession.IsSsl` to `HttpSession.IsEncrypted`.
+- Split `HttpSession.ClientCertificate` into `HttpSession.NegotiatedApplicationProtocol`, `HttpSession.ClientCertificateSubject`, `HttpSession.ClientCertificateEmailAddress` and `HttpSession.IsClientCertificateAuthenticated`.
+- Removed `HttpSession.Socket` and `HttpSession.TransportStream` so sessions remain engine-neutral. Use `HttpSession.LocalEndPoint` and `HttpSession.RemoteEndPoint` for endpoint information, and `HttpSession.AbortConnectionAsync()` to abort the underlying connection.
+- Moved the default socket and listener options from `SimpleWSServerOptions` to `SimpleWEngineOptions`: `ListenBacklog`, `DualMode`, `TcpNoDelay`, `ReuseAddress`, `ExclusiveAddressUse`, `ReusePort`, `AcceptPerCore`, `TcpKeepAlive`, `TcpKeepAliveTime`, `TcpKeepAliveInterval`, `TcpKeepAliveRetryCount`, and `ReceiveBufferSize`. Configure them with `server.UseEngine(options => ...)` instead of `server.Configure(options => ...)`.
+- Moved TLS ownership from `SimpleWServer` and `HttpSession` to the engine. Configure `SimpleWEngineOptions.SslContext` with `server.UseEngine(options => ...)`; during listener reloads, call `SimpleWEngine.UseHttps()` or `SimpleWEngine.DisableHttps()` instead of the removed server/session methods.
+
 
 
 ## v26.0.1 / _(2026-06-19)_
