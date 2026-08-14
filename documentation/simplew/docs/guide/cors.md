@@ -1,10 +1,10 @@
-# CORS
+# Cross-Origin Resource Sharing
 
 Modern web browsers (Chrome, Firefox, Safari, Edge…) **restrict JavaScript from calling APIs hosted on a different origin**.
 
 This restriction is enforced by the browser, not by the server.
 
-[CORS (Cross-Origin Resource Sharing)](https://developer.mozilla.org/fr/docs/Web/HTTP/CORS) defines how a server can explicitly allow cross-origin requests by returning specific HTTP headers.
+[CORS](https://developer.mozilla.org/fr/docs/Web/HTTP/CORS) defines how a server can explicitly allow cross-origin requests by returning specific HTTP headers.
 
 Conceptually :
 

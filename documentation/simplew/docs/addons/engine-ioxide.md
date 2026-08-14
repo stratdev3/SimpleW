@@ -225,10 +225,6 @@ server.MapGet("/identity", (HttpSession session) => new {
 
 The subject uses OpenSSL's native validated representation. Do not parse it naively or compare it directly with a subject formatted by the .NET Socket engine.
 
-::: warning Ioxide 0.4.184 package surface
-The `ioxide` 0.4.184 DLL currently restored by this repository does not expose `TlsSession.PeerSubject`, `TlsOptions.ClientCaPath`, or `TlsOptions.RequireClientCertificate`, although they exist in the newer documentary source snapshot. `SimpleW.Engine.Ioxide` therefore uses a cached compatibility accessor: the subject is `null` and authentication is `false` when the runtime package lacks `PeerSubject`. Actual mTLS configuration requires an Ioxide NuGet release that publishes these APIs.
-:::
-
 
 ## Manual TLS checks
 

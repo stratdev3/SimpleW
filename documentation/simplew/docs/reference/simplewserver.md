@@ -514,7 +514,7 @@ server.UseEngine(options => {
 });
 ```
 
-See an [example](../guide/ssl-certificate.md#example-for-local-test).
+See an [example](../guide/tls-certificates.md#example-for-local-test).
 
 
 ## ConfigureResultHandler

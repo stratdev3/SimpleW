@@ -24,7 +24,7 @@ How to replace old class/method/property with the new one.
 
 - `SimpleWServer.Start()` => `SimpleWServer.StartAsync()` or `SimpleWServer.RunAsync()` depending on the blocking context you want
 - `SimpleWServer.Stop()` => `SimpleWServer.StopAsync()`
-- `SimpleWSServer` => [`SimpleWEngineOptions.SslContext`](./ssl-certificate.md) to setup ssl certificate
+- `SimpleWSServer` => [`SimpleWEngineOptions.SslContext`](./tls-certificates.md) to setup ssl certificate
 - `SimpleWServer.AddDynamicContent()` => `SimpleWServer.MapControllers()` and `SimpleWServer.MapController()`
 - `SimpleWServer.AddStaticContent()` => [`SimpleWServer.UseStaticFilesModule()`](./staticfiles.md)
 - `SimpleWServer.AddCORS()` => [`SimpleWServer.UseCorsModule()`](./cors.md)

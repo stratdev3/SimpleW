@@ -375,4 +375,4 @@ Examples of `HttpPrincipal` integration:
 - [SimpleW.Helper.Jwt](../addons/helper-jwt.md) and [SimpleW.Service.Jwt](../addons/service-jwt.md)
 - [SimpleW.Helper.BasicAuth](../addons/helper-basicauth.md) and [SimpleW.Service.BasicAuth](../addons/service-basicauth.md)
 - [SimpleW.Helper.OpenID](../addons/helper-openid.md) and [SimpleW.Service.OpenID](../addons/service-openid.md)
-- [TLS Client Certificate](./ssl-certificate.md#mapping-mtls-to-httpprincipal)
+- [TLS Client Certificate](./tls-certificates.md#mapping-mtls-to-httpprincipal)

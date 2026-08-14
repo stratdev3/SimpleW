@@ -86,7 +86,7 @@ export default defineConfig({
                     items: [
                         { text: 'Principal', link: '/guide/principal' },
                         { text: 'Cross-Origin Resource Sharing', link: '/guide/cors' },
-                        { text: 'SSL Certificate', link: '/guide/ssl-certificate' },
+                        { text: 'TLS Certificates', link: '/guide/tls-certificates' },
                     ]
                 },
                 {

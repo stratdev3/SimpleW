@@ -1,4 +1,4 @@
-# SSL Certificate
+# TLS Certificates
 
 The [HTTPS](https://en.wikipedia.org/wiki/HTTPS) protocol is supported and you can bring your own certificate in `PKCS#12` format.
 
@@ -25,9 +25,9 @@ namespace Sample {
 
             // create a certificate
 #if NET9_0_OR_GREATER
-            X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(@"C:\Users\SimpleW\ssl\domain.pfx", "password");
+            X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(@"C:\Users\SimpleW\ssl\domain.pfx", "secret");
 #else
-            X509Certificate2 cert = new(@"C:\Users\SimpleW\ssl\domain.pfx", "password");
+            X509Certificate2 cert = new(@"C:\Users\SimpleW\ssl\domain.pfx", "secret");
 #endif
 
             // create a context with certificate, support for password protection
@@ -90,9 +90,9 @@ namespace Sample {
 
             // create a certificate
 #if NET9_0_OR_GREATER
-            X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(certificateFilePath, "password");
+            X509Certificate2 cert = X509CertificateLoader.LoadPkcs12FromFile(certificateFilePath, "secret");
 #else
-            X509Certificate2 cert = new(certificateFilePath, "password");
+            X509Certificate2 cert = new(certificateFilePath, "secret");
 #endif
 
             // create a context with certificate, support for password protection
@@ -243,5 +243,5 @@ You can use the same reload shape with `SimpleWEngine.UseHttps(...)` after you h
 
 There is an [`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) addon that provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**.
 
-Just follow the documentation of the [Let's Encrypt Module](../addons/service-letsencrypt.md).
+Just follow the documentation of the [Let's Encrypt addon](../addons/service-letsencrypt.md).
 
