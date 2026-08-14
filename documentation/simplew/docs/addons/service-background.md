@@ -478,13 +478,24 @@ When an occurrence is due, the scheduler enqueues a background job in the same q
 
 ```csharp
 server.UseBackgroundModule(options => {
-    options.Schedule("cleanup", "0 2 * * *", async ctx => {
-        await CleanupAsync(ctx.CancellationToken);
-    });
+    options.Schedule(
+        "cleanup",
+        "0 2 * * *",
+        async ctx => {
+            await CleanupAsync(ctx.CancellationToken);
+        },
+        cron => {
+            cron.AllowConcurrentExecutions = false;
+            cron.JobOptions.Timeout = TimeSpan.FromMinutes(2);
+            cron.JobOptions.RetryCount = 1;
+        }
+    );
 });
 ```
 
 This runs `cleanup` every day at 02:00, using UTC by default.
+
+By default, an occurrence is skipped while the previous occurrence is queued, running, or retrying. Set `AllowConcurrentExecutions = true` only when overlapping executions are safe.
 
 
 ## Cron with seconds
@@ -539,42 +550,6 @@ server.UseBackgroundModule(options => {
     );
 });
 ```
-
-
-## Cron concurrency
-
-By default, the same cron schedule does not overlap with itself.
-
-If a previous occurrence is still queued, running, or retrying, the next occurrence is skipped.
-
-```csharp
-server.UseBackgroundModule(options => {
-    options.Schedule(
-        "slow-sync",
-        "*/5 * * * *",
-        async ctx => {
-            await SyncAsync(ctx.CancellationToken);
-        },
-        cron => {
-            cron.AllowConcurrentExecutions = false;
-        }
-    );
-});
-```
-
-To allow overlapping executions:
-
-```csharp
-cron.AllowConcurrentExecutions = true;
-```
-
-Cron occurrences can also override the default retry and timeout policy:
-
-```csharp
-cron.JobOptions.Timeout = TimeSpan.FromMinutes(1);
-cron.JobOptions.RetryCount = 2;
-```
-
 
 ## Use from controllers
 

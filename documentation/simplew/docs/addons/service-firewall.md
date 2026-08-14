@@ -2,6 +2,7 @@
 
 The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.Firewall) package provides an application-level firewall module for SimpleW. It runs as middleware and reads SimpleW handler metadata for route-specific rules.
 
+
 ## Features
 
 - Allow or deny requests by client IP or CIDR
@@ -13,6 +14,13 @@ The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.
 - Clean internal per-IP state with TTL and hard caps
 - Emit optional telemetry
 
+
+## Requirements
+
+- .NET 8.0
+- SimpleW (core server)
+
+
 ## Installation
 
 ```sh
@@ -22,7 +30,26 @@ dotnet add package SimpleW.Service.Firewall --version 26.0.1
 See the [changelog](./service-firewall-changelog.md)
 
 
-## Minimal Example
+## Configuration options
+
+| Option | Default | Description |
+|---|---:|---|
+| `AllowRules` | `[]` | Global allow list by IP/CIDR. If not empty, non-matching requests are denied. |
+| `DenyRules` | `[]` | Global deny list by IP/CIDR. |
+| `GlobalRateLimit` | `null` | Global rate limit policy. |
+| `RateLimitWhitelistRules` | `[]` | IP/CIDR rules that bypass global and handler rate limits without bypassing allow or deny rules. |
+| `StateTtl` | `10 minutes` | Retention for inactive per-IP state. |
+| `MaxTrackedIps` | `50000` | Safety cap for tracked IP entries. |
+| `CleanupEveryNRequests` | `10000` | Opportunistic cleanup frequency. |
+| `EnableTelemetry` | `false` | Enables firewall metrics when server telemetry is enabled too. |
+| `MaxMindCountryDbPath` | `null` | Optional MaxMind `.mmdb` country database path. |
+| `TreatUnknownCountryAsMatchable` | `true` | Lets unknown countries match `CountryRule.Unknown()` and unknown-country attributes. |
+| `CountryCacheTtl` | `null` | IP to country cache duration. Uses `StateTtl` when null. |
+| `AllowCountries` | `[]` | Global allow list by ISO2 country. If not empty, non-matching requests are denied. |
+| `DenyCountries` | `[]` | Global deny list by ISO2 country. |
+
+
+## Minimal example
 
 ```csharp
 using System.Net;
@@ -53,23 +80,6 @@ public sealed class ApiController : Controller
 }
 ```
 
-## Configuration Options
-
-| Option | Default | Description |
-|---|---:|---|
-| `AllowRules` | `[]` | Global allow list by IP/CIDR. If not empty, non-matching requests are denied. |
-| `DenyRules` | `[]` | Global deny list by IP/CIDR. |
-| `GlobalRateLimit` | `null` | Global rate limit policy. |
-| `RateLimitWhitelistRules` | `[]` | IP/CIDR rules that bypass global and handler rate limits without bypassing allow or deny rules. |
-| `StateTtl` | `10 minutes` | Retention for inactive per-IP state. |
-| `MaxTrackedIps` | `50000` | Safety cap for tracked IP entries. |
-| `CleanupEveryNRequests` | `10000` | Opportunistic cleanup frequency. |
-| `EnableTelemetry` | `false` | Enables firewall metrics when server telemetry is enabled too. |
-| `MaxMindCountryDbPath` | `null` | Optional MaxMind `.mmdb` country database path. |
-| `TreatUnknownCountryAsMatchable` | `true` | Lets unknown countries match `CountryRule.Unknown()` and unknown-country attributes. |
-| `CountryCacheTtl` | `null` | IP to country cache duration. Uses `StateTtl` when null. |
-| `AllowCountries` | `[]` | Global allow list by ISO2 country. If not empty, non-matching requests are denied. |
-| `DenyCountries` | `[]` | Global deny list by ISO2 country. |
 
 ## Handler Attributes
 
@@ -87,6 +97,7 @@ Handler-specific rules use attributes implementing SimpleW `IHandlerMetadata`.
 
 Attributes can be used on controller classes, controller methods, and non-inline delegate methods.
 Inline lambdas cannot be decorated with C# attributes.
+
 
 ## Rule Resolution
 
@@ -110,6 +121,7 @@ Decision order:
 6. rate limit returns `429`
 7. otherwise the request continues
 
+
 ## IP Rules
 
 ```csharp
@@ -129,6 +141,7 @@ Attributes also accept either format:
 ```csharp
 [FirewallAllowIp("10.0.0.0/8", "127.0.0.1")]
 ```
+
 
 ## Country Rules
 
@@ -173,6 +186,7 @@ or:
 
 Country lookups are cached per IP. Set `CountryCacheTtl` to tune cache duration.
 
+
 ## Rate Limiting
 
 Global rate limit:
@@ -205,6 +219,7 @@ public object Login()
 Fixed window is faster and uses less memory. Sliding window is more precise and better for sensitive endpoints.
 Rate-limit state is keyed by client IP. `RateLimitWhitelistRules` only skips rate limiting; matching clients still go through deny rules, country rules, and allow-list checks.
 
+
 ## Client IP Resolution
 
 The firewall uses:
@@ -232,11 +247,13 @@ server.ConfigureClientIPResolver(session => {
 
 Only trust forwarded IP headers from trusted proxy infrastructure.
 
+
 ## Static Files And Fallbacks
 
 `PathRule` / `PathRules` has been removed.
 
 Static files and fallback routes usually do not carry custom attributes directly, so protect them with global firewall rules. If a fallback or static-like handler is mapped through a decorated method, handler metadata works normally.
+
 
 ## Telemetry
 
@@ -269,6 +286,7 @@ Metrics:
 - `simplew.firewall.rules.deny_countries.global`
 
 Decision tags use low-cardinality values such as `result`, `reason`, `scope`, and `window`.
+
 
 ## HTTP Responses
 
