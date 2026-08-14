@@ -71,7 +71,15 @@ internal sealed class HttpsScenario : IScenario {
         request.CertificateExtensions.Add(alternativeNames.Build());
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        return request.CreateSelfSigned(now.AddMinutes(-5), now.AddDays(30));
+
+        using X509Certificate2 generated = request.CreateSelfSigned(now.AddMinutes(-5), now.AddDays(30));
+        byte[] pfx = generated.Export(X509ContentType.Pkcs12, string.Empty);
+
+        #if NET9_0_OR_GREATER
+        return X509CertificateLoader.LoadPkcs12(pfx, string.Empty, X509KeyStorageFlags.DefaultKeySet);
+        #else
+        return new X509Certificate2(pfx, string.Empty, X509KeyStorageFlags.DefaultKeySet);
+        #endif
     }
 
 }
