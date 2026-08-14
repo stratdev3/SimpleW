@@ -30,7 +30,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Razor --version 26.0.0
+$ dotnet add package SimpleW.Helper.Razor
 ```
 
 See the [changelog](./helper-razor-changelog.md)

@@ -30,7 +30,7 @@ That policy stays in your own custom middleware, which makes this package a good
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Jwt --version 26.0.0
+$ dotnet add package SimpleW.Helper.Jwt
 ```
 
 See the [changelog](./helper-jwt-changelog.md)

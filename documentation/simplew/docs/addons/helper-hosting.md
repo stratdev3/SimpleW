@@ -35,7 +35,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting --version 26.0.0
+$ dotnet add package SimpleW.Helper.Hosting
 ```
 
 See the [changelog](./helper-hosting-changelog.md)

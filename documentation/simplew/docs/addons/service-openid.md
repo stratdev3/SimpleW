@@ -33,7 +33,7 @@ It allows you to:
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Service.OpenID --version 26.0.0
+$ dotnet add package SimpleW.Service.OpenID
 ```
 
 See the [changelog](./service-openid-changelog.md)

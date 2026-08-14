@@ -40,7 +40,7 @@ The queue is **memory-only**. Jobs do not survive process restart.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Background --version 26.0.0
+$ dotnet add package SimpleW.Service.Background
 ```
 
 See the [changelog](./service-background-changelog.md)
@@ -123,7 +123,9 @@ server.UseBackgroundModule(options => {
 The module must be installed before the server starts.
 
 
-## Enqueue a job from a handler
+## Enqueue a job
+
+### Enqueue from a handler
 
 ```csharp
 server.MapPost("/api/report", (HttpSession session) => {
@@ -150,7 +152,7 @@ server.MapPost("/api/report", (HttpSession session) => {
 | EnqueuedAtUtc | UTC date at which the job record was created. |
 
 
-## Avoid queue overflow
+### Avoid queue overflow
 
 Use `TryEnqueue` when you want to control the response if the queue is full.
 
@@ -173,7 +175,7 @@ server.MapPost("/api/export", (HttpSession session) => {
 ```
 
 
-## Wait for queue capacity
+### Wait for queue capacity
 
 `EnqueueAsync` applies asynchronous backpressure instead of rejecting the job when the bounded queue is full. It does not block a worker thread while waiting.
 
@@ -329,7 +331,9 @@ Important snapshot fields:
 | Duration | Elapsed time since the first attempt started, frozen at terminal completion. |
 
 
-## Report progress
+## Track progress
+
+### Report progress
 
 Long-running jobs can report their latest progress from inside the background work.
 
@@ -374,7 +378,7 @@ Progress behavior:
 - failed and canceled jobs keep their last reported progress
 
 
-## Poll progress from a client
+### Poll progress from a client
 
 Because progress is included in `BackgroundJobSnapshot`, a client can poll a job endpoint.
 
@@ -404,48 +408,10 @@ Example response:
 }
 ```
 
-## Custom job store
 
-By default, job snapshots are stored in memory with `MemoryBackgroundJobStore`.
+## Recurring jobs
 
-You can replace it by implementing `IBackgroundJobStore`.
-
-```csharp
-public sealed class MyJobStore : IBackgroundJobStore {
-
-    public void Save(BackgroundJobSnapshot snapshot) {
-        // insert or update snapshot
-    }
-
-    public bool TryGet(Guid id, out BackgroundJobSnapshot? snapshot) {
-        // load one snapshot
-    }
-
-    public IReadOnlyCollection<BackgroundJobSnapshot> GetAll() {
-        // load retained snapshots
-    }
-
-    public bool Remove(Guid id) {
-        // remove snapshot
-    }
-
-}
-```
-
-Then configure the module:
-
-```csharp
-server.UseBackgroundModule(options => {
-    options.JobStore = new MyJobStore();
-});
-```
-
-::: info
-Important: the current module still executes in-process delegates. A custom store persists the observable job state, progress, and history, but it does not make arbitrary delegate jobs restartable after a process crash.
-:::
-
-
-## Fixed-interval schedules
+### Fixed-interval schedules
 
 Use `ScheduleEvery` for recurring work expressed as a duration instead of a cron expression:
 
@@ -471,7 +437,7 @@ By default, an occurrence is skipped while the previous occurrence is queued, ru
 Missed interval ticks are not replayed after a long execution or process restart.
 
 
-## Cron schedules
+### Cron schedules
 
 Cron jobs are registered in `UseBackgroundModule`.
 When an occurrence is due, the scheduler enqueues a background job in the same queue used by handlers.
@@ -498,7 +464,7 @@ This runs `cleanup` every day at 02:00, using UTC by default.
 By default, an occurrence is skipped while the previous occurrence is queued, running, or retrying. Set `AllowConcurrentExecutions = true` only when overlapping executions are safe.
 
 
-## Cron with seconds
+### Cron with seconds
 
 Cronos supports expressions with seconds when `CronFormat.IncludeSeconds` is enabled.
 
@@ -520,7 +486,7 @@ server.UseBackgroundModule(options => {
 ```
 
 
-## Cron time zone
+### Cron time zone
 
 You can set a default time zone for all schedules:
 
@@ -577,6 +543,47 @@ public sealed class ImportController : Controller {
 
 }
 ```
+
+
+## Custom job store
+
+By default, job snapshots are stored in memory with `MemoryBackgroundJobStore`.
+
+You can replace it by implementing `IBackgroundJobStore`.
+
+```csharp
+public sealed class MyJobStore : IBackgroundJobStore {
+
+    public void Save(BackgroundJobSnapshot snapshot) {
+        // insert or update snapshot
+    }
+
+    public bool TryGet(Guid id, out BackgroundJobSnapshot? snapshot) {
+        // load one snapshot
+    }
+
+    public IReadOnlyCollection<BackgroundJobSnapshot> GetAll() {
+        // load retained snapshots
+    }
+
+    public bool Remove(Guid id) {
+        // remove snapshot
+    }
+
+}
+```
+
+Then configure the module:
+
+```csharp
+server.UseBackgroundModule(options => {
+    options.JobStore = new MyJobStore();
+});
+```
+
+::: info
+Important: the current module still executes in-process delegates. A custom store persists the observable job state, progress, and history, but it does not make arbitrary delegate jobs restartable after a process crash.
+:::
 
 
 ## Telemetry & Counters

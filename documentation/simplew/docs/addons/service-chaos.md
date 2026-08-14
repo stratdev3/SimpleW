@@ -22,7 +22,7 @@ This module is designed to test **client resilience, retry logic, timeouts**, an
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Chaos --version 26.0.0
+$ dotnet add package SimpleW.Service.Chaos
 ```
 
 See the [changelog](./service-chaos-changelog.md)

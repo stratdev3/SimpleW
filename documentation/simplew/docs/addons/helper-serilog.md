@@ -28,7 +28,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Serilog --version 26.0.0
+$ dotnet add package SimpleW.Helper.Serilog
 ```
 
 See the [changelog](./helper-serilog-changelog.md)

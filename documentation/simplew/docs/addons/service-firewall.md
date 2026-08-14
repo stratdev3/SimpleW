@@ -24,7 +24,7 @@ The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.
 ## Installation
 
 ```sh
-dotnet add package SimpleW.Service.Firewall --version 26.0.1
+dotnet add package SimpleW.Service.Firewall
 ```
 
 See the [changelog](./service-firewall-changelog.md)

@@ -33,7 +33,7 @@ It allows you to:
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Service.Jwt --version 26.0.0
+$ dotnet add package SimpleW.Service.Jwt
 ```
 
 See the [changelog](./service-jwt-changelog.md)
