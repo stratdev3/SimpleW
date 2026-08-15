@@ -7,7 +7,7 @@ The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.
 
 - Allow or deny requests by client IP or CIDR
 - Allow or deny requests by client country with optional MaxMind GeoIP2
-- Configure global rules once on the module
+- Configure global rules at installation and update them while the server is running
 - Declare handler-specific rules with attributes
 - Apply fixed-window or sliding-window rate limits
 - Bypass rate limits for trusted IP/CIDR clients
@@ -79,6 +79,57 @@ public sealed class ApiController : Controller
     }
 }
 ```
+
+
+## Runtime Updates
+
+Install the firewall once with `UseFirewallModule(...)`. After that, including after the server has started, retrieve the attached runtime instance with `GetFirewall()` and update its global options:
+
+```csharp
+IFirewall firewall = server.GetFirewall();
+IpRule temporaryBlock = IpRule.Single("203.0.113.10");
+
+firewall.Update(options => {
+    options.DenyRules.Add(temporaryBlock);
+});
+
+firewall.Update(options => {
+    options.DenyRules.RemoveAll(rule => rule == temporaryBlock);
+});
+```
+
+`GetFirewall()` is also available from `HttpSession` and `Controller`. All three accessors return the same `IFirewall` instance attached to the current server.
+
+| Context | Accessor |
+|---|---|
+| Server | `server.GetFirewall()` |
+| Request handler | `session.GetFirewall()` |
+| Controller method | `this.GetFirewall()` |
+
+Each call to `Update(...)` starts from a copy of the current global options. Properties that are not changed by the callback keep their existing values. The replacement is validated and then applied atomically.
+
+- Concurrent updates are serialized, so successful changes are not lost.
+- If the callback throws, the active configuration is unchanged.
+- If validation fails, the active configuration is unchanged.
+- Requests already in progress continue with the configuration they captured; subsequent requests use the replacement.
+- Controller and method attributes are static and are not modified by `Update(...)`.
+
+All global options can be changed through the same API, not only allow and deny rules:
+
+```csharp
+firewall.Update(options => {
+    options.GlobalRateLimit = new RateLimitOptions {
+        Limit = 200,
+        Window = TimeSpan.FromMinutes(1),
+        SlidingWindow = true
+    };
+    options.CountryCacheTtl = TimeSpan.FromMinutes(30);
+});
+```
+
+Changing only allow, deny, or country rules preserves rate-limit counters and the GeoIP cache. Changing the global rate-limit policy resets its counters. Changing the GeoIP database path or effective cache TTL clears the country cache and reloads the reader safely.
+
+Calling `GetFirewall()` before installing the module throws `InvalidOperationException`. Calling `UseFirewallModule(...)` a second time on the same server also throws `InvalidOperationException`; use `GetFirewall().Update(...)` for every runtime change.
 
 
 ## Handler Attributes
