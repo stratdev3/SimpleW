@@ -24,6 +24,11 @@ namespace SimpleW.Service.Chaos {
         /// </summary>
         private readonly Random _rng;
 
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="options"></param>
+        /// <exception cref="ArgumentNullException"></exception>
         public ChaosModule(ChaosOptions options) {
             _options = (options ?? throw new ArgumentNullException(nameof(options))).ValidateAndNormalize();
             _rng = _options.Seed.HasValue ? new Random(_options.Seed.Value) : new Random();
