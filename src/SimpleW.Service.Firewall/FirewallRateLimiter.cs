@@ -36,7 +36,7 @@ namespace SimpleW.Service.Firewall {
                        : IsFixedWindowRateLimited(ip, rateLimit, now);
         }
 
-        public void Cleanup(long nowTicks, ModuleConfiguration configuration) {
+        public void Cleanup(long nowTicks, FirewallOptionsSnapshot configuration) {
             bool fixedOverCap = _fixed.Count > configuration.MaxTrackedIps;
             bool slidingOverCap = _sliding.Count > configuration.MaxTrackedIps;
             long minTtl = nowTicks - configuration.StateTtl.Ticks;

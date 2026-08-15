@@ -9,12 +9,24 @@ namespace SimpleW.Service.Firewall {
     /// </summary>
     public static class FirewallModuleExtension {
 
-        private static readonly ModuleStateRegistry<ModuleConfiguration> _states = new();
-
+        /// <summary>
+        /// Logger
+        /// </summary>
         private static readonly ILogger _log = new Logger<FirewallModule>();
 
         /// <summary>
-        /// Adds or updates the firewall module on the current server.
+        /// Associates one background service instance with each SimpleW server without extending server lifetime.
+        /// </summary>
+        private static readonly ModuleInstanceRegistry<FirewallModule> _instances = new();
+
+        /// <summary>
+        /// Object lock
+        /// </summary>
+        private static readonly object _registrationLock = new();
+
+        /// <summary>
+        /// Enables the firewall module on the current server.
+        /// The module can only be installed once; use GetFirewall().Update(...) for runtime changes.
         /// Global rules are configured here; handler-specific rules are declared with firewall metadata attributes.
         /// </summary>
         /// <param name="server"></param>
@@ -23,135 +35,83 @@ namespace SimpleW.Service.Firewall {
         public static SimpleWServer UseFirewallModule(this SimpleWServer server, Action<FirewallOptions>? configure = null) {
             ArgumentNullException.ThrowIfNull(server);
 
+            ThrowIfInstalled(server);
+
             FirewallOptions options = new();
             configure?.Invoke(options);
             options.ValidateAndNormalize();
 
-            ModuleState<ModuleConfiguration> state = _states.Get(server);
-            state.SetConfiguration(ModuleConfiguration.FromOptions(options));
+            FirewallOptionsSnapshot configuration = FirewallOptionsSnapshot.FromOptions(options);
 
-            EnsureInstalled(server, state);
+            lock (_registrationLock) {
+                ThrowIfInstalled(server);
+                server.UseModule(new FirewallModule(configuration));
+            }
+
             _log.Info("installed");
             return server;
         }
 
-        private static void EnsureInstalled(SimpleWServer server, ModuleState<ModuleConfiguration> state) {
-            if (!state.TryMarkInstalled()) {
-                return;
+        private static void ThrowIfInstalled(SimpleWServer server) {
+            if (_instances.TryGet(server, out _)) {
+                throw new InvalidOperationException("Firewall module is already installed for this server. Use GetFirewall().Update(...) to change its configuration.");
+            }
+        }
+
+        #region service resolution
+
+        /// <summary>
+        /// Gets the firewall attached to a server.
+        /// </summary>
+        /// <param name="server"></param>
+        /// <returns></returns>
+        public static IFirewall GetFirewall(this SimpleWServer server) {
+            ArgumentNullException.ThrowIfNull(server);
+
+            if (_instances.TryGet(server, out FirewallModule? instance) && instance != null) {
+                return instance;
             }
 
-            server.UseModule(new FirewallModule(state));
+            throw new InvalidOperationException("Firewall module is not installed. Call UseFirewallModule(...) before using the firewall.");
         }
 
         /// <summary>
-        /// Module-level firewall configuration.
-        /// Path-based rules are declared on handlers with firewall metadata attributes.
+        /// Gets the firewall attached to the current server.
         /// </summary>
-        public sealed class FirewallOptions {
-
-            private readonly ILogger _log = new Logger<FirewallOptions>();
-
-            /// <summary>
-            /// Global allow list by IP/CIDR.
-            /// If not empty, every request not matching an allow rule is denied by default.
-            /// </summary>
-            public List<IpRule> AllowRules { get; } = new();
-
-            /// <summary>
-            /// Global deny list by IP/CIDR.
-            /// </summary>
-            public List<IpRule> DenyRules { get; } = new();
-
-            /// <summary>
-            /// Global rate limit. Null disables global rate limiting.
-            /// </summary>
-            public RateLimitOptions? GlobalRateLimit { get; set; }
-
-            /// <summary>
-            /// IP/CIDR rules that bypass global and handler rate limiting.
-            /// These rules do not bypass allow or deny firewall rules.
-            /// </summary>
-            public List<IpRule> RateLimitWhitelistRules { get; } = new();
-
-            /// <summary>
-            /// Retention for inactive per-IP state.
-            /// </summary>
-            public TimeSpan StateTtl { get; set; } = TimeSpan.FromMinutes(10);
-
-            /// <summary>
-            /// Safety cap for tracked IP state.
-            /// </summary>
-            public int MaxTrackedIps { get; set; } = 50_000;
-
-            /// <summary>
-            /// Opportunistic cleanup frequency.
-            /// </summary>
-            public int CleanupEveryNRequests { get; set; } = 10_000;
-
-            /// <summary>
-            /// Enables firewall telemetry when the underlying SimpleWServer telemetry is enabled too.
-            /// </summary>
-            public bool EnableTelemetry { get; set; }
-
-            /// <summary>
-            /// Optional MaxMind GeoIP country database path (.mmdb).
-            /// Country rules are treated as unknown when this value is null or empty.
-            /// </summary>
-            public string? MaxMindCountryDbPath { get; set; }
-
-            /// <summary>
-            /// If true, unresolved countries can match CountryRule.Unknown().
-            /// </summary>
-            public bool TreatUnknownCountryAsMatchable { get; set; } = true;
-
-            /// <summary>
-            /// Cache duration for IP to country resolution. If null, StateTtl is used.
-            /// </summary>
-            public TimeSpan? CountryCacheTtl { get; set; }
-
-            /// <summary>
-            /// Global allow list by country.
-            /// If not empty, every request not matching an allow country is denied by default.
-            /// </summary>
-            public List<CountryRule> AllowCountries { get; } = new();
-
-            /// <summary>
-            /// Global deny list by country.
-            /// </summary>
-            public List<CountryRule> DenyCountries { get; } = new();
-
-            /// <summary>
-            /// Validates and normalizes options.
-            /// </summary>
-            /// <returns></returns>
-            /// <exception cref="ArgumentException"></exception>
-            public FirewallOptions ValidateAndNormalize() {
-                if (StateTtl <= TimeSpan.Zero) {
-                    ArgumentException ex = new($"{nameof(StateTtl)} must be > 0.", nameof(StateTtl));
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-                if (MaxTrackedIps <= 0) {
-                    ArgumentException ex = new($"{nameof(MaxTrackedIps)} must be > 0.", nameof(MaxTrackedIps));
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-                if (CleanupEveryNRequests <= 0) {
-                    ArgumentException ex = new($"{nameof(CleanupEveryNRequests)} must be > 0.", nameof(CleanupEveryNRequests));
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-                if (CountryCacheTtl != null && CountryCacheTtl <= TimeSpan.Zero) {
-                    ArgumentException ex = new($"{nameof(CountryCacheTtl)} must be > 0.", nameof(CountryCacheTtl));
-                    _log.Fatal(ex.Message, ex);
-                    throw ex;
-                }
-
-                MaxMindCountryDbPath = string.IsNullOrWhiteSpace(MaxMindCountryDbPath) ? null : MaxMindCountryDbPath.Trim();
-                return this;
-            }
-
+        /// <param name="session"></param>
+        /// <returns></returns>
+        public static IFirewall GetFirewall(this HttpSession session) {
+            ArgumentNullException.ThrowIfNull(session);
+            return session.Server.GetFirewall();
         }
+
+        /// <summary>
+        /// Gets the firewall attached to the current server.
+        /// </summary>
+        /// <param name="controller"></param>
+        /// <returns></returns>
+        public static IFirewall GetFirewall(this Controller controller) {
+            ArgumentNullException.ThrowIfNull(controller);
+            return controller.Session.GetFirewall();
+        }
+
+        #endregion service resolution
+
+        #region internal registration
+
+        /// <summary>
+        /// Registers the firewall attached to the current server.
+        /// </summary>
+        /// <param name="server"></param>
+        /// <param name="instance"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        internal static void Register(SimpleWServer server, FirewallModule instance) {
+            if (!_instances.TryAdd(server, instance)) {
+                throw new InvalidOperationException("Firewall module is already installed for this server.");
+            }
+        }
+
+        #endregion internal registration
 
     }
 

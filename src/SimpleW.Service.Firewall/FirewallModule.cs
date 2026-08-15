@@ -7,76 +7,40 @@ using SimpleW.Observability;
 namespace SimpleW.Service.Firewall {
 
     /// <summary>
-    /// Immutable runtime configuration used by the middleware.
+    /// Firewall middleware and runtime instance.
     /// </summary>
-    internal sealed record ModuleConfiguration(
-        FirewallPolicy GlobalPolicy,
-        TimeSpan StateTtl,
-        int MaxTrackedIps,
-        int CleanupEveryNRequests,
-        bool EnableTelemetry,
-        string? MaxMindCountryDbPath,
-        bool TreatUnknownCountryAsMatchable,
-        TimeSpan? CountryCacheTtl,
-        IpRule[] RateLimitWhitelistRules
-    ) {
+    internal sealed class FirewallModule : IHttpModule, IFirewall {
 
-        public static ModuleConfiguration FromOptions(FirewallModuleExtension.FirewallOptions options) {
-            ArgumentNullException.ThrowIfNull(options);
-
-            return new ModuleConfiguration(
-                GlobalPolicy: FirewallPolicy.FromGlobal(options),
-                StateTtl: options.StateTtl,
-                MaxTrackedIps: options.MaxTrackedIps,
-                CleanupEveryNRequests: options.CleanupEveryNRequests,
-                EnableTelemetry: options.EnableTelemetry,
-                MaxMindCountryDbPath: options.MaxMindCountryDbPath,
-                TreatUnknownCountryAsMatchable: options.TreatUnknownCountryAsMatchable,
-                CountryCacheTtl: options.CountryCacheTtl,
-                RateLimitWhitelistRules: options.RateLimitWhitelistRules.ToArray()
-            );
-        }
-
-        public TimeSpan EffectiveCountryCacheTtl => CountryCacheTtl ?? StateTtl;
-
-    }
-
-    /// <summary>
-    /// Firewall middleware module.
-    /// </summary>
-    internal sealed class FirewallModule : IHttpModule {
-
+        /// <summary>
+        /// Logger
+        /// </summary>
         private readonly ILogger _log = new Logger<FirewallModule>();
 
-        private readonly ModuleState<ModuleConfiguration> _state;
+        /// <summary>
+        /// Firewall Current Options
+        /// </summary>
+        private FirewallOptionsSnapshot _options;
 
-        private readonly FirewallRateLimiter _rateLimiter = new();
+        /// <summary>
+        /// Rate Limiter
+        /// </summary>
+        private FirewallRateLimiter _rateLimiter = new();
 
+        /// <summary>
+        /// Country Resoluter
+        /// </summary>
         private readonly GeoIpCountryResolver _countryResolver = new();
 
-        private long _requestCounter;
-
-        private FirewallTelemetry? _telemetry;
-
-        private readonly object _telemetryLock = new();
-
-        public FirewallModule(ModuleState<ModuleConfiguration> state) {
-            _state = state ?? throw new ArgumentNullException(nameof(state));
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="configuration"></param>
+        public FirewallModule(FirewallOptionsSnapshot configuration) {
+            ArgumentNullException.ThrowIfNull(configuration);
+            _options = configuration;
         }
 
-        public int FixedTrackedIpCount => _rateLimiter.FixedCount;
-
-        public int SlidingTrackedIpCount => _rateLimiter.SlidingCount;
-
-        public int CountryCacheCount => _countryResolver.CacheCount;
-
-        public int GlobalAllowRuleCount => _state.Snapshot?.GlobalPolicy.AllowIpRules.Length ?? 0;
-
-        public int GlobalDenyRuleCount => _state.Snapshot?.GlobalPolicy.DenyIpRules.Length ?? 0;
-
-        public int GlobalAllowCountryRuleCount => _state.Snapshot?.GlobalPolicy.AllowCountryRules.Length ?? 0;
-
-        public int GlobalDenyCountryRuleCount => _state.Snapshot?.GlobalPolicy.DenyCountryRules.Length ?? 0;
+        #region install
 
         /// <summary>
         /// Installs the middleware into the server pipeline.
@@ -92,14 +56,23 @@ namespace SimpleW.Service.Firewall {
 
             _log.Info("installing...");
             server.UseMiddleware(MiddlewareAsync);
+            FirewallModuleExtension.Register(server, this);
             _log.Info("installed");
         }
 
+        /// <summary>
+        /// Middleware
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="next"></param>
+        /// <returns></returns>
         private async ValueTask MiddlewareAsync(HttpSession session, Func<ValueTask> next) {
-            ModuleConfiguration? configuration = _state.Snapshot;
-            if (configuration == null) {
-                await next().ConfigureAwait(false);
-                return;
+            FirewallOptionsSnapshot configuration;
+            FirewallRateLimiter rateLimiter;
+
+            lock (_optionsLock) {
+                configuration = _options;
+                rateLimiter = _rateLimiter;
             }
 
             long ts0 = Stopwatch.GetTimestamp();
@@ -114,7 +87,7 @@ namespace SimpleW.Service.Firewall {
                 return;
             }
 
-            MaybeCleanup(configuration);
+            MaybeCleanup(configuration, rateLimiter);
 
             FirewallPolicy policy = ResolvePolicy(session.Metadata, configuration);
             string scope = policy.ScopeTag;
@@ -160,7 +133,7 @@ namespace SimpleW.Service.Firewall {
             RateLimitOptions? rateLimit = policy.RateLimit ?? (policy.IsHandlerPolicy ? configuration.GlobalPolicy.RateLimit : null);
             if (rateLimit != null
                 && !MatchesAny(configuration.RateLimitWhitelistRules, ip)
-                && _rateLimiter.IsRateLimited(ip, rateLimit)) {
+                && rateLimiter.IsRateLimited(ip, rateLimit)) {
                 TagList tags = CreateTags("rate_limited", "rate_limited", scope);
                 tags.Add("window", rateLimit.SlidingWindow ? "sliding" : "fixed");
 
@@ -177,10 +150,74 @@ namespace SimpleW.Service.Firewall {
             await next().ConfigureAwait(false);
         }
 
-        private void MaybeCleanup(ModuleConfiguration configuration) {
+        #endregion install
+
+        #region update options
+
+        /// <summary>
+        /// object lock
+        /// </summary>
+        private readonly object _optionsLock = new();
+
+        /// <summary>
+        /// Atomically updates the current global firewall configuration.
+        /// Handler-specific metadata rules are not affected.
+        /// </summary>
+        /// <param name="update"></param>
+        public void Update(Action<FirewallOptions> update) {
+            ArgumentNullException.ThrowIfNull(update);
+
+            lock (_optionsLock) {
+                FirewallOptionsSnapshot current = _options;
+                FirewallOptions options = current.ToOptions();
+
+                update(options);
+                options.ValidateAndNormalize();
+
+                ReplaceConfiguration(current, FirewallOptionsSnapshot.FromOptions(options));
+            }
+        }
+
+        /// <summary>
+        /// Replace Current Snapshot Options with new Options
+        /// </summary>
+        /// <param name="current"></param>
+        /// <param name="replacement"></param>
+        private void ReplaceConfiguration(FirewallOptionsSnapshot current, FirewallOptionsSnapshot replacement) {
+            if (!HasSameRateLimitOptions(current.GlobalPolicy.RateLimit, replacement.GlobalPolicy.RateLimit)) {
+                _rateLimiter = new FirewallRateLimiter();
+            }
+
+            if (!HasSameCountryResolverOptions(current, replacement)) {
+                _countryResolver.Reset();
+            }
+
+            Volatile.Write(ref _options, replacement);
+        }
+
+        private static bool HasSameRateLimitOptions(RateLimitOptions? current, RateLimitOptions? replacement) {
+            if (current == null || replacement == null) {
+                return current == null && replacement == null;
+            }
+
+            return current.Limit == replacement.Limit
+                   && current.Window == replacement.Window
+                   && current.SlidingWindow == replacement.SlidingWindow;
+        }
+
+        private static bool HasSameCountryResolverOptions(FirewallOptionsSnapshot current, FirewallOptionsSnapshot replacement) {
+            return string.Equals(current.MaxMindCountryDbPath, replacement.MaxMindCountryDbPath, StringComparison.Ordinal)
+                   && current.EffectiveCountryCacheTtl == replacement.EffectiveCountryCacheTtl;
+        }
+
+        #endregion update options
+
+        #region firewall actions
+
+        private void MaybeCleanup(FirewallOptionsSnapshot configuration, FirewallRateLimiter rateLimiter) {
             long n = Interlocked.Increment(ref _requestCounter);
 
-            bool rateOverCap = _rateLimiter.IsOverCap(configuration.MaxTrackedIps);
+            bool rateOverCap = rateLimiter.IsOverCap(configuration.MaxTrackedIps);
             bool countryOverCap = _countryResolver.IsOverCap(configuration.MaxTrackedIps);
 
             if (!rateOverCap && !countryOverCap && (n % configuration.CleanupEveryNRequests != 0)) {
@@ -188,11 +225,11 @@ namespace SimpleW.Service.Firewall {
             }
 
             long nowTicks = DateTimeOffset.UtcNow.UtcTicks;
-            _rateLimiter.Cleanup(nowTicks, configuration);
+            rateLimiter.Cleanup(nowTicks, configuration);
             _countryResolver.Cleanup(nowTicks, configuration);
         }
 
-        private static FirewallPolicy ResolvePolicy(HandlerMetadataCollection metadata, ModuleConfiguration configuration) {
+        private static FirewallPolicy ResolvePolicy(HandlerMetadataCollection metadata, FirewallOptionsSnapshot configuration) {
             return FirewallPolicy.TryFromMetadata(metadata, out FirewallPolicy? handlerPolicy)
                        ? handlerPolicy!
                        : configuration.GlobalPolicy;
@@ -206,27 +243,6 @@ namespace SimpleW.Service.Firewall {
             }
 
             return false;
-        }
-
-        private FirewallTelemetry? EnsureTelemetry(bool enable, SimpleWServer server) {
-            if (!enable) {
-                return null;
-            }
-
-            Telemetry? telemetry = server.Telemetry;
-            if (telemetry == null || !server.IsTelemetryEnabled) {
-                return null;
-            }
-
-            FirewallTelemetry? current = _telemetry;
-            if (current != null) {
-                return current;
-            }
-
-            lock (_telemetryLock) {
-                _telemetry ??= new FirewallTelemetry(telemetry.Meter, this);
-                return _telemetry;
-            }
         }
 
         private static void AddFirewallBlockedEvent(FirewallTelemetry? telemetry, HttpSession session, IPAddress? ip, string reason, string scope) {
@@ -294,6 +310,53 @@ namespace SimpleW.Service.Firewall {
             tags.Add("scope", scope);
             return tags;
         }
+
+        #endregion firewall actions
+
+        #region telemetry
+
+        private FirewallTelemetry? _telemetry;
+
+        private readonly object _telemetryLock = new();
+
+        internal int FixedTrackedIpCount => Volatile.Read(ref _rateLimiter).FixedCount;
+
+        internal int SlidingTrackedIpCount => Volatile.Read(ref _rateLimiter).SlidingCount;
+
+        internal int CountryCacheCount => _countryResolver.CacheCount;
+
+        internal int GlobalAllowRuleCount => Volatile.Read(ref _options).GlobalPolicy.AllowIpRules.Length;
+
+        internal int GlobalDenyRuleCount => Volatile.Read(ref _options).GlobalPolicy.DenyIpRules.Length;
+
+        internal int GlobalAllowCountryRuleCount => Volatile.Read(ref _options).GlobalPolicy.AllowCountryRules.Length;
+
+        internal int GlobalDenyCountryRuleCount => Volatile.Read(ref _options).GlobalPolicy.DenyCountryRules.Length;
+
+        private long _requestCounter;
+
+        private FirewallTelemetry? EnsureTelemetry(bool enable, SimpleWServer server) {
+            if (!enable) {
+                return null;
+            }
+
+            Telemetry? telemetry = server.Telemetry;
+            if (telemetry == null || !server.IsTelemetryEnabled) {
+                return null;
+            }
+
+            FirewallTelemetry? current = _telemetry;
+            if (current != null) {
+                return current;
+            }
+
+            lock (_telemetryLock) {
+                _telemetry ??= new FirewallTelemetry(telemetry.Meter, this);
+                return _telemetry;
+            }
+        }
+
+        #endregion telemetry
 
     }
 

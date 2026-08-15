@@ -17,6 +17,7 @@ This package provides an application-level firewall for SimpleW:
 - IP/CIDR whitelist for trusted clients that bypass rate limiting
 - bounded per-IP state with TTL cleanup
 - optional telemetry counters and gauges
+- atomic global rule updates while the server is running
 
 ## Getting Started
 
@@ -57,6 +58,27 @@ public sealed class AdminController : Controller
 
 Global rules apply to handlers that do not declare firewall metadata.
 As soon as a handler has at least one firewall attribute, its handler policy replaces global allow/deny/country rules. Handler rate limits override the global rate limit; if no handler rate limit is declared, the global rate limit still applies. IP/CIDR entries in `RateLimitWhitelistRules` bypass both global and handler rate limits, but they do not bypass allow or deny rules.
+
+## Runtime Updates
+
+Get the firewall attached to a server, session, or controller and update its global configuration while the server is running:
+
+```csharp
+IFirewall firewall = server.GetFirewall();
+IpRule temporaryBlock = IpRule.Single("203.0.113.10");
+
+firewall.Update(options => {
+    options.DenyRules.Add(temporaryBlock);
+});
+
+firewall.Update(options => {
+    options.DenyRules.RemoveAll(rule => rule == temporaryBlock);
+});
+```
+
+Each update starts from the current global configuration and publishes one immutable snapshot. Requests already in progress keep their existing snapshot, while subsequent requests use the replacement. Invalid updates leave the previous configuration unchanged. Handler attributes remain static.
+
+Call `UseFirewallModule(...)` only once per server. A second call throws `InvalidOperationException`; use `GetFirewall().Update(...)` for every runtime change.
 
 ## Handler Attributes
 

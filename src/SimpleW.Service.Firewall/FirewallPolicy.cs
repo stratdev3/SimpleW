@@ -46,7 +46,7 @@ namespace SimpleW.Service.Firewall {
             RateLimit = rateLimit;
         }
 
-        public static FirewallPolicy FromGlobal(FirewallModuleExtension.FirewallOptions options) {
+        public static FirewallPolicy FromGlobal(FirewallOptions options) {
             return new FirewallPolicy(
                 FirewallPolicyScope.Global,
                 options.AllowRules.ToArray(),

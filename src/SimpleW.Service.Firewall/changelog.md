@@ -8,6 +8,11 @@ Maintenance: compatibility with SimpleW v26.1.x.
 ### feature
 
 - Emit OpenTelemetry events for blocks and rate limits (#395)
+- Add `GetFirewall().Update(...)` for atomic runtime updates for global firewall rules and options.
+
+### breakingChange
+
+- Reject repeated `UseFirewallModule(...)` calls. Runtime changes must use `GetFirewall().Update(...)`.
 
 
 

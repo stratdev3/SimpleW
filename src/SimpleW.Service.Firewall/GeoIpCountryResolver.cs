@@ -8,7 +8,7 @@ namespace SimpleW.Service.Firewall {
 
     internal sealed class GeoIpCountryResolver {
 
-        private readonly ConcurrentDictionary<IPAddress, CountryCacheEntry> _countryCache = new();
+        private readonly ConcurrentDictionary<CountryCacheKey, CountryCacheEntry> _countryCache = new();
 
         private readonly object _readerLock = new();
 
@@ -16,42 +16,56 @@ namespace SimpleW.Service.Firewall {
 
         private string? _readerPath;
 
+        private readonly record struct CountryCacheKey(IPAddress Ip, string? DatabasePath, TimeSpan Ttl);
+
         private readonly record struct CountryCacheEntry(string? Iso2, long ExpiresUtcTicks);
 
         public int CacheCount => _countryCache.Count;
 
         public bool IsOverCap(int maxTrackedIps) => _countryCache.Count > maxTrackedIps;
 
-        public string? ResolveCountryIso2(IPAddress ip, ModuleConfiguration configuration) {
+        public string? ResolveCountryIso2(IPAddress ip, FirewallOptionsSnapshot configuration) {
             long now = DateTimeOffset.UtcNow.UtcTicks;
+            CountryCacheKey cacheKey = new(ip, configuration.MaxMindCountryDbPath, configuration.EffectiveCountryCacheTtl);
 
-            if (_countryCache.TryGetValue(ip, out CountryCacheEntry entry) && entry.ExpiresUtcTicks > now) {
+            if (_countryCache.TryGetValue(cacheKey, out CountryCacheEntry entry) && entry.ExpiresUtcTicks > now) {
                 return entry.Iso2;
             }
 
-            DatabaseReader? reader = GetReader(configuration.MaxMindCountryDbPath);
             string? iso2 = null;
 
-            if (reader != null) {
-                try {
-                    var response = reader.Country(ip);
-                    iso2 = response?.Country?.IsoCode;
-                    iso2 = string.IsNullOrWhiteSpace(iso2) ? null : iso2.Trim().ToUpperInvariant();
-                }
-                catch (AddressNotFoundException) {
-                    iso2 = null;
-                }
-                catch {
-                    iso2 = null;
+            lock (_readerLock) {
+                DatabaseReader? reader = GetReader(configuration.MaxMindCountryDbPath);
+                if (reader != null) {
+                    try {
+                        var response = reader.Country(ip);
+                        iso2 = response?.Country?.IsoCode;
+                        iso2 = string.IsNullOrWhiteSpace(iso2) ? null : iso2.Trim().ToUpperInvariant();
+                    }
+                    catch (AddressNotFoundException) {
+                        iso2 = null;
+                    }
+                    catch {
+                        iso2 = null;
+                    }
                 }
             }
 
             long expires = now + configuration.EffectiveCountryCacheTtl.Ticks;
-            _countryCache[ip] = new CountryCacheEntry(iso2, expires);
+            _countryCache[cacheKey] = new CountryCacheEntry(iso2, expires);
             return iso2;
         }
 
-        public void Cleanup(long nowTicks, ModuleConfiguration configuration) {
+        public void Reset() {
+            lock (_readerLock) {
+                _countryCache.Clear();
+                _reader?.Dispose();
+                _reader = null;
+                _readerPath = null;
+            }
+        }
+
+        public void Cleanup(long nowTicks, FirewallOptionsSnapshot configuration) {
             bool overCap = _countryCache.Count > configuration.MaxTrackedIps;
 
             if (_countryCache.Count > 0) {
@@ -86,7 +100,7 @@ namespace SimpleW.Service.Firewall {
         }
 
         private void PurgeExpired(long nowTicks, int batch) {
-            foreach (KeyValuePair<IPAddress, CountryCacheEntry> kv in _countryCache) {
+            foreach (KeyValuePair<CountryCacheKey, CountryCacheEntry> kv in _countryCache) {
                 if (batch-- <= 0) {
                     break;
                 }
@@ -98,11 +112,11 @@ namespace SimpleW.Service.Firewall {
 
         private void PurgeOldest(int targetCount, int batch) {
             while (_countryCache.Count > targetCount && batch-- > 0) {
-                IPAddress? oldestKey = null;
+                CountryCacheKey? oldestKey = null;
                 long oldestExpiration = long.MaxValue;
 
                 int scan = 200;
-                foreach (KeyValuePair<IPAddress, CountryCacheEntry> kv in _countryCache) {
+                foreach (KeyValuePair<CountryCacheKey, CountryCacheEntry> kv in _countryCache) {
                     if (scan-- <= 0) {
                         break;
                     }
@@ -116,7 +130,7 @@ namespace SimpleW.Service.Firewall {
                     break;
                 }
 
-                _countryCache.TryRemove(oldestKey, out _);
+                _countryCache.TryRemove(oldestKey.Value, out _);
             }
         }
 
