@@ -282,6 +282,9 @@ namespace SimpleW.Service.LetsEncrypt {
 
                 _log.Info("HTTPS listener configured");
             }
+            catch (ListenerReloadException ex) {
+                LogListenerReloadFailure("configure HTTPS", ex);
+            }
             catch (Exception ex) {
                 _log.Error("failed to configure HTTPS", ex);
             }
@@ -297,12 +300,32 @@ namespace SimpleW.Service.LetsEncrypt {
                 return;
             }
 
-            await _server.ReloadListenerAsync(s => {
-                _options.OnEngineHttpsDisable(s);
-                s.UsePort(_options.HttpPort);
-            }, ct).ConfigureAwait(false);
+            try {
+                await _server.ReloadListenerAsync(s => {
+                    _options.OnEngineHttpsDisable(s);
+                    s.UsePort(_options.HttpPort);
+                }, ct).ConfigureAwait(false);
+            }
+            catch (ListenerReloadException ex) {
+                LogListenerReloadFailure("switch to HTTP for HTTP-01 challenge", ex);
+                throw;
+            }
 
             _log.Info("listener switched to HTTP");
+        }
+
+        /// <summary>
+        /// Log Listener Reload Failure
+        /// </summary>
+        /// <param name="operation"></param>
+        /// <param name="exception"></param>
+        private static void LogListenerReloadFailure(string operation, ListenerReloadException exception) {
+            _log.Error($"{operation}: listener reload failed", exception.ReloadException);
+            if (exception.ListenerRestored) {
+                _log.Warn($"{operation}: previous listener restored");
+                return;
+            }
+            _log.Fatal($"{operation}: previous listener could not be restored", exception.RollbackException ?? exception);
         }
 
         private async Task IssueOrRenewWithHttp01Async(CancellationToken ct) {
@@ -431,6 +454,9 @@ namespace SimpleW.Service.LetsEncrypt {
 
                     _log.Info("listener switched back to HTTPS");
                 }
+            }
+            catch (ListenerReloadException ex) {
+                LogListenerReloadFailure("switch back to HTTPS after certificate issuance", ex);
             }
             catch (Exception ex) {
                 _log.Error("failed to load fresh certificate after issuance", ex);

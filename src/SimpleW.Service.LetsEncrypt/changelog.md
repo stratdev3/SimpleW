@@ -5,6 +5,10 @@
 
 Maintenance: compatibility with SimpleW v26.1.x.
 
+### feature
+
+- Handle listener reload exceptions
+
 
 
 ## v26.0.0 - _(2026-04-26)_
