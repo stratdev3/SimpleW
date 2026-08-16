@@ -367,6 +367,7 @@ namespace SimpleW {
         /// });
         /// </example>
         /// </summary>
+        /// <exception cref="ListenerReloadException">The listener reload failed. Inspect the exception to determine whether the previous listener was restored.</exception>
         public async Task ReloadListenerAsync(Action<SimpleWServer> reconfigure, CancellationToken cancellationToken = default) {
             ArgumentNullException.ThrowIfNull(reconfigure);
 
@@ -398,20 +399,21 @@ namespace SimpleW {
                     EndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                     _log.Warn($"server reloaded at {_listenUrl}");
                 }
-                catch (Exception ex) {
-                    _log.Warn($"server failed to reload at {_listenUrl}", ex);
+                catch (Exception exReload) {
+                    _log.Warn($"server failed to reload at {_listenUrl}", exReload);
                     // rollback best effort
                     try {
                         await Engine.StopAsync(this, cancellationToken).ConfigureAwait(false);
                         EndPoint = oldEndPoint;
-                        _log.Warn($"server restoring at {_listenUrl}", ex);
+                        _log.Warn($"server restoring at {_listenUrl}", exReload);
                         EndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false) ?? EndPoint;
                         _log.Warn($"server restored at {_listenUrl}");
                     }
-                    catch (Exception exx) {
-                        _log.Fatal($"server failed to restore at {_listenUrl}", exx);
-                        throw;
+                    catch (Exception exRollback) {
+                        _log.Fatal($"server failed to restore at {_listenUrl}", exRollback);
+                        throw new ListenerReloadException(exReload, exRollback);
                     }
+                    throw new ListenerReloadException(exReload);
                 }
             }
             finally {
