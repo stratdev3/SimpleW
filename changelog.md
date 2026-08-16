@@ -39,6 +39,7 @@ Maintenance
 ### fix
 
 - fix(SimpleW): stack overflow on synchronous socket accepts under heavy load (#385)
+- fix(SimpleW): expose listener reload and rollback failures (#414)
 
 ### feature
 
