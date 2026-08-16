@@ -14,72 +14,134 @@ namespace SimpleW.Engine.Ioxide {
     /// <summary>
     /// Direct SimpleW adapter over the native ioxide OpenSSL TLS API.
     /// </summary>
-    internal sealed class IoxideTlsConnection :
-        ISimpleWEngine,
-        ISimpleWTransportInput,
-        ISimpleWTransportOutput,
-        ISimpleWTransportDeferredFlushFeature,
-        ISimpleWTransportTlsFeature,
-        IValueTaskSource<SimpleWTransportReadResult> {
+    internal sealed class IoxideTransportTls : ISimpleWEngine, ISimpleWTransportInput, ISimpleWTransportOutput, ISimpleWTransportDeferredFlushFeature, ISimpleWTransportTlsFeature, IValueTaskSource<SimpleWTransportReadResult> {
 
-        private const int InitialPlaintextBufferSize = 16 * 1024;
-        private const int ShutBoth = 2;
-
-        private static readonly Func<TlsSession, string?> GetPeerSubject = CreatePeerSubjectAccessor();
+        #region ISimpleWEngine
 
         private readonly TcpConnection _connection;
         private readonly TlsSession _tlsSession;
         private readonly EndPoint _localEndPoint;
-        private readonly ArrayPool<byte> _bufferPool;
-        private readonly bool _deferFlush;
-        private readonly Action _onRecvReady;
 
-        private byte[]? _plaintext;
-        private int _plaintextStart;
-        private int _plaintextEnd;
-        private long _examinedBytes;
-        private ReadOnlySequence<byte> _buffer;
-        private long _advanceConsumed;
-        private long _advanceExamined;
-        private bool _hasRead;
-        private bool _readPending;
-        private bool _connectionClosed;
-        private bool _hasDeferredWrites;
-        private int _writing;
         private int _disposed;
         private int _completed;
 
-        private ManualResetValueTaskSourceCore<SimpleWTransportReadResult> _readSignal = new() {
-            RunContinuationsAsynchronously = false
-        };
-        private ValueTaskAwaiter<RecvSnapshot> _pendingRead;
-
-        /// <inheritdoc />
+        /// <summary>
+        /// Local endpoint when this engine owns a connection endpoint.
+        /// </summary>
         public EndPoint? LocalEndPoint => _localEndPoint;
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Remote endpoint when this engine owns an accepted connection.
+        /// </summary>
         public EndPoint? RemoteEndPoint => null;
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets whether this engine already exposes encrypted bytes.
+        /// </summary>
         public bool IsEncrypted => true;
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Engine input for an accepted connection.
+        /// </summary>
         public ISimpleWTransportInput Input => this;
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Engine output for an accepted connection.
+        /// </summary>
         public ISimpleWTransportOutput Output => this;
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Tries to check whether the remote peer is already closed.
+        /// Returns false when the engine has no cheap probing capability.
+        /// </summary>
+        /// <param name="isClosed"></param>
+        public bool TryCheckConnectionClosed(out bool isClosed) {
+            isClosed = _connectionClosed || _tlsSession.Closed;
+            return true;
+        }
+
+        /// <summary>
+        /// Closes the accepted connection gracefully.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        public ValueTask CloseAsync(CancellationToken cancellationToken = default) {
+            cancellationToken.ThrowIfCancellationRequested();
+            Dispose();
+            return ValueTask.CompletedTask;
+        }
+
+        /// <summary>
+        /// Aborts the accepted connection. When reset is true, implementations should use an abortive close if supported.
+        /// </summary>
+        /// <param name="reset"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public ValueTask AbortAsync(bool reset = false, CancellationToken cancellationToken = default) {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
+                _ = Shutdown(_connection.ClientFd, ShutBoth);
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        /// <summary>
+        /// Gets an optional feature exposed by this engine.
+        /// </summary>
+        /// <typeparam name="TFeature"></typeparam>
+        /// <returns></returns>
+        public TFeature? GetFeature<TFeature>() where TFeature : class {
+            if (typeof(TFeature) == typeof(ISimpleWTransportDeferredFlushFeature)
+                || typeof(TFeature) == typeof(ISimpleWTransportTlsFeature)) {
+                return this as TFeature;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Releases resources.
+        /// </summary>
+        public void Dispose() {
+            Interlocked.Exchange(ref _disposed, 1); // default Shut = 1
+        }
+
+        /// <summary>
+        /// Shutdown
+        /// </summary>
+        /// <param name="socket"></param>
+        /// <param name="how"></param>
+        /// <returns></returns>
+        [DllImport("libc", EntryPoint = "shutdown", SetLastError = true)]
+        private static extern int Shutdown(int socket, int how);
+
+        #endregion ISimpleWEngine
+
+        #region ISimpleWTransportTlsFeature
+
+        /// <summary>
+        /// Application protocol selected during the TLS handshake, or null when none was negotiated.
+        /// </summary>
         public string? NegotiatedApplicationProtocol { get; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Subject of the authenticated client certificate in the transport's native format.
+        /// </summary>
         public string? ClientCertificateSubject { get; }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Email address of the authenticated client certificate, or null when unavailable.
+        /// </summary>
         public string? ClientCertificateEmailAddress => null;
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Gets whether the client presented a certificate accepted by the configured TLS policy.
+        /// </summary>
         public bool IsClientCertificateAuthenticated { get; }
+
+        #endregion ISimpleWTransportTlsFeature
+
+        private const int InitialPlaintextBufferSize = 16 * 1024;
+        private static readonly Func<TlsSession, string?> GetPeerSubject = CreatePeerSubjectAccessor();
+        private readonly ArrayPool<byte> _bufferPool;
 
         /// <summary>
         /// Initializes a raw OpenSSL transport over an accepted ioxide TCP connection.
@@ -90,7 +152,7 @@ namespace SimpleW.Engine.Ioxide {
         /// <param name="bufferPool">Pool used to retain decrypted plaintext between reads.</param>
         /// <param name="deferFlush">Whether writes are flushed at the end of the current read batch.</param>
         /// <exception cref="ArgumentNullException">A required argument is <see langword="null"/>.</exception>
-        public IoxideTlsConnection(TcpConnection connection, TlsSession tlsSession, EndPoint localEndPoint, ArrayPool<byte> bufferPool, bool deferFlush) {
+        public IoxideTransportTls(TcpConnection connection, TlsSession tlsSession, EndPoint localEndPoint, ArrayPool<byte> bufferPool, bool deferFlush) {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _tlsSession = tlsSession ?? throw new ArgumentNullException(nameof(tlsSession));
             _localEndPoint = localEndPoint ?? throw new ArgumentNullException(nameof(localEndPoint));
@@ -107,12 +169,22 @@ namespace SimpleW.Engine.Ioxide {
             _connectionClosed = tlsSession.Closed;
         }
 
+        /// <summary>
+        /// CreatePeerSubjectAccessor
+        /// </summary>
+        /// <returns></returns>
         private static Func<TlsSession, string?> CreatePeerSubjectAccessor() {
             MethodInfo? getter = typeof(TlsSession).GetProperty("PeerSubject")?.GetMethod;
             return getter == null ? static _ => null : getter.CreateDelegate<Func<TlsSession, string?>>();
         }
 
-        /// <inheritdoc />
+        #region ISimpleWTransportInput
+
+        /// <summary>
+        /// Reads or returns currently buffered bytes.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public ValueTask<SimpleWTransportReadResult> ReadAsync(CancellationToken cancellationToken = default) {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
@@ -142,6 +214,45 @@ namespace SimpleW.Engine.Ioxide {
                 }
             }
         }
+
+        /// <summary>
+        /// Advances the input by the number of consumed and examined bytes from the last buffer.
+        /// </summary>
+        /// <param name="consumedBytes"></param>
+        /// <param name="examinedBytes"></param>
+        public void AdvanceTo(long consumedBytes, long examinedBytes) {
+            if (!_hasRead) {
+                return;
+            }
+
+            long remaining = _buffer.Length - _advanceConsumed;
+            long consumed = Clamp(consumedBytes, remaining);
+            long examined = Clamp(examinedBytes, remaining);
+            if (examined < consumed) {
+                examined = consumed;
+            }
+
+            long consumedBefore = _advanceConsumed;
+            _advanceConsumed += consumed;
+            _advanceExamined = Math.Max(_advanceExamined, consumedBefore + examined);
+        }
+
+        #region read operations
+
+        private readonly Action _onRecvReady;
+
+        private byte[]? _plaintext;
+        private int _plaintextStart;
+        private int _plaintextEnd;
+        private long _examinedBytes;
+        private ReadOnlySequence<byte> _buffer;
+        private long _advanceConsumed;
+        private long _advanceExamined;
+        private bool _hasRead;
+        private bool _readPending;
+        private bool _connectionClosed;
+
+        private ValueTaskAwaiter<RecvSnapshot> _pendingRead;
 
         private void OnRecvReady() {
             try {
@@ -205,13 +316,13 @@ namespace SimpleW.Engine.Ioxide {
             }
 
             EnsurePlaintextCapacity(plaintext.Length);
-            byte[] buffer = _plaintext ?? throw new ObjectDisposedException(nameof(IoxideTlsConnection));
+            byte[] buffer = _plaintext ?? throw new ObjectDisposedException(nameof(IoxideTransportTls));
             plaintext.CopyTo(buffer.AsSpan(_plaintextEnd));
             _plaintextEnd += plaintext.Length;
         }
 
         private void EnsurePlaintextCapacity(int additionalBytes) {
-            byte[] buffer = _plaintext ?? throw new ObjectDisposedException(nameof(IoxideTlsConnection));
+            byte[] buffer = _plaintext ?? throw new ObjectDisposedException(nameof(IoxideTransportTls));
             if (buffer.Length - _plaintextEnd >= additionalBytes) {
                 return;
             }
@@ -235,30 +346,12 @@ namespace SimpleW.Engine.Ioxide {
         }
 
         private SimpleWTransportReadResult BuildReadResult() {
-            byte[] plaintext = _plaintext ?? throw new ObjectDisposedException(nameof(IoxideTlsConnection));
+            byte[] plaintext = _plaintext ?? throw new ObjectDisposedException(nameof(IoxideTransportTls));
             _buffer = new ReadOnlySequence<byte>(plaintext, _plaintextStart, _plaintextEnd - _plaintextStart);
             _advanceConsumed = 0;
             _advanceExamined = 0;
             _hasRead = true;
             return new SimpleWTransportReadResult(_buffer, _connectionClosed);
-        }
-
-        /// <inheritdoc />
-        public void AdvanceTo(long consumedBytes, long examinedBytes) {
-            if (!_hasRead) {
-                return;
-            }
-
-            long remaining = _buffer.Length - _advanceConsumed;
-            long consumed = Clamp(consumedBytes, remaining);
-            long examined = Clamp(examinedBytes, remaining);
-            if (examined < consumed) {
-                examined = consumed;
-            }
-
-            long consumedBefore = _advanceConsumed;
-            _advanceConsumed += consumed;
-            _advanceExamined = Math.Max(_advanceExamined, consumedBefore + examined);
         }
 
         private void CommitAdvance() {
@@ -284,11 +377,20 @@ namespace SimpleW.Engine.Ioxide {
             _hasRead = false;
         }
 
-        /// <inheritdoc />
-        public ValueTask<long> WriteAsync(
-            ReadOnlyMemory<byte> buffer,
-            CancellationToken cancellationToken = default
-        ) {
+        #endregion read operations
+
+        #endregion ISimpleWTransportInput
+
+        #region ISimpleWTransportOutput
+
+        /// <summary>
+        /// Writes all bytes to the transport.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>The number of bytes written to the local transport. Implementations must write the full input or throw.</returns>
+        /// <exception cref="InvalidOperationException">A write is already in progress for this output.</exception>
+        public ValueTask<long> WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
             EnterWrite();
@@ -303,7 +405,13 @@ namespace SimpleW.Engine.Ioxide {
             return FinishWrite(buffer.Length);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Writes all provided segments to the transport.
+        /// </summary>
+        /// <param name="segments"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>The number of bytes written to the local transport. Implementations must write the full input or throw.</returns>
+        /// <exception cref="InvalidOperationException">A write is already in progress for this output.</exception>
         public ValueTask<long> WriteAsync(ArraySegment<byte>[] segments, CancellationToken cancellationToken = default) {
             ArgumentNullException.ThrowIfNull(segments);
             cancellationToken.ThrowIfCancellationRequested();
@@ -327,7 +435,14 @@ namespace SimpleW.Engine.Ioxide {
             return FinishWrite(written);
         }
 
-        /// <inheritdoc />
+        /// <summary>
+        /// Writes both segments to the transport.
+        /// </summary>
+        /// <param name="header"></param>
+        /// <param name="body"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>The number of bytes written to the local transport. Implementations must write the full input or throw.</returns>
+        /// <exception cref="InvalidOperationException">A write is already in progress for this output.</exception>
         public ValueTask<long> WriteAsync(ArraySegment<byte> header, ArraySegment<byte> body, CancellationToken cancellationToken = default) {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
@@ -347,6 +462,13 @@ namespace SimpleW.Engine.Ioxide {
             }
             return FinishWrite((long)header.Count + body.Count);
         }
+
+        #region write operations
+
+        private const int ShutBoth = 2;
+
+        private bool _hasDeferredWrites;
+        private int _writing;
 
         private ValueTask<long> FinishWrite(long written) {
             if (_deferFlush) {
@@ -375,6 +497,12 @@ namespace SimpleW.Engine.Ioxide {
             return AwaitFlushAndExitWriteAsync(flush, written);
         }
 
+        private void EnterWrite() {
+            if (Interlocked.Exchange(ref _writing, 1) != 0) {
+                throw new InvalidOperationException("Concurrent write on the same ioxide TLS connection.");
+            }
+        }
+
         private async ValueTask<long> AwaitFlushAndExitWriteAsync(ValueTask flush, long written) {
             try {
                 await flush;
@@ -385,7 +513,64 @@ namespace SimpleW.Engine.Ioxide {
             }
         }
 
-        /// <inheritdoc />
+        private async ValueTask AwaitDeferredFlushAndExitWriteAsync(ValueTask flush) {
+            try {
+                await flush;
+            }
+            finally {
+                ExitWrite();
+            }
+        }
+
+        private void ExitWrite() => Volatile.Write(ref _writing, 0);
+
+        /// <summary>
+        /// Completes TLS shutdown and releases all buffers retained by the connection.
+        /// </summary>
+        public void Complete() {
+            if (Interlocked.Exchange(ref _completed, 1) != 0) {
+                return;
+            }
+
+            Interlocked.Exchange(ref _disposed, 1);
+            try { _tlsSession.Dispose(); }
+            catch { }
+            _ = Shutdown(_connection.ClientFd, ShutBoth);
+            try {
+                CommitAdvance();
+            }
+            catch {
+            }
+
+            byte[]? plaintext = Interlocked.Exchange(ref _plaintext, null);
+            if (plaintext != null) {
+                _bufferPool.Return(plaintext);
+            }
+            _plaintextStart = 0;
+            _plaintextEnd = 0;
+            _examinedBytes = 0;
+            _buffer = ReadOnlySequence<byte>.Empty;
+        }
+
+        private void ThrowIfDisposed() {
+            if (Volatile.Read(ref _disposed) != 0) {
+                throw new ObjectDisposedException(nameof(IoxideTransportTls));
+            }
+        }
+
+        #endregion write operations
+
+        #endregion ISimpleWTransportOutput
+
+        #region ISimpleWTransportDeferredFlushFeature
+
+        private readonly bool _deferFlush;
+
+        /// <summary>
+        /// Flushes bytes staged by previous WriteAsync calls.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public ValueTask FlushDeferredAsync(CancellationToken cancellationToken = default) {
             cancellationToken.ThrowIfCancellationRequested();
             ThrowIfDisposed();
@@ -418,99 +603,11 @@ namespace SimpleW.Engine.Ioxide {
             return AwaitDeferredFlushAndExitWriteAsync(flush);
         }
 
-        private async ValueTask AwaitDeferredFlushAndExitWriteAsync(ValueTask flush) {
-            try {
-                await flush;
-            }
-            finally {
-                ExitWrite();
-            }
-        }
+        #endregion ISimpleWTransportDeferredFlushFeature
 
-        /// <inheritdoc />
-        public bool TryCheckConnectionClosed(out bool isClosed) {
-            isClosed = _connectionClosed || _tlsSession.Closed;
-            return true;
-        }
+        #region SimpleWTransportReadResult
 
-        /// <inheritdoc />
-        public ValueTask CloseAsync(CancellationToken cancellationToken = default) {
-            cancellationToken.ThrowIfCancellationRequested();
-            Dispose();
-            return ValueTask.CompletedTask;
-        }
-
-        /// <inheritdoc />
-        public ValueTask AbortAsync(bool reset = false, CancellationToken cancellationToken = default) {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
-                _ = Shutdown(_connection.ClientFd, ShutBoth);
-            }
-            return ValueTask.CompletedTask;
-        }
-
-        /// <inheritdoc />
-        public TFeature? GetFeature<TFeature>() where TFeature : class {
-            if (typeof(TFeature) == typeof(ISimpleWTransportDeferredFlushFeature)
-                || typeof(TFeature) == typeof(ISimpleWTransportTlsFeature)) {
-                return this as TFeature;
-            }
-            return null;
-        }
-
-        /// <inheritdoc />
-        public void Dispose() {
-            Interlocked.Exchange(ref _disposed, 1);
-        }
-
-        /// <summary>
-        /// Completes TLS shutdown and releases all buffers retained by the connection.
-        /// </summary>
-        public void Complete() {
-            if (Interlocked.Exchange(ref _completed, 1) != 0) {
-                return;
-            }
-
-            Interlocked.Exchange(ref _disposed, 1);
-            try { _tlsSession.Dispose(); }
-            catch { }
-            _ = Shutdown(_connection.ClientFd, ShutBoth);
-            try {
-                CommitAdvance();
-            }
-            catch {
-            }
-
-            byte[]? plaintext = Interlocked.Exchange(ref _plaintext, null);
-            if (plaintext != null) {
-                _bufferPool.Return(plaintext);
-            }
-            _plaintextStart = 0;
-            _plaintextEnd = 0;
-            _examinedBytes = 0;
-            _buffer = ReadOnlySequence<byte>.Empty;
-        }
-
-        private void EnterWrite() {
-            if (Interlocked.Exchange(ref _writing, 1) != 0) {
-                throw new InvalidOperationException("Concurrent write on the same ioxide TLS connection.");
-            }
-        }
-
-        private void ExitWrite() => Volatile.Write(ref _writing, 0);
-
-        private void ThrowIfDisposed() {
-            if (Volatile.Read(ref _disposed) != 0) {
-                throw new ObjectDisposedException(nameof(IoxideTlsConnection));
-            }
-        }
-
-        private static long Clamp(long value, long maximum) {
-            if (value <= 0) {
-                return 0;
-            }
-            return value >= maximum ? maximum : value;
-        }
+        private ManualResetValueTaskSourceCore<SimpleWTransportReadResult> _readSignal = new() { RunContinuationsAsynchronously = false };
 
         SimpleWTransportReadResult IValueTaskSource<SimpleWTransportReadResult>.GetResult(short token) {
             return _readSignal.GetResult(token);
@@ -520,12 +617,7 @@ namespace SimpleW.Engine.Ioxide {
             return _readSignal.GetStatus(token);
         }
 
-        void IValueTaskSource<SimpleWTransportReadResult>.OnCompleted(
-            Action<object?> continuation,
-            object? state,
-            short token,
-            ValueTaskSourceOnCompletedFlags flags
-        ) {
+        void IValueTaskSource<SimpleWTransportReadResult>.OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) {
             _readSignal.OnCompleted(
                 continuation,
                 state,
@@ -534,8 +626,18 @@ namespace SimpleW.Engine.Ioxide {
             );
         }
 
-        [DllImport("libc", EntryPoint = "shutdown", SetLastError = true)]
-        private static extern int Shutdown(int socket, int how);
+        #endregion SimpleWTransportReadResult
+
+        #region bytes operations
+
+        private static long Clamp(long value, long maximum) {
+            if (value <= 0) {
+                return 0;
+            }
+            return value >= maximum ? maximum : value;
+        }
+
+        #endregion bytes operations
 
     }
 

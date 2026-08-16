@@ -11,13 +11,36 @@ namespace SimpleW.Engine.Ioxide {
     /// </summary>
     public sealed class IoxideEngine : ISimpleWEngine {
 
+        /// <summary>
+        /// Options
+        /// </summary>
         private readonly IoxideEngineOptions _options;
+
+        /// <summary>
+        /// Callback after each Reactor start
+        /// </summary>
         private readonly Action<Reactor>? _onReactorStart;
 
+        /// <summary>
+        /// Reactors
+        /// </summary>
         private Reactor[] _reactors = [];
+
+        /// <summary>
+        /// Threads
+        /// </summary>
         private Thread[] _threads = [];
+
+        /// <summary>
+        /// Underlying SimpleWServer instance
+        /// </summary>
         private SimpleWServer? _server;
+
+        /// <summary>
+        /// Local Endpoint
+        /// </summary>
         private IPEndPoint? _endpoint;
+
         private ArrayPool<byte>? _bufferPool;
         private bool _deferFlush;
         private bool _tlsEnabled;
@@ -37,12 +60,8 @@ namespace SimpleW.Engine.Ioxide {
         /// <summary>
         /// Initializes an ioxide engine using the specified integration options.
         /// </summary>
-        /// <param name="options">
-        /// Integration options, or <see langword="null"/> to use the defaults.
-        /// </param>
-        /// <param name="onReactorStart">
-        /// Optional callback executed on each reactor thread after its services are initialized.
-        /// </param>
+        /// <param name="options">Integration options, or <see langword="null"/> to use the defaults.</param>
+        /// <param name="onReactorStart">Optional callback executed on each reactor thread after its services are initialized.</param>
         public IoxideEngine(IoxideEngineOptions? options = null, Action<Reactor>? onReactorStart = null) {
             _options = options ?? new IoxideEngineOptions();
             _onReactorStart = onReactorStart;
@@ -52,9 +71,7 @@ namespace SimpleW.Engine.Ioxide {
         /// Initializes an ioxide engine using a native server configuration.
         /// </summary>
         /// <param name="config">Native ioxide server configuration.</param>
-        /// <param name="onReactorStart">
-        /// Optional callback executed on each reactor thread after its services are initialized.
-        /// </param>
+        /// <param name="onReactorStart">Optional callback executed on each reactor thread after its services are initialized.</param>
         public IoxideEngine(ServerConfig config, Action<Reactor>? onReactorStart = null) : this(
             new IoxideEngineOptions {
                 ServerConfig = config ?? throw new ArgumentNullException(nameof(config))
@@ -85,9 +102,7 @@ namespace SimpleW.Engine.Ioxide {
 
             int tlsStartMarker = tlsOptions == null ? 0 : 1;
             if (Interlocked.CompareExchange(ref _tlsStartAttempted, tlsStartMarker, 0) != 0) {
-                throw new InvalidOperationException(
-                    "An ioxide TLS engine cannot be started twice because ioxide 0.4.184 does not expose TlsService disposal."
-                );
+                throw new InvalidOperationException("An ioxide TLS engine cannot be started twice because ioxide 0.4.184 does not expose TlsService disposal.");
             }
 
             _server = server;
@@ -100,12 +115,17 @@ namespace SimpleW.Engine.Ioxide {
             TaskCompletionSource<bool>[] startupSignals = new TaskCompletionSource<bool>[config.ReactorCount];
 
             try {
+
+                // create reactor
                 for (int index = 0; index < config.ReactorCount; index++) {
                     TaskCompletionSource<bool> startupSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                    // setup reactor
                     Reactor reactor = new(index, config);
-                    reactor.OnStart = current => InitializeReactor(current, tlsOptions, startupSignal);
+                    reactor.OnStart = current => OnReactorStart(current, tlsOptions, startupSignal);
                     reactor.TcpHandle = HandleConnectionAsync;
 
+                    // reactor lives on a dedicated thread
                     Thread thread = new(() => RunReactor(reactor, startupSignal)) {
                         Name = $"simplew-ioxide-{index}",
                         IsBackground = true
@@ -117,9 +137,11 @@ namespace SimpleW.Engine.Ioxide {
                     thread.Start();
                 }
 
+                // wait for all threads
                 await Task.WhenAll(startupSignals.Select(static signal => signal.Task))
-                    .WaitAsync(cancellationToken)
-                    .ConfigureAwait(false);
+                          .WaitAsync(cancellationToken)
+                          .ConfigureAwait(false);
+
                 return endpoint;
             }
             catch {
@@ -129,20 +151,12 @@ namespace SimpleW.Engine.Ioxide {
             }
         }
 
-        private void InitializeReactor(Reactor reactor, TlsOptions? tlsOptions, TaskCompletionSource<bool> startupSignal) {
-            try {
-                if (tlsOptions != null) {
-                    TlsService.Start(reactor, tlsOptions);
-                }
-                _onReactorStart?.Invoke(reactor);
-                startupSignal.TrySetResult(true);
-            }
-            catch (Exception ex) {
-                startupSignal.TrySetException(ex);
-                reactor.Stop();
-            }
-        }
-
+        /// <summary>
+        /// Handle a Connection in a Reactor
+        /// </summary>
+        /// <param name="reactor"></param>
+        /// <param name="connection"></param>
+        /// <returns></returns>
         private async Task HandleConnectionAsync(Reactor reactor, TcpConnection connection) {
             SimpleWServer? server = _server;
             IPEndPoint? endpoint = _endpoint;
@@ -152,25 +166,28 @@ namespace SimpleW.Engine.Ioxide {
                 return;
             }
 
-            IoxideRawConnection? rawTransport = null;
-            IoxideTlsConnection? tlsTransport = null;
+            IoxideTransport? ioxideTransport = null;
+            IoxideTransportTls? tlsTransport = null;
             TlsSession? pendingTlsSession = null;
 
             try {
                 EndPoint localEndPoint = new IPEndPoint(endpoint.Address, connection.ListenerPort);
+                
+                // normal
                 if (!_tlsEnabled) {
-                    rawTransport = new IoxideRawConnection(connection, localEndPoint, _deferFlush);
-                    await server.CreateSessionAsync(rawTransport);
+                    ioxideTransport = new IoxideTransport(connection, localEndPoint, _deferFlush);
+                    await server.CreateSessionAsync(ioxideTransport);
                 }
+                // tls
                 else {
                     pendingTlsSession = await reactor.GetService<TlsService>().AcceptAsync(connection);
-                    tlsTransport = new IoxideTlsConnection(
-                        connection,
-                        pendingTlsSession,
-                        localEndPoint,
-                        bufferPool,
-                        _deferFlush
-                    );
+                    tlsTransport = new IoxideTransportTls(
+                                       connection,
+                                       pendingTlsSession,
+                                       localEndPoint,
+                                       bufferPool,
+                                       _deferFlush
+                                   );
                     pendingTlsSession = null;
                     await server.CreateSessionAsync(tlsTransport);
                 }
@@ -183,22 +200,12 @@ namespace SimpleW.Engine.Ioxide {
             finally {
                 try {
                     pendingTlsSession?.Dispose();
-                    rawTransport?.Complete();
+                    ioxideTransport?.Complete();
                     tlsTransport?.Complete();
                 }
                 finally {
                     connection.DecRef();
                 }
-            }
-        }
-
-        private static void RunReactor(Reactor reactor, TaskCompletionSource<bool> startupSignal) {
-            try {
-                reactor.Run();
-            }
-            catch (Exception ex) {
-                startupSignal.TrySetException(ex);
-                Console.Error.WriteLine(ex);
             }
         }
 
@@ -219,18 +226,46 @@ namespace SimpleW.Engine.Ioxide {
             return Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Stops the reactors and releases the managed resources owned by this engine.
-        /// </summary>
-        public void Dispose() {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0) {
-                return;
-            }
+        #region reactor events
 
-            StopAndJoinReactors();
-            ResetRuntimeState();
+        /// <summary>
+        /// On Reactor Start Event
+        /// </summary>
+        /// <param name="reactor"></param>
+        /// <param name="tlsOptions"></param>
+        /// <param name="startupSignal"></param>
+        private void OnReactorStart(Reactor reactor, TlsOptions? tlsOptions, TaskCompletionSource<bool> startupSignal) {
+            try {
+                if (tlsOptions != null) {
+                    TlsService.Start(reactor, tlsOptions);
+                }
+                _onReactorStart?.Invoke(reactor);
+                startupSignal.TrySetResult(true);
+            }
+            catch (Exception ex) {
+                startupSignal.TrySetException(ex);
+                reactor.Stop();
+            }
         }
 
+        /// <summary>
+        /// Run Reactor
+        /// </summary>
+        /// <param name="reactor"></param>
+        /// <param name="startupSignal"></param>
+        private static void RunReactor(Reactor reactor, TaskCompletionSource<bool> startupSignal) {
+            try {
+                reactor.Run();
+            }
+            catch (Exception ex) {
+                startupSignal.TrySetException(ex);
+                Console.Error.WriteLine(ex);
+            }
+        }
+
+        /// <summary>
+        /// Stop Reactors and wait for all threads to finish
+        /// </summary>
         private void StopAndJoinReactors() {
             foreach (Reactor reactor in _reactors) {
                 if (reactor == null) {
@@ -253,6 +288,9 @@ namespace SimpleW.Engine.Ioxide {
             }
         }
 
+        /// <summary>
+        /// Reactor dispose
+        /// </summary>
         private void ResetRuntimeState() {
             _reactors = [];
             _threads = [];
@@ -261,6 +299,10 @@ namespace SimpleW.Engine.Ioxide {
             _bufferPool = null;
             _tlsEnabled = false;
         }
+
+        #endregion reactor events
+
+        #region validators
 
         private static IPEndPoint ValidateEndpoint(EndPoint endPoint) {
             if (!OperatingSystem.IsLinux()) {
@@ -312,6 +354,20 @@ namespace SimpleW.Engine.Ioxide {
                 );
             }
             return tlsOptions;
+        }
+
+        #endregion validators
+
+        /// <summary>
+        /// Stops the reactors and releases the managed resources owned by this engine.
+        /// </summary>
+        public void Dispose() {
+            if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+                return;
+            }
+
+            StopAndJoinReactors();
+            ResetRuntimeState();
         }
 
     }
