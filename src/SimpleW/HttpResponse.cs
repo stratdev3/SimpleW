@@ -199,6 +199,9 @@ namespace SimpleW {
         /// <param name="statusText">The optional status text. If null, the default text is used.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Status(int statusCode, string? statusText = null) {
+            if (statusText != null) {
+                ValidateHeaderValue(statusText, nameof(statusText));
+            }
             _statusCode = statusCode;
             _statusText = statusText ?? DefaultStatusText(statusCode);
             return this;
@@ -292,6 +295,7 @@ namespace SimpleW {
         /// <param name="contentType">The content type to set.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse ContentType(string contentType) {
+            ValidateHeaderValue(contentType, nameof(contentType));
             _contentType = contentType;
             return this;
         }
@@ -422,13 +426,17 @@ namespace SimpleW {
         /// <param name="value">The header value.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse AddHeader(string name, string value) {
+            if (string.Equals(name, "Date", StringComparison.OrdinalIgnoreCase)) {
+                return this;
+            }
             if (string.Equals(name, "Content-Length", StringComparison.OrdinalIgnoreCase)) {
                 if (!long.TryParse(value, out long cl) || cl < 0) {
-                    throw new InvalidOperationException($"Invalid Custom Header Content-Length {value}.");
+                    throw new ArgumentException("Invalid Custom Header Content-Length", nameof(value));
                 }
                 _customContentLength = cl;
                 return this;
             }
+            ValidateHeaderValue(value, nameof(value));
             if (string.Equals(name, "Content-Type", StringComparison.OrdinalIgnoreCase)) {
                 _contentType = value;
                 return this;
@@ -437,9 +445,8 @@ namespace SimpleW {
                 _connection = value;
                 return this;
             }
-            if (string.Equals(name, "Date", StringComparison.OrdinalIgnoreCase)) {
-                return this;
-            }
+            ValidateHeaderName(name, nameof(name));
+
             if (_headerCount == _headers.Length) {
                 Array.Resize(ref _headers, _headers.Length * 2);
             }
@@ -466,6 +473,12 @@ namespace SimpleW {
         /// <param name="contentType">The optional content type.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Body(ArraySegment<byte> body, string? contentType = "application/octet-stream") {
+            if (contentType != null) {
+                if (contentType != "application/octet-stream") {
+                    ValidateHeaderValue(contentType, nameof(contentType));
+                }
+                _contentType = contentType;
+            }
             DisposeBody();
 
             _bodyKind = BodyKind.Segment;
@@ -476,9 +489,6 @@ namespace SimpleW {
             _bodyMemory = default;
             _bodyOwner = null;
 
-            if (contentType != null) {
-                _contentType = contentType;
-            }
             return this;
         }
 
@@ -490,6 +500,12 @@ namespace SimpleW {
         /// <param name="contentType">The optional content type.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Body(ReadOnlyMemory<byte> body, string? contentType = "application/octet-stream") {
+            if (contentType != null) {
+                if (contentType != "application/octet-stream") {
+                    ValidateHeaderValue(contentType, nameof(contentType));
+                }
+                _contentType = contentType;
+            }
             DisposeBody();
 
             // is body an underlying segment ?
@@ -512,9 +528,6 @@ namespace SimpleW {
 
             _bodyOwner = null;
 
-            if (contentType != null) {
-                _contentType = contentType;
-            }
             return this;
         }
 
@@ -526,6 +539,12 @@ namespace SimpleW {
         /// <param name="contentType">The optional content type.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Body(ReadOnlyMemory<byte> body, IDisposable owner, string? contentType = "application/octet-stream") {
+            if (contentType != null) {
+                if (contentType != "application/octet-stream") {
+                    ValidateHeaderValue(contentType, nameof(contentType));
+                }
+                _contentType = contentType;
+            }
             DisposeBody();
 
             // is body an underlying segment ?
@@ -548,9 +567,6 @@ namespace SimpleW {
 
             _bodyOwner = owner;
 
-            if (contentType != null) {
-                _contentType = contentType;
-            }
             return this;
         }
 
@@ -561,6 +577,9 @@ namespace SimpleW {
         /// <param name="contentType">The content type to use.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Text(string body, string contentType = "text/plain; charset=utf-8") {
+            if (contentType != "text/plain; charset=utf-8") {
+                ValidateHeaderValue(contentType, nameof(contentType));
+            }
             DisposeBody();
             _contentType = contentType;
 
@@ -583,6 +602,9 @@ namespace SimpleW {
         /// <param name="contentType">The content type to use.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Html(string body, string contentType = "text/html; charset=utf-8") {
+            if (contentType != "text/html; charset=utf-8") {
+                ValidateHeaderValue(contentType, nameof(contentType));
+            }
             DisposeBody();
             _contentType = contentType;
 
@@ -606,6 +628,9 @@ namespace SimpleW {
         /// <param name="contentType">The content type to use.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Json<T>(T value, string contentType = "application/json; charset=utf-8") {
+            if (contentType != "application/json; charset=utf-8") {
+                ValidateHeaderValue(contentType, nameof(contentType));
+            }
             DisposeBody();
             _contentType = contentType;
 
@@ -643,6 +668,10 @@ namespace SimpleW {
         /// <exception cref="ArgumentNullException"></exception>
         public HttpResponse File(FileInfo fi, string? contentType = null) {
             ArgumentNullException.ThrowIfNull(fi);
+            if (contentType != null) {
+                ValidateHeaderValue(contentType, nameof(contentType));
+            }
+
             DisposeBody();
 
             _bodyKind = BodyKind.File;
@@ -1022,9 +1051,9 @@ namespace SimpleW {
         /// <param name="url">The redirect target URL.</param>
         /// <returns>The current response instance.</returns>
         public HttpResponse Redirect(string url) {
+            AddHeader("Location", url);
             DisposeBody();
             Status(302);
-            AddHeader("Location", url);
             return this;
         }
 
@@ -1061,6 +1090,7 @@ namespace SimpleW {
         /// </summary>
         /// <returns>The current response instance.</returns>
         public HttpResponse Attachment(string outputFilename) {
+            ArgumentNullException.ThrowIfNull(outputFilename);
             AddHeader("Content-Disposition", $"attachment;filename={outputFilename}");
             ContextTypeFromExtension(outputFilename);
             return this;
@@ -1101,6 +1131,11 @@ namespace SimpleW {
         /// </example>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public HttpResponse SetCookie(string name, string value, in CookieOptions options = default) {
+            ValidateCookieName(name, nameof(name));
+            ValidateCookieValue(value, nameof(value));
+            ValidateCookieAttributeValue(options.Path, nameof(options.Path));
+            ValidateCookieAttributeValue(options.Domain, nameof(options.Domain));
+
             if (_cookies == null) {
                 _cookies = new CookieEntry[2];
             }
@@ -1441,6 +1476,97 @@ namespace SimpleW {
         }
 
         #endregion Dispose
+
+        #region response metadata validation
+
+        /// <summary>
+        /// Validates an HTTP header name using the token grammar.
+        /// </summary>
+        private static void ValidateHeaderName(string name, string paramName) {
+            ArgumentNullException.ThrowIfNull(name, paramName);
+            if (name.Length == 0) {
+                throw new ArgumentException("HTTP header names must not be empty.", paramName);
+            }
+            for (int i = 0; i < name.Length; i++) {
+                if (!IsTokenCharacter(name[i])) {
+                    throw new ArgumentException("HTTP header names must contain only ASCII token characters.", paramName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates an HTTP header value or status text.
+        /// </summary>
+        private static void ValidateHeaderValue(string value, string paramName) {
+            ArgumentNullException.ThrowIfNull(value, paramName);
+            for (int i = 0; i < value.Length; i++) {
+                char c = value[i];
+                if (c < '\x20' || c > '\x7e') {
+                    throw new ArgumentException("HTTP header values must contain only printable ASCII characters.", paramName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates a cookie name using the token grammar.
+        /// </summary>
+        private static void ValidateCookieName(string name, string paramName) {
+            ArgumentNullException.ThrowIfNull(name, paramName);
+            if (name.Length == 0) {
+                throw new ArgumentException("Cookie names must not be empty.", paramName);
+            }
+            for (int i = 0; i < name.Length; i++) {
+                if (!IsTokenCharacter(name[i])) {
+                    throw new ArgumentException("Cookie names must contain only ASCII token characters.", paramName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates an unquoted cookie value using the cookie-octet grammar.
+        /// </summary>
+        private static void ValidateCookieValue(string value, string paramName) {
+            ArgumentNullException.ThrowIfNull(value, paramName);
+            for (int i = 0; i < value.Length; i++) {
+                char c = value[i];
+                bool valid = c == '\x21'
+                             || (c >= '\x23' && c <= '\x2b')
+                             || (c >= '\x2d' && c <= '\x3a')
+                             || (c >= '\x3c' && c <= '\x5b')
+                             || (c >= '\x5d' && c <= '\x7e');
+                if (!valid) {
+                    throw new ArgumentException("Cookie values must contain only valid cookie-octet characters.", paramName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates a cookie attribute value such as Path or Domain.
+        /// </summary>
+        private static void ValidateCookieAttributeValue(string? value, string paramName) {
+            if (value == null) {
+                return;
+            }
+            for (int i = 0; i < value.Length; i++) {
+                char c = value[i];
+                if (c < '\x20' || c > '\x7e' || c == ';') {
+                    throw new ArgumentException("Cookie attribute values must contain only printable ASCII characters other than ';'.", paramName);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns whether a character is allowed by the HTTP token grammar.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsTokenCharacter(char c) {
+            return (c >= '0' && c <= '9')
+                   || (c >= 'A' && c <= 'Z')
+                   || (c >= 'a' && c <= 'z')
+                   || c is '!' or '#' or '$' or '%' or '&' or '\'' or '*' or '+' or '-' or '.' or '^' or '_' or '`' or '|' or '~';
+        }
+
+        #endregion response metadata validation
 
         #region write helpers
 
