@@ -206,8 +206,28 @@ await server.ReloadListenerAsync(s => {
 });
 ```
 
-If the reload fails, it will attempt a best-effort rollback to the previous endpoint
-and re-listen, then rethrow the exception.
+If the reload fails, the server attempts a best-effort rollback to the previous endpoint and throws a `ListenerReloadException`.
+
+```csharp
+try {
+    await server.ReloadListenerAsync(s => s.UsePort(9090));
+}
+catch (ListenerReloadException ex) when (ex.ListenerRestored) {
+    // The requested configuration failed, but the previous listener is active again.
+    Console.Error.WriteLine(ex.ReloadException);
+}
+catch (ListenerReloadException ex) {
+    // Both the reload and the rollback failed. The listener is unavailable.
+    Console.Error.WriteLine(ex.ReloadException);
+    Console.Error.WriteLine(ex.RollbackException);
+}
+```
+
+- `ReloadException` is the original error raised while applying or starting the new listener.
+- `RollbackException` is `null` when the previous listener was restored; otherwise it contains the restoration error.
+- `ListenerRestored` is `true` only when the rollback completed successfully.
+
+Restoring the listener keeps the server available, but the requested reload still failed and is therefore always reported to the caller.
 
 
 ## Procedural vs Fluent usage

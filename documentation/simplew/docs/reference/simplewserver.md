@@ -174,6 +174,24 @@ public async Task StopAsync()
 public async Task ReloadListenerAsync(Action<SimpleWServer> reconfigure, CancellationToken cancellationToken = default)
 ```
 
+When the reload fails after it has started, the method attempts to restore the previous listener and throws `ListenerReloadException`:
+
+```csharp
+public sealed class ListenerReloadException : Exception {
+    public Exception ReloadException { get; }
+    public Exception? RollbackException { get; }
+    public bool ListenerRestored { get; }
+}
+```
+
+| Property | Meaning |
+| --- | --- |
+| `ReloadException` | Original exception raised by the reload. |
+| `RollbackException` | Exception raised while restoring the previous listener, or `null` when restoration succeeded. |
+| `ListenerRestored` | `true` when the previous listener is active again; otherwise `false`. |
+
+`ListenerReloadException.InnerException` references `ReloadException`. A successful rollback does not turn the requested reload into a successful operation.
+
 ```csharp
 /// <summary>
 /// Is the server started?
