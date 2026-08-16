@@ -51,7 +51,7 @@ To check out docs, visit [simplew.net](https://simplew.net).
 
 ## Changelog
 
-Detailed changes for each release are documented in the [CHANGELOG](https://github.com/stratdev3/SimpleW/blob/master/release.md).
+Detailed changes for each release are documented in the [CHANGELOG](https://github.com/stratdev3/SimpleW/blob/master/changelog.md).
 
 ## Contribution
 
