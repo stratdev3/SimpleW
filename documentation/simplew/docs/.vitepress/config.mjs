@@ -40,7 +40,7 @@ export default defineConfig({
             },
             //{ text: '📖✨ Features', link: '/features' },
             {
-                text: 'v26.0.1',
+                text: 'v26.1.0',
                 items: [
                     { text: 'Changelog', link: '/version/changelog' },
                     { text: 'FAQ', link: '/version/faq' },
