@@ -53,12 +53,6 @@ namespace SimpleW.Service.LetsEncrypt {
         /// <param name="server"></param>
         /// <exception cref="InvalidOperationException"></exception>
         public void Install(SimpleWServer server) {
-            if (server.IsStarted) {
-                InvalidOperationException ex = new("LetsEncryptModule must be installed before server start.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
-
             _log.Info("installing...");
 
             _server = server;

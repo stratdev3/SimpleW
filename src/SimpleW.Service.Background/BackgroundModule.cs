@@ -32,12 +32,6 @@ namespace SimpleW.Service.Background {
         /// </summary>
         /// <param name="server"></param>
         public void Install(SimpleWServer server) {
-            if (server.IsStarted) {
-                InvalidOperationException ex = new("BackgroundModule must be installed before server start.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
-
             _log.Info("installing...");
 
             BackgroundModuleExtension.Register(server, _service);

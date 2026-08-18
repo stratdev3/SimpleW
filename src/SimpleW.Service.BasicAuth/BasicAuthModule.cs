@@ -191,10 +191,6 @@ namespace SimpleW.Service.BasicAuth {
             /// <param name="server"></param>
             /// <exception cref="InvalidOperationException"></exception>
             public void Install(SimpleWServer server) {
-                if (server.IsStarted) {
-                    throw new InvalidOperationException("BasicAuthModule must be installed before server start.");
-                }
-
                 server.UseMiddleware((session, next) => MiddlewareAsync(session, next, _state));
             }
 

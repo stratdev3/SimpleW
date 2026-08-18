@@ -45,11 +45,6 @@ namespace SimpleW.Helper.Razor {
         /// <param name="server"></param>
         /// <exception cref="InvalidOperationException"></exception>
         public void Install(SimpleWServer server) {
-            if (server.IsStarted) {
-                InvalidOperationException ex = new("RazorModule must be installed before server start.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
             _log.Info("RazorModule installing...");
 
             // init engine once

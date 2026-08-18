@@ -209,9 +209,6 @@ namespace SimpleW.Modules {
             /// </summary>
             /// <param name="server"></param>
             public void Install(SimpleWServer server) {
-                if (server.IsStarted) {
-                    throw new InvalidOperationException("StaticFilesModule must be installed before server start.");
-                }
                 if (!Directory.Exists(_options.Path)) {
                     throw new DirectoryNotFoundException($"StaticFilesModule.Path '{_options.Path}' does not exist.");
                 }

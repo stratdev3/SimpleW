@@ -340,10 +340,6 @@ namespace SimpleW.Service.OpenID {
             /// <param name="server"></param>
             /// <exception cref="InvalidOperationException"></exception>
             public void Install(SimpleWServer server) {
-                if (server.IsStarted) {
-                    throw new InvalidOperationException("OpenIDModule must be installed before server start.");
-                }
-
                 server.UseMiddleware((session, next) => MiddlewareAsync(session, next, _state));
                 server.MapGet(_loginPath, (HttpSession session, string provider) => LoginHandlerAsync(session, provider));
                 server.MapGet(_callbackPath, (HttpSession session, string provider) => CallbackHandlerAsync(session, provider));

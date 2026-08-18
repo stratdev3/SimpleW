@@ -62,13 +62,10 @@ namespace SimpleW {
         public SimpleWServer Configure(Action<SimpleWSServerOptions> configure) {
             ArgumentNullException.ThrowIfNull(configure);
 
-            if (IsStarted) {
-                InvalidOperationException ex = new("Server options must be configured before starting the server.");
-                _log.Warn(ex.Message, ex);
-                throw ex;
+            lock (_stateLock) {
+                EnsureStateStopped("Server options must be configured before starting the server.");
+                configure(Options);
             }
-
-            configure(Options);
             return this;
         }
 
@@ -103,17 +100,15 @@ namespace SimpleW {
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
         public SimpleWServer UseAddress(IPAddress address) {
-            if (IsStarted && !IsListenerReloading) {
-                InvalidOperationException ex = new("IPAddress must be configured before starting the server (except during listener reload).");
-                _log.Warn(ex.Message, ex);
-                throw ex;
+            lock (_stateLock) {
+                EnsureStateStoppedOrReloading("IPAddress must be configured before starting the server (except during listener reload).");
+                if (Port == 0) {
+                    InvalidOperationException ex = new("Unable to find the current port.");
+                    _log.Error(ex.Message, ex);
+                    throw ex;
+                }
+                EndPoint = new IPEndPoint(address, Port);
             }
-            if (Port == 0) {
-                InvalidOperationException ex = new("Unable to find the current port.");
-                _log.Error(ex.Message, ex);
-                throw ex;
-            }
-            EndPoint = new IPEndPoint(address, Port);
             return this;
         }
 
@@ -123,17 +118,15 @@ namespace SimpleW {
         /// <param name="port"></param>
         /// <returns></returns>
         public SimpleWServer UsePort(int port) {
-            if (IsStarted && !IsListenerReloading) {
-                InvalidOperationException ex = new("Port must be configured before starting the server (except during listener reload).");
-                _log.Warn(ex.Message, ex);
-                throw ex;
+            lock (_stateLock) {
+                EnsureStateStoppedOrReloading("Port must be configured before starting the server (except during listener reload).");
+                if (Address == null) {
+                    InvalidOperationException ex = new("Unable to find the current IPAddress.");
+                    _log.Error(ex.Message, ex);
+                    throw ex;
+                }
+                EndPoint = new IPEndPoint(Address, port);
             }
-            if (Address == null) {
-                InvalidOperationException ex = new("Unable to find the current IPAddress.");
-                _log.Error(ex.Message, ex);
-                throw ex;
-            }
-            EndPoint = new IPEndPoint(Address, port);
             return this;
         }
 
@@ -158,24 +151,40 @@ namespace SimpleW {
         public ISimpleWEngine Engine { get; private set; }
 
         /// <summary>
-        /// Is the server started?
+        /// Current server lifecycle state.
         /// </summary>
-        public bool IsStarted { get; private set; } = false;
+        public SimpleWServerState State {
+            get {
+                lock (_stateLock) {
+                    return _state;
+                }
+            }
+            private set {
+                lock (_stateLock) {
+                    _state = value;
+                }
+            }
+        }
 
         /// <summary>
-        /// Is the server currently stopping?
+        /// Synchronizes state transitions with synchronous configuration methods.
         /// </summary>
-        public bool IsStopping { get; private set; } = false;
+        private readonly object _stateLock = new();
 
         /// <summary>
-        /// Is the listener currently reloading?
+        /// Current state guarded by _stateLock.
         /// </summary>
-        public bool IsListenerReloading { get; private set; } = false;
+        private SimpleWServerState _state = SimpleWServerState.Stopped;
 
         /// <summary>
-        /// lock for ListenerReload
+        /// Serializes all asynchronous lifecycle operations.
         /// </summary>
-        private readonly SemaphoreSlim _listenerReloadLock = new(1, 1);
+        private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
+
+        /// <summary>
+        /// Identifies lifecycle calls made synchronously from lifecycle callbacks.
+        /// </summary>
+        private readonly AsyncLocal<int> _lifecycleCallbackDepth = new();
 
         /// <summary>
         /// Lifetime CTS (server internal)
@@ -188,6 +197,55 @@ namespace SimpleW {
         private Task? _lifetimeTask;
 
         /// <summary>
+        /// Current server lifetime generation.
+        /// </summary>
+        private long _lifetimeGeneration;
+
+        /// <summary>
+        /// Whether the current generation reached Started and still requires a stopped notification.
+        /// </summary>
+        private bool _stoppedNotificationPending;
+
+        /// <summary>
+        /// Ensure that state is stopped
+        /// Must be called while holding _stateLock.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        private void EnsureStateStopped(string message) {
+            if (_state != SimpleWServerState.Stopped) {
+                InvalidOperationException ex = new(message);
+                _log.Warn(ex.Message, ex);
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Ensure that state is stopped or reloading
+        /// Must be called while holding _stateLock.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        private void EnsureStateStoppedOrReloading(string message) {
+            if (_state != SimpleWServerState.Stopped && _state != SimpleWServerState.Reloading) {
+                InvalidOperationException ex = new(message);
+                _log.Warn(ex.Message, ex);
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Lifecycle callbacks are part of the serialized transition and cannot re-enter it.
+        /// We must prevent a callback to call a method changing the state (e.g: StartAsync()...)
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
+        private void ThrowIfLifecycleCallback() {
+            if (_lifecycleCallbackDepth.Value != 0) {
+                throw new InvalidOperationException("Server lifecycle methods cannot be called synchronously from a lifecycle callback.");
+            }
+        }
+
+        /// <summary>
         /// Replace the current network engine implementation.
         /// Must be called before the server starts.
         /// </summary>
@@ -196,13 +254,10 @@ namespace SimpleW {
         public SimpleWServer UseEngine(ISimpleWEngine engine) {
             ArgumentNullException.ThrowIfNull(engine);
 
-            if (IsStarted) {
-                InvalidOperationException ex = new("Engine must be configured before starting the server.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
+            lock (_stateLock) {
+                EnsureStateStopped("Engine must be configured before starting the server.");
+                Engine = engine;
             }
-
-            Engine = engine;
             return this;
         }
 
@@ -215,15 +270,12 @@ namespace SimpleW {
         public SimpleWServer UseEngine(Action<SimpleWEngineOptions> configure) {
             ArgumentNullException.ThrowIfNull(configure);
 
-            if (IsStarted) {
-                InvalidOperationException ex = new("Engine must be configured before starting the server.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
+            lock (_stateLock) {
+                EnsureStateStopped("Engine must be configured before starting the server.");
+                SimpleWEngineOptions options = new();
+                configure(options);
+                Engine = new SimpleWEngine(options);
             }
-
-            SimpleWEngineOptions options = new();
-            configure(options);
-            Engine = new SimpleWEngine(options);
             return this;
         }
 
@@ -233,43 +285,7 @@ namespace SimpleW {
         /// <param name="cancellationToken"></param>
         /// <example>await server.StartAsync(appLifetime.ApplicationStopping);</example>
         public async Task StartAsync(CancellationToken cancellationToken = default) {
-            if (IsStarted) {
-                return;
-            }
-
-            _log.Info($"server starting...");
-            Options.ValidateAndNormalize();
-
-            _lifetimeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-            IsStopping = false;
-
-            try {
-                // refresh the endpoint property based on the actual endpoint created
-                EndPoint = await Engine.StartAsync(this, _bufferPool, _lifetimeCts.Token).ConfigureAwait(false) ?? EndPoint;
-                StartSessionTimeoutLoop(_lifetimeCts.Token);
-
-                IsStarted = true;
-                _lifetimeTask = WaitForCancellationAsync(_lifetimeCts.Token);
-                _log.Info($"server started at {_listenUrl}");
-
-                // notify subscribers
-                FireStartedCallbacks();
-            }
-            catch {
-                try {
-                    await Engine.StopAsync(this).ConfigureAwait(false);
-                }
-                catch { }
-
-                _lifetimeCts?.Dispose();
-                _lifetimeCts = null;
-                _lifetimeTask = null;
-                IsStarted = false;
-                IsStopping = false;
-
-                throw;
-            }
+            _ = await StartAndGetLifetimeTaskAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -279,10 +295,119 @@ namespace SimpleW {
         /// <returns></returns>
         /// <example>await server.RunAsync(cts.Token);</example>
         public async Task RunAsync(CancellationToken cancellationToken = default) {
-            await StartAsync(cancellationToken).ConfigureAwait(false);
-            if (_lifetimeTask != null) {
-                // blocking
-                await _lifetimeTask.ConfigureAwait(false);
+            Task lifetimeTask = await StartAndGetLifetimeTaskAsync(cancellationToken).ConfigureAwait(false);
+            await lifetimeTask.ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Start the server and return the completion task for the selected lifetime generation.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        private async Task<Task> StartAndGetLifetimeTaskAsync(CancellationToken cancellationToken) {
+            ThrowIfLifecycleCallback();
+
+            await _lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try {
+                SimpleWServerState state = State;
+                if (state == SimpleWServerState.Started) {
+                    return _lifetimeTask ?? Task.CompletedTask;
+                }
+                if (state == SimpleWServerState.Faulted) {
+                    throw new InvalidOperationException("The server is faulted. Call StopAsync successfully before restarting it.");
+                }
+                if (state != SimpleWServerState.Stopped) {
+                    throw new InvalidOperationException($"The server cannot start from state '{state}'.");
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                CancellationTokenSource lifetimeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                long generation = unchecked(++_lifetimeGeneration);
+                _lifetimeCts = lifetimeCts;
+                State = SimpleWServerState.Starting;
+
+                bool engineStarted = false;
+                try {
+                    _log.Info("server starting...");
+                    Options.ValidateAndNormalize();
+
+                    // refresh the endpoint property based on the actual endpoint created
+                    EndPoint? startedEndPoint = await Engine.StartAsync(this, _bufferPool, lifetimeCts.Token).ConfigureAwait(false);
+                    engineStarted = true;
+                    StartSessionTimeoutLoop(lifetimeCts.Token);
+
+                    lock (_stateLock) {
+                        EndPoint = startedEndPoint ?? EndPoint;
+                        _state = SimpleWServerState.Started;
+                    }
+
+                    _stoppedNotificationPending = true;
+                    Task lifetimeTask = WaitForCancellationAsync(generation, lifetimeCts);
+                    _lifetimeTask = lifetimeTask;
+                    _log.Info($"server started at {_listenUrl}");
+
+                    // notify subscribers
+                    FireStartedCallbacks();
+                    return lifetimeTask;
+                }
+                catch (Exception startException) {
+                    Exception? cleanupException = null;
+                    if (engineStarted) {
+                        try {
+                            await Engine.StopAsync(this, CancellationToken.None).ConfigureAwait(false);
+                        }
+                        catch (Exception ex) {
+                            cleanupException = ex;
+                            _log.Fatal("server failed to clean up after start failure", ex);
+                        }
+                    }
+
+                    try { lifetimeCts.Cancel(); }
+                    catch { }
+                    await StopSessionTimeoutLoopAsync().ConfigureAwait(false);
+                    lifetimeCts.Dispose();
+                    if (ReferenceEquals(_lifetimeCts, lifetimeCts)) {
+                        _lifetimeCts = null;
+                        _lifetimeTask = null;
+                    }
+                    _stoppedNotificationPending = false;
+                    State = (cleanupException == null ? SimpleWServerState.Stopped : SimpleWServerState.Faulted);
+
+                    if (cleanupException != null) {
+                        throw new AggregateException("Server start and cleanup both failed.", startException, cleanupException);
+                    }
+                    throw;
+                }
+            }
+            finally {
+                _lifecycleLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Wait for cancellation to stop the server
+        /// </summary>
+        /// <param name="generation"></param>
+        /// <param name="lifetimeCts"></param>
+        /// <returns></returns>
+        private async Task WaitForCancellationAsync(long generation, CancellationTokenSource lifetimeCts) {
+            try {
+                await Task.Delay(Timeout.Infinite, lifetimeCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                // normal
+            }
+
+            await _lifecycleLock.WaitAsync().ConfigureAwait(false);
+            try {
+                // Ignore cancellation from an obsolete server generation.
+                if (generation != _lifetimeGeneration || !ReferenceEquals(_lifetimeCts, lifetimeCts)) {
+                    return;
+                }
+                await StopWhileLifecycleLockedAsync().ConfigureAwait(false);
+            }
+            finally {
+                _lifecycleLock.Release();
             }
         }
 
@@ -291,68 +416,70 @@ namespace SimpleW {
         /// </summary>
         /// <returns></returns>
         public async Task StopAsync() {
-            if (!IsStarted || IsStopping) {
-                return;
-            }
-
-            _log.Info($"server stopping {_listenUrl} ...");
-            IsStopping = true;
-
+            ThrowIfLifecycleCallback();
+            await _lifecycleLock.WaitAsync().ConfigureAwait(false);
             try {
-                _lifetimeCts?.Cancel();
+                await StopWhileLifecycleLockedAsync().ConfigureAwait(false);
             }
-            catch { }
-
-            if (_lifetimeTask != null) {
-                try {
-                    await _lifetimeTask.ConfigureAwait(false);
-                }
-                catch { }
+            finally {
+                _lifecycleLock.Release();
             }
-            _log.Info($"server stopped {_listenUrl}");
         }
 
         /// <summary>
-        /// Wait for cancellation to stop the server
+        /// Stop the current generation. Must be called while holding _lifecycleLock.
         /// </summary>
-        /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        private async Task WaitForCancellationAsync(CancellationToken cancellationToken) {
-            try {
-                await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+        private async Task StopWhileLifecycleLockedAsync() {
+            SimpleWServerState state = State;
+            if (state == SimpleWServerState.Stopped) {
+                return;
             }
-            catch (OperationCanceledException) {
-                // normal
+            if (state != SimpleWServerState.Started && state != SimpleWServerState.Faulted) {
+                throw new InvalidOperationException($"The server cannot stop from state '{state}'.");
+            }
+
+            State = SimpleWServerState.Stopping;
+            _log.Info($"server stopping {_listenUrl} ...");
+
+            CancellationTokenSource? lifetimeCts = _lifetimeCts;
+            try { lifetimeCts?.Cancel(); }
+            catch { }
+
+            bool engineStopFailed = false;
+            try {
+                await Engine.StopAsync(this, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex) {
+                engineStopFailed = true;
+                _log.Fatal("server engine failed to stop", ex);
+                throw;
             }
             finally {
-                try { await Engine.StopAsync(this).ConfigureAwait(false); }
-                catch { }
                 CloseAllSessions();
+                await StopSessionTimeoutLoopAsync().ConfigureAwait(false);
 
-                // stop idle timer
-                Task? t = _sessionTimeoutTask;
-                _sessionTimeoutTask = null;
-                if (t != null) {
-                    try { await t.ConfigureAwait(false); }
-                    catch { }
-                }
-
-                // telemetry
                 try { Telemetry?.Dispose(); }
                 catch { }
                 Telemetry = null;
 
-                // reset state
-                IsStarted = false;
-                IsStopping = false;
+                if (ReferenceEquals(_lifetimeCts, lifetimeCts)) {
+                    _lifetimeCts = null;
+                    _lifetimeTask = null;
+                }
+                lifetimeCts?.Dispose();
 
-                _lifetimeCts?.Dispose();
-                _lifetimeCts = null;
-                _lifetimeTask = null;
+                if (engineStopFailed) {
+                    State = SimpleWServerState.Faulted;
+                }
+            }
 
-                // notify subscribers
+            State = SimpleWServerState.Stopped;
+            if (_stoppedNotificationPending) {
+                _stoppedNotificationPending = false;
                 await FireStoppedCallbacksAsync().ConfigureAwait(false);
             }
+            _log.Info($"server stopped {_listenUrl}");
         }
 
         /// <summary>
@@ -370,24 +497,22 @@ namespace SimpleW {
         /// <exception cref="ListenerReloadException">The listener reload failed. Inspect the exception to determine whether the previous listener was restored.</exception>
         public async Task ReloadListenerAsync(Action<SimpleWServer> reconfigure, CancellationToken cancellationToken = default) {
             ArgumentNullException.ThrowIfNull(reconfigure);
+            ThrowIfLifecycleCallback();
 
-            if (!IsStarted) {
-                InvalidOperationException ex = new("server must be started to reload the listener.");
-                _log.Error(ex.Message, ex);
-                throw ex;
-            }
-            if (IsStopping) {
-                return;
-            }
-
-            await _listenerReloadLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-            EndPoint? oldEndPoint = EndPoint;
+            await _lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try {
-                if (!IsStarted || IsStopping) {
-                    return;
+                SimpleWServerState state = State;
+                if (state != SimpleWServerState.Started) {
+                    InvalidOperationException ex = new($"The server must be started to reload the listener (current state: '{state}').");
+                    _log.Error(ex.Message, ex);
+                    throw ex;
                 }
 
-                IsListenerReloading = true;
+                EndPoint oldEndPoint;
+                lock (_stateLock) {
+                    oldEndPoint = EndPoint;
+                }
+                State = SimpleWServerState.Reloading;
                 _log.Info($"server reloading {_listenUrl}...");
 
                 try {
@@ -396,20 +521,31 @@ namespace SimpleW {
                     // callback
                     reconfigure(this);
                     // new listener + restart accept loop(s)
-                    EndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false) ?? EndPoint;
+                    EndPoint? reloadedEndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false);
+                    lock (_stateLock) {
+                        EndPoint = reloadedEndPoint ?? EndPoint;
+                        _state = SimpleWServerState.Started;
+                    }
                     _log.Warn($"server reloaded at {_listenUrl}");
                 }
                 catch (Exception exReload) {
                     _log.Warn($"server failed to reload at {_listenUrl}", exReload);
                     // rollback best effort
                     try {
-                        await Engine.StopAsync(this, cancellationToken).ConfigureAwait(false);
-                        EndPoint = oldEndPoint;
+                        await Engine.StopAsync(this, CancellationToken.None).ConfigureAwait(false);
+                        lock (_stateLock) {
+                            EndPoint = oldEndPoint;
+                        }
                         _log.Warn($"server restoring at {_listenUrl}", exReload);
-                        EndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false) ?? EndPoint;
+                        EndPoint? restoredEndPoint = await Engine.StartAsync(this, _bufferPool, CancellationToken.None).ConfigureAwait(false);
+                        lock (_stateLock) {
+                            EndPoint = restoredEndPoint ?? EndPoint;
+                            _state = SimpleWServerState.Started;
+                        }
                         _log.Warn($"server restored at {_listenUrl}");
                     }
                     catch (Exception exRollback) {
+                        State = SimpleWServerState.Faulted;
                         _log.Fatal($"server failed to restore at {_listenUrl}", exRollback);
                         throw new ListenerReloadException(exReload, exRollback);
                     }
@@ -417,8 +553,7 @@ namespace SimpleW {
                 }
             }
             finally {
-                IsListenerReloading = false;
-                _listenerReloadLock.Release();
+                _lifecycleLock.Release();
             }
         }
 
@@ -470,19 +605,28 @@ namespace SimpleW {
         /// Fire Started Callbacks
         /// </summary>
         private void FireStartedCallbacks() {
-            // fluent sync
-            if (_onStarted != null) {
-                foreach (Action<SimpleWServer> cb in _onStarted.GetInvocationList()) {
-                    try {
-                        cb(this);
+            _lifecycleCallbackDepth.Value++;
+            try {
+                // fluent sync
+                if (_onStarted != null) {
+                    foreach (Action<SimpleWServer> cb in _onStarted.GetInvocationList()) {
+                        try {
+                            cb(this);
+                        }
+                        catch { }
                     }
-                    catch { }
                 }
             }
+            finally {
+                _lifecycleCallbackDepth.Value--;
+            }
+
             // fluent async (fire and forget: do not block StartAsync)
             if (_onStartedAsync != null) {
                 foreach (Func<SimpleWServer, Task> cb in _onStartedAsync.GetInvocationList()) {
                     _ = Task.Run(async () => {
+                        // Async callbacks run after the serialized start callback scope and may reload the listener.
+                        _lifecycleCallbackDepth.Value = 0;
                         try {
                             await cb(this).ConfigureAwait(false);
                         }
@@ -497,19 +641,25 @@ namespace SimpleW {
         /// </summary>
         /// <returns></returns>
         private async Task FireStoppedCallbacksAsync() {
-            // fluent sync
-            if (_onStopped != null) {
-                foreach (Action<SimpleWServer> cb in _onStopped.GetInvocationList()) {
-                    try { cb(this); }
-                    catch { }
+            _lifecycleCallbackDepth.Value++;
+            try {
+                // fluent sync
+                if (_onStopped != null) {
+                    foreach (Action<SimpleWServer> cb in _onStopped.GetInvocationList()) {
+                        try { cb(this); }
+                        catch { }
+                    }
+                }
+                // fluent async (await: StopAsync waits for full shutdown)
+                if (_onStoppedAsync != null) {
+                    foreach (Func<SimpleWServer, Task> cb in _onStoppedAsync.GetInvocationList()) {
+                        try { await cb(this).ConfigureAwait(false); }
+                        catch { }
+                    }
                 }
             }
-            // fluent async (await: StopAsync waits for full shutdown)
-            if (_onStoppedAsync != null) {
-                foreach (Func<SimpleWServer, Task> cb in _onStoppedAsync.GetInvocationList()) {
-                    try { await cb(this).ConfigureAwait(false); }
-                    catch { }
-                }
+            finally {
+                _lifecycleCallbackDepth.Value--;
             }
         }
 
@@ -552,6 +702,7 @@ namespace SimpleW {
         /// </summary>
         /// <param name="module"></param>
         /// <exception cref="ArgumentNullException"></exception>
+        /// <exception cref="InvalidOperationException">The server is not stopped.</exception>
         /// <example>
         /// // declare a test module
         /// public sealed class TestModule : IHttpModule {
@@ -576,7 +727,10 @@ namespace SimpleW {
         /// </example>
         public void UseModule(IHttpModule module) {
             ArgumentNullException.ThrowIfNull(module);
-            module.Install(this);
+            lock (_stateLock) {
+                EnsureStateStopped("Modules must be installed before starting the server.");
+                module.Install(this);
+            }
         }
 
         #endregion middleware and module
@@ -622,13 +776,10 @@ namespace SimpleW {
         public SimpleWServer UseRouter(IRouter router) {
             ArgumentNullException.ThrowIfNull(router);
 
-            if (IsStarted) {
-                InvalidOperationException ex = new("Router must be configured before starting the server.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
+            lock (_stateLock) {
+                EnsureStateStopped("Router must be configured before starting the server.");
+                Router = router;
             }
-
-            Router = router;
             return this;
         }
 
@@ -650,13 +801,10 @@ namespace SimpleW {
         public SimpleWServer UseControllerActionExecutorFactory(ControllerActionExecutorFactory factory) {
             ArgumentNullException.ThrowIfNull(factory);
 
-            if (IsStarted) {
-                InvalidOperationException ex = new("Controller action executor factory must be configured before starting the server.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
+            lock (_stateLock) {
+                EnsureStateStopped("Controller action executor factory must be configured before starting the server.");
+                ControllerActionExecutorFactory = factory;
             }
-
-            ControllerActionExecutorFactory = factory;
             return this;
         }
 
@@ -975,10 +1123,23 @@ namespace SimpleW {
         }
 
         /// <summary>
+        /// Stop Session Timeout Task
+        /// </summary>
+        /// <returns></returns>
+        private async Task StopSessionTimeoutLoopAsync() {
+            Task? task = _sessionTimeoutTask;
+            _sessionTimeoutTask = null;
+            if (task != null) {
+                try { await task.ConfigureAwait(false); }
+                catch { }
+            }
+        }
+
+        /// <summary>
         /// Close and Remove Session Timeout
         /// </summary>
         private void CheckSessionTimeoutCore() {
-            if (!IsStarted || IsStopping) {
+            if (State != SimpleWServerState.Started && State != SimpleWServerState.Reloading) {
                 return;
             }
 
@@ -1019,12 +1180,12 @@ namespace SimpleW {
         /// <param name="jsonEngine"></param>
         /// <returns></returns>
         public SimpleWServer ConfigureJsonEngine(IJsonEngine jsonEngine) {
-            if (IsStarted) {
-                InvalidOperationException ex = new("JsonEngine must be configured before starting the server.");
-                _log.Warn(ex.Message, ex);
-                throw ex;
+            ArgumentNullException.ThrowIfNull(jsonEngine);
+
+            lock (_stateLock) {
+                EnsureStateStopped("JsonEngine must be configured before starting the server.");
+                JsonEngine = jsonEngine;
             }
-            JsonEngine = jsonEngine;
             return this;
         }
 
@@ -1256,6 +1417,43 @@ namespace SimpleW {
 
             return this;
         }
+
+    }
+
+    /// <summary>
+    /// SimpleW server lifecycle state.
+    /// </summary>
+    public enum SimpleWServerState {
+
+        /// <summary>
+        /// The server is not running.
+        /// </summary>
+        Stopped,
+
+        /// <summary>
+        /// The server is starting its listener and runtime services.
+        /// </summary>
+        Starting,
+
+        /// <summary>
+        /// The server is running.
+        /// </summary>
+        Started,
+
+        /// <summary>
+        /// The server is replacing its listener.
+        /// </summary>
+        Reloading,
+
+        /// <summary>
+        /// The server is stopping.
+        /// </summary>
+        Stopping,
+
+        /// <summary>
+        /// A lifecycle operation failed and cleanup is required.
+        /// </summary>
+        Faulted
 
     }
 

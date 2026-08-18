@@ -17,6 +17,7 @@ namespace SimpleW {
         /// <summary>
         /// Start the engine and begin accepting connections.
         /// Return the effective bound endpoint when it differs from the configured one.
+        /// If startup fails, the engine must release every resource acquired by that startup attempt before throwing.
         /// Listener engines override this member.
         /// </summary>
         /// <param name="server"></param>

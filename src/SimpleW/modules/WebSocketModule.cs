@@ -191,10 +191,6 @@ namespace SimpleW.Modules {
         /// <param name="server"></param>
         /// <exception cref="InvalidOperationException"></exception>
         public void Install(SimpleWServer server) {
-            if (server.IsStarted) {
-                throw new InvalidOperationException("WebSocketModule must be installed before server start.");
-            }
-
             // accept prefix
             server.MapGet(_options.Prefix, (HttpSession session) => HandlerAsync(session));
             // accept prefix wildcard as fallback (but will enforce exact match)

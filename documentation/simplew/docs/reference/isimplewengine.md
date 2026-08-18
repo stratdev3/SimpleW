@@ -15,15 +15,20 @@ string Name { get; }
 /// <summary>
 /// Start the engine and begin accepting connections.
 /// Return the effective bound endpoint when it differs from the configured one.
+/// If startup fails, the engine must release every resource acquired by that startup attempt before throwing.
 /// </summary>
 /// <param name="server"></param>
+/// <param name="bufferPool"></param>
 /// <param name="cancellationToken"></param>
 /// <returns></returns>
 Task<EndPoint?> StartAsync(
     SimpleWServer server,
+    ArrayPool<byte> bufferPool,
     CancellationToken cancellationToken = default
 );
 ```
+
+A successful return transfers responsibility for the running listener to `SimpleWServer`. If `StartAsync()` throws, the engine must roll back its own partial startup; the server will not call `StopAsync()` for an unsuccessful start.
 
 ```csharp
 /// <summary>

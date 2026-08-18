@@ -40,12 +40,6 @@ namespace SimpleW.Service.Chaos {
         /// <param name="server"></param>
         /// <exception cref="InvalidOperationException"></exception>
         public void Install(SimpleWServer server) {
-            if (server.IsStarted) {
-                InvalidOperationException ex = new("ChaosModule must be installed before server start.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
-
             _log.Info("installing...");
 
             // Middleware = before routing -> affects everything under Prefix (API)

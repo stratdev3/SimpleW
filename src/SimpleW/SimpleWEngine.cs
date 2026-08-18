@@ -218,7 +218,7 @@ namespace SimpleW {
         /// <returns>True when the accept loop can continue.</returns>
         private bool ProcessAcceptSocket(SocketAsyncEventArgs e) {
             if (e.SocketError == SocketError.Success && e.AcceptSocket != null) {
-                if (_server == null || _bufferPool == null || _server.IsStopping) {
+                if (_server == null || _bufferPool == null || !CanServerAcceptConnections(_server)) {
                     try { e.AcceptSocket.Dispose(); }
                     catch { }
                     return CanAcceptMore();
@@ -288,7 +288,18 @@ namespace SimpleW {
             return _listenSocket != null
                    && !_listenSocket.SafeHandle.IsInvalid
                    && _server != null
-                   && !_server.IsStopping;
+                   && CanServerAcceptConnections(_server);
+        }
+
+        /// <summary>
+        /// Indicates whether the server lifecycle currently permits new connections.
+        /// </summary>
+        /// <param name="server"></param>
+        /// <returns></returns>
+        private static bool CanServerAcceptConnections(SimpleWServer server) {
+            return server.State == SimpleWServerState.Starting
+                   || server.State == SimpleWServerState.Started
+                   || server.State == SimpleWServerState.Reloading;
         }
 
         #region tls

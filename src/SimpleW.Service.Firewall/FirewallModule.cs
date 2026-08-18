@@ -48,12 +48,6 @@ namespace SimpleW.Service.Firewall {
         /// <param name="server"></param>
         /// <exception cref="InvalidOperationException"></exception>
         public void Install(SimpleWServer server) {
-            if (server.IsStarted) {
-                InvalidOperationException ex = new("FirewallModule must be installed before server start.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
-
             _log.Info("installing...");
             server.UseMiddleware(MiddlewareAsync);
             FirewallModuleExtension.Register(server, this);

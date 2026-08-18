@@ -16,7 +16,7 @@ public interface IHttpModule {
 }
 ```
 
-The `Install` method is called once when the module is registered.
+The `Install` method is a callback invoked by `SimpleWServer.UseModule()` when the module is registered.
 Inside this method, the module can:
 
 - Register routes
@@ -35,14 +35,19 @@ You can register a module using the `UseModule` method :
 server.UseModule(IHttpModule module);
 ```
 
-This immediately invokes the module’s `Install` method.
+This immediately invokes the module’s `Install` method. Module installation is only allowed while `server.State == SimpleWServerState.Stopped`; otherwise `UseModule()` throws `InvalidOperationException` without calling `Install()`.
 
 ```csharp
 public void UseModule(IHttpModule module) {
     ArgumentNullException.ThrowIfNull(module);
-    module.Install(this);
+    lock (_stateLock) {
+        EnsureStoppedForConfiguration("Modules must be installed before starting the server.");
+        module.Install(this);
+    }
 }
 ```
+
+The lifecycle validation belongs to `UseModule()`. Custom module implementations should not repeat the `State` check in their `Install()` method, and application code should not call `Install()` directly.
 
 
 ## Example: Simple Module

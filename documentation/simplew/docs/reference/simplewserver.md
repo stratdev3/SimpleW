@@ -192,19 +192,33 @@ public sealed class ListenerReloadException : Exception {
 
 `ListenerReloadException.InnerException` references `ReloadException`. A successful rollback does not turn the requested reload into a successful operation.
 
-```csharp
-/// <summary>
-/// Is the server started?
-/// </summary>
-public bool IsStarted { get; private set; }
-```
+## State
+
+`State` exposes a thread-safe snapshot of the server lifecycle. The former `IsStarted`, `IsStopping`, and `IsListenerReloading` properties have been removed.
 
 ```csharp
-/// <summary>
-/// Is the server currently stopping?
-/// </summary>
-public bool IsStopping { get; private set; } = false;
+public enum SimpleWServerState {
+    Stopped,
+    Starting,
+    Started,
+    Reloading,
+    Stopping,
+    Faulted
+}
+
+public SimpleWServerState State { get; }
 ```
+
+| State | Meaning |
+| --- | --- |
+| `Stopped` | The server is not running and can be configured or started. |
+| `Starting` | The engine and runtime services are starting. |
+| `Started` | The server is running normally. |
+| `Reloading` | The listener is being replaced or restored. |
+| `Stopping` | The engine and local resources are being stopped. |
+| `Faulted` | A start cleanup, stop, or reload rollback failed. Call `StopAsync()` to retry cleanup. |
+
+Lifecycle operations are serialized. A concurrent operation waits for the current transition, then applies its intent to the resulting state. `StartAsync()` and `ReloadListenerAsync()` reject `Faulted`; a successful recovery through `StopAsync()` returns the server to `Stopped`.
 
 ## Callbacks
 
@@ -246,13 +260,10 @@ See an [example](../guide/server.md#optional-lifecycle-callbacks-fluent).
 public SimpleWServer UseRouter(IRouter router) {
     ArgumentNullException.ThrowIfNull(router);
 
-    if (IsStarted) {
-        InvalidOperationException ex = new("Router must be configured before starting the server.");
-        _log.Warn(ex.Message, ex);
-        throw ex;
+    lock (_stateLock) {
+        EnsureStoppedForConfiguration("Router must be configured before starting the server.");
+        Router = router;
     }
-
-    Router = router;
     return this;
 }
 ```
@@ -398,8 +409,11 @@ See more [example](../guide/middleware.md).
 /// </summary>
 /// <param name="module"></param>
 /// <exception cref="ArgumentNullException"></exception>
+/// <exception cref="InvalidOperationException">The server is not stopped.</exception>
 public void UseModule(IHttpModule module)
 ```
+
+`UseModule()` is the supported module installation entry point. It invokes `IHttpModule.Install()` only while `State == SimpleWServerState.Stopped`; module implementations should not repeat this validation.
 
 See more [example](../guide/module.md).
 

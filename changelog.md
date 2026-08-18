@@ -22,9 +22,13 @@ Notes :
 
 This major release completely rewrites `ISimpleWEngine` so alternative engines can be provided as addons, and introduces Ioxide as the first alternative engine implementation.
 
+### feature
+
+- feature(SimpleW): introduce a real SimpleWServerState (#415)
 
 ### breakingChange
 
+- Replaced `SimpleWServer.IsStarted`, `SimpleWServer.IsStopping`, and `SimpleWServer.IsListenerReloading` with the thread-safe `SimpleWServer.State` lifecycle machine (`Stopped`, `Starting`, `Started`, `Reloading`, `Stopping`, and `Faulted`). Lifecycle operations are now serialized; recover a `Faulted` server with `StopAsync()` before restarting it.
 - Renamed `HttpSession.IsSsl` to `HttpSession.IsEncrypted`.
 - Split `HttpSession.ClientCertificate` into `HttpSession.NegotiatedApplicationProtocol`, `HttpSession.ClientCertificateSubject`, `HttpSession.ClientCertificateEmailAddress` and `HttpSession.IsClientCertificateAuthenticated`.
 - Removed `HttpSession.Socket` and `HttpSession.TransportStream` so sessions remain engine-neutral. Use `HttpSession.LocalEndPoint` and `HttpSession.RemoteEndPoint` for endpoint information, and `HttpSession.AbortConnectionAsync()` to abort the underlying connection.

@@ -145,10 +145,6 @@ namespace SimpleW.Modules {
             /// <param name="server"></param>
             /// <exception cref="InvalidOperationException"></exception>
             public void Install(SimpleWServer server) {
-                if (server.IsStarted) {
-                    throw new InvalidOperationException("CorsModule must be installed before server start.");
-                }
-
                 _log.Info($"installing with prefix {_options.Prefix} ...");
 
                 // Global middleware (but we filter by Prefix)

@@ -51,12 +51,6 @@ namespace SimpleW.Service.Latency {
         /// </summary>
         /// <param name="server"></param>
         public void Install(SimpleWServer server) {
-            if (server.IsStarted) {
-                InvalidOperationException ex = new("LatencyModule must be installed before server start.");
-                _log.Fatal(ex.Message, ex);
-                throw ex;
-            }
-
             _log.Info("installing...");
 
             server.UseMiddleware(async (session, next) => {

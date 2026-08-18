@@ -161,7 +161,7 @@ namespace SimpleW.Engine.Ioxide {
             SimpleWServer? server = _server;
             IPEndPoint? endpoint = _endpoint;
             ArrayPool<byte>? bufferPool = _bufferPool;
-            if (server == null || endpoint == null || bufferPool == null || server.IsStopping) {
+            if (server == null || endpoint == null || bufferPool == null || !CanServerAcceptConnections(server)) {
                 connection.DecRef();
                 return;
             }
@@ -207,6 +207,17 @@ namespace SimpleW.Engine.Ioxide {
                     connection.DecRef();
                 }
             }
+        }
+
+        /// <summary>
+        /// Indicates whether the server lifecycle currently permits new connections.
+        /// </summary>
+        /// <param name="server"></param>
+        /// <returns></returns>
+        private static bool CanServerAcceptConnections(SimpleWServer server) {
+            return server.State == SimpleWServerState.Starting
+                   || server.State == SimpleWServerState.Started
+                   || server.State == SimpleWServerState.Reloading;
         }
 
         /// <summary>

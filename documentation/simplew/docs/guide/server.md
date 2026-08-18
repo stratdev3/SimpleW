@@ -8,10 +8,36 @@ You can use it in a **procedural** style (step-by-step calls) or in a **fluent**
 
 | Method | Behavior |
 |---|---|
-| `StartAsync(ct)` | Starts listening **without blocking** (returns immediately). Validates options before starting. |
+| `StartAsync(ct)` | Starts listening and completes once startup succeeds, without waiting for the server lifetime. |
 | `RunAsync(ct)` | Starts the server and **blocks** until the server is stopped / cancelled. |
 | `StopAsync()` | Stops listening, closes sessions, disposes internal resources. |
 | `ReloadListenerAsync(reconfigure, ct)` | Hot-reloads the **listener** (endpoint / TLS, etc.) while the server is running. |
+
+
+## Lifecycle state
+
+`SimpleWServer.State` is a thread-safe snapshot represented by `SimpleWServerState`:
+
+| State | Meaning |
+|---|---|
+| `Stopped` | Not running; pre-start configuration is allowed. |
+| `Starting` | The engine is starting. |
+| `Started` | Running normally. |
+| `Reloading` | Replacing or restoring the listener. |
+| `Stopping` | Stopping the engine and cleaning local resources. |
+| `Faulted` | Startup cleanup, listener restoration, or engine shutdown failed. |
+
+The normal transitions are:
+
+```text
+Stopped -> Starting -> Started
+Started -> Reloading -> Started
+Started -> Stopping -> Stopped
+```
+
+All lifecycle operations use the same synchronization point. Concurrent calls wait for the transition in progress and then apply their intent. For example, two starts only start the engine once, a stop during startup waits and then stops, and a start during shutdown waits and then starts a new generation.
+
+`StartAsync()` and `ReloadListenerAsync()` reject a server in `Faulted`. Call `StopAsync()` to retry cleanup; after it succeeds, `State` is `Stopped` and the server can be started again.
 
 
 ## Instantiation
@@ -30,9 +56,9 @@ var server2 = new SimpleWServer(new IPEndPoint(IPAddress.Any, 8081));
 
 ## Configuration
 
-`Configure(Action<SimpleWSServerOptions>)` lets you customize server options **before** starting.
+`Configure(Action<SimpleWSServerOptions>)` lets you customize server options while `State == SimpleWServerState.Stopped`.
 
-> Important: calling `Configure(...)` after the server has started throws an exception.
+> Important: calling `Configure(...)` during any lifecycle transition or while the server is running throws an exception.
 
 ```csharp
 server.Configure(options => {
@@ -51,8 +77,11 @@ See all [options](../reference/simplewserveroptions.md).
 ## Optional: lifecycle callbacks (fluent)
 
 You can hook into lifecycle events :
+
 - `OnStarted(Action<SimpleWServer>)` / `OnStarted(Func<SimpleWServer, Task>)`
 - `OnStopped(Action<SimpleWServer>)` / `OnStopped(Func<SimpleWServer, Task>)`
+
+`OnStarted` observes `State == SimpleWServerState.Started`, and `OnStopped` observes `State == SimpleWServerState.Stopped`. Lifecycle methods must not be called synchronously from these callbacks; such reentrant calls are rejected to prevent a deadlock.
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 8080)
@@ -186,7 +215,7 @@ await server.RunAsync(cts.Token);
 await server.StopAsync();
 ```
 
-Calling `StopAsync()` multiple times is safe (it returns early if already stopped/stopping).
+Calling `StopAsync()` multiple times is safe. Concurrent calls are serialized and the engine is stopped only once. If an engine stop fails, local cleanup still completes, `State` becomes `Faulted`, and a later `StopAsync()` retries engine cleanup.
 
 
 ## Reloading the listener at runtime
@@ -214,10 +243,12 @@ try {
 }
 catch (ListenerReloadException ex) when (ex.ListenerRestored) {
     // The requested configuration failed, but the previous listener is active again.
+    Debug.Assert(server.State == SimpleWServerState.Started);
     Console.Error.WriteLine(ex.ReloadException);
 }
 catch (ListenerReloadException ex) {
     // Both the reload and the rollback failed. The listener is unavailable.
+    Debug.Assert(server.State == SimpleWServerState.Faulted);
     Console.Error.WriteLine(ex.ReloadException);
     Console.Error.WriteLine(ex.RollbackException);
 }
@@ -226,6 +257,8 @@ catch (ListenerReloadException ex) {
 - `ReloadException` is the original error raised while applying or starting the new listener.
 - `RollbackException` is `null` when the previous listener was restored; otherwise it contains the restoration error.
 - `ListenerRestored` is `true` only when the rollback completed successfully.
+
+When `ListenerRestored` is `true`, `State` is `Started`. When both reload and rollback fail, `State` is `Faulted`; use `StopAsync()` to attempt recovery before starting again.
 
 Restoring the listener keeps the server available, but the requested reload still failed and is therefore always reported to the caller.
 

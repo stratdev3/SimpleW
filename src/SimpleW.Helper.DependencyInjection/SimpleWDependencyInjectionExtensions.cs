@@ -35,7 +35,7 @@ namespace SimpleW.Helper.DependencyInjection {
             ArgumentNullException.ThrowIfNull(server);
             ArgumentNullException.ThrowIfNull(rootProviderAccessor);
 
-            if (server.IsStarted) {
+            if (server.State != SimpleWServerState.Stopped) {
                 throw new InvalidOperationException("Dependency injection must be configured before starting the server.");
             }
 
