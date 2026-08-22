@@ -63,22 +63,15 @@ namespace SimpleW.Service.LetsEncrypt {
             server.MapGet(_options.ChallengePath, (HttpSession session, string token) => ChallengeHandlerAsync(session, token));
             server.Map("HEAD", _options.ChallengePath, (HttpSession session, string token) => ChallengeHeadHandlerAsync(session, token));
 
-            // Startup orchestration
-            server.OnStarted(async s => {
-                try {
+            // Lifecycle orchestration
+            server.OnStateChanged(async (_, state) => {
+                if (state == SimpleWServerState.Started) {
                     StartBackgroundLoop();
-                    // ensure on startup (fire once)
-                    await EnsureCertificateAsync(force: false, CancellationToken.None).ConfigureAwait(false);
                 }
-                catch (Exception ex) {
-                    // don't crash server lifetime
-                    _log.Error("startup ensure certificate failed", ex);
+                else if (state == SimpleWServerState.Stopped) {
+                    try { await StopBackgroundLoopAsync().ConfigureAwait(false); }
+                    catch { }
                 }
-            });
-
-            server.OnStopped(async s => {
-                try { await StopBackgroundLoopAsync().ConfigureAwait(false); }
-                catch { }
             });
 
             _log.Info("installed");
@@ -120,8 +113,12 @@ namespace SimpleW.Service.LetsEncrypt {
             if (_cts != null) {
                 return;
             }
-            _cts = new CancellationTokenSource();
-            _loop = Task.Run(() => RenewalLoopAsync(_cts.Token));
+            CancellationTokenSource cts = new();
+            _cts = cts;
+
+            using (ExecutionContext.SuppressFlow()) {
+                _loop = Task.Run(() => RunBackgroundLoopAsync(cts.Token), CancellationToken.None);
+            }
         }
 
         /// <summary>
@@ -145,6 +142,28 @@ namespace SimpleW.Service.LetsEncrypt {
 
             _cts.Dispose();
             _cts = null;
+        }
+
+        /// <summary>
+        /// Ensure the certificate once, then run periodic renewal checks.
+        /// </summary>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        private async Task RunBackgroundLoopAsync(CancellationToken ct) {
+            try {
+                await EnsureCertificateAsync(force: false, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                // normal
+                return;
+            }
+            catch (Exception ex) {
+                _log.Error("startup ensure certificate failed", ex);
+            }
+
+            if (!ct.IsCancellationRequested) {
+                await RenewalLoopAsync(ct).ConfigureAwait(false);
+            }
         }
 
         /// <summary>

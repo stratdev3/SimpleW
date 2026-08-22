@@ -74,19 +74,20 @@ See all [options](../reference/simplewserveroptions.md).
 :::
 
 
-## Optional: lifecycle callbacks (fluent)
+## Optional: lifecycle state callbacks (fluent)
 
-You can hook into lifecycle events :
+You can observe every server state transition with:
 
-- `OnStarted(Action<SimpleWServer>)` / `OnStarted(Func<SimpleWServer, Task>)`
-- `OnStopped(Action<SimpleWServer>)` / `OnStopped(Func<SimpleWServer, Task>)`
+- `OnStateChanged(Action<SimpleWServer, SimpleWServerState>)`
+- `OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task>)`
 
-`OnStarted` observes `State == SimpleWServerState.Started`, and `OnStopped` observes `State == SimpleWServerState.Stopped`. Lifecycle methods must not be called synchronously from these callbacks; such reentrant calls are rejected to prevent a deadlock.
+Subscribing does not emit the initial `Stopped` state. Callbacks run sequentially in registration order, and asynchronous callbacks are awaited before the transition completes. Callback exceptions are logged without interrupting the lifecycle or the remaining subscribers.
+
+Lifecycle methods must not be called from these callbacks; such reentrant calls are rejected to prevent a deadlock.
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 8080)
-                .OnStarted(s => Console.WriteLine("Listening!"))
-                .OnStopped(s => Console.WriteLine("Stopped!"));
+                .OnStateChanged((s, state) => Console.WriteLine($"Server {s.Port} state: {state}"));
 
 await server.RunAsync();
 ```

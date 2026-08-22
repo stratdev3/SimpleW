@@ -36,7 +36,10 @@ namespace ModuleName {
             server.MapControllers<Controller>("/api");
 
             // subscribe to events
-            server.OnStarted(s => {
+            server.OnStateChanged((s, state) => {
+                if (state != SimpleWServerState.Started) {
+                    return;
+                }
                 Process.Start(new ProcessStartInfo {
                     FileName = $"http://localhost:{s.Port}/api/test/hello?name=Chris",
                     UseShellExecute = true

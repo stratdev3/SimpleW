@@ -37,12 +37,13 @@ namespace SimpleW.Service.Background {
             BackgroundModuleExtension.Register(server, _service);
             _service.AttachServer(server);
 
-            server.OnStarted(_ => {
-                _service.Start();
-            });
-
-            server.OnStopped(async _ => {
-                await _service.StopAsync().ConfigureAwait(false);
+            server.OnStateChanged(async (_, state) => {
+                if (state == SimpleWServerState.Started) {
+                    _service.Start();
+                }
+                else if (state == SimpleWServerState.Stopped) {
+                    await _service.StopAsync().ConfigureAwait(false);
+                }
             });
 
             _log.Info("installed");

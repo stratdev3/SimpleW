@@ -222,32 +222,23 @@ Lifecycle operations are serialized. A concurrent operation waits for the curren
 
 ## Callbacks
 
-There are also some callbacks you can subscribe to monitor server state :
+You can subscribe to every real server state transition. Subscribing does not immediately emit the current state.
 
 ```csharp
 /// <summary>
-/// Register a callback invoked right after the server starts listening.
+/// Register a callback invoked after each server state transition.
 /// </summary>
-public SimpleWServer OnStarted(Action<SimpleWServer> callback);
+public SimpleWServer OnStateChanged(Action<SimpleWServer, SimpleWServerState> callback);
 
 /// <summary>
-/// Register an async callback invoked right after the server starts listening.
+/// Register an async callback invoked after each server state transition.
 /// </summary>
-public SimpleWServer OnStarted(Func<SimpleWServer, Task> callback):
+public SimpleWServer OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task> callback);
 ```
 
-```csharp
-/// <summary>
-/// Register a callback invoked after the server has fully stopped.
-/// </summary>
-public SimpleWServer OnStopped(Action<SimpleWServer> callback);
-/// <summary>
-/// Register an async callback invoked after the server has fully stopped.
-/// </summary>
-public SimpleWServer OnStopped(Func<SimpleWServer, Task> callback);
-```
+Callbacks run sequentially in registration order. Async callbacks are awaited before the transition completes. Exceptions are logged and isolated so later subscribers and the lifecycle operation continue. Lifecycle methods cannot be called from a state callback.
 
-See an [example](../guide/server.md#optional-lifecycle-callbacks-fluent).
+See an [example](../guide/server.md#optional-lifecycle-state-callbacks-fluent).
 
 
 ## UseRouter

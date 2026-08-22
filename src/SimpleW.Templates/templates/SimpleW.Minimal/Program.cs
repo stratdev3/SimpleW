@@ -38,7 +38,10 @@ namespace ModuleName {
             });
 
             // subscribe to events
-            server.OnStarted(s => {
+            server.OnStateChanged((s, state) => {
+                if (state != SimpleWServerState.Started) {
+                    return;
+                }
                 Process.Start(new ProcessStartInfo {
                     FileName = $"http://localhost:{s.Port}",
                     UseShellExecute = true

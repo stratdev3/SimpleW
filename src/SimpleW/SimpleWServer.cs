@@ -159,11 +159,6 @@ namespace SimpleW {
                     return _state;
                 }
             }
-            private set {
-                lock (_stateLock) {
-                    _state = value;
-                }
-            }
         }
 
         /// <summary>
@@ -182,7 +177,7 @@ namespace SimpleW {
         private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
 
         /// <summary>
-        /// Identifies lifecycle calls made synchronously from lifecycle callbacks.
+        /// Identifies lifecycle calls made from state change callbacks.
         /// </summary>
         private readonly AsyncLocal<int> _lifecycleCallbackDepth = new();
 
@@ -200,11 +195,6 @@ namespace SimpleW {
         /// Current server lifetime generation.
         /// </summary>
         private long _lifetimeGeneration;
-
-        /// <summary>
-        /// Whether the current generation reached Started and still requires a stopped notification.
-        /// </summary>
-        private bool _stoppedNotificationPending;
 
         /// <summary>
         /// Ensure that state is stopped
@@ -241,7 +231,7 @@ namespace SimpleW {
         /// <exception cref="InvalidOperationException"></exception>
         private void ThrowIfLifecycleCallback() {
             if (_lifecycleCallbackDepth.Value != 0) {
-                throw new InvalidOperationException("Server lifecycle methods cannot be called synchronously from a lifecycle callback.");
+                throw new InvalidOperationException("Server lifecycle methods cannot be called from a state change callback.");
             }
         }
 
@@ -324,7 +314,7 @@ namespace SimpleW {
                 CancellationTokenSource lifetimeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 long generation = unchecked(++_lifetimeGeneration);
                 _lifetimeCts = lifetimeCts;
-                State = SimpleWServerState.Starting;
+                await ChangeStateAsync(SimpleWServerState.Starting).ConfigureAwait(false);
 
                 bool engineStarted = false;
                 try {
@@ -338,16 +328,12 @@ namespace SimpleW {
 
                     lock (_stateLock) {
                         EndPoint = startedEndPoint ?? EndPoint;
-                        _state = SimpleWServerState.Started;
                     }
 
-                    _stoppedNotificationPending = true;
                     Task lifetimeTask = WaitForCancellationAsync(generation, lifetimeCts);
                     _lifetimeTask = lifetimeTask;
                     _log.Info($"server started at {_listenUrl}");
-
-                    // notify subscribers
-                    FireStartedCallbacks();
+                    await ChangeStateAsync(SimpleWServerState.Started).ConfigureAwait(false);
                     return lifetimeTask;
                 }
                 catch (Exception startException) {
@@ -370,8 +356,7 @@ namespace SimpleW {
                         _lifetimeCts = null;
                         _lifetimeTask = null;
                     }
-                    _stoppedNotificationPending = false;
-                    State = (cleanupException == null ? SimpleWServerState.Stopped : SimpleWServerState.Faulted);
+                    await ChangeStateAsync(cleanupException == null ? SimpleWServerState.Stopped : SimpleWServerState.Faulted).ConfigureAwait(false);
 
                     if (cleanupException != null) {
                         throw new AggregateException("Server start and cleanup both failed.", startException, cleanupException);
@@ -439,7 +424,7 @@ namespace SimpleW {
                 throw new InvalidOperationException($"The server cannot stop from state '{state}'.");
             }
 
-            State = SimpleWServerState.Stopping;
+            await ChangeStateAsync(SimpleWServerState.Stopping).ConfigureAwait(false);
             _log.Info($"server stopping {_listenUrl} ...");
 
             CancellationTokenSource? lifetimeCts = _lifetimeCts;
@@ -470,15 +455,11 @@ namespace SimpleW {
                 lifetimeCts?.Dispose();
 
                 if (engineStopFailed) {
-                    State = SimpleWServerState.Faulted;
+                    await ChangeStateAsync(SimpleWServerState.Faulted).ConfigureAwait(false);
                 }
             }
 
-            State = SimpleWServerState.Stopped;
-            if (_stoppedNotificationPending) {
-                _stoppedNotificationPending = false;
-                await FireStoppedCallbacksAsync().ConfigureAwait(false);
-            }
+            await ChangeStateAsync(SimpleWServerState.Stopped).ConfigureAwait(false);
             _log.Info($"server stopped {_listenUrl}");
         }
 
@@ -512,7 +493,7 @@ namespace SimpleW {
                 lock (_stateLock) {
                     oldEndPoint = EndPoint;
                 }
-                State = SimpleWServerState.Reloading;
+                await ChangeStateAsync(SimpleWServerState.Reloading).ConfigureAwait(false);
                 _log.Info($"server reloading {_listenUrl}...");
 
                 try {
@@ -524,9 +505,9 @@ namespace SimpleW {
                     EndPoint? reloadedEndPoint = await Engine.StartAsync(this, _bufferPool, cancellationToken).ConfigureAwait(false);
                     lock (_stateLock) {
                         EndPoint = reloadedEndPoint ?? EndPoint;
-                        _state = SimpleWServerState.Started;
                     }
                     _log.Warn($"server reloaded at {_listenUrl}");
+                    await ChangeStateAsync(SimpleWServerState.Started).ConfigureAwait(false);
                 }
                 catch (Exception exReload) {
                     _log.Warn($"server failed to reload at {_listenUrl}", exReload);
@@ -540,12 +521,12 @@ namespace SimpleW {
                         EndPoint? restoredEndPoint = await Engine.StartAsync(this, _bufferPool, CancellationToken.None).ConfigureAwait(false);
                         lock (_stateLock) {
                             EndPoint = restoredEndPoint ?? EndPoint;
-                            _state = SimpleWServerState.Started;
                         }
                         _log.Warn($"server restored at {_listenUrl}");
+                        await ChangeStateAsync(SimpleWServerState.Started).ConfigureAwait(false);
                     }
                     catch (Exception exRollback) {
-                        State = SimpleWServerState.Faulted;
+                        await ChangeStateAsync(SimpleWServerState.Faulted).ConfigureAwait(false);
                         _log.Fatal($"server failed to restore at {_listenUrl}", exRollback);
                         throw new ListenerReloadException(exReload, exRollback);
                     }
@@ -559,102 +540,62 @@ namespace SimpleW {
 
         #region callbacks
 
-        // fluent callbacks
-        private Action<SimpleWServer>? _onStarted;
-        private Func<SimpleWServer, Task>? _onStartedAsync;
-        private Action<SimpleWServer>? _onStopped;
-        private Func<SimpleWServer, Task>? _onStoppedAsync;
+        // fluent callbacks, stored as a single ordered pipeline
+        private readonly List<Func<SimpleWServer, SimpleWServerState, Task>> _onStateChanged = new();
 
         /// <summary>
-        /// Register a callback invoked right after the server starts listening.
+        /// Register a callback invoked after each server state transition.
         /// </summary>
-        public SimpleWServer OnStarted(Action<SimpleWServer> callback) {
-            ArgumentNullException.ThrowIfNull(callback);
-            _onStarted += callback;
-            return this;
-        }
-
-        /// <summary>
-        /// Register an async callback invoked right after the server starts listening.
-        /// </summary>
-        public SimpleWServer OnStarted(Func<SimpleWServer, Task> callback) {
-            ArgumentNullException.ThrowIfNull(callback);
-            _onStartedAsync += callback;
-            return this;
-        }
-
-        /// <summary>
-        /// Register a callback invoked after the server has fully stopped.
-        /// </summary>
-        public SimpleWServer OnStopped(Action<SimpleWServer> callback) {
-            ArgumentNullException.ThrowIfNull(callback);
-            _onStopped += callback;
-            return this;
-        }
-
-        /// <summary>
-        /// Register an async callback invoked after the server has fully stopped.
-        /// </summary>
-        public SimpleWServer OnStopped(Func<SimpleWServer, Task> callback) {
-            ArgumentNullException.ThrowIfNull(callback);
-            _onStoppedAsync += callback;
-            return this;
-        }
-
-        /// <summary>
-        /// Fire Started Callbacks
-        /// </summary>
-        private void FireStartedCallbacks() {
-            _lifecycleCallbackDepth.Value++;
-            try {
-                // fluent sync
-                if (_onStarted != null) {
-                    foreach (Action<SimpleWServer> cb in _onStarted.GetInvocationList()) {
-                        try {
-                            cb(this);
-                        }
-                        catch { }
-                    }
-                }
-            }
-            finally {
-                _lifecycleCallbackDepth.Value--;
-            }
-
-            // fluent async (fire and forget: do not block StartAsync)
-            if (_onStartedAsync != null) {
-                foreach (Func<SimpleWServer, Task> cb in _onStartedAsync.GetInvocationList()) {
-                    _ = Task.Run(async () => {
-                        // Async callbacks run after the serialized start callback scope and may reload the listener.
-                        _lifecycleCallbackDepth.Value = 0;
-                        try {
-                            await cb(this).ConfigureAwait(false);
-                        }
-                        catch { }
-                    });
-                }
-            }
-        }
-
-        /// <summary>
-        /// Fire Stopped Callbacks
-        /// </summary>
+        /// <param name="callback"></param>
         /// <returns></returns>
-        private async Task FireStoppedCallbacksAsync() {
+        public SimpleWServer OnStateChanged(Action<SimpleWServer, SimpleWServerState> callback) {
+            ArgumentNullException.ThrowIfNull(callback);
+
+            lock (_stateLock) {
+                _onStateChanged.Add((server, state) => {
+                    callback(server, state);
+                    return Task.CompletedTask;
+                });
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Register an async callback invoked after each server state transition.
+        /// </summary>
+        /// <param name="callback"></param>
+        /// <returns></returns>
+        public SimpleWServer OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task> callback) {
+            ArgumentNullException.ThrowIfNull(callback);
+
+            lock (_stateLock) {
+                _onStateChanged.Add(callback);
+            }
+            return this;
+        }
+
+        /// <summary>
+        /// Change the current state and notify subscribers in registration order.
+        /// </summary>
+        /// <param name="state"></param>
+        private async Task ChangeStateAsync(SimpleWServerState state) {
+            Func<SimpleWServer, SimpleWServerState, Task>[] callbacks;
+            lock (_stateLock) {
+                if (_state == state) {
+                    return;
+                }
+                _state = state;
+                callbacks = _onStateChanged.ToArray();
+            }
+
             _lifecycleCallbackDepth.Value++;
             try {
-                // fluent sync
-                if (_onStopped != null) {
-                    foreach (Action<SimpleWServer> cb in _onStopped.GetInvocationList()) {
-                        try { cb(this); }
-                        catch { }
+                foreach (Func<SimpleWServer, SimpleWServerState, Task> callback in callbacks) {
+                    try {
+                        await callback(this, state).ConfigureAwait(false);
                     }
-                }
-                // fluent async (await: StopAsync waits for full shutdown)
-                if (_onStoppedAsync != null) {
-                    foreach (Func<SimpleWServer, Task> cb in _onStoppedAsync.GetInvocationList()) {
-                        try { await cb(this).ConfigureAwait(false); }
-                        catch { }
+                    catch (Exception ex) {
+                        _log.Error($"server state callback failed for '{state}'", ex);
                     }
                 }
             }

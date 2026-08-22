@@ -381,12 +381,15 @@ namespace test {
                 StartHandler = (_, _, _) => Task.FromException<EndPoint?>(startException)
             };
             var server = CreateServer(engine);
+            var states = new List<SimpleWServerState>();
+            server.OnStateChanged((_, state) => states.Add(state));
 
             Exception exception = await Assert.ThrowsAsync<InvalidOperationException>(() => server.StartAsync());
 
             Assert.Same(startException, exception);
             Check.That(server.State).IsEqualTo(SimpleWServerState.Stopped);
             Check.That(engine.StopCallCount).IsEqualTo(0);
+            Assert.Equal(new[] { SimpleWServerState.Starting, SimpleWServerState.Stopped }, states);
         }
 
         [Fact]
@@ -394,7 +397,6 @@ namespace test {
 
             var postStartException = new InvalidOperationException("post-start failed");
             var cleanupException = new InvalidOperationException("cleanup failed");
-            int startedCallCount = 0;
             int isEncryptedReadCount = 0;
             var engine = new ControllableEngine {
                 StartHandler = (_, server, _) => Task.FromResult<EndPoint?>(server.EndPoint),
@@ -406,25 +408,32 @@ namespace test {
                     : Task.CompletedTask
             };
             var server = CreateServer(engine);
-            server.OnStarted(_ => Interlocked.Increment(ref startedCallCount));
+            var states = new List<SimpleWServerState>();
+            server.OnStateChanged((_, state) => states.Add(state));
 
             AggregateException exception = await Assert.ThrowsAsync<AggregateException>(() => server.StartAsync());
 
             Assert.Contains(postStartException, exception.InnerExceptions);
             Assert.Contains(cleanupException, exception.InnerExceptions);
             Check.That(server.State).IsEqualTo(SimpleWServerState.Faulted);
-            Check.That(startedCallCount).IsEqualTo(0);
+            Assert.Equal(new[] { SimpleWServerState.Starting, SimpleWServerState.Faulted }, states);
             await Assert.ThrowsAsync<InvalidOperationException>(() => server.StartAsync());
             Assert.Throws<InvalidOperationException>(() => server.Configure(_ => { }));
             var faultedModule = new TrackingModule();
             Assert.Throws<InvalidOperationException>(() => server.UseModule(faultedModule));
             Check.That(faultedModule.InstallCallCount).IsEqualTo(0);
 
+            states.Clear();
             await server.StopAsync();
             Check.That(server.State).IsEqualTo(SimpleWServerState.Stopped);
             await server.StartAsync();
             Check.That(server.State).IsEqualTo(SimpleWServerState.Started);
-            Check.That(startedCallCount).IsEqualTo(1);
+            Assert.Equal(new[] {
+                SimpleWServerState.Stopping,
+                SimpleWServerState.Stopped,
+                SimpleWServerState.Starting,
+                SimpleWServerState.Started
+            }, states);
             await server.StopAsync();
         }
 
@@ -432,26 +441,28 @@ namespace test {
         public async Task Stop_Failure_Should_Fault_And_A_Subsequent_Stop_Should_Recover() {
 
             var stopException = new InvalidOperationException("stop failed");
-            int stoppedCallCount = 0;
             var engine = new ControllableEngine {
                 StopHandler = (call, _, _) => call == 1
                     ? Task.FromException(stopException)
                     : Task.CompletedTask
             };
             var server = CreateServer(engine);
-            server.OnStopped(_ => Interlocked.Increment(ref stoppedCallCount));
+            var states = new List<SimpleWServerState>();
+            server.OnStateChanged((_, state) => states.Add(state));
             await server.StartAsync();
+            states.Clear();
 
             Exception exception = await Assert.ThrowsAsync<InvalidOperationException>(() => server.StopAsync());
 
             Assert.Same(stopException, exception);
             Check.That(server.State).IsEqualTo(SimpleWServerState.Faulted);
-            Check.That(stoppedCallCount).IsEqualTo(0);
+            Assert.Equal(new[] { SimpleWServerState.Stopping, SimpleWServerState.Faulted }, states);
             await Assert.ThrowsAsync<InvalidOperationException>(() => server.StartAsync());
 
+            states.Clear();
             await server.StopAsync();
             Check.That(server.State).IsEqualTo(SimpleWServerState.Stopped);
-            Check.That(stoppedCallCount).IsEqualTo(1);
+            Assert.Equal(new[] { SimpleWServerState.Stopping, SimpleWServerState.Stopped }, states);
             await server.StartAsync();
             Check.That(server.State).IsEqualTo(SimpleWServerState.Started);
             await server.StopAsync();
@@ -463,6 +474,8 @@ namespace test {
             var engine = new ControllableEngine();
             var server = CreateServer(engine);
             await server.StartAsync();
+            var states = new List<SimpleWServerState>();
+            server.OnStateChanged((_, state) => states.Add(state));
 
             await server.ReloadListenerAsync(s => s.UsePort(5002));
 
@@ -470,6 +483,7 @@ namespace test {
             Check.That(server.Port).IsEqualTo(5002);
             Check.That(engine.StartCallCount).IsEqualTo(2);
             Check.That(engine.StopCallCount).IsEqualTo(1);
+            Assert.Equal(new[] { SimpleWServerState.Reloading, SimpleWServerState.Started }, states);
             await server.StopAsync();
         }
 
@@ -485,6 +499,8 @@ namespace test {
             var server = CreateServer(engine);
             await server.StartAsync();
             EndPoint oldEndPoint = server.EndPoint;
+            var states = new List<SimpleWServerState>();
+            server.OnStateChanged((_, state) => states.Add(state));
 
             ListenerReloadException exception = await Assert.ThrowsAsync<ListenerReloadException>(
                 () => server.ReloadListenerAsync(s => s.UsePort(5002))
@@ -495,6 +511,7 @@ namespace test {
             Assert.Null(exception.RollbackException);
             Assert.Same(oldEndPoint, server.EndPoint);
             Check.That(server.State).IsEqualTo(SimpleWServerState.Started);
+            Assert.Equal(new[] { SimpleWServerState.Reloading, SimpleWServerState.Started }, states);
             await server.StopAsync();
         }
 
@@ -550,6 +567,8 @@ namespace test {
             };
             var server = CreateServer(engine);
             await server.StartAsync();
+            var states = new List<SimpleWServerState>();
+            server.OnStateChanged((_, state) => states.Add(state));
 
             ListenerReloadException exception = await Assert.ThrowsAsync<ListenerReloadException>(
                 () => server.ReloadListenerAsync(s => s.UsePort(5002))
@@ -559,6 +578,7 @@ namespace test {
             Assert.Same(reloadException, exception.ReloadException);
             Assert.Same(rollbackException, exception.RollbackException);
             Check.That(server.State).IsEqualTo(SimpleWServerState.Faulted);
+            Assert.Equal(new[] { SimpleWServerState.Reloading, SimpleWServerState.Faulted }, states);
             await Assert.ThrowsAsync<InvalidOperationException>(() => server.StartAsync());
             await Assert.ThrowsAsync<InvalidOperationException>(() => server.ReloadListenerAsync(_ => { }));
 
@@ -1026,72 +1046,126 @@ namespace test {
         #region callbacks
 
         [Fact]
-        public async Task OnStarted_Should_Invoke_Sync_And_Async_Callbacks() {
+        public async Task OnStateChanged_Should_Notify_Each_Real_Transition() {
 
-            int syncCallCount = 0;
-            var asyncStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var states = new List<SimpleWServerState>();
+            var server = CreateServer(new ControllableEngine());
+            server.OnStateChanged((_, state) => states.Add(state));
 
-            var server = new SimpleWServer(IPAddress.Loopback, 0);
-            server.MapGet("/", () => new { ok = true });
+            Assert.Empty(states);
+            await server.StartAsync();
+            await server.StartAsync();
+            await server.ReloadListenerAsync(_ => { });
+            await server.StopAsync();
+            await server.StopAsync();
 
-            server.OnStarted(s => {
-                Interlocked.Increment(ref syncCallCount);
-                Check.That(s.State).IsEqualTo(SimpleWServerState.Started);
+            Assert.Equal(new[] {
+                SimpleWServerState.Starting,
+                SimpleWServerState.Started,
+                SimpleWServerState.Reloading,
+                SimpleWServerState.Started,
+                SimpleWServerState.Stopping,
+                SimpleWServerState.Stopped
+            }, states);
+        }
+
+        [Fact]
+        public async Task OnStateChanged_Should_Invoke_Sync_And_Async_Callbacks_In_Registration_Order() {
+
+            var calls = new List<string>();
+            var server = CreateServer(new ControllableEngine());
+
+            server.OnStateChanged((s, state) => {
+                Check.That(s.State).IsEqualTo(state);
+                calls.Add($"sync-1:{state}");
             });
-
-            server.OnStarted(async s => {
+            server.OnStateChanged(async (s, state) => {
                 await Task.Yield();
-                Check.That(s.State).IsEqualTo(SimpleWServerState.Started);
-                asyncStarted.TrySetResult(true);
+                Check.That(s.State).IsEqualTo(state);
+                calls.Add($"async:{state}");
+            });
+            server.OnStateChanged((s, state) => {
+                Check.That(s.State).IsEqualTo(state);
+                calls.Add($"sync-2:{state}");
             });
 
             await server.StartAsync();
-            await asyncStarted.Task;
 
-            Check.That(syncCallCount).IsEqualTo(1);
+            Assert.Equal(new[] {
+                "sync-1:Starting",
+                "async:Starting",
+                "sync-2:Starting",
+                "sync-1:Started",
+                "async:Started",
+                "sync-2:Started"
+            }, calls);
 
             await server.StopAsync();
         }
 
         [Fact]
-        public async Task OnStopped_Should_Invoke_Sync_And_Async_Callbacks() {
+        public async Task OnStateChanged_Should_Await_Async_Callbacks() {
 
-            int syncCallCount = 0;
-            int asyncCallCount = 0;
+            var callbackEntered = NewSignal();
+            var releaseCallback = NewSignal();
+            var server = CreateServer(new ControllableEngine());
 
-            var server = new SimpleWServer(IPAddress.Loopback, 0);
-            server.MapGet("/", () => new { ok = true });
-
-            server.OnStopped(s => {
-                Interlocked.Increment(ref syncCallCount);
-                Check.That(s.State).IsEqualTo(SimpleWServerState.Stopped);
+            server.OnStateChanged(async (_, state) => {
+                if (state == SimpleWServerState.Started) {
+                    callbackEntered.TrySetResult(true);
+                    await releaseCallback.Task;
+                }
             });
 
-            server.OnStopped(async s => {
-                await Task.Yield();
-                Interlocked.Increment(ref asyncCallCount);
-                Check.That(s.State).IsEqualTo(SimpleWServerState.Stopped);
-            });
+            Task start = server.StartAsync();
+            await callbackEntered.Task;
 
-            await server.StartAsync();
+            Check.That(start.IsCompleted).IsFalse();
+            releaseCallback.TrySetResult(true);
+            await start;
+
             await server.StopAsync();
-
-            Check.That(syncCallCount).IsEqualTo(1);
-            Check.That(asyncCallCount).IsEqualTo(1);
         }
 
         [Fact]
-        public async Task Synchronous_Lifecycle_Callbacks_Should_Reject_Reentrant_Lifecycle_Calls() {
+        public async Task OnStateChanged_Should_Isolate_Callback_Exceptions() {
+
+            int followingCallbackCount = 0;
+            var server = CreateServer(new ControllableEngine());
+
+            server.OnStateChanged((_, state) => {
+                if (state == SimpleWServerState.Started) {
+                    throw new InvalidOperationException("callback failed");
+                }
+            });
+            server.OnStateChanged((_, state) => {
+                if (state == SimpleWServerState.Started) {
+                    Interlocked.Increment(ref followingCallbackCount);
+                }
+            });
+
+            await server.StartAsync();
+
+            Check.That(server.State).IsEqualTo(SimpleWServerState.Started);
+            Check.That(followingCallbackCount).IsEqualTo(1);
+
+            await server.StopAsync();
+        }
+
+        [Fact]
+        public async Task State_Changed_Callbacks_Should_Reject_Reentrant_Lifecycle_Calls() {
 
             Task? stopFromStarted = null;
             Task? startFromStopped = null;
             var server = CreateServer(new ControllableEngine());
 
-            server.OnStarted(s => {
-                stopFromStarted = s.StopAsync();
-            });
-            server.OnStopped(s => {
-                startFromStopped = s.StartAsync();
+            server.OnStateChanged((s, state) => {
+                if (state == SimpleWServerState.Started) {
+                    stopFromStarted = s.StopAsync();
+                }
+                else if (state == SimpleWServerState.Stopped) {
+                    startFromStopped = s.StartAsync();
+                }
             });
 
             await server.StartAsync();

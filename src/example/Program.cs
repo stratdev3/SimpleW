@@ -219,7 +219,10 @@ namespace example {
         }
 
         public static async Task RunAsync(SimpleWServer server, string scheme, ExampleArguments arguments, CancellationToken cancellationToken) {
-            server.OnStarted(started => {
+            server.OnStateChanged((started, state) => {
+                if (state != SimpleWServerState.Started) {
+                    return;
+                }
                 ExampleConsole.Success($"Listening on {scheme}://localhost:{started.Port}/");
                 ExampleConsole.Info($"Network engine: {started.Engine.Name}.");
 

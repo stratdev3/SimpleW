@@ -40,8 +40,10 @@ namespace Sample {
                 return new { message = "Hello World !" };
             });
 
-            server.OnStarted(s => {
-                Console.WriteLine("server started at http://localhost:{s.Port}/");
+            server.OnStateChanged((s, state) => {
+                if (state == SimpleWServerState.Started) {
+                    Console.WriteLine("server started at http://localhost:{s.Port}/");
+                }
             });
 
             // run server
