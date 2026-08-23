@@ -53,4 +53,4 @@ T DeserializeAnonymous<T>(string json, T model);
 void Populate<T>(string json, T target, IEnumerable<string>? includeProperties = null, IEnumerable<string>? excludeProperties = null);
 ```
 
-See more [examples](../guide/jsonengine.md).
+See more [examples](../guide/replacing-core-components.md#json-engine).

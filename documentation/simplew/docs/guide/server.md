@@ -16,7 +16,7 @@ You can use it in a **procedural** style (step-by-step calls) or in a **fluent**
 
 ## Lifecycle state
 
-`SimpleWServer.State` is a thread-safe snapshot represented by `SimpleWServerState`:
+[`SimpleWServer.State`](../reference/simplewserver.md#state) is a thread-safe snapshot represented by `SimpleWServerState`:
 
 | State | Meaning |
 |---|---|
@@ -56,7 +56,7 @@ var server2 = new SimpleWServer(new IPEndPoint(IPAddress.Any, 8081));
 
 ## Configuration
 
-`Configure(Action<SimpleWSServerOptions>)` lets you customize server options while `State == SimpleWServerState.Stopped`.
+`Configure(Action<SimpleWSServerOptions>)` lets you customize server options.
 
 > Important: calling `Configure(...)` during any lifecycle transition or while the server is running throws an exception.
 
@@ -73,10 +73,12 @@ Options are automatically validated/normalized when starting (`StartAsync` calls
 See all [options](../reference/simplewserveroptions.md).
 :::
 
+For advanced scenarios, see how to replace the [core components](./replacing-core-components.md) used by SimpleW.
 
-## Optional: lifecycle state callbacks (fluent)
 
-You can observe every server state transition with:
+## Lifecycle state callbacks
+
+You can observe every server state transition with [`OnStateChanged`](../reference/simplewserver.md#onstatechanged):
 
 - `OnStateChanged(Action<SimpleWServer, SimpleWServerState>)`
 - `OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task>)`
@@ -92,8 +94,7 @@ var server = new SimpleWServer(IPAddress.Any, 8080)
 await server.RunAsync();
 ```
 
-
-## Optional: configure or replace the default Engine
+## Network Engine
 
 By default, `SimpleWServer` uses `SimpleWEngine` as its network engine.
 
@@ -108,69 +109,6 @@ server.UseEngine(options => {
     options.TcpKeepAlive = true;
 });
 ```
-
-If you need a custom transport/listener implementation, replace it with `UseEngine(ISimpleWEngine)`.
-
-```csharp
-server.UseEngine(new MyCustomEngine());
-```
-
-Your custom engine only needs to implement [`ISimpleWEngine`](../reference/isimplewengine.md). The engine owns its accept loop; for each accepted connection, wrap it as an `ISimpleWEngine` and call `server.CreateSessionAsync(...)`.
-
-Typical use cases :
-- Customize how incoming connections are accepted
-- Experiment with another low-level listener implementation
-- Extend the default engine behavior in a dedicated class
-
-
-## Optional: replace the default Router
-
-By default, SimpleW uses the built-in `Router` implementation.
-
-In advanced scenarios, you can replace the router with a custom implementation.
-
-```csharp
-server.UseRouter(new MyCustomRouter());
-```
-
-::: info
-When the router is replaced, any registered route is lost.
-:::
-
-Typical use cases :
-- Implement a custom routing strategy
-- Wrap the default router to add cross-cutting features
-- Experiment with alternative routing pipelines
-
-
-## Optional: configure default Principal
-
-By default, requests use an anonymous principal.
-
-If you want the server to resolve a default principal for each request, you can use `ConfigurePrincipalResolver(...)`.
-
-```csharp
-server.ConfigurePrincipalResolver(session => {
-    if (session.Request.Headers.TryGetValue("X-User", out string? user) && !string.IsNullOrWhiteSpace(user)) {
-        return new HttpPrincipal(new HttpIdentity(
-            isAuthenticated: true,
-            authenticationType: "Header",
-            identifier: user,
-            name: user,
-            email: null,
-            roles: [ "user" ],
-            properties: null
-        ));
-    }
-
-    return HttpPrincipal.Anonymous;
-});
-```
-
-This is useful for simple global identity resolution.
-For shared authentication and authorization rules, middleware is usually a better fit.
-
-See the [Principal guide](./principal.md).
 
 
 ## Starting the server

@@ -42,7 +42,7 @@ See the [changelog](./service-letsencrypt-changelog.md)
 | Domains | `[]` | Domains included in the certificate (SAN). Must be publicly reachable. |
 | Email | `null` | Email used for ACME registration. Optional but recommended. |
 | StoragePath | `"./letsencrypt"` | Directory where ACME account + cert material is stored. |
-| UseStaging | `false` | If `true`, uses the Let's Encrypt **staging** environment (for testing, avoids rate limits). |
+| UseStaging | `false` | If `true`, uses the Let's Encrypt **staging** environment to validate the ACME setup without consuming production rate limits. |
 | HttpPort | `80` | HTTP port used for **HTTP-01** challenge. Behind a reverse proxy, set this to the **internal port** that actually receives the forwarded challenge requests. |
 | HttpsPort | `443` | HTTPS port the server is expected to serve on (used when auto-configuring HTTPS). |
 | RenewBefore | `30 days` | Renew when certificate expires in less than this duration. |
@@ -53,6 +53,23 @@ See the [changelog](./service-letsencrypt-changelog.md)
 | OnEngineHttpsDisable | Default `SimpleWEngine` callback | Called with `(SimpleWServer server)` to disable HTTPS before HTTP-01 challenge handling. |
 | Protocols | `Tls12 | Tls13` | Enabled TLS protocols used by the default `SimpleWEngine` callback. |
 | KeyStorageFlags | OS-dependent | How private keys are stored/loaded in `X509Certificate2`. Default is OS-aware (Windows user/machine key store, Linux/macOS ephemeral + exportable). |
+
+
+## Staging and production environments
+
+`UseStaging` only selects the Let's Encrypt ACME environment. It does not make the HTTP-01 challenge local or optional.
+
+Both staging and production require:
+
+- Public DNS records pointing to the server
+- Public port 80 to reach the HTTP listener, directly or through a reverse proxy or port forwarding
+- `/.well-known/acme-challenge/*` requests to be forwarded to SimpleW
+
+Staging performs the complete ACME issuance flow, but its certificates are signed by a test certificate authority that is not trusted by browsers and standard clients. A browser warning or a TLS trust error is therefore expected with a staging certificate. Use staging to validate DNS, network routing, and ACME configuration without consuming production rate limits; use production for publicly trusted certificates.
+
+The module option defaults to production (`UseStaging = false`). The `letsencrypt` scenario in the example application deliberately uses staging by default: omit `--production` for staging, or pass `--production` to use the production environment.
+
+Use a different `StoragePath` for each environment, for example `./letsencrypt-staging` and `./letsencrypt-production`. The module reuses a valid certificate already present in its storage directory without checking which ACME environment issued it. Sharing a directory can therefore cause a staging certificate to be reused after switching to production.
 
 
 ## Minimal example
@@ -68,7 +85,7 @@ server.UseLetsEncryptModule(options => {
     options.Email = "letsenc@simplew.net";
     options.Domains = [ "simplew.net", "www.simplew.net" ];
     options.StoragePath = @"C:\private\simplew.net\letsencrypt";
-    // options.UseStaging = true; // for local tests / dry runs (avoids LetsEncrypt production rate limits)
+    // options.UseStaging = true; // validate the ACME setup without consuming production rate limits
 });
 
 await server.RunAsync();
@@ -87,6 +104,8 @@ The module serves this path internally.
 
 Requests are handled **before routing**.
 
+The validation request always arrives on the public port 80, including when using staging. If SimpleW listens on another internal port, configure port forwarding or a reverse proxy and set `HttpPort` to the internal SimpleW port.
+
 
 ## Reverse proxy / forwarded port
 
@@ -98,14 +117,18 @@ If SimpleW is behind a reverse proxy, the proxy must forward :
 
 And `HttpPort` must match the **internal listening port** that actually receives the forwarded request.
 
+Likewise, when the public HTTPS port differs from the SimpleW listener port, forward public port 443 to the internal port configured by `HttpsPort`.
+
 Example:
 
 ```
 Internet :80 -> Nginx -> SimpleW 192.168.1.2:8080
+Internet :443 -> Nginx -> SimpleW 192.168.1.2:4443
 ```
 
 ```csharp
 options.HttpPort = 8080;
+options.HttpsPort = 4443;
 ```
 
 

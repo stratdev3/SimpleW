@@ -29,11 +29,30 @@ Helpers do not participate directly in the service lifecycle but provide reusabl
 Typical examples include utilities, helpers for request handling, configuration helpers, or small abstractions.
 
 
-## Engines
+## Network Engines
 
-**Engine addons** replace the network engine used by `SimpleWServer`.
+**Network Engine addons** add new network engine implementations.
 
-They keep the SimpleW application model intact while changing how connections are accepted, read, and written.
+They allow SimpleW to use different connection handling implementations, depending on performance needs, platform requirements, or external dependencies.
+
+Each Network Engine addon provides :
+- A concrete implementation of `ISimpleWEngine`
+- A consistent API that integrates with `SimpleWServer` configuration
+
+This makes it easy to switch or extend low-level network handling without impacting routing, handlers, or the rest of the application.
+
+
+## Json Engines
+
+**Json Engine addons** add new JSON engine implementations.
+
+They allow SimpleW to support different JSON serializers/deserializers, depending on performance needs, features, or external dependencies.
+
+Each JsonEngine addon provides :
+- A concrete implementation of a [`IJsonEngine`](../reference/ijsonengine.md)
+- A consistent API that integrates with SimpleW’s configuration
+
+This makes it easy to switch or extend JSON handling without impacting the rest of the system.
 
 
 ## Templates
@@ -46,16 +65,3 @@ Templates allow developers to:
 - Create addons with the correct layout and conventions
 - Avoid repetitive setup and boilerplate code
 - Ensure consistency across projects
-
-
-## JsonEngines
-
-**JsonEngine addons** add new JSON engine implementations.
-
-They allow SimpleW to support different JSON serializers/deserializers, depending on performance needs, features, or external dependencies.
-
-Each JsonEngine addon provides :
-- A concrete implementation of a `IJsonEngine`
-- A consistent API that integrates with SimpleW’s configuration
-
-This makes it easy to switch or extend JSON handling without impacting the rest of the system.

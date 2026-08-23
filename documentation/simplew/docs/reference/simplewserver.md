@@ -100,47 +100,6 @@ server.Configure(options => {
 See [`SimpleWSServerOptions`](./simplewserveroptions.md) for server options and [`SimpleWEngineOptions`](./simplewengineoptions.md) for default engine options.
 
 
-## UseEngine
-
-```csharp
-/// <summary>
-/// Network engine used by the server.
-/// </summary>
-public ISimpleWEngine Engine { get; private set; }
-```
-
-By default, `SimpleWServer` uses `SimpleWEngine`.
-
-```csharp
-/// <summary>
-/// Replace the current network engine implementation.
-/// Must be called before the server starts.
-/// </summary>
-/// <param name="engine"></param>
-/// <returns></returns>
-public SimpleWServer UseEngine(ISimpleWEngine engine)
-```
-
-Use `UseEngine(Action<SimpleWEngineOptions>)` to configure the default socket engine.
-
-```csharp
-var server = new SimpleWServer(IPAddress.Any, 8080);
-server.UseEngine(options => {
-    options.ReuseAddress = true;
-    options.TcpNoDelay = true;
-    options.TcpKeepAlive = true;
-});
-```
-
-Use `UseEngine(ISimpleWEngine)` when you want to replace the default network engine with your own implementation.
-
-```csharp
-server.UseEngine(new MyCustomEngine());
-```
-
-The custom engine must implement [`ISimpleWEngine`](../reference/isimplewengine.md).
-
-
 ## Control
 
 ```csharp
@@ -220,7 +179,7 @@ public SimpleWServerState State { get; }
 
 Lifecycle operations are serialized. A concurrent operation waits for the current transition, then applies its intent to the resulting state. `StartAsync()` and `ReloadListenerAsync()` reject `Faulted`; a successful recovery through `StopAsync()` returns the server to `Stopped`.
 
-## Callbacks
+## OnStateChanged
 
 You can subscribe to every real server state transition. Subscribing does not immediately emit the current state.
 
@@ -239,48 +198,6 @@ public SimpleWServer OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task
 Callbacks run sequentially in registration order. Async callbacks are awaited before the transition completes. Exceptions are logged and isolated so later subscribers and the lifecycle operation continue. Lifecycle methods cannot be called from a state callback.
 
 See an [example](../guide/server.md#optional-lifecycle-state-callbacks-fluent).
-
-
-## UseRouter
-
-```csharp
-/// <summary>
-/// Replace the current router implementation.
-/// Must be called before the server starts.
-/// </summary>
-public SimpleWServer UseRouter(IRouter router) {
-    ArgumentNullException.ThrowIfNull(router);
-
-    lock (_stateLock) {
-        EnsureStoppedForConfiguration("Router must be configured before starting the server.");
-        Router = router;
-    }
-    return this;
-}
-```
-
-```csharp
-/// <summary>
-/// Router
-/// </summary>
-public IRouter Router { get; private set; }
-```
-
-The [`Router`](./router) property contains all routes handled by the web server.
-You can list them with `Router.Routes`.
-
-
-## UseControllerActionExecutorFactory
-
-```csharp
-/// <summary>
-/// Replaces the factory used to create controller action executors.
-/// Must be called before the server starts.
-/// </summary>
-/// <param name="factory"></param>
-/// <returns></returns>
-public SimpleWServer UseControllerActionExecutorFactory(ControllerActionExecutorFactory factory)
-```
 
 
 ## Map
@@ -380,36 +297,7 @@ The handler can take multiple types of parameters, no order required :
 :::
 
 
-## UseMiddleware
-
-```csharp
-/// <summary>
-/// Add a new Middleware
-/// </summary>
-/// <param name="middleware"></param>
-public void UseMiddleware(HttpMiddleware middleware)
-```
-
-See more [example](../guide/middleware.md).
-
-## UseModule
-
-```csharp
-/// <summary>
-/// Add a new Module
-/// </summary>
-/// <param name="module"></param>
-/// <exception cref="ArgumentNullException"></exception>
-/// <exception cref="InvalidOperationException">The server is not stopped.</exception>
-public void UseModule(IHttpModule module)
-```
-
-`UseModule()` is the supported module installation entry point. It invokes `IHttpModule.Install()` only while `State == SimpleWServerState.Stopped`; module implementations should not repeat this validation.
-
-See more [example](../guide/module.md).
-
-
-## Controllers
+## MapControllers
 
 ### Manual
 
@@ -494,7 +382,119 @@ However, `Router` use **compiled delegate**, close to hard-coded method calls, t
 :::
 
 
-## JsonEngine
+## UseEngine
+
+```csharp
+/// <summary>
+/// Network engine used by the server.
+/// </summary>
+public ISimpleWEngine Engine { get; private set; }
+```
+
+By default, `SimpleWServer` uses `SimpleWEngine`.
+
+```csharp
+/// <summary>
+/// Replace the current network engine implementation.
+/// Must be called before the server starts.
+/// </summary>
+/// <param name="engine"></param>
+/// <returns></returns>
+public SimpleWServer UseEngine(ISimpleWEngine engine)
+```
+
+Use `UseEngine(Action<SimpleWEngineOptions>)` to configure the default socket engine.
+
+```csharp
+var server = new SimpleWServer(IPAddress.Any, 8080);
+server.UseEngine(options => {
+    options.ReuseAddress = true;
+    options.TcpNoDelay = true;
+    options.TcpKeepAlive = true;
+});
+```
+
+Use `UseEngine(ISimpleWEngine)` when you want to replace the default network engine with your own implementation.
+
+```csharp
+server.UseEngine(new MyCustomEngine());
+```
+
+The custom engine must implement [`ISimpleWEngine`](../reference/isimplewengine.md).
+
+
+## UseRouter
+
+```csharp
+/// <summary>
+/// Replace the current router implementation.
+/// Must be called before the server starts.
+/// </summary>
+public SimpleWServer UseRouter(IRouter router) {
+    ArgumentNullException.ThrowIfNull(router);
+
+    lock (_stateLock) {
+        EnsureStoppedForConfiguration("Router must be configured before starting the server.");
+        Router = router;
+    }
+    return this;
+}
+```
+
+```csharp
+/// <summary>
+/// Router
+/// </summary>
+public IRouter Router { get; private set; }
+```
+
+The [`Router`](./router) property contains all routes handled by the web server.
+You can list them with `Router.Routes`.
+
+
+## UseControllerActionExecutorFactory
+
+```csharp
+/// <summary>
+/// Replaces the factory used to create controller action executors.
+/// Must be called before the server starts.
+/// </summary>
+/// <param name="factory"></param>
+/// <returns></returns>
+public SimpleWServer UseControllerActionExecutorFactory(ControllerActionExecutorFactory factory)
+```
+
+
+## UseMiddleware
+
+```csharp
+/// <summary>
+/// Add a new Middleware
+/// </summary>
+/// <param name="middleware"></param>
+public void UseMiddleware(HttpMiddleware middleware)
+```
+
+See more [example](../guide/middleware.md).
+
+## UseModule
+
+```csharp
+/// <summary>
+/// Add a new Module
+/// </summary>
+/// <param name="module"></param>
+/// <exception cref="ArgumentNullException"></exception>
+/// <exception cref="InvalidOperationException">The server is not stopped.</exception>
+public void UseModule(IHttpModule module)
+```
+
+`UseModule()` is the supported module installation entry point. It invokes `IHttpModule.Install()` only while `State == SimpleWServerState.Stopped`; module implementations should not repeat this validation.
+
+See more [example](../guide/module.md).
+
+
+## ConfigureJsonEngine
 
 
 ```csharp
@@ -521,23 +521,8 @@ To change the engine just provide an object which implement the [`IJsonEngine`](
 
 
 ::: tip NOTE
-You can learn how to change the [`JsonEngine`](../guide/response.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.JsonEngine.Newtonsoft](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) nuget package.
+You can learn how to replace the [`JsonEngine`](../guide/replacing-core-components.md#json-engine) for [Newtonsoft](https://www.nuget.org/packages/Newtonsoft.Json) using the [SimpleW.JsonEngine.Newtonsoft](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) nuget package.
 :::
-
-
-## TLS
-
-`SimpleWServer` does not perform TLS handshakes. TLS belongs to the selected engine.
-
-For the default socket engine, configure [`SimpleWEngineOptions.SslContext`](./simplewengineoptions.md#tls):
-
-```csharp
-server.UseEngine(options => {
-    options.SslContext = sslContext;
-});
-```
-
-See an [example](../guide/tls-certificates.md#example-for-local-test).
 
 
 ## ConfigureResultHandler

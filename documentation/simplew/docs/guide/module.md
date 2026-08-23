@@ -35,15 +35,11 @@ You can register a module using the `UseModule` method :
 server.UseModule(IHttpModule module);
 ```
 
-This immediately invokes the module’s `Install` method. Module installation is only allowed while `server.State == SimpleWServerState.Stopped`; otherwise `UseModule()` throws `InvalidOperationException` without calling `Install()`.
+This immediately invokes the module’s `Install` method.
 
 ```csharp
 public void UseModule(IHttpModule module) {
-    ArgumentNullException.ThrowIfNull(module);
-    lock (_stateLock) {
-        EnsureStoppedForConfiguration("Modules must be installed before starting the server.");
-        module.Install(this);
-    }
+    module.Install(this);
 }
 ```
 

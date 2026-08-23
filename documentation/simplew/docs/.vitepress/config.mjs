@@ -1,4 +1,4 @@
-﻿import { defineConfig } from 'vitepress'
+import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -78,7 +78,7 @@ export default defineConfig({
                         { text: 'Module', link: '/guide/module' },
                         { text: 'Callback', link: '/guide/callback' },
                         { text: 'Result Handler', link: '/guide/resulthandler' },
-                        { text: 'Json Engine', link: '/guide/jsonengine' },
+                        { text: 'Replacing Core', link: '/guide/replacing-core-components' },
                     ]
                 },
                 {
@@ -141,21 +141,21 @@ export default defineConfig({
                     ]
                 },
                 {
-                    text: 'Engines',
+                    text: 'Network Engines',
                     items: [
                         { text: 'Ioxide', link: '/addons/engine-ioxide' },
+                    ]
+                },
+                {
+                    text: 'Json Engines',
+                    items: [
+                        { text: 'Newtonsoft', link: '/addons/jsonengine-newtonsoft' },
                     ]
                 },
                 {
                     text: 'Templates',
                     items: [
                         { text: 'SimpleW', link: '/addons/template-templates' },
-                    ]
-                },
-                {
-                    text: 'JsonEngines',
-                    items: [
-                        { text: 'Newtonsoft', link: '/addons/jsonengine-newtonsoft' },
                     ]
                 },
             ],
