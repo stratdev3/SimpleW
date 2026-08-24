@@ -126,6 +126,7 @@ namespace example {
             new RequestScenario(),
             new NewtonsoftJsonScenario(),
             new StaticFilesScenario(),
+            new FileBrowserScenario(),
             new UploadScenario(),
             new WebSocketScenario(),
             new ServerSentEventsScenario(),
@@ -164,6 +165,7 @@ namespace example {
             ExampleConsole.Command("example hello --log");
             ExampleConsole.Command("example hello --ioxide --log");
             ExampleConsole.Command("example swagger --browser");
+            ExampleConsole.Command("example filebrowser --browser");
             ExampleConsole.Command("example websocket --port 8081");
             ExampleConsole.Command("example websocket --help");
             ExampleConsole.BlankLine();

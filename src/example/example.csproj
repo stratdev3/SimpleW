@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SimpleW.Service.Chaos\SimpleW.Service.Chaos.csproj" />
     <ProjectReference Include="..\SimpleW.Service.Firewall\SimpleW.Service.Firewall.csproj" />
+    <ProjectReference Include="..\SimpleW.Service.FileBrowser\SimpleW.Service.FileBrowser.csproj" />
     <ProjectReference Include="..\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
     <ProjectReference Include="..\SimpleW.Service.Latency\SimpleW.Service.Latency.csproj" />
     <ProjectReference Include="..\SimpleW.Helper.Razor\SimpleW.Helper.Razor.csproj" />
