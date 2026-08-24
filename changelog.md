@@ -26,6 +26,10 @@ This major release completely rewrites `ISimpleWEngine` so alternative engines c
 
 - feature(SimpleW): introduce a real SimpleWServerState (#415)
 
+### fix
+
+- fix(SimpleW): allow Content-Length on HEAD responses without a body (#417)
+
 ### breakingChange
 
 - Replaced `SimpleWServer.IsStarted`, `SimpleWServer.IsStopping`, and `SimpleWServer.IsListenerReloading` with the thread-safe `SimpleWServer.State` lifecycle machine (`Stopped`, `Starting`, `Started`, `Reloading`, `Stopping`, and `Faulted`). Lifecycle operations are now serialized; recover a `Faulted` server with `StopAsync()` before restarting it.

@@ -877,7 +877,7 @@ namespace SimpleW {
 
                 // Content-Length
                 long finalBodyLength = (negotiated != NegotiatedEncoding.None && compressedWriter != null) ? compressedWriter.Length : bodyLength;
-                if (_customContentLength.HasValue && _customContentLength.Value != finalBodyLength) {
+                if (!isMethodHead && _customContentLength.HasValue &&  _customContentLength.Value != finalBodyLength) {
                     throw new InvalidOperationException($"Custom Header Content-Length ({_customContentLength.Value}) does not match actual body length ({finalBodyLength}).");
                 }
 
