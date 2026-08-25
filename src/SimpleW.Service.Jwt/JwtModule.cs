@@ -301,7 +301,7 @@ namespace SimpleW.Service.Jwt {
                     return;
                 }
 
-                if (configuration.RestorePrincipal && configuration.Helper.TryAuthenticate(session, out HttpPrincipal principal)) {
+                if (configuration.RestorePrincipal && configuration.Helper.TryAuthenticate(session, out HttpPrincipal principal, out _)) {
                     session.Principal = principal;
                 }
 

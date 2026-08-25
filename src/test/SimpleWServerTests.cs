@@ -1422,7 +1422,7 @@ namespace test {
             var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.ConfigurePrincipalResolver(session => {
-                if (!jwtHelper.TryAuthenticate(session, out HttpPrincipal principal)) {
+                if (!jwtHelper.TryAuthenticate(session, out HttpPrincipal principal, out _)) {
                     return null;
                 }
 

@@ -5,6 +5,10 @@
 
 Maintenance: compatibility with SimpleW v26.1.x.
 
+### breakingChange
+
+- Replace `TryAuthenticate(HttpSession session, out HttpPrincipal principal)` with `TryAuthenticate(HttpSession session, out HttpPrincipal principal, out string? error)`.
+
 
 
 ## v26.0.0 - _(2026-04-26)_

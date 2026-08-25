@@ -16,11 +16,13 @@ namespace SimpleW.Helper.Jwt {
     public sealed class JwtBearerHelper {
 
         /// <summary>
-        /// Logger.
+        /// Options
         /// </summary>
-        private static readonly ILogger _log = new Logger<JwtBearerHelper>();
-
         private readonly JwtBearerOptions _options;
+
+        /// <summary>
+        /// Principal Factory
+        /// </summary>
         private readonly Func<JwtPrincipalContext, HttpPrincipal> _principalFactory;
 
         /// <summary>
@@ -168,25 +170,27 @@ namespace SimpleW.Helper.Jwt {
         /// </summary>
         /// <param name="session"></param>
         /// <param name="principal"></param>
+        /// <param name="error"></param>
         /// <returns></returns>
-        public bool TryAuthenticate(HttpSession session, out HttpPrincipal principal) {
+        public bool TryAuthenticate(HttpSession session, out HttpPrincipal principal, out string? error) {
             ArgumentNullException.ThrowIfNull(session);
             principal = HttpPrincipal.Anonymous;
+            error = null;
 
             try {
                 string? authorization = session.Request.Headers.Authorization;
                 if (string.IsNullOrWhiteSpace(authorization)) {
-                    _log.Trace(() => "TryAuthenticate : missing header authorization");
+                    error = "missing header authorization";
                     return false;
                 }
 
                 if (!TryParseAuthorizationHeader(authorization, _options.Scheme, out string token)) {
-                    _log.Trace(() => "TryAuthenticate : unable to parse header authorization");
+                    error = "unable to parse header authorization";
                     return false;
                 }
 
-                if (!TryValidateTokenCore(token, session, out HttpPrincipal? authenticated, out string? error)) {
-                    _log.Trace(() => $"TryAuthenticate : invalid jwt token ({error ?? "unknown_error"})");
+                if (!TryValidateTokenCore(token, session, out HttpPrincipal? authenticated, out string? error1)) {
+                    error = $"invalid jwt token ({error1 ?? "unknown_error"})";
                     return false;
                 }
 
@@ -194,7 +198,7 @@ namespace SimpleW.Helper.Jwt {
                 return true;
             }
             catch (Exception ex) {
-                _log.Warn("TryAuthenticate", ex);
+                error = $"{ex.Message} {ex.Source} {ex.InnerException?.Message} {ex.InnerException?.Source}";
                 return false;
             }
         }
