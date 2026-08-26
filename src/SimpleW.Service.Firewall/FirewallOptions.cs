@@ -61,6 +61,7 @@ namespace SimpleW.Service.Firewall {
         /// <summary>
         /// Optional MaxMind GeoIP country database path (.mmdb).
         /// Country rules are treated as unknown when this value is null or empty.
+        /// GeoIP database failures are propagated as server errors.
         /// </summary>
         public string? MaxMindCountryDbPath { get; set; }
 

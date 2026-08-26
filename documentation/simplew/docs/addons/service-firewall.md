@@ -198,6 +198,7 @@ Attributes also accept either format:
 
 Country filtering requires a MaxMind country database to resolve real countries.
 If no database is configured, the country is unresolved.
+An IP absent from the configured database is also treated as unresolved. Database and lookup failures are propagated as `500 Internal Server Error`; they are not treated as unknown countries.
 
 ```csharp
 server.UseFirewallModule(options => {

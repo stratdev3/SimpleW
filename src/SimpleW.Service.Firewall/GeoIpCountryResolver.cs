@@ -38,14 +38,20 @@ namespace SimpleW.Service.Firewall {
                 DatabaseReader? reader = GetReader(configuration.MaxMindCountryDbPath);
                 if (reader != null) {
                     try {
-                        var response = reader.Country(ip);
-                        iso2 = response?.Country?.IsoCode;
+                        string databaseType = reader.Metadata.DatabaseType;
+                        if (databaseType.EndsWith("-City", StringComparison.OrdinalIgnoreCase)) {
+                            iso2 = reader.City(ip).Country?.IsoCode;
+                        }
+                        else if (databaseType.EndsWith("-Enterprise", StringComparison.OrdinalIgnoreCase)) {
+                            iso2 = reader.Enterprise(ip).Country?.IsoCode;
+                        }
+                        else {
+                            iso2 = reader.Country(ip).Country?.IsoCode;
+                        }
+
                         iso2 = string.IsNullOrWhiteSpace(iso2) ? null : iso2.Trim().ToUpperInvariant();
                     }
                     catch (AddressNotFoundException) {
-                        iso2 = null;
-                    }
-                    catch {
                         iso2 = null;
                     }
                 }

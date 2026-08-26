@@ -100,6 +100,7 @@ Class metadata is evaluated before method metadata; method rate-limit metadata w
 - `PathRule` / `PathRules` has been removed in favor of handler metadata.
 - Static files, fallback routes, and anonymous inline lambdas cannot carry attributes directly. Use global rules for those, or route through decorated handlers.
 - The firewall uses `session.ClientIpAddress`, so reverse proxy setups should configure `server.ConfigureClientIPResolver(...)`.
+- An IP absent from the configured MaxMind database is treated as an unknown country. Database and lookup failures are propagated as server errors instead of being treated as unknown countries.
 
 ## Documentation
 

@@ -9,6 +9,7 @@ Maintenance: compatibility with SimpleW v26.1.x.
 
 - Emit OpenTelemetry events for blocks and rate limits (#395)
 - Add `GetFirewall().Update(...)` for atomic runtime updates for global firewall rules and options.
+- Add country resolution support for MaxMind City and Enterprise databases, in addition to Country databases.
 
 ### breakingChange
 
