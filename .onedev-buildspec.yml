@@ -761,22 +761,6 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
-    name: pack SimpleW.Service.FileBrowser
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: PosixInterpreter
-      shell: sh
-      commands: |
-        cd src/SimpleW.Service.FileBrowser
-        TS=$(date +"%Y%m%d")-@build_number@
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.FileBrowser.csproj; fi
-        dotnet pack -c Release SimpleW.Service.FileBrowser.csproj
-    runAs: 0:0
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
     name: pack SimpleW.Service.Jwt
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -952,12 +936,6 @@ jobs:
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Firewall
     sourcePath: src/SimpleW.Service.Firewall/bin/Release/
-    artifacts: '*.*nupkg'
-    condition: SUCCESSFUL
-    optional: false
-  - type: PublishArtifactStep
-    name: publish artifact SimpleW.Service.FileBrowser
-    sourcePath: src/SimpleW.Service.FileBrowser/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1210,20 +1188,6 @@ jobs:
       shell: sh
       commands: |
         cd src/SimpleW.Service.Firewall/bin/Release
-        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
-    runAs: 0:0
-    useTTY: false
-    condition: SUCCESSFUL
-    optional: false
-  - type: CommandStep
-    name: deploy SimpleW.Service.FileBrowser to nuget.org
-    runInContainer: true
-    image: mcr.microsoft.com/dotnet/sdk:10.0
-    interpreter:
-      type: PosixInterpreter
-      shell: sh
-      commands: |
-        cd src/SimpleW.Service.FileBrowser/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
