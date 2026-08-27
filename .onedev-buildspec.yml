@@ -1,4 +1,4 @@
-version: 44
+version: 53
 jobs:
 - name: CI
   steps:
@@ -16,10 +16,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/test/
         dotnet test
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -28,10 +30,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW/
         dotnet build -c @param:build_configuration@ SimpleW.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -40,10 +44,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Engine.Ioxide/
         dotnet build -c @param:build_configuration@ SimpleW.Engine.Ioxide.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -52,10 +58,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.BasicAuth/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.BasicAuth.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -64,10 +72,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.DependencyInjection/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.DependencyInjection.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -76,10 +86,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Hosting/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Hosting.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -88,10 +100,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Jwt/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Jwt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -100,10 +114,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Log4net/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Log4net.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -112,10 +128,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.OpenID/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.OpenID.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -124,10 +142,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Razor/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Razor.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -136,10 +156,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Serilog/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Serilog.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -148,10 +170,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Swagger/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Swagger.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -160,10 +184,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/
         dotnet build -c @param:build_configuration@ SimpleW.JsonEngine.Newtonsoft.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -172,10 +198,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Background/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Background.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -184,10 +212,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.BasicAuth/
         dotnet build -c @param:build_configuration@ SimpleW.Service.BasicAuth.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -196,10 +226,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Chaos/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Chaos.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -208,10 +240,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Firewall/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Firewall.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -220,10 +254,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.FileBrowser/
         dotnet build -c @param:build_configuration@ SimpleW.Service.FileBrowser.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -232,10 +268,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Jwt/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Jwt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -244,10 +282,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Latency/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Latency.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -256,10 +296,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.LetsEncrypt/
         dotnet build -c @param:build_configuration@ SimpleW.Service.LetsEncrypt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -268,10 +310,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.OpenID/
         dotnet build -c @param:build_configuration@ SimpleW.Service.OpenID.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -280,10 +324,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Templates/
         dotnet build -c @param:build_configuration@ SimpleW.Templates.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -443,6 +489,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD all nugets
   steps:
@@ -460,13 +508,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release SimpleW.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -475,12 +525,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Engine.Ioxide
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Engine.Ioxide.csproj; fi
         dotnet pack -c Release SimpleW.Engine.Ioxide.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -489,12 +541,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj; fi
         dotnet pack -c Release SimpleW.Helper.BasicAuth.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -503,12 +557,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.DependencyInjection
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
         dotnet pack -c Release SimpleW.Helper.DependencyInjection.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -517,12 +573,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Hosting
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Hosting.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -531,12 +589,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Jwt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -545,12 +605,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Log4net
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Log4net.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -559,12 +621,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj; fi
         dotnet pack -c Release SimpleW.Helper.OpenID.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -573,12 +637,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Swagger
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Swagger.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -587,12 +653,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Razor
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Razor.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -601,12 +669,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Serilog
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Serilog.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -615,12 +685,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj; fi
         dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -629,12 +701,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Background
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Background.csproj; fi
         dotnet pack -c Release SimpleW.Service.Background.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -643,12 +717,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj; fi
         dotnet pack -c Release SimpleW.Service.BasicAuth.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -657,12 +733,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Chaos
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj; fi
         dotnet pack -c Release SimpleW.Service.Chaos.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -671,12 +749,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Firewall
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj; fi
         dotnet pack -c Release SimpleW.Service.Firewall.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -685,12 +765,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.FileBrowser
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.FileBrowser.csproj; fi
         dotnet pack -c Release SimpleW.Service.FileBrowser.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -699,12 +781,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj; fi
         dotnet pack -c Release SimpleW.Service.Jwt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -713,12 +797,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Latency
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Latency.csproj; fi
         dotnet pack -c Release SimpleW.Service.Latency.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -727,12 +813,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.LetsEncrypt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj; fi
         dotnet pack -c Release SimpleW.Service.LetsEncrypt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -741,12 +829,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj; fi
         dotnet pack -c Release SimpleW.Service.OpenID.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -755,7 +845,8 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Templates
         TS=$(date +"%Y%m%d")-@build_number@
@@ -764,6 +855,7 @@ jobs:
         if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Controller/ModuleName.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Minimal/ModuleName.csproj; fi
         dotnet pack -c Release SimpleW.Templates.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -904,10 +996,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -916,10 +1010,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Engine.Ioxide/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -928,10 +1024,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -940,10 +1038,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.DependencyInjection/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -952,10 +1052,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Hosting/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -964,10 +1066,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -976,10 +1080,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Log4net/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -988,10 +1094,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1000,10 +1108,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Razor/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1012,10 +1122,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Serilog/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1024,10 +1136,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Swagger/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1036,10 +1150,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1048,10 +1164,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Background/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1060,10 +1178,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1072,10 +1192,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Chaos/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1084,10 +1206,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Firewall/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1096,10 +1220,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.FileBrowser/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1108,10 +1234,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1120,10 +1248,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Latency/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1132,10 +1262,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.LetsEncrypt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1144,10 +1276,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1156,10 +1290,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Templates/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1195,6 +1331,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW
   steps:
@@ -1212,12 +1350,14 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.csproj; fi
         dotnet pack -c Release SimpleW.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1232,10 +1372,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1271,6 +1413,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Engine.Ioxide
   steps:
@@ -1288,13 +1432,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Engine.Ioxide
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Engine.Ioxide.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Engine.Ioxide.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1309,10 +1455,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Engine.Ioxide/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1348,6 +1496,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.BasicAuth
   steps:
@@ -1365,13 +1515,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.BasicAuth.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1386,10 +1538,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1425,6 +1579,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.DependencyInjection
   steps:
@@ -1442,13 +1598,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.DependencyInjection
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.DependencyInjection.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1463,10 +1621,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.DependencyInjection/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1502,6 +1662,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.Hosting
   steps:
@@ -1519,13 +1681,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Hosting
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Hosting.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1540,10 +1704,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Hosting/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1579,6 +1745,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.Jwt
   steps:
@@ -1596,13 +1764,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Jwt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1617,10 +1787,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1656,6 +1828,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.Log4net
   steps:
@@ -1673,13 +1847,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Log4net
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Log4net.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1694,10 +1870,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Log4net/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1733,6 +1911,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.OpenID
   steps:
@@ -1750,13 +1930,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.OpenID.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1771,10 +1953,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1810,6 +1994,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.Razor
   steps:
@@ -1827,13 +2013,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Razor
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Razor.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1848,10 +2036,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Razor/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1887,6 +2077,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.Serilog
   steps:
@@ -1904,13 +2096,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Serilog
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Serilog.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1925,10 +2119,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Serilog/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -1964,6 +2160,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Helper.Swagger
   steps:
@@ -1981,13 +2179,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Swagger
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Swagger.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2002,10 +2202,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Helper.Swagger/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2041,6 +2243,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.JsonEngine.Newtonsoft
   steps:
@@ -2058,13 +2262,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.JsonEngine.Newtonsoft.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2079,10 +2285,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2118,6 +2326,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.Background
   steps:
@@ -2135,13 +2345,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Background
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Background.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Background.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2156,10 +2368,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Background/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2195,6 +2409,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.BasicAuth
   steps:
@@ -2212,13 +2428,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.BasicAuth.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2233,10 +2451,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2272,6 +2492,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.Jwt
   steps:
@@ -2289,13 +2511,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Jwt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2310,10 +2534,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2349,6 +2575,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.Chaos
   steps:
@@ -2366,13 +2594,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Chaos
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Chaos.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2387,10 +2617,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Chaos/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2426,6 +2658,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.Firewall
   steps:
@@ -2443,13 +2677,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Firewall
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Firewall.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2464,10 +2700,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Firewall/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2503,6 +2741,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.FileBrowser
   steps:
@@ -2520,13 +2760,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.FileBrowser
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.FileBrowser.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.FileBrowser.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2541,10 +2783,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.FileBrowser/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2580,6 +2824,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.Latency
   steps:
@@ -2597,13 +2843,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Latency
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Latency.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Latency.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2618,10 +2866,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.Latency/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2657,6 +2907,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.LetsEncrypt
   steps:
@@ -2674,13 +2926,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.LetsEncrypt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.LetsEncrypt.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2695,10 +2949,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.LetsEncrypt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2734,6 +2990,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Service.OpenID
   steps:
@@ -2751,13 +3009,15 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.OpenID.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2772,10 +3032,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Service.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2811,6 +3073,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CD nuget SimpleW.Templates
   steps:
@@ -2828,7 +3092,8 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Templates
         TS=$(date +"%Y%m%d")-@build_number@
@@ -2837,6 +3102,7 @@ jobs:
         if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Controller/ModuleName.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.Minimal/ModuleName.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Templates.csproj
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2851,10 +3117,12 @@ jobs:
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
     interpreter:
-      type: DefaultInterpreter
+      type: PosixInterpreter
+      shell: sh
       commands: |
         cd src/SimpleW.Templates/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
     optional: false
@@ -2890,6 +3158,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: CM github
   steps:
@@ -2913,6 +3183,8 @@ jobs:
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
   timeout: 3600
 - name: Documentation
   jobExecutor: onedev-podman-executor-with-site
