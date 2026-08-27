@@ -1,7 +1,7 @@
 # Razor <Badge type="tip" text="Official" />
 
-The [`SimpleW.Helper.Razor`](https://www.nuget.org/packages/SimpleW.Helper.Razor) is a Razor templating module for the SimpleW web server.
-It enables server-side HTML rendering using Razor syntax (via RazorLight) and integrates with SimpleW’s routing/controller system by introducing a ViewResult that the module can render into an HTTP response.
+The [`SimpleW.Helper.Razor`](https://www.nuget.org/packages/SimpleW.Helper.Razor) package is a Razor templating module for the SimpleW web server.
+It enables server-side HTML rendering using Razor syntax (via RazorLight) and integrates with SimpleW’s routing/controller system by introducing a `ViewResult` that the module can render into an HTTP response.
 
 This module is designed to feel familiar to ASP.NET MVC developers, while staying simple and minimal.
 
@@ -11,18 +11,18 @@ This module is designed to feel familiar to ASP.NET MVC developers, while stayin
 It allows you to :
 - **Razor View Engine** : powered by RazorLight (compile + render)
 - **Controller integration** : RazorController provides a `View()` helper
-- **Models** : pass a DTO or an anonymous object
+- **Models** : pass a DTO, an anonymous object, or an `ExpandoObject`; views access its public properties through a dynamic model
 - **ViewBag** : `dynamic` ViewBag supported (`ExpandoObject`)
 - **Layouts** : `Layout = "_Layout"` + `@RenderBody()` / `@RenderSection()`
-- **Partials** : `@await Html.PartialAsync("Header")` (returns non-escaped HTML content)
-- **Html helper** : `Html.PartialAsync()` available in templates (ASP.NET Core-like)
+- **Partials** : render partial templates through the injected `ViewBag.Html` helper
+- **Html helper** : `PartialAsync()` returns non-escaped HTML content
 - **Caching** : compiled templates cached in memory (RazorLight memory cache)
-- **Error handling** : compilation errors return HTTP 500 with details (HTML-escaped)
+- **Error handling** : compilation and rendering errors return HTTP 500 with details (HTML-escaped)
 
 
 ## Requirements
 
-- .NET 8.0
+- .NET 8.0, 9.0, or 10.0
 - SimpleW (core server)
 - RazorLight package (automatically included)
 
@@ -40,15 +40,13 @@ See the [changelog](./helper-razor-changelog.md)
 
 | Option | Default | Description |
 |---|---|---|
-| Enabled | `true` | Enables or disables the Razor module. When disabled, no Razor views are rendered. |
-| ViewsPath | `"Views"` | Root directory where Razor view files are located. Relative paths are resolved from the application base directory. |
-| Layout | `"_Layout"` | Default Razor layout name used when a view does not explicitly specify one. |
-| ReloadOnChange | `false` | When enabled, Razor views are reloaded automatically when files change on disk (useful for development). |
-| CacheCompiledViews | `true` | Enables caching of compiled Razor views. Disabling this forces recompilation on each request (debug / dev only). |
-| FileExtensions | `[".cshtml"]` | List of file extensions treated as Razor views. |
-| ModelTypeResolver | `null` | Optional delegate used to resolve the model type for a given view at runtime. If `null`, the default resolution logic is used. |
-| OnBeforeRender | `null` | Optional hook executed before rendering a Razor view. Can be used to mutate the model or inject data into the view context. |
-| OnAfterRender | `null` | Optional hook executed after rendering a Razor view. Useful for logging, metrics, or post-processing the output. |
+| `ViewsPath` | `"Views"` | Root directory passed to RazorLight for view lookup. A relative path is resolved from the process working directory; use an absolute path when that directory may vary. |
+| `LayoutsPath` | `"Shared"` | Directory inside `ViewsPath` used as a fallback for unqualified layout names such as `"_Layout"`. |
+| `PartialsPath` | `"Partials"` | Directory inside `ViewsPath` used as a fallback for unqualified partial names such as `"Header"`. |
+| `ViewExtension` | `".cshtml"` | Template extension appended when `AutoAppendExtension` is enabled. Include the leading dot. |
+| `AutoAppendExtension` | `true` | Appends `ViewExtension` to view, layout, and partial names that do not already end with it. Set it to `false` to require exact template names. |
+
+Compiled templates always use RazorLight's in-memory cache. The module currently has no enable/disable, file-watching, cache toggle, default-layout, model-resolver, or render-hook option. A layout is selected inside each view with Razor's `Layout` property.
 
 
 ## Minimal example
@@ -113,7 +111,7 @@ You can return a `ViewResult` directly from a mapped route :
 using System;
 using System.Net;
 using SimpleW;
-using SimpleW.Modules;
+using SimpleW.Helper.Razor;
 
 namespace Sample {
     class Program {
@@ -148,7 +146,7 @@ namespace Sample {
 ```csharp [Delegate based]
 using System.Net;
 using SimpleW;
-using SimpleW.Modules;
+using SimpleW.Helper.Razor;
 
 namespace Sample {
     class Program {
@@ -157,7 +155,7 @@ namespace Sample {
             var server = new SimpleWServer(IPAddress.Any, 8080);
 
             server.UseRazorModule(options => {
-                options.Views = "Views" // path of your views folder
+                options.ViewsPath = "Views"; // path of your views folder
             });
             server.MapGet("/api/home/index", () => {
                 // the model can be strongly typed or anonymous like in this example
@@ -195,6 +193,9 @@ To use a layout, set `Layout` at the top of your view (similar to ASP.NET Core):
 Create the layout file in `Views/Shared/_Layout.cshtml` (default `LayoutsPath = "Shared"`):
 
 ```
+@{
+    dynamic Html = ViewBag.Html;
+}
 <!doctype html>
 <html>
 <head>
@@ -234,7 +235,7 @@ Render it from a view or layout:
 @await Html.PartialAsync("Header")
 ```
 
-`PartialAsync()` returns a non-escaped HTML content wrapper, so the browser receives real HTML (not `&lt;div&gt;...`).
+`PartialAsync()` returns a non-escaped HTML content wrapper, so the browser receives real HTML (not `&lt;div&gt;...`). The `Html` variable above is a local alias for the helper injected as `ViewBag.Html`.
 
 
 ### 3. Create a View
@@ -267,8 +268,6 @@ Examples (with `ViewsPath = "Views"`) :
 `ViewResult` exposes a `ViewBag` (dynamic) using an `ExpandoObject`.
 Use `WithViewBag()`:
 
-> Note: the module also injects an `Html` helper (ASP.NET Core-like) that currently exposes `Html.PartialAsync(...)`. If for any reason your template cannot resolve `Html`, you can always use `ViewBag.Html` directly.
-
 ```csharp
 return RazorResults.View("Home.cshtml", new { Title = "Home" })
                    .WithViewBag(vb => {
@@ -286,75 +285,18 @@ In the Razor view :
 
 ## `Html` helper in templates
 
-In RazorLight, `ViewBag` values are available at runtime, but symbols like `Html` must exist at **compile time**.
-That means you **cannot** rely on a `@{ dynamic Html = ViewBag.Html; }` block inside `_ViewImports.cshtml`
-(because `_ViewImports` is for directives like `@using` / `@inherits`, and code blocks may not run as you expect).
-
-SimpleW injects an `Html` helper into `ViewBag` (from `RazorModule`):
-
-- `ViewBag["Html"] = new SimpleHtmlHelper(...)`
-
-To be able to write **ASP.NET Core-style** calls:
+The module injects a `RazorModule.SimpleHtmlHelper` instance as `ViewBag.Html` before rendering the requested view. RazorLight does not declare a compile-time `Html` property, so create a local alias in every view or layout that calls the helper:
 
 ```csharp
-@await Html.PartialAsync("Header")
-```
-
-you have two options:
-
-### Option A (recommended): expose `Html` via a template base class
-
-Create a base class that exposes `Html` as a real property:
-
-```csharp
-using RazorLight;
-using RazorLight.Razor;
-
-namespace SimpleW.Helper.Razor;
-
-public abstract class SimpleWTemplatePage<TModel> : TemplatePage<TModel>
-{
-    public RazorModule.SimpleHtmlHelper Html
-        => (RazorModule.SimpleHtmlHelper)ViewBag.Html!;
-}
-```
-
-Then ensure the project injects an `@inherits` import at compile time (works even if your RazorLight
-builder does **not** have `ConfigureRazor` / `AddDefaultImports`):
-
-```csharp
-// inside SimpleWRazorProject.GetImportsAsync(...)
-imports.Insert(0, new TextSourceRazorProjectItem(
-    key: "_SimpleW_HtmlImport",
-    content: "@inherits SimpleW.Helper.Razor.SimpleWTemplatePage<dynamic>"
-));
-```
-
-After that, every view/layout/partial can use:
-
-```csharp
-@await Html.PartialAsync("Header")
-```
-
-without repeating anything in each template.
-
-### Option B (fallback): define `Html` in each view/layout
-
-If you do not want the base-class approach, you can define `Html` at the top of each template:
-
-```
 @{
     dynamic Html = ViewBag.Html;
 }
-```
-
-Then use:
-
-```csharp
 @await Html.PartialAsync("Header")
 ```
 
-> Note: placing the `@{ ... }` alias inside `_ViewImports.cshtml` is not reliable.
+The helper exposes `PartialAsync(string name)` and `PartialAsync(string name, object? model)`. Lookup checks the requested name and its underscore variant, then the configured `PartialsPath` and `LayoutsPath`. With the default options, `"Header"` can therefore resolve to `Views/Partials/_Header.cshtml`.
+
+The package does not provide a `SimpleWTemplatePage` base class or automatically expose a direct `Html` property. Code blocks such as the alias above belong in the template itself, not in `_ViewImports.cshtml`.
 
 
 ## Status code and content type
@@ -377,14 +319,13 @@ If Razor compilation fails, the module returns :
 - HTTP **500**
 - an HTML page containing the compilation error (HTML-escaped)
 
-This is helpful in development. In production you might want to replace it with a generic page.
+Other rendering failures also return HTTP **500** with an HTML-escaped exception. This is helpful in development, but exposes implementation details; the current module does not provide an option to replace these responses with a generic production error page.
 
 
 ## Performance Considerations
 
 - **Template Caching** : RazorLight caches compiled templates in memory
 - **First Request** : Initial compilation has overhead, subsequent requests are fast
-- **Development** : Consider disabling caching during development for live updates
 - **Memory** : Each unique template is cached separately
 
 

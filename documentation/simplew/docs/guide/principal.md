@@ -36,7 +36,7 @@ HttpPrincipal
 - claims-like custom values are exposed as `IdentityProperty`
 ::::
 
-## HttpPrincipal
+### HttpPrincipal
 
 [`HttpPrincipal`](../reference/httpprincipal.md) represents the **current user**.
 
@@ -67,7 +67,7 @@ if (session.Principal.IsInRole("admin")) {
 
 > Principal = "who is making this request"
 
-## HttpIdentity
+### HttpIdentity
 
 [`HttpIdentity`](../reference/httpidentity.md) represents **how the user is identified**.
 
@@ -102,7 +102,7 @@ var identity = new HttpIdentity(
 
 > Identity = "how we know who the user is"
 
-## IdentityProperty
+### IdentityProperty
 
 [`IdentityProperty`](../reference/identityproperty.md) is a **flexible key/value pair** used to store custom data.
 
@@ -143,14 +143,12 @@ This follows the same pattern as `Request` and `Response`.
 
 ```csharp [From Session]
 server.MapGet("/me", (HttpSession session) => {
-    if (!session.Principal.IsAuthenticated) {
-        return session.Response.Unauthorized("Not authenticated");
-    }
-
     return new {
         id = session.Principal.Identity.Identifier,
         name = session.Principal.Name,
-        roles = session.Principal.Identity.Roles
+        email = session.Principal.Email,
+        roles = session.Principal.Roles,
+        tenant = session.Principal.Get("tenant_id")
     };
 });
 ```
@@ -161,13 +159,12 @@ public class UserController : Controller {
 
     [Route("GET", "/me")]
     public object Me() {
-        if (!Principal.IsAuthenticated) {
-            return Response.Unauthorized("Not authenticated");
-        }
-
         return new {
             id = Principal.Identity.Identifier,
-            name = Principal.Name
+            name = Principal.Name,
+            email = Principal.Email,
+            roles = Principal.Roles,
+            properties = Principal.Identity.Properties
         };
     }
 }
@@ -175,23 +172,24 @@ public class UserController : Controller {
 
 ::::
 
-For endpoint-specific behavior, checking `Principal` directly inside a handler or controller is perfectly fine.
+Accessing `Principal` does not imply that the caller is authenticated.
+Use `IsAuthenticated` and the authorization checks described below before returning protected data.
 
-For shared authentication or authorization rules, prefer a middleware so the policy is applied once, early in the pipeline, before business logic runs.
+## Setting the Principal
 
-## Setting and Checking the Principal
+Until an authenticated identity is provided, `session.Principal` resolves to `HttpPrincipal.Anonymous`.
 
-In most applications, the **best place** to set and check the principal is a **middleware**.
+There are two ways to provide the principal for a request:
 
-Why middleware is usually the right place:
+- assign `session.Principal` directly, usually from an authentication middleware
+- configure a lazy `PrincipalResolver`
 
-- it runs early for every request
-- it can restore `session.Principal` from headers, cookies, tokens, certificates, or any custom source
-- it can stop the pipeline immediately with `401` or `403`
-- it keeps handlers and controllers focused on business logic
-- it can read `session.Metadata`, including `[AllowAnonymous]` and `[RequireRole(...)]`
 
-Example:
+### Direct Assignment from Middleware
+
+A middleware can validate credentials and assign the resulting identity before the handler runs.
+
+The example below assumes that `X-User` and `X-Roles` are supplied by a trusted upstream component.
 
 ```csharp
 server.UseMiddleware(async (session, next) => {
@@ -212,52 +210,23 @@ server.UseMiddleware(async (session, next) => {
         ));
     }
 
-    if (session.Metadata.Has<AllowAnonymousAttribute>()) {
-        await next().ConfigureAwait(false);
-        return;
-    }
-
-    if (!session.Principal.IsAuthenticated) {
-        await session.Response.Unauthorized().SendAsync().ConfigureAwait(false);
-        return;
-    }
-
-    IReadOnlyList<RequireRoleAttribute> requiredRoles = session.Metadata.GetAll<RequireRoleAttribute>();
-    foreach (RequireRoleAttribute requirement in requiredRoles) {
-        if (!session.Principal.IsInRoles(requirement.Role)) {
-            await session.Response
-                         .Status(403)
-                         .Json(new {
-                             ok = false,
-                             error = "forbidden",
-                             role = requirement.Role
-                         })
-                         .SendAsync()
-                         .ConfigureAwait(false);
-            return;
-        }
-    }
-
     await next().ConfigureAwait(false);
 });
 ```
 
-This pattern is the usual place to:
+The assigned principal belongs to the current request only.
+The session resets it before dispatching the next request, and a direct assignment replaces any value that was resolved earlier in the current request.
 
-- authenticate the request
-- populate `session.Principal`
-- apply shared access-control rules
-- short-circuit unauthorized requests
+The principal can be created from any trusted authentication source, whether it is built into SimpleW or specific to your application.
 
-Handlers and controllers can still read `Principal`, but they no longer need to duplicate the same authorization checks everywhere.
+::: info
+Concrete integration examples include JWT ([helper](../addons/helper-jwt.md)/[service](../addons/service-jwt.md)), Basic authentication ([helper](../addons/helper-basicauth.md)/[service](../addons/service-basicauth.md)), OpenID ([helper](../addons/helper-openid.md) or a [service](../addons/service-openid.md)), [TLS client certificates](./tls-certificates.md#mapping-mtls-to-httpprincipal)
+:::
 
-## Other Ways to Set the Principal
 
-SimpleW also exposes lower-level alternatives when middleware is not the right fit.
+### Using ConfigurePrincipalResolver
 
-### ConfigurePrincipalResolver
-
-[`ConfigurePrincipalResolver`](../reference/simplewserver.md#configureprincipalresolver) is useful when you want the server to build the principal lazily from the request, without writing a dedicated auth middleware.
+[`ConfigurePrincipalResolver`](../reference/simplewserver.md#configureprincipalresolver) lets the server build the principal lazily from the request.
 
 ```csharp
 server.ConfigurePrincipalResolver(session => {
@@ -273,51 +242,86 @@ server.ConfigurePrincipalResolver(session => {
 });
 ```
 
-This is a good fit for:
+The resolver is synchronous and runs on the first access to `session.Principal`, at most once per request.
+Returning `null` uses `HttpPrincipal.Anonymous`.
 
-- simple global identity mapping
-- infrastructure scenarios
-- low-level integrations where you only need to resolve the user
+This approach is a good fit when identity mapping is simple, synchronous, and only needs to run if the principal is actually consumed.
+Prefer a middleware when authentication requires asynchronous work, may produce a response directly, or needs precise control over the request pipeline.
 
-It is usually **not** the best place to implement full authorization policy.
-For that, middleware stays more explicit and easier to compose.
+### Choosing an Approach
 
-### Direct Assignment
+| Approach | Best for |
+| --- | --- |
+| Assignment from middleware | Complete authentication flows and request-pipeline control |
+| `ConfigurePrincipalResolver` | Simple, synchronous, and lazy principal resolution |
 
-You can also assign the principal manually when a specific flow has just authenticated the user.
+## Checking the Principal
 
-```csharp
-session.Principal = new HttpPrincipal(new HttpIdentity(
-    isAuthenticated: true,
-    authenticationType: "Custom",
-    identifier: "user-123",
-    name: "John",
-    email: null,
-    roles: new[] { "admin" },
-    properties: null
-));
+Once the principal has been set, handlers, controllers, modules, and middlewares can use it to decide whether the request is allowed.
+
+### Checking Authentication
+
+Use `IsAuthenticated` when an endpoint only requires a known caller.
+An unauthenticated request normally receives `401 Unauthorized`.
+
+:::: code-group
+
+```csharp [From Session]
+server.MapGet("/account", (HttpSession session) => {
+    if (!session.Principal.IsAuthenticated) {
+        return session.Response.Unauthorized("Not authenticated");
+    }
+
+    return new { user = session.Principal.Name };
+});
 ```
 
-This is useful for:
+```csharp [From Controller]
+[Route("/account")]
+public class AccountController : Controller {
 
-- login callbacks
-- custom challenge flows
-- one-off technical handlers
+    [Route("GET", "/")]
+    public object Get() {
+        if (!Principal.IsAuthenticated) {
+            return Response.Unauthorized("Not authenticated");
+        }
 
-:::: info
-The principal resolver is lazy and only runs when the principal is actually needed.
-This avoids unnecessary work and improves performance.
+        return new { user = Principal.Name };
+    }
+}
+```
+
 ::::
 
-**Mental Model**
+### Checking Roles
 
-> Middleware = "authenticate and authorize the request"
+Use `IsInRole` for one role and `IsInRoles` when any role in a comma-separated expression is accepted.
 
-> PrincipalResolver = "build the user from the request when needed"
+```csharp
+bool isAdmin = session.Principal.IsInRole("admin");
+bool canManage = session.Principal.IsInRoles("admin,manager");
+```
 
-## Declarative Authorization Metadata
+`"admin,manager"` means `admin OR manager`.
 
-SimpleW also provides two core metadata attributes that work naturally with `HttpPrincipal`:
+Check authentication first.
+If the caller is authenticated but does not have the required role, the response is normally `403 Forbidden` rather than `401 Unauthorized`.
+
+### Checking Identity Properties
+
+Custom identity properties can participate in application-specific decisions:
+
+```csharp
+string? tenant = session.Principal.Get("tenant_id");
+bool hasProPlan = session.Principal.Has("plan", "pro");
+```
+
+These checks are useful for tenant boundaries, feature access, or other application rules.
+They do not enforce an authorization policy automatically.
+
+### Declarative Authorization
+
+SimpleW provides two core metadata attributes that work naturally with `HttpPrincipal`:
 
 - `[AllowAnonymous]` marks a handler as public and lets auth middleware bypass it
 - `[RequireRole("admin")]` declares that the current principal must match the requested role expression
@@ -326,11 +330,11 @@ SimpleW also provides two core metadata attributes that work naturally with `Htt
 
 - `"admin"` means the principal must be in the `admin` role
 - `"admin,manager"` means `admin OR manager`
-- multiple `[RequireRole(...)]` attributes can be combined on the same handler and are evaluated independently by middleware
+- multiple `[RequireRole(...)]` attributes describe separate requirements
 
 Those attributes are declarative only.
 They do not authenticate the request by themselves.
-Instead, modules and middlewares such as `SimpleW.Service.Jwt` or your own custom middleware read them through `session.Metadata`.
+Modules such as `SimpleW.Service.Jwt`, or your own middleware, read them through `session.Metadata` and enforce them.
 
 Example:
 
@@ -366,13 +370,45 @@ In this example:
 
 - `/admin/health` stays public
 - `/admin/dashboard` requires a principal in role `admin`
-- `/admin/billing` typically means `(admin OR manager) AND billing`, depending on the middleware enforcing the metadata
+- a middleware that enforces every attribute treats `/admin/billing` as `(admin OR manager) AND billing`
 
-## Real Example of Principal integration
+### Centralizing Checks in Middleware
 
-Examples of `HttpPrincipal` integration:
+For shared authorization rules, use a middleware or authentication module so the policy is applied before business logic runs.
 
-- [SimpleW.Helper.Jwt](../addons/helper-jwt.md) and [SimpleW.Service.Jwt](../addons/service-jwt.md)
-- [SimpleW.Helper.BasicAuth](../addons/helper-basicauth.md) and [SimpleW.Service.BasicAuth](../addons/service-basicauth.md)
-- [SimpleW.Helper.OpenID](../addons/helper-openid.md) and [SimpleW.Service.OpenID](../addons/service-openid.md)
-- [TLS Client Certificate](./tls-certificates.md#mapping-mtls-to-httpprincipal)
+The following middleware assumes that an earlier middleware, a module, or `PrincipalResolver` provides the principal:
+
+```csharp
+server.UseMiddleware(async (session, next) => {
+    if (session.Metadata.Has<AllowAnonymousAttribute>()) {
+        await next().ConfigureAwait(false);
+        return;
+    }
+
+    if (!session.Principal.IsAuthenticated) {
+        await session.Response.Unauthorized().SendAsync().ConfigureAwait(false);
+        return;
+    }
+
+    IReadOnlyList<RequireRoleAttribute> requiredRoles = session.Metadata.GetAll<RequireRoleAttribute>();
+    foreach (RequireRoleAttribute requirement in requiredRoles) {
+        if (!session.Principal.IsInRoles(requirement.Role)) {
+            await session.Response
+                         .Status(403)
+                         .Json(new {
+                             ok = false,
+                             error = "forbidden",
+                             role = requirement.Role
+                         })
+                         .SendAsync()
+                         .ConfigureAwait(false);
+            return;
+        }
+    }
+
+    await next().ConfigureAwait(false);
+});
+```
+
+Checking `Principal` directly inside a handler or controller is appropriate for endpoint-specific behavior.
+Centralizing shared rules avoids duplicating the same checks across endpoints.

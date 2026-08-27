@@ -87,8 +87,8 @@ namespace Sample {
 
             var server = new SimpleWServer(IPAddress.Any, 2015);
 
-            // enable telemetry
-            server.EnableTelemetry();
+            // configure and enable telemetry
+            server.ConfigureTelemetry(options => options.Enabled = true);
 
             server.MapControllers<Controller>("/api");
 
@@ -182,6 +182,7 @@ The `InstanceId` is automatically attached to all emitted traces and metrics, al
 
 ```csharp
 server.ConfigureTelemetry(options => {
+    options.Enabled = true;
     options.InstanceId = Environment.MachineName;
 });
 ```
@@ -193,6 +194,7 @@ You may also use :
 
 ```csharp
 server.ConfigureTelemetry(options => {
+    options.Enabled = true;
     options.InstanceId = Guid.NewGuid().ToString();
 });
 ```
@@ -214,6 +216,7 @@ You can do this using [`SimpleWServer.ConfigureTelemetry()`](../reference/simple
 ```csharp
 // configure telemetry
 server.ConfigureTelemetry(options => {
+    options.Enabled = true;
     options.IncludeStackTrace = true;
     options.EnrichWithHttpSession = (activity, session) => {
         // override host with the X-Forwarded-Host header (set by a trusted reverse proxy)

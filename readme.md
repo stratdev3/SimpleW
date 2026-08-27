@@ -2,9 +2,9 @@
 
 [![website](https://raw.githubusercontent.com/stratdev3/SimpleW/refs/heads/master/documentation/simplew/docs/public/simplew-og.png)](https://simplew.net)
 
-[![NuGet Package](https://img.shields.io/nuget/v/SimpleW)](https://www.nuget.org/packages/SimpleW)
-![NuGet Downloads](https://img.shields.io/nuget/dt/SimpleW)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](licence)
+[![License](https://img.shields.io/badge/License-MIT-7737d1.svg)](licence)
+[![NuGet Package](https://img.shields.io/nuget/v/SimpleW?color=7737d1&label=version&logo=NuGet&style=flat)](https://www.nuget.org/packages/SimpleW)
+![NuGet Downloads](https://img.shields.io/nuget/dt/SimpleW?color=7737d1&label=downloads&logo=NuGet&style=flat)
 <br/>
 [![Linux](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-linux.yml)
 [![MacOS](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml/badge.svg)](https://github.com/stratdev3/SimpleW/actions/workflows/build-macos.yml)

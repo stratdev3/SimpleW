@@ -2,7 +2,30 @@
 
 The `Controller` is the base class for REST API controllers
 
-It contains several properties and methods. The following ones are the most used.
+Every controller must inherit from `Controller`.
+Public instance methods decorated with a [`Route`](./routeattribute.md) attribute can then be registered by [`MapController<T>()`](./simplewserver.md#mapcontrollers) or [`MapControllers<T>()`](./simplewserver.md#mapcontrollers).
+
+
+## Lifecycle and construction
+
+By default, SimpleW creates a **new controller instance for every handler execution**.
+
+In most cases, no constructor needs to be declared:
+
+```csharp
+public class UserController : Controller {
+
+    [Route("GET", "/users")]
+    public object List() {
+        return new[] { "Alice", "Bob" };
+    }
+}
+```
+
+C# automatically provides a public parameterless constructor when the class does not declare any constructor.
+
+For constructor injection, use the [Dependency Injection helper](../addons/helper-dependency-injection.md), which replaces the default controller action executor factory.
+A controller instance is scoped to one handler execution. Do not use controller instance fields to store application-wide or cross-request state.
 
 
 ## Session

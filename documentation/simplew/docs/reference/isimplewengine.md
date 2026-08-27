@@ -50,7 +50,7 @@ When an engine accepts a connection, it creates or wraps that connection as an `
 await server.CreateSessionAsync(acceptedConnection);
 ```
 
-You do not implement a separate transport contract. `ISimpleWTransportInput`, `ISimpleWTransportOutput`, and `ISimpleWTransportTlsFeature` are small helper contracts used by an engine to expose input, output, and optional TLS support. Output writes return the number of bytes written to the local transport.
+You do not implement a separate transport contract. `ISimpleWTransportInput` and `ISimpleWTransportOutput` expose input and output, while `ISimpleWTransportDeferredFlushFeature` and `ISimpleWTransportTlsFeature` provide optional transport capabilities. Output writes return the number of bytes written to the local transport.
 
 ```csharp
 /// <summary>
@@ -176,6 +176,35 @@ ValueTask<long> WriteAsync(ArraySegment<byte> header, ArraySegment<byte> body, C
 /// <exception cref="InvalidOperationException">A write is already in progress for this output.</exception>
 ValueTask<long> WriteAsync(ArraySegment<byte>[] segments, CancellationToken cancellationToken = default);
 ```
+
+## Optional Deferred Flush Feature
+
+An output that stages bytes during `WriteAsync(...)` can also implement `ISimpleWTransportDeferredFlushFeature`. The feature must be implemented by the same object returned from `ISimpleWEngine.Output`; SimpleW detects it directly with `transport.Output is ISimpleWTransportDeferredFlushFeature`, not through `GetFeature<TFeature>()`.
+
+```csharp
+/// <summary>
+/// Optional transport feature used to flush bytes staged during the current read batch.
+/// </summary>
+public interface ISimpleWTransportDeferredFlushFeature {
+
+    /// <summary>
+    /// Flushes bytes staged by previous WriteAsync calls.
+    /// </summary>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    ValueTask FlushDeferredAsync(CancellationToken cancellationToken = default);
+}
+```
+
+`FlushDeferredAsync(...)` completes when all bytes staged by earlier `WriteAsync(...)` calls have been handed to the underlying transport. It should complete immediately when no bytes are pending and honor the supplied cancellation token.
+
+SimpleW calls this feature at protocol boundaries where deferred bytes must become visible to the peer:
+
+- after processing the current HTTP read batch;
+- after the WebSocket upgrade response and after each WebSocket frame;
+- after the SSE response headers and after each SSE event or comment.
+
+Outputs that send every write immediately do not need to implement this feature. The Ioxide transport implements it to defer and coalesce writes while preserving the flush points required by HTTP, WebSocket, and SSE.
 
 ## Optional TLS Feature
 

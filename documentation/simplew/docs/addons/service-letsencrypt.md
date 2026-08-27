@@ -202,7 +202,7 @@ Example :
 var server = new SimpleWServer(IPAddress.Any, 443);
 
 // global simplew telemetry, must be enabled
-server.EnableTelemetry();
+server.ConfigureTelemetry(options => options.Enabled = true);
 
 server.UseLetsEncryptModule(options => {
     options.Domains = [ "simplew.net", "www.simplew.net" ];

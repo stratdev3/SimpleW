@@ -1,4 +1,4 @@
-# Migration guide from SimpleW v16
+# SimpleW Migration Guide v16..v26.0
 
 ## Notes
 
@@ -28,7 +28,7 @@ How to replace old class/method/property with the new one.
 - `SimpleWServer.AddDynamicContent()` => `SimpleWServer.MapControllers()` and `SimpleWServer.MapController()`
 - `SimpleWServer.AddStaticContent()` => [`SimpleWServer.UseStaticFilesModule()`](./staticfiles.md)
 - `SimpleWServer.AddCORS()` => [`SimpleWServer.UseCorsModule()`](./cors.md)
-- `SimpleWServer.EnableTelemetry` => `SimpleWServer.EnableTelemetry()` and `SimpleWServer.DisableTelemetry()`
+- `SimpleWServer.EnableTelemetry` => `SimpleWServer.ConfigureTelemetry(options => options.Enabled = true)`
 
 
 ### Request

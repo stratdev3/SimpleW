@@ -1,15 +1,15 @@
 # Router
 
-The primary goal of the `Router` is to execute a `delegate` based on the [`Method`](./httprequest#method) and [`Url`](./httprequest#url).
+The primary goal of the `Router` is to execute a `delegate` based on the [`Method`](./httprequest#method) and [`Url`](./httprequest#rawtarget).
 
 
 ## Routes
 
 ```csharp
 /// <summary>
-/// Public Property List of all declared and handle Routes
+/// All declared Routes
 /// </summary>
-public List<Route> Routes { get; private set; }
+public IEnumerable<RouteInfo> Routes { get; }
 ```
 
 See more [examples](../guide/routing.md).

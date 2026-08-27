@@ -595,7 +595,7 @@ Telemetry is disabled by default and also relies on the global SimpleW telemetry
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 8080);
 
-server.EnableTelemetry();
+server.ConfigureTelemetry(options => options.Enabled = true);
 
 server.UseBackgroundModule(options => {
     options.EnableTelemetry = true;

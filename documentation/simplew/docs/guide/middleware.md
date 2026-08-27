@@ -98,7 +98,7 @@ server.UseMiddleware(static (session, next) => {
     if (session.Request.Path.StartsWith("/api", StringComparison.Ordinal)) {
         if (!session.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != "secret") {
             // stop the pipeline here by sending a 401
-            return session.Unauthorized("You're authorized in this area");
+            return session.Response.Unauthorized("You're not authorized in this area");
         }
     }
     // continue the pipeline
@@ -230,7 +230,7 @@ Another middleware can read the value :
 ```csharp
 server.UseMiddleware(static async (session, next) => {
     if (session.Bag.TryGet<string>("trace.id", out var traceId)) {
-        session.Response.Header("X-Trace-Id", traceId);
+        session.Response.AddHeader("X-Trace-Id", traceId);
     }
     await next();
 });

@@ -39,6 +39,15 @@ public string RawTarget { get; private set; }
 public string Protocol { get; private set; }
 ```
 
+## RouteTemplate
+
+```csharp
+/// <summary>
+/// Gets the matched route template for OpenTelemetry.
+/// </summary>
+public string? RouteTemplate { get; private set; }
+```
+
 ## Headers
 
 ```csharp
@@ -96,6 +105,18 @@ public Dictionary<string, string> Query
 /// </summary>
 public Dictionary<string, string>? RouteValues { get; private set; }
 ```
+
+## JsonEngine
+
+```csharp
+/// <summary>
+/// JSON engine associated with the request.
+/// Can be used to parse the body.
+/// </summary>
+public readonly IJsonEngine JsonEngine;
+```
+
+This is the JSON engine configured on the server that created the request. Request mapping helpers use it when no explicit JSON engine is provided. See [`IJsonEngine`](./ijsonengine.md).
 
 ## MaxRequestHeaderSize
 

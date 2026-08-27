@@ -76,8 +76,6 @@ I spent a **crazy** amount of time writing documentation. Please, [RTFM](https:/
 > I still have questions ?
 
 If you still have questions:
-- open a [github issue](https://github.com/stratdev3/SimpleW/issues)
 - [ping me on Discord](https://discord.gg/mDNRjyV8Ak)
-- send me a email
 
 ...and I'll take a look.

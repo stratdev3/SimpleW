@@ -3,8 +3,9 @@
 Stop talking, show me the code !
 
 <div class="images-inline">
-    <a href="https://github.com/quozd/awesome-dotnet?tab=readme-ov-file#web-servers" target="_blank"><img src="/public/awesome.svg" alt="dotnet awesome" /></a>
-    <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/dt/SimpleW" alt="NuGet Downloads" /></a>
+    <a href="https://github.com/stratdev3/SimpleW/blob/master/licence" target="_blank"><img src="https://img.shields.io/badge/License-MIT-7737d1.svg" alt="Licence MIT" /></a>
+    <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/v/SimpleW?color=7737d1&label=version&logo=NuGet&style=flat" /></a>
+    <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/dt/SimpleW?color=7737d1&label=downloads&logo=NuGet&style=flat" alt="NuGet Downloads" /></a>
 </div>
 
 
@@ -55,8 +56,7 @@ namespace Sample {
 
 :::
 
-
-It uses the [`MapGet`](../reference/simplewserver.md#map) and [`MapPost`](../reference/simplewserver.md#map) methods, which are very similar to ASP.NET Core.
+Then just open your browser to [http://localhost:2015/api/test?name=Chris](http://localhost:2015/api/test?name=Chris) and you will see the `{ "message": "Hello Chris !" }` JSON response.
 
 ::: info
 See the [Templates](../addons/template-templates.md#simplew-minimal) addons to quickly create a minimal project.
@@ -122,7 +122,7 @@ namespace Sample {
 :::
 
 
-Then just [open your browser](http://localhost:2015/api/test?name=Chris) and you will see the `{ "message": "Hello Chris !" }` JSON response.
+Then just open your browser to [http://localhost:2015/api/test?name=Chris](http://localhost:2015/api/test?name=Chris) and you will see the `{ "message": "Hello Chris !" }` JSON response.
 
 
 ## Static Files Example
@@ -170,7 +170,7 @@ namespace Sample {
         <title>index</title>
     </head>
     <body>
-        <h1>Welcome<h1>
+        <h1>Welcome</h1>
         <p>Hello World !</p>
     </body>
 </html>
@@ -179,7 +179,7 @@ namespace Sample {
 :::
 
 
-Then just [open your browser](http://localhost:2015/).
+Then just open your browser to [http://localhost:2015/](http://localhost:2015/).
 
 
 ## FullStack Example
@@ -239,7 +239,7 @@ namespace Sample {
         public object Hello(string? name = null) {
 
             if (string.IsNullOrWhiteSpace(name)) {
-                return MakeNotFoundResponse("you must set a name parameter");
+                return Response.NotFound("you must set a name parameter");
             }
 
             // the return will be serialized to json
@@ -259,7 +259,7 @@ namespace Sample {
         <title>index</title>
     </head>
     <body>
-        <h1>Welcome<h1>
+        <h1>Welcome</h1>
         <input type="text" id="nameInput" placeholder="Enter your name" />
         <button id="greetBtn">Greet me</button>
         <p id="hello"></p>
@@ -301,8 +301,7 @@ namespace Sample {
 
 :::
 
-
-Then just [open your browser](http://localhost:2015/) and interact with the form.
+Then just open your browser to [http://localhost:2015/](http://localhost:2015/) and interact with the form.
 
 
 <style>

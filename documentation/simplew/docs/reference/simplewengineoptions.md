@@ -17,7 +17,7 @@ server.UseEngine(options => {
 /// <summary>
 /// This option will set the maximum length of the pending connections queue.
 /// </summary>
-public int ListenBacklog { get; set; } = 1024;
+public int ListenBacklog { get; set; } = 8192;
 ```
 
 ```csharp

@@ -89,14 +89,8 @@ class Program {
 
         // telemetry
         server.ConfigureTelemetry(options => {
+            options.Enabled = true;
             options.IncludeStackTrace = true;
-        });
-
-        // socket tuning
-        server.UseEngine(options => {
-            options.TcpNoDelay = true;
-            options.ReuseAddress = true;
-            options.TcpKeepAlive = true;
         });
 
         // find all classes based on Controller class, and serve on the "/api" endpoint

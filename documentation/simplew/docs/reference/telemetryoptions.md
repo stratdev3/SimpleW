@@ -7,6 +7,13 @@ The `TelemetryOptions` allows you to pass configuration options to [`SimpleWServ
 
 ```csharp
 /// <summary>
+/// Enable Telemetry
+/// </summary>
+public bool Enabled { get; set; } = false;
+```
+
+```csharp
+/// <summary>
 /// Record Exception
 /// </summary>
 public bool RecordException { get; set; } = true;

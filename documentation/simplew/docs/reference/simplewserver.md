@@ -8,13 +8,13 @@ This class exposes a **fluent API**, which means you can chain all its methods :
 // instanciate
 var server = new SimpleWServer(IPAddress.Any, 2015);
 // configure & run
-server.UseEngine(options => {
-          options.SslContext = sslContext;
-      })
-      .MapGet("/api/hello/world", () => {
-          return new { message = "Hello World !" };
-      })
-      .RunAsync();
+await server.UseEngine(options => {
+                options.SslContext = sslContext;
+            })
+            .MapGet("/api/hello/world", () => {
+                return new { message = "Hello World !" };
+            })
+            .RunAsync();
 ```
 
 
@@ -43,14 +43,6 @@ public SimpleWServer(DnsEndPoint endpoint)
 /// </summary>
 /// <param name="endpoint">IP endpoint</param>
 public SimpleWServer(IPEndPoint endpoint)
-```
-
-```csharp
-/// <summary>
-/// Initialize HTTP server with a given Unix domain socket endpoint
-/// </summary>
-/// <param name="endpoint">Unix domain socket endpoint</param>
-public WsServer(UnixDomainSocketEndPoint endpoint)
 ```
 
 
@@ -197,7 +189,7 @@ public SimpleWServer OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task
 
 Callbacks run sequentially in registration order. Async callbacks are awaited before the transition completes. Exceptions are logged and isolated so later subscribers and the lifecycle operation continue. Lifecycle methods cannot be called from a state callback.
 
-See an [example](../guide/server.md#optional-lifecycle-state-callbacks-fluent).
+See an [example](../guide/server.md#lifecycle-state-callbacks).
 
 
 ## Map
@@ -256,31 +248,31 @@ server.MapGet("/api/test/:name", (string? name = null) => {
 });
 // retrieve the underlying Session object (will be inject)
 server.MapGet("/api/test/hello", (HttpSession session) => {
-    return session.SendJsonAsync(new { message = "Hello World !" });
+    return session.Response.Json(new { message = "Hello World !" });
 });
 // can mixte the special HttpSession with any others parameters
 server.MapGet("/api/test/hello", (HttpSession session, string? name = null) => {
-    return session.SendJsonAsync(new { message = $"Hello {name} !" });
+    return session.Response.Json(new { message = $"Hello {name} !" });
 });
 // the order of parameter does not matter, only its types does
 server.MapGet("/api/test/hello", (string? name = null, HttpSession session) => {
-    return session.SendJsonAsync(new { message = $"Hello {name} !" });
+    return session.Response.Json(new { message = $"Hello {name} !" });
 });
 // handler can be async
 server.MapGet("/api/test/hello", async (HttpSession session, string? name = null) => {
     await Task.Delay(2_000);
-    await session.SendJsonAsync(new { message = $"Hello {name} !" });
+    await session.Response.Json(new { message = $"Hello {name} !" });
 });
 // can mixte return anonymous object and strongly typed object
 server.MapGet("/api/test/hello", object (HttpSession session, string? name = null) => {
-    if (string.IsNullOrWhiteSpace(name)); {
+    if (string.IsNullOrWhiteSpace(name)) {
         return Session.Response.Status(404).Text("you must set a name parameter");
     }
     return new { message = $"Hello {name} !" };
 });
 // can return ValueTask<object>
 server.MapGet("/api/test/hello", async ValueTask<object> (HttpSession session, string? name = null) => {
-    if (string.IsNullOrWhiteSpace(name)); {
+    if (string.IsNullOrWhiteSpace(name)) {
         await Task.Delay(2_000);
         return Session.Response.Status(404).Text("you must set a name parameter");
     }
@@ -337,7 +329,7 @@ This is a repetitive task and you can miss a thing. You should prefer the automa
 
 ```csharp
 /// <summary>
-/// Register all controllers assignable to TController found in the same assembly
+/// Register all controllers assignable to TController found in the same appdomain
 /// </summary>
 /// <typeparam name="TController"></typeparam>
 /// <param name="basePrefix"></param>
@@ -369,7 +361,7 @@ server.MapControllers<Controller>("/api", new Type[] { typeof(MaintenanceControl
 
 #### Example
 
-Suppose you have [subclass](../guide/callback.md#subclass) the `Controller` class to add properties or methods of your own in a new `BaseController`. To call all your controllers based on you custom class : 
+Suppose you have [subclass](../guide/callback.md#controller-subclassing) the `Controller` class to add properties or methods of your own in a new `BaseController`. To call all your controllers based on you custom class :
 
 ```csharp
 var server = new SimpleWServer(IPAddress.Any, 2015);
@@ -434,7 +426,7 @@ public SimpleWServer UseRouter(IRouter router) {
     ArgumentNullException.ThrowIfNull(router);
 
     lock (_stateLock) {
-        EnsureStoppedForConfiguration("Router must be configured before starting the server.");
+        EnsureStateStopped("Router must be configured before starting the server.");
         Router = router;
     }
     return this;
@@ -597,25 +589,6 @@ public bool IsTelemetryEnabled
 
 ```csharp
 /// <summary>
-/// Enable Telemetry
-/// </summary>
-/// <returns></returns>
-public SimpleWServer EnableTelemetry() {
-    Telemetry.Enable();
-    return this;
-}
-```
-
-```csharp
-/// <summary>
-/// Disable Telemetry
-/// </summary>
-/// <returns></returns>
-public SimpleWServer DisableTelemetry()
-```
-
-```csharp
-/// <summary>
 /// Configure Telemetry
 /// </summary>
 /// <param name="configure"></param>
@@ -627,9 +600,12 @@ Example :
 
 ```csharp
 server.ConfigureTelemetry(options => {
+    options.Enabled = true;
     options.IncludeStackTrace = true;
 });
 ```
+
+Telemetry is created automatically when the server starts and disposed when it stops. It is recreated with the same options when the server restarts.
 
 See [`TelemetryOptions`](./telemetryoptions.md) for more information on all options.
 

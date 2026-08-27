@@ -211,7 +211,7 @@ var server = new SimpleWServer(IPAddress.Any, 8080);
 
 server.Configure(options => { /* ... */ });
 
-server.MapGet("/", ctx => "Hello");
+server.MapGet("/", (HttpSession ctx) => "Hello");
 await server.RunAsync();
 ```
 

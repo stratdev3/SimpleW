@@ -45,7 +45,7 @@ See the [changelog](./helper-jwt-changelog.md)
 | `CreateToken(principal, lifetime, issuer, audience, nowUtc)` | Creates a JWT token from a `HttpPrincipal`. |
 | `CreateToken(identity, lifetime, issuer, audience, nowUtc)` | Creates a JWT token from a `HttpIdentity`. |
 | `TryValidateToken(token, out principal, out error, nowUtc)` | Validates a JWT token string and rebuilds a `HttpPrincipal` when successful. |
-| `TryAuthenticate(session, out principal)` | Parses the `Authorization` header, validates the JWT token, and returns a `HttpPrincipal` when authentication succeeds. |
+| `TryAuthenticate(session, out  principal, out error)` | Parses the `Authorization` header, validates the JWT token, and returns a `HttpPrincipal` when authentication succeeds. |
 
 ### JwtBearerOptions
 
@@ -96,7 +96,7 @@ using SimpleW.Helper.Jwt;
 
 SimpleWServer server = new(IPAddress.Any, 2015);
 
-JwtBearerHelper jwt = new(options => {
+JwtBearerHelper jwtHelper = new(options => {
     options.SecretKey = "super-secret-key";
     options.Issuer = "simplew";
     options.Audience = "api";
@@ -105,7 +105,7 @@ JwtBearerHelper jwt = new(options => {
 server.UseMiddleware(async (session, next) => {
 
     // restore the jwt principal when a Bearer token is present
-    if (jwt.TryAuthenticate(session, out HttpPrincipal principal)) {
+    if (jwtHelper.TryAuthenticate(session, out HttpPrincipal principal, out string? error)) {
         session.Principal = principal;
     }
 
@@ -257,7 +257,7 @@ This is useful when you:
 You can fully control how a validated JWT becomes a `HttpPrincipal`:
 
 ```csharp
-JwtBearerHelper jwt = new(options => {
+JwtBearerHelper jwtHelper = new(options => {
     options.SecretKey = "super-secret-key";
     options.Issuer = "simplew";
     options.Audience = "api";
@@ -291,7 +291,7 @@ This is useful when you want to:
 You can customize the parsed scheme and the rebuilt authentication type:
 
 ```csharp
-JwtBearerHelper jwt = new(options => {
+JwtBearerHelper jwtHelper = new(options => {
     options.SecretKey = "super-secret-key";
     options.Scheme = "Token";
     options.AuthenticationType = "ApiToken";

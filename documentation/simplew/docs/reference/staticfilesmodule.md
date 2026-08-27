@@ -64,6 +64,30 @@ public Func<HttpSession, bool>? Authorize { get; set; }
 
 ```csharp
 /// <summary>
+/// Maximum size (in bytes) of a single file allowed to be stored in memory cache.
+/// Null means unlimited. (default: 4 MiB)
+/// </summary>
+public long? MaxCachedFileBytes { get; set; } = 4 * 1024 * 1024;
+```
+
+```csharp
+/// <summary>
+/// Maximum total size (in bytes) of the in-memory file cache.
+/// Null means unlimited. (default: 256 MiB)
+/// </summary>
+public long? MaxCacheTotalBytes { get; set; } = 256 * 1024 * 1024;
+```
+
+```csharp
+/// <summary>
+/// Maximum number of entries in the in-memory file cache.
+/// Null means unlimited. (default: 10,000)
+/// </summary>
+public int? MaxCacheEntries { get; set; } = 10_000;
+```
+
+```csharp
+/// <summary>
 /// If true, serves a minimal directory listing when no default document exists.
 /// </summary>
 public bool AutoIndex { get; set; } = false;
@@ -85,6 +109,9 @@ server.UseStaticFilesModule(options => {
     options.Prefix = "/";                           // to "/" endpoint
     options.CacheFilter = "*.csv";                  // cache only csv files
     options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
+    options.MaxCachedFileBytes = 4 * 1024 * 1024;   // at most 4 MiB per cached file
+    options.MaxCacheTotalBytes = 256 * 1024 * 1024; // at most 256 MiB in memory
+    options.MaxCacheEntries = 10_000;                // at most 10,000 cached files
 });
 ```
 

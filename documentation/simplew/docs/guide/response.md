@@ -231,7 +231,7 @@ This approach means :
 ::: warning
 [`Session.SendAsync()`](../reference/httpsession.md#sendasync) is a very low-level primitive :
 - It writes to the current `ISimpleWEngine`; the transport output enforces one active write per connection.
-- It bypasses the middleware pipeline
+- It bypasses the `HttpResponse` and `ResultHandler`
 - It should almost never be used
 
 This is an escape hatch for very specific scenarios only.

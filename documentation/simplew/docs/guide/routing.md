@@ -155,7 +155,7 @@ Characteristics :
 - Values are mapped by name
 - Values are converted to the target type
 
-If conversion fails, the handler execution fails.
+If conversion fails, the handler uses the default value of the parameter.
 
 ### Mental Model
 
@@ -299,8 +299,8 @@ Each route entry contains the HTTP method, resolved path, and associated handler
 Routing is the primary mechanism for API versioning.
 
 ```csharp
-server.MapControllers<Controller>("/api/v1");
-server.MapControllers<Controller>("/api/v2");
+server.MapControllers<ControllerV1>("/api/v1");
+server.MapControllers<ControllerV2>("/api/v2");
 ```
 
 Each version :

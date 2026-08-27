@@ -307,6 +307,46 @@ Only trust forwarded IP headers from trusted proxy infrastructure.
 Static files and fallback routes usually do not carry custom attributes directly, so protect them with global firewall rules. If a fallback or static-like handler is mapped through a decorated method, handler metadata works normally.
 
 
+## Keep The MaxMind Database Up To Date
+
+The [`SimpleW.Service.Background`](./service-background.md) module can download and activate a fresh MaxMind database on a recurring schedule. Install it alongside the firewall package:
+
+```sh
+dotnet add package SimpleW.Service.Background
+```
+
+The following example runs every day at 03:00 UTC. Each update uses a new maxmind db file.
+
+```csharp
+server.UseFirewallModule(options => {
+    options.MaxMindCountryDbPath = "/app/data/GeoLite2-Country-20260823.mmdb";
+});
+
+server.UseBackgroundModule(options => {
+    options.Schedule(
+        "refresh-maxmind-country-database",
+        "0 3 * * *", // Every day at 03:00 UTC by default.
+        async ctx => {
+
+            // get the .mmdb
+            string newDatabase = "/app/data/GeoLite2-Country-20260824.mmdb";
+
+            // update firewall
+            server.GetFirewall().Update(firewallOptions => {
+                firewallOptions.MaxMindCountryDbPath = newDatabase;
+            });
+
+        },
+        cron => {
+            cron.AllowConcurrentExecutions = false;
+            cron.JobOptions.Timeout = TimeSpan.FromMinutes(10);
+            cron.JobOptions.RetryCount = 2;
+        }
+    );
+});
+```
+
+
 ## Telemetry
 
 Enable telemetry:

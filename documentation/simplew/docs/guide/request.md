@@ -179,7 +179,7 @@ public class UserController : Controller {
         }
         // exception is thrown when type conversion fails
         catch (Exception ex) {
-            return Response.MakeInternalServerErrorResponse(ex.Message);
+            return Response.InternalServerError(ex.Message);
         }
     }
 
@@ -299,7 +299,7 @@ public class UserController : Controller {
                 File.WriteAllBytes(file.FileName, ms.ToArray());
             }
             catch (Exception ex) {
-                return Response.MakeInternalServerErrorResponse(ex.Message);
+                return Response.InternalServerError(ex.Message);
             }
         }
 

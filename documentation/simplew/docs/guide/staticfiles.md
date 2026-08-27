@@ -149,8 +149,21 @@ server.UseStaticFilesModule(options => {
     options.Prefix = "/";                           // to "/" endpoint
     options.CacheFilter = "*.csv";                  // cache only csv files
     options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
+    options.MaxCachedFileBytes = 4 * 1024 * 1024;   // at most 4 MiB per cached file
+    options.MaxCacheTotalBytes = 256 * 1024 * 1024; // at most 256 MiB in memory
+    options.MaxCacheEntries = 10_000;                // at most 10,000 cached files
 });
 ```
+
+The in-memory cache has three limits:
+
+| Option | Default | Description |
+| --- | ---: | --- |
+| `MaxCachedFileBytes` | 4 MiB | Maximum size of a single file stored in memory. Larger files are served from disk. |
+| `MaxCacheTotalBytes` | 256 MiB | Maximum total size of the in-memory cache, including compressed variants. |
+| `MaxCacheEntries` | 10,000 | Maximum number of files stored in the in-memory cache. |
+
+Set any of these options to `null` to remove that limit. Values less than or equal to zero are also normalized to `null` when the module starts.
 
 ::: tip NOTE
 When cache is enabled, an internal filesystem watcher is keeping this cache up-to-date.

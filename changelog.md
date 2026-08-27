@@ -6,31 +6,26 @@ Notes :
 - No technical debt : code that needs to be refactored/broken, will be.
 - When something breaks, it's documented and a migration guide is provided.
 - No long-term support or backports for major versions, just stick to the latest update.
-- Found a bug or a way to optimize? Feel free to submit a patch.
 
 
-## Roadmap / _(2026-??-??)_
-
-- docker template
-- dotnet template
-- captcha module
-- HTTP/3 quic
-
-
-
-## Unreleased
+## v26.1.0 / _(2026-08-??)_
 
 This major release completely rewrites `ISimpleWEngine` so alternative engines can be provided as addons, and introduces Ioxide as the first alternative engine implementation.
 
 ### feature
 
 - feature(SimpleW): introduce a real SimpleWServerState (#415)
+- feature(SimpleW): replace lifecycle callbacks with OnStateChanged (#416)
 
 ### fix
 
+- fix(SimpleW): harden HttpResponse public methods against response splitting (#413)
 - fix(SimpleW): allow Content-Length on HEAD responses without a body (#417)
+- fix(SimpleW): expose listener reload and rollback failures (#414)
 
 ### breakingChange
+
+There is a [complete migration guide](https://simplew.net/guide/migrate-from-v26.0-to-v26.1.html).
 
 - Replaced `SimpleWServer.IsStarted`, `SimpleWServer.IsStopping`, and `SimpleWServer.IsListenerReloading` with the thread-safe `SimpleWServer.State` lifecycle machine (`Stopped`, `Starting`, `Started`, `Reloading`, `Stopping`, and `Faulted`). Lifecycle operations are now serialized; recover a `Faulted` server with `StopAsync()` before restarting it.
 - Replaced `OnStarted` and `OnStopped` with `OnStateChanged(Action<SimpleWServer, SimpleWServerState>)` and `OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task>)`. Filter the provided state when migrating an existing callback; async callbacks are now awaited in registration order.
@@ -39,6 +34,7 @@ This major release completely rewrites `ISimpleWEngine` so alternative engines c
 - Removed `HttpSession.Socket` and `HttpSession.TransportStream` so sessions remain engine-neutral. Use `HttpSession.LocalEndPoint` and `HttpSession.RemoteEndPoint` for endpoint information, and `HttpSession.AbortConnectionAsync()` to abort the underlying connection.
 - Moved the default socket and listener options from `SimpleWSServerOptions` to `SimpleWEngineOptions`: `ListenBacklog`, `DualMode`, `TcpNoDelay`, `ReuseAddress`, `ExclusiveAddressUse`, `ReusePort`, `AcceptPerCore`, `TcpKeepAlive`, `TcpKeepAliveTime`, `TcpKeepAliveInterval`, `TcpKeepAliveRetryCount`, and `ReceiveBufferSize`. Configure them with `server.UseEngine(options => ...)` instead of `server.Configure(options => ...)`.
 - Moved TLS ownership from `SimpleWServer` and `HttpSession` to the engine. Configure `SimpleWEngineOptions.SslContext` with `server.UseEngine(options => ...)`; during listener reloads, call `SimpleWEngine.UseHttps()` or `SimpleWEngine.DisableHttps()` instead of the removed server/session methods.
+- Removed `SimpleWServer.EnableTelemetry()` and `SimpleWServer.DisableTelemetry()`. Use `SimpleWServer.ConfigureTelemetry(options => options.Enabled = true)`; telemetry now starts and stops automatically with the server lifecycle.
 
 
 
@@ -48,7 +44,6 @@ Maintenance
 ### fix
 
 - fix(SimpleW): stack overflow on synchronous socket accepts under heavy load (#385)
-- fix(SimpleW): expose listener reload and rollback failures (#414)
 
 ### feature
 
@@ -98,7 +93,7 @@ Now the real fun begins.
 
 ### breakingChange
 
-There is a [complete migration guide](https://simplew.net/guide/migrate-from-v16.html).
+There is a [complete migration guide](https://simplew.net/guide/migrate-from-v16-to-v26.html).
 
 ### feature / comparison
 
@@ -607,7 +602,7 @@ Maintenance
 
 
 
-## v7.0.0 / _(2023-01-25)_
+## v8.0.0 / _(2023-01-25)_
 Major release
 
 ### breakingChange

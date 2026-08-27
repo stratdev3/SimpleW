@@ -44,6 +44,7 @@ See the [changelog](./helper-log4net-changelog.md)
 | SourcePropertyName  | `"simplew_source"` | Name of the log4net property used to store the SimpleW log source.                                                                                               |
 | TraceIdPropertyName | `"trace_id"`       | Name of the property used to store the `Activity.TraceId`.                                                                                                       |
 | SpanIdPropertyName  | `"span_id"`        | Name of the property used to store the `Activity.SpanId`.                                                                                                        |
+| LoggerResolver      | `null`             | Optional callback that selects an `ILog` for each `LogEntry`. When `null`, the logger passed to `Install(...)` is reused.                                        |
 | Enricher            | `null`             | Optional callback allowing custom enrichment of the log4net properties for each log entry. Receives `(IDictionary<string, object?> properties, LogEntry entry)`. |
 
 
