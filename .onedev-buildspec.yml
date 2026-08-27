@@ -2914,3 +2914,44 @@ jobs:
   maxRetries: 3
   retryDelay: 30
   timeout: 3600
+- name: Documentation
+  jobExecutor: onedev-podman-executor-with-site
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: build vitepress documentation
+    runInContainer: true
+    image: node:22
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        cd documentation/simplew/
+        sed -i "/appearance: 'dark',/a\    base: '/SimpleW/~site/'," docs/.vitepress/config.mjs
+        sed -i "s|href: '/favicon.ico'|href: '/SimpleW/~site/favicon.ico'|" docs/.vitepress/config.mjs
+        npm ci
+        npm run docs:build
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishSiteStep
+    name: publish site
+    sourcePath: documentation/simplew/docs/.vitepress/dist/
+    artifacts: '**'
+    condition: SUCCESSFUL
+    optional: false
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
+  timeout: 14400
