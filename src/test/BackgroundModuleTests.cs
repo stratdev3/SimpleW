@@ -84,8 +84,11 @@ namespace test {
             listener.SetMeasurementEventCallback<double>((_, _, _, _) => { });
             listener.Start();
 
+            TaskCompletionSource<bool> firstJobStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TaskCompletionSource<bool> releaseFirstJob = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
             var server = new SimpleWServer(IPAddress.Loopback, 0);
-            server.EnableTelemetry();
+            server.ConfigureTelemetry(options => options.Enabled = true);
             server.UseBackgroundModule(options => {
                 options.EnableTelemetry = true;
                 options.Capacity = 1;
@@ -94,30 +97,53 @@ namespace test {
             try {
                 IBackgroundService background = server.GetBackgroundService();
 
-                bool first = background.TryEnqueue("telemetry-job", ctx => {
+                await server.StartAsync();
+
+                bool first = background.TryEnqueue("telemetry-job", async ctx => {
                     ctx.ReportProgress(50, "half");
-                    return Task.CompletedTask;
+                    firstJobStarted.TrySetResult(true);
+                    await releaseFirstJob.Task;
                 }, out BackgroundJobHandle firstHandle);
 
-                bool second = background.TryEnqueue("rejected-job", _ => Task.CompletedTask, out BackgroundJobHandle secondHandle);
+                await firstJobStarted.Task;
+
+                bool second = background.TryEnqueue("queued-job", _ => Task.CompletedTask, out BackgroundJobHandle secondHandle);
+                bool third = background.TryEnqueue("rejected-job", _ => Task.CompletedTask, out BackgroundJobHandle thirdHandle);
+
+                releaseFirstJob.TrySetResult(true);
 
                 Check.That(first).IsTrue();
                 Check.That(firstHandle.Id).IsNotEqualTo(Guid.Empty);
-                Check.That(second).IsFalse();
-                Check.That(secondHandle.Id).IsEqualTo(Guid.Empty);
+                Check.That(second).IsTrue();
+                Check.That(secondHandle.Id).IsNotEqualTo(Guid.Empty);
+                Check.That(third).IsFalse();
+                Check.That(thirdHandle.Id).IsEqualTo(Guid.Empty);
 
-                await server.StartAsync();
                 await WaitForStatusAsync(background, firstHandle.Id, BackgroundJobStatus.Succeeded);
-                await WaitForMetricAsync(() => CounterValue(counters, "simplew.background.job.completed.count") == 1);
+                await WaitForStatusAsync(background, secondHandle.Id, BackgroundJobStatus.Succeeded);
+                await WaitForMetricAsync(() => CounterValue(counters, "simplew.background.job.completed.count") == 2);
 
-                Check.That(CounterValue(counters, "simplew.background.job.enqueued.count")).IsEqualTo(1);
+                Check.That(CounterValue(counters, "simplew.background.job.enqueued.count")).IsEqualTo(2);
                 Check.That(CounterValue(counters, "simplew.background.job.rejected.count")).IsEqualTo(1);
-                Check.That(CounterValue(counters, "simplew.background.job.started.count")).IsEqualTo(1);
-                Check.That(CounterValue(counters, "simplew.background.job.attempted.count")).IsEqualTo(1);
-                Check.That(CounterValue(counters, "simplew.background.job.completed.count")).IsEqualTo(1);
+                Check.That(CounterValue(counters, "simplew.background.job.started.count")).IsEqualTo(2);
+                Check.That(CounterValue(counters, "simplew.background.job.attempted.count")).IsEqualTo(2);
+                Check.That(CounterValue(counters, "simplew.background.job.completed.count")).IsEqualTo(2);
                 Check.That(CounterValue(counters, "simplew.background.job.progress.count")).IsEqualTo(1);
+
+                await server.StopAsync();
+                await server.StartAsync();
+
+                BackgroundJobHandle restartedHandle = background.Enqueue("restarted-telemetry-job", _ => Task.CompletedTask);
+                await WaitForStatusAsync(background, restartedHandle.Id, BackgroundJobStatus.Succeeded);
+                await WaitForMetricAsync(() => CounterValue(counters, "simplew.background.job.completed.count") == 3);
+
+                Check.That(CounterValue(counters, "simplew.background.job.enqueued.count")).IsEqualTo(3);
+                Check.That(CounterValue(counters, "simplew.background.job.started.count")).IsEqualTo(3);
+                Check.That(CounterValue(counters, "simplew.background.job.attempted.count")).IsEqualTo(3);
+                Check.That(CounterValue(counters, "simplew.background.job.completed.count")).IsEqualTo(3);
             }
             finally {
+                releaseFirstJob.TrySetResult(true);
                 await server.StopAsync();
             }
         }

@@ -42,7 +42,12 @@ namespace SimpleW.Service.Background {
                     _service.Start();
                 }
                 else if (state == SimpleWServerState.Stopped) {
-                    await _service.StopAsync().ConfigureAwait(false);
+                    try {
+                        await _service.StopAsync().ConfigureAwait(false);
+                    }
+                    finally {
+                        _service.ResetTelemetry();
+                    }
                 }
             });
 

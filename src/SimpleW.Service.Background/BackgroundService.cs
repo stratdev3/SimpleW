@@ -1080,7 +1080,7 @@ namespace SimpleW.Service.Background {
             }
 
             Telemetry? telemetry = server.Telemetry;
-            if (telemetry == null || !server.IsTelemetryEnabled) {
+            if (telemetry == null) {
                 return null;
             }
 
@@ -1093,6 +1093,15 @@ namespace SimpleW.Service.Background {
             lock (_telemetryLock) {
                 _telemetry ??= new BackgroundTelemetry(telemetry.Meter, this);
                 return _telemetry;
+            }
+        }
+
+        /// <summary>
+        /// Clears instruments associated with the completed server lifetime.
+        /// </summary>
+        internal void ResetTelemetry() {
+            lock (_telemetryLock) {
+                _telemetry = null;
             }
         }
 

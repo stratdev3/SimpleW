@@ -12,21 +12,6 @@ namespace SimpleW.Observability {
     public class Telemetry : IDisposable {
 
         /// <summary>
-        /// Global Switch for Telemetry
-        /// </summary>
-        internal bool Enabled { get; private set; }
-
-        /// <summary>
-        /// Enable Telemetry
-        /// </summary>
-        internal void Enable() => Enabled = true;
-
-        /// <summary>
-        /// Disable Telemetry
-        /// </summary>
-        internal void Disable() => Enabled = false;
-
-        /// <summary>
         /// Options
         /// </summary>
         public readonly TelemetryOptions Options;
@@ -346,6 +331,11 @@ namespace SimpleW.Observability {
     /// Telemetry Options
     /// </summary>
     public sealed class TelemetryOptions {
+
+        /// <summary>
+        /// Enable Telemetry
+        /// </summary>
+        public bool Enabled { get; set; } = false;
 
         /// <summary>
         /// InstanceId

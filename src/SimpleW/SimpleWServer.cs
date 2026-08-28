@@ -321,6 +321,10 @@ namespace SimpleW {
                     _log.Info("server starting...");
                     Options.ValidateAndNormalize();
 
+                    if (_telemetryOptions.Enabled) {
+                        Telemetry = new Telemetry(_telemetryOptions);
+                    }
+
                     // refresh the endpoint property based on the actual endpoint created
                     EndPoint? startedEndPoint = await Engine.StartAsync(this, _bufferPool, lifetimeCts.Token).ConfigureAwait(false);
                     engineStarted = true;
@@ -351,6 +355,11 @@ namespace SimpleW {
                     try { lifetimeCts.Cancel(); }
                     catch { }
                     await StopSessionTimeoutLoopAsync().ConfigureAwait(false);
+
+                    try { Telemetry?.Dispose(); }
+                    catch { }
+                    Telemetry = null;
+
                     lifetimeCts.Dispose();
                     if (ReferenceEquals(_lifetimeCts, lifetimeCts)) {
                         _lifetimeCts = null;
@@ -1135,6 +1144,11 @@ namespace SimpleW {
         #region telemetry
 
         /// <summary>
+        /// Telemetry Options
+        /// </summary>
+        private readonly TelemetryOptions _telemetryOptions = new();
+
+        /// <summary>
         /// Telemetry
         /// </summary>
         public Telemetry? Telemetry { get; private set; }
@@ -1142,7 +1156,7 @@ namespace SimpleW {
         /// <summary>
         /// Telemetry Status
         /// </summary>
-        public bool IsTelemetryEnabled => Telemetry?.Enabled ?? false;
+        public bool IsTelemetryEnabled => Telemetry != null;
 
         /// <summary>
         /// Configure Telemetry
@@ -1150,39 +1164,18 @@ namespace SimpleW {
         /// <param name="configure"></param>
         /// <example>
         /// server.ConfigureTelemetry(options => {
+        ///     options.Enabled = true;
         ///     options.IncludeStackTrace = true;
         /// });
         /// </example>
         /// <returns></returns>
         public SimpleWServer ConfigureTelemetry(Action<TelemetryOptions> configure) {
             ArgumentNullException.ThrowIfNull(configure);
-            if (Telemetry != null) {
-                InvalidOperationException ex = new("Telemetry must be configured before being enabled.");
-                _log.Warn(ex.Message, ex);
-                throw ex;
+
+            lock (_stateLock) {
+                EnsureStateStopped("Telemetry must be configured before starting the server.");
+                configure(_telemetryOptions);
             }
-            TelemetryOptions TelemetryOptions = new();
-            configure(TelemetryOptions);
-            Telemetry = new Telemetry(TelemetryOptions);
-            return this;
-        }
-
-        /// <summary>
-        /// Enable Telemetry
-        /// </summary>
-        /// <returns></returns>
-        public SimpleWServer EnableTelemetry() {
-            Telemetry ??= new Telemetry(new TelemetryOptions());
-            Telemetry.Enable();
-            return this;
-        }
-
-        /// <summary>
-        /// Disable Telemetry
-        /// </summary>
-        /// <returns></returns>
-        public SimpleWServer DisableTelemetry() {
-            Telemetry?.Disable();
             return this;
         }
 

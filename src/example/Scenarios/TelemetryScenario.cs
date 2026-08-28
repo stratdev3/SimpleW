@@ -46,10 +46,10 @@ internal sealed class TelemetryScenario : IScenario {
 
         SimpleWServer server = ExampleServer.Create(arguments);
         server.ConfigureTelemetry(options => {
+            options.Enabled = true;
             options.InstanceId = "example";
             options.IncludeStackTrace = true;
         });
-        server.EnableTelemetry();
         server.MapGet("/", () => new {
             message = "Telemetry is enabled.",
             local = "Completed requests are printed to the console.",

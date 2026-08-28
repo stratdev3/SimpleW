@@ -71,6 +71,9 @@ namespace SimpleW.Service.LetsEncrypt {
                 else if (state == SimpleWServerState.Stopped) {
                     try { await StopBackgroundLoopAsync().ConfigureAwait(false); }
                     catch { }
+                    lock (_telemetryLock) {
+                        _telemetry = null;
+                    }
                 }
             });
 
@@ -591,7 +594,7 @@ namespace SimpleW.Service.LetsEncrypt {
                 return null;
             }
             Telemetry? telemetry = server.Telemetry;
-            if (telemetry == null || !server.IsTelemetryEnabled) {
+            if (telemetry == null) {
                 return null;
             }
             LetsEncryptTelemetry? t = _telemetry;

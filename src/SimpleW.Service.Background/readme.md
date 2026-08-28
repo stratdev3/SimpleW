@@ -132,7 +132,7 @@ The token passed to `EnqueueAsync` controls only the wait for queue capacity. Af
 Telemetry is optional and follows the SimpleW telemetry switch:
 
 ```cs
-server.EnableTelemetry();
+server.ConfigureTelemetry(options => options.Enabled = true);
 
 server.UseBackgroundModule(options => {
     options.EnableTelemetry = true;

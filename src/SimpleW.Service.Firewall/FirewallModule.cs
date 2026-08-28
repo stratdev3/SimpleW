@@ -51,6 +51,13 @@ namespace SimpleW.Service.Firewall {
             _log.Info("installing...");
             server.UseMiddleware(MiddlewareAsync);
             FirewallModuleExtension.Register(server, this);
+            server.OnStateChanged((_, state) => {
+                if (state == SimpleWServerState.Stopped) {
+                    lock (_telemetryLock) {
+                        _telemetry = null;
+                    }
+                }
+            });
             _log.Info("installed");
         }
 
@@ -335,7 +342,7 @@ namespace SimpleW.Service.Firewall {
             }
 
             Telemetry? telemetry = server.Telemetry;
-            if (telemetry == null || !server.IsTelemetryEnabled) {
+            if (telemetry == null) {
                 return null;
             }
 

@@ -664,22 +664,26 @@ namespace test {
             var module = new TrackingModule();
 
             server.Configure(_ => { });
+            server.ConfigureTelemetry(_ => { });
             server.UseModule(module);
             Check.That(module.InstallCallCount).IsEqualTo(1);
 
             Task start = server.StartAsync();
             await startEntered.Task;
             Assert.Throws<InvalidOperationException>(() => server.Configure(_ => { }));
+            Assert.Throws<InvalidOperationException>(() => server.ConfigureTelemetry(_ => { }));
             Assert.Throws<InvalidOperationException>(() => server.UseModule(module));
             releaseStart.TrySetResult(true);
             await start;
 
             Assert.Throws<InvalidOperationException>(() => server.Configure(_ => { }));
+            Assert.Throws<InvalidOperationException>(() => server.ConfigureTelemetry(_ => { }));
             Assert.Throws<InvalidOperationException>(() => server.UseModule(module));
 
             Task reload = server.ReloadListenerAsync(_ => { });
             await reloadEntered.Task;
             Assert.Throws<InvalidOperationException>(() => server.Configure(_ => { }));
+            Assert.Throws<InvalidOperationException>(() => server.ConfigureTelemetry(_ => { }));
             Assert.Throws<InvalidOperationException>(() => server.UseModule(module));
             server.UsePort(5002);
             releaseReload.TrySetResult(true);
@@ -688,11 +692,13 @@ namespace test {
             Task stop = server.StopAsync();
             await stopEntered.Task;
             Assert.Throws<InvalidOperationException>(() => server.Configure(_ => { }));
+            Assert.Throws<InvalidOperationException>(() => server.ConfigureTelemetry(_ => { }));
             Assert.Throws<InvalidOperationException>(() => server.UseModule(module));
             releaseStop.TrySetResult(true);
             await stop;
 
             Check.That(server.State).IsEqualTo(SimpleWServerState.Stopped);
+            server.ConfigureTelemetry(_ => { });
             Check.That(module.InstallCallCount).IsEqualTo(1);
         }
 
@@ -1537,33 +1543,92 @@ namespace test {
         #region telemetry
 
         [Fact]
-        public void EnableTelemetry_And_DisableTelemetry_Should_Update_Status() {
+        public async Task Telemetry_Should_Be_Disabled_By_Default() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, 0);
+            var server = CreateServer(new FakeEngine());
+            server.ConfigureTelemetry(options => options.IncludeStackTrace = true);
 
             Check.That(server.IsTelemetryEnabled).IsFalse();
+            Check.That(server.Telemetry).IsNull();
 
-            server.EnableTelemetry();
-            Check.That(server.IsTelemetryEnabled).IsTrue();
+            await server.StartAsync();
 
-            server.DisableTelemetry();
             Check.That(server.IsTelemetryEnabled).IsFalse();
+            Check.That(server.Telemetry).IsNull();
 
+            await server.StopAsync();
         }
 
         [Fact]
-        public void ConfigureTelemetry_After_EnableTelemetry_Should_Throw() {
+        public async Task Telemetry_Should_Follow_Server_Lifecycle_And_Preserve_Options() {
 
-            var server = new SimpleWServer(IPAddress.Loopback, 0);
-            server.EnableTelemetry();
-
-            Assert.Throws<InvalidOperationException>(() => {
-                server.ConfigureTelemetry(options => {
-                    options.IncludeStackTrace = true;
-                });
+            var server = CreateServer(new FakeEngine());
+            server.ConfigureTelemetry(options => {
+                options.Enabled = true;
+            });
+            server.ConfigureTelemetry(options => {
+                options.InstanceId = "telemetry-test";
+                options.IncludeStackTrace = true;
             });
 
-            server.DisableTelemetry();
+            Check.That(server.IsTelemetryEnabled).IsFalse();
+            Check.That(server.Telemetry).IsNull();
+
+            await server.StartAsync();
+            var firstTelemetry = server.Telemetry;
+
+            Check.That(server.IsTelemetryEnabled).IsTrue();
+            Check.That(firstTelemetry).IsNotNull();
+            Check.That(firstTelemetry!.Options.InstanceId).IsEqualTo("telemetry-test");
+            Check.That(firstTelemetry.Options.IncludeStackTrace).IsTrue();
+
+            await server.StopAsync();
+
+            Check.That(server.IsTelemetryEnabled).IsFalse();
+            Check.That(server.Telemetry).IsNull();
+
+            await server.StartAsync();
+            var secondTelemetry = server.Telemetry;
+
+            Check.That(server.IsTelemetryEnabled).IsTrue();
+            Check.That(secondTelemetry).IsNotNull();
+            Assert.NotSame(firstTelemetry, secondTelemetry);
+            Check.That(secondTelemetry!.Options.InstanceId).IsEqualTo("telemetry-test");
+            Check.That(secondTelemetry.Options.IncludeStackTrace).IsTrue();
+
+            await server.StopAsync();
+        }
+
+        [Fact]
+        public async Task Telemetry_Should_Be_Cleaned_Up_When_Start_Fails() {
+
+            var engine = new ControllableEngine {
+                StartHandler = (_, _, _) => throw new InvalidOperationException("start failed")
+            };
+            var server = CreateServer(engine);
+            server.ConfigureTelemetry(options => options.Enabled = true);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => server.StartAsync());
+
+            Check.That(server.State).IsEqualTo(SimpleWServerState.Stopped);
+            Check.That(server.IsTelemetryEnabled).IsFalse();
+            Check.That(server.Telemetry).IsNull();
+        }
+
+        [Fact]
+        public async Task ReloadListener_Should_Preserve_Telemetry() {
+
+            var server = CreateServer(new FakeEngine());
+            server.ConfigureTelemetry(options => options.Enabled = true);
+            await server.StartAsync();
+            var telemetry = server.Telemetry;
+
+            await server.ReloadListenerAsync(_ => { });
+
+            Check.That(server.IsTelemetryEnabled).IsTrue();
+            Assert.Same(telemetry, server.Telemetry);
+
+            await server.StopAsync();
         }
 
         #endregion telemetry
