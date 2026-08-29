@@ -84,13 +84,16 @@ namespace SimpleW {
                 // create socket
                 _listenSocket = CreateListenSocket(server.EndPoint);
 
-                // option: reuse address
-                _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, options.ReuseAddress);
-                // option: exclusive address use
-                _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, options.ExclusiveAddressUse);
-                // option: reuse port
-                if (options.ReusePort) {
-                    _listenSocket.EnableReusePort();
+                // IP listener options are not supported by Unix Domain Sockets
+                if (server.EndPoint is not UnixDomainSocketEndPoint) {
+                    // option: reuse address
+                    _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, options.ReuseAddress);
+                    // option: exclusive address use
+                    _listenSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ExclusiveAddressUse, options.ExclusiveAddressUse);
+                    // option: reuse port
+                    if (options.ReusePort) {
+                        _listenSocket.EnableReusePort();
+                    }
                 }
                 // option: dual mode (this option must be applied before listening)
                 if (server.EndPoint.AddressFamily == AddressFamily.InterNetworkV6) {
