@@ -4,14 +4,8 @@ layout: home
 
 hero:
     name: "SimpleW"
-    text: "Modern Web Server <br />for .NET"
-    tagline: Designed for Simplicity. Built for Speed.
-    #tagline: Designed for Simplicity. Built for Speed. Packed with Power.
-    #tagline: Powerfully Simple. Seriously Fast.
-    #tagline: Simple by Design. Fast and Powerful.
-    #tagline: Simple. Fast. Powerful.
-    #tagline: Simplicity First. Performance Built-In.
-    #tagline: Simple by Design. Built for Speed.
+    text: "Lightweight Web Server <br />for .NET"
+    tagline: Simple by design. Standalone or embedded.
     actions:
         - theme: brand
           text: Get Started

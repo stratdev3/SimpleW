@@ -5,15 +5,15 @@ export default defineConfig({
     appearance: 'dark',
     title: 'SimpleW',
     titleTemplate: 'SimpleW',
-    description: "SimpleW is a modern web server for .NET. Designed for Simplicity. Built for Speed. Packed with Power.",
+    description: "SimpleW is a lightweight web server for .NET. Simple by design. Standalone or embedded.",
     head: [
         ['link', { rel: 'icon', href: 'favicon.ico' }],
         // analytics
         ['script', { async: '', src: 'https://cloud.umami.is/script.js', 'data-website-id': '6cb0147f-6faa-4c64-ba68-6bd607980ea5' } ],
         // og
         ['meta', { property: 'og:site_name', content: 'SimpleW' }],
-        ['meta', { property: 'og:title', content: 'SimpleW | Modern Web Server for .NET' }],
-        ['meta', { property: 'og:description', content: 'A modern .NET web server built for speed and control. Handle APIs, static files, and dynamic content with a production-ready core and zero dependencies.' }],
+        ['meta', { property: 'og:title', content: 'SimpleW | Lightweight Web Server for .NET' }],
+        ['meta', { property: 'og:description', content: 'A lightweight .NET web server with an embeddable core and powerful addons. Build standalone or embedded services without ASP.NET.' }],
         ['meta', { property: 'og:type', content: 'website' }],
         ['meta', { property: 'og:url', content: 'https://simplew.net' }],
         ['meta', { property: 'og:image', content: 'https://simplew.net/simplew-og.png' }],

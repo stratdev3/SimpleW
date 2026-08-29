@@ -25,3 +25,13 @@
     height: 20px;
     margin: 0;
 }
+
+@media (min-width: 960px) {
+    .VPHero.has-image .text {
+        max-width: none;
+        font-size: 48px;
+        line-height: 56px;
+        letter-spacing: 0;
+        white-space: nowrap;
+    }
+}
