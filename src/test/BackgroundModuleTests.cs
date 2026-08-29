@@ -649,28 +649,29 @@ namespace test {
         [Fact]
         public async Task ScheduleEvery_Should_Start_After_Interval_And_Skip_Concurrent_Ticks() {
             int runs = 0;
-            TaskCompletionSource<bool> firstRun = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            TimeSpan interval = TimeSpan.FromMilliseconds(100);
+            TaskCompletionSource<DateTimeOffset> firstRun = new(TaskCreationOptions.RunContinuationsAsynchronously);
             TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
             var server = new SimpleWServer(IPAddress.Loopback, 0);
             server.UseBackgroundModule(options => {
                 options.ScheduleEvery(
                     "interval-job",
-                    TimeSpan.FromMilliseconds(100),
+                    interval,
                     async ctx => {
                         Interlocked.Increment(ref runs);
-                        firstRun.TrySetResult(true);
+                        firstRun.TrySetResult(DateTimeOffset.UtcNow);
                         await release.Task.WaitAsync(ctx.CancellationToken);
                     }
                 );
             });
 
             try {
+                DateTimeOffset startRequestedAtUtc = DateTimeOffset.UtcNow;
                 await server.StartAsync();
 
-                await Task.Delay(40);
-                Check.That(firstRun.Task.IsCompleted).IsFalse();
-                Check.That(await firstRun.Task.WaitAsync(TimeSpan.FromSeconds(2))).IsTrue();
+                DateTimeOffset firstRunAtUtc = await firstRun.Task.WaitAsync(TimeSpan.FromSeconds(2));
+                Check.That(firstRunAtUtc >= startRequestedAtUtc.Add(interval)).IsTrue();
 
                 await Task.Delay(250);
                 Check.That(runs).IsEqualTo(1);

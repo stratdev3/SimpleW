@@ -13,45 +13,108 @@ namespace test {
     /// </summary>
     public class UnixSockets {
 
-        //private static string unixSockerPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "", "UnixSockets", "server.sock");
+        [Fact]
+        public async Task MapGet_Should_Work_Over_UnixDomainSocket() {
 
-        //private SocketsHttpHandler socketHttpHandler = new SocketsHttpHandler {
-        //    ConnectCallback = async (context, cancellationToken) => {
-        //        var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-        //        var endpoint = new UnixDomainSocketEndPoint(unixSockerPath);
-        //        await socket.ConnectAsync(endpoint);
-        //        return new NetworkStream(socket, ownsSocket: true);
-        //    }
-        //};
+            if (!Socket.OSSupportsUnixDomainSockets) {
+                return;
+            }
 
-        //[Fact]
-        //public async Task MapGet_HelloWorld() {
+            string unixSocketPath = CreateUnixSocketPath();
+            UnixDomainSocketEndPoint endpoint = new(unixSocketPath);
+            var server = new SimpleWServer(endpoint);
+            server.MapGet("/", () => new { message = "Hello World !" });
 
-        //    if (!Socket.OSSupportsUnixDomainSockets) {
-        //        return;
-        //    }
+            try {
+                Check.That(server.IsUnixDomainSocket).IsTrue();
+                Check.That(server.EndPoint).IsInstanceOf<UnixDomainSocketEndPoint>();
 
-        //    Directory.CreateDirectory(Path.Combine(unixSockerPath, ".."));
+                await server.StartAsync();
 
-        //    // server
-        //    var server = new SimpleWServer(new UnixDomainSocketEndPoint(unixSockerPath));
-        //    server.MapGet("/", () => {
-        //        return new { message = "Hello World !" };
-        //    });
-        //    server.Start();
+                using SocketsHttpHandler handler = CreateUnixSocketHandler(endpoint);
+                using HttpClient client = new(handler, disposeHandler: false);
+                using HttpResponseMessage response = await client.GetAsync("http://localhost/");
+                string content = await response.Content.ReadAsStringAsync();
 
-        //    // client
-        //    var client = new HttpClient(socketHttpHandler);
-        //    var response = await client.GetAsync($"http://localhost/");
-        //    var content = await response.Content.ReadAsStringAsync();
+                Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+                Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
+            }
+            finally {
+                try {
+                    await server.StopAsync();
+                }
+                finally {
+                    DeleteUnixSocketFile(unixSocketPath);
+                }
+            }
+        }
 
-        //    // asserts
-        //    Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
-        //    Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
+        [Fact]
+        public async Task Server_Should_Restart_On_Same_UnixDomainSocket() {
 
-        //    // dispose
-        //    server.Stop();
-        //}
+            if (!Socket.OSSupportsUnixDomainSockets) {
+                return;
+            }
+
+            string unixSocketPath = CreateUnixSocketPath();
+            UnixDomainSocketEndPoint endpoint = new(unixSocketPath);
+            var server = new SimpleWServer(endpoint);
+            server.MapGet("/", () => new { message = "Hello World !" });
+
+            try {
+                await server.StartAsync();
+                Check.That(File.Exists(unixSocketPath)).IsTrue();
+                await AssertHelloWorldAsync(endpoint);
+
+                await server.StopAsync();
+                Check.That(File.Exists(unixSocketPath)).IsFalse();
+
+                await server.StartAsync();
+                await AssertHelloWorldAsync(endpoint);
+            }
+            finally {
+                try {
+                    await server.StopAsync();
+                }
+                finally {
+                    DeleteUnixSocketFile(unixSocketPath);
+                }
+            }
+        }
+
+        private static string CreateUnixSocketPath() => Path.Combine(Path.GetTempPath(), $"sw-{Guid.NewGuid():N}.sock");
+
+        private static SocketsHttpHandler CreateUnixSocketHandler(UnixDomainSocketEndPoint endpoint) {
+            return new SocketsHttpHandler {
+                ConnectCallback = async (_, cancellationToken) => {
+                    Socket socket = new(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+                    try {
+                        await socket.ConnectAsync(endpoint, cancellationToken);
+                        return new NetworkStream(socket, ownsSocket: true);
+                    }
+                    catch {
+                        socket.Dispose();
+                        throw;
+                    }
+                }
+            };
+        }
+
+        private static async Task AssertHelloWorldAsync(UnixDomainSocketEndPoint endpoint) {
+            using SocketsHttpHandler handler = CreateUnixSocketHandler(endpoint);
+            using HttpClient client = new(handler, disposeHandler: false);
+            using HttpResponseMessage response = await client.GetAsync("http://localhost/");
+            string content = await response.Content.ReadAsStringAsync();
+
+            Check.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+            Check.That(content).IsEqualTo(JsonSerializer.Serialize(new { message = "Hello World !" }));
+        }
+
+        private static void DeleteUnixSocketFile(string unixSocketPath) {
+            if (File.Exists(unixSocketPath)) {
+                File.Delete(unixSocketPath);
+            }
+        }
 
     }
 
