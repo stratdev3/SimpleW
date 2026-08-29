@@ -153,7 +153,7 @@ Console.WriteLine(session.NegotiatedApplicationProtocol);
 
 `IsClientCertificateAuthenticated` is `false` when the TLS engine reports that no client certificate was authenticated. It is `null` when the transport does not expose TLS metadata.
 
-`ClientCertificateEmailAddress` contains the email address selected from the certificate by the TLS engine. It can be `null` for an authenticated certificate. The Socket engine uses `X509Certificate2.GetNameInfo(X509NameType.EmailName, false)`; Ioxide 0.4.184 does not expose this value yet.
+`ClientCertificateEmailAddress` contains the email address selected from the certificate by the TLS engine. It can be `null` for an authenticated certificate. The Socket engine uses `X509Certificate2.GetNameInfo(X509NameType.EmailName, false)`;
 
 The subject was validated according to the listener's TLS policy, but its textual representation is native to the engine. For example, .NET and OpenSSL may format the same distinguished name differently. Do not parse it naively or compare values produced by different engines.
 

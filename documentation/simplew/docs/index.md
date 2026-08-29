@@ -14,11 +14,11 @@ hero:
     #tagline: Simple by Design. Built for Speed.
     actions:
         - theme: brand
+          text: Get Started
+          link: /guide/getting-started
+        - theme: alt
           text: What is SimpleW?
           link: /guide/what-is-simplew
-        - theme: alt
-          text: Quick Start
-          link: /guide/getting-started
         - theme: alt
           text: GitHub
           link: https://github.com/stratdev3/SimpleW

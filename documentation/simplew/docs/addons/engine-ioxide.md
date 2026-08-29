@@ -32,6 +32,8 @@ For all information about ioxide, please refer to the [official website](https:/
 dotnet add package SimpleW.Engine.Ioxide
 ```
 
+See the [changelog](./engine-ioxide-changelog.md)
+
 
 ## Minimal server
 

@@ -3,6 +3,7 @@
 // Value: mirrored file inside the VitePress documentation.
 export default {
   '../../changelog.md': 'docs/version/changelog.md',
+  '../../src/SimpleW.Engine.Ioxide/changelog.md': 'docs/addons/engine-ioxide-changelog.md',
   '../../src/SimpleW.Helper.BasicAuth/changelog.md': 'docs/addons/helper-basicauth-changelog.md',
   '../../src/SimpleW.Helper.DependencyInjection/changelog.md': 'docs/addons/helper-dependency-injection-changelog.md',
   '../../src/SimpleW.Helper.Hosting/changelog.md': 'docs/addons/helper-hosting-changelog.md',
