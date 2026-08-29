@@ -41,7 +41,7 @@ It allows you to:
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Service.BasicAuth
+dotnet add package SimpleW.Service.BasicAuth
 ```
 
 See the [changelog](./service-basicauth-changelog.md)

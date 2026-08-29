@@ -36,7 +36,7 @@ That policy stays in your own custom middleware, which makes this package a good
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.BasicAuth
+dotnet add package SimpleW.Helper.BasicAuth
 ```
 
 See the [changelog](./helper-basicauth-changelog.md)

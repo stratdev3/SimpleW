@@ -40,7 +40,7 @@ It allows you to:
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Service.Jwt
+dotnet add package SimpleW.Service.Jwt
 ```
 
 See the [changelog](./service-jwt-changelog.md)

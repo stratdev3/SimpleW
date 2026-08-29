@@ -7,7 +7,7 @@
     license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
 />
 
-[`SimpleW.Engine.Ioxide`](https://www.nuget.org/packages/SimpleW.Engine.Ioxide) replaces the default Socket engine with the Linux-native io_uring runtime while keeping the SimpleW routing, module, handler, response, SSE, and WebSocket APIs.
+[`SimpleW.Engine.Ioxide`](https://www.nuget.org/packages/SimpleW.Engine.Ioxide) replaces the default Socket engine with the Linux-native `io_uring` runtime while keeping the SimpleW routing, module, handler, response, SSE, and WebSocket APIs.
 
 The current engine supports HTTP/1.x over plaintext TCP or native OpenSSL TLS. It does not use `Socket`, `SslStream`, `PipeReader`, or kTLS on its connection hot paths.
 

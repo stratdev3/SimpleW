@@ -34,7 +34,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Log4net
+dotnet add package SimpleW.Helper.Log4net
 ```
 
 See the [changelog](./helper-log4net-changelog.md)

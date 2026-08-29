@@ -7,7 +7,7 @@ namespace benchme {
 
     /// <summary>
     /// Benchmark Program
-    /// $ dotnet run -c Release benchme.csproj
+    /// dotnet run -c Release benchme.csproj
     /// </summary>
     internal class Program {
 

@@ -14,7 +14,7 @@ Stop talking, show me the code !
 Using the NuGet package, always prefer the latest version.
 
 ```sh
-$ dotnet add package SimpleW
+dotnet add package SimpleW
 ```
 
 
@@ -56,7 +56,7 @@ namespace Sample {
 
 :::
 
-Then just open your browser to [http://localhost:2015/api/test?name=Chris](http://localhost:2015/api/test?name=Chris) and you will see the `{ "message": "Hello Chris !" }` JSON response.
+Then just open your browser to [http://localhost:2015/api/test](http://localhost:2015/api/test) and you will see the `{ "message": "Hello Chris !" }` JSON response.
 
 ::: info
 See the [Templates](../addons/template-templates.md#simplew-minimal) addons to quickly create a minimal project.

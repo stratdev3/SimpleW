@@ -31,7 +31,7 @@ This module is designed to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Latency
+dotnet add package SimpleW.Service.Latency
 ```
 
 See the [changelog](./service-latency-changelog.md)

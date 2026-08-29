@@ -37,7 +37,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Razor
+dotnet add package SimpleW.Helper.Razor
 ```
 
 See the [changelog](./helper-razor-changelog.md)

@@ -42,7 +42,7 @@ It allows you to :
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.Hosting
+dotnet add package SimpleW.Helper.Hosting
 ```
 
 See the [changelog](./helper-hosting-changelog.md)

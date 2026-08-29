@@ -38,7 +38,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Swagger
+dotnet add package SimpleW.Helper.Swagger
 ```
 
 See the [changelog](./helper-swagger-changelog.md)

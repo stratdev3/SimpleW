@@ -58,7 +58,7 @@ making it effortless to integrate end-to-end tracing into your .NET services.
 Then add the official OpenTelemetry package
 
 ```sh
-$ dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
+dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol
 ```
 
 And see the following example, especially the `openTelemetryObserver()`

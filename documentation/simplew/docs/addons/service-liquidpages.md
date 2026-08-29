@@ -20,7 +20,7 @@ No external dependencies.
 ## Installation
 
 ```powershell
-$ dotnet add package Kinetq.LiquidPages.SimpleW
+dotnet add package Kinetq.LiquidPages.SimpleW
 ```
 
 ## Configuration options

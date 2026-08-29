@@ -35,7 +35,7 @@ It exposes a ready-to-use browser UI and an HTTP API to list files and directori
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.FileBrowser
+dotnet add package SimpleW.Service.FileBrowser
 ```
 
 See the [changelog](./service-filebrowser-changelog.md)

@@ -47,7 +47,7 @@ The queue is **memory-only**. Jobs do not survive process restart.
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Background
+dotnet add package SimpleW.Service.Background
 ```
 
 See the [changelog](./service-background-changelog.md)

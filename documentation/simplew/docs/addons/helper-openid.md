@@ -40,7 +40,7 @@ That policy stays in your own custom middleware, which makes this package a good
 Install the package from NuGet:
 
 ```sh
-$ dotnet add package SimpleW.Helper.OpenID
+dotnet add package SimpleW.Helper.OpenID
 ```
 
 See the [changelog](./helper-openid-changelog.md)

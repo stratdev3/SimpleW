@@ -36,7 +36,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Service.Letsencrypt
+dotnet add package SimpleW.Service.Letsencrypt
 ```
 
 See the [changelog](./service-letsencrypt-changelog.md)

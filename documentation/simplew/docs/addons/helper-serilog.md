@@ -35,7 +35,7 @@ It allows you to :
 ## Installation
 
 ```sh
-$ dotnet add package SimpleW.Helper.Serilog
+dotnet add package SimpleW.Helper.Serilog
 ```
 
 See the [changelog](./helper-serilog-changelog.md)
