@@ -1,13 +1,17 @@
 # Changelog
 
 
-## Unreleased
+## v26.1.0 - _(2026-08-29)_
 
 Maintenance: compatibility with SimpleW v26.1.x.
 
-### feature
+### fix
 
-- Handle listener reload exceptions
+- Handle `ListenerReloadException` during certificate-driven listener reloads, including rollback failures.
+
+### breakingChange
+
+- Remove `LetsEncryptOptions.SslContextFactory`. Use `OnEngineHttpsEnable` and `OnEngineHttpsDisable` to configure TLS on the selected engine; their default implementations support `SimpleWEngine`.
 
 
 

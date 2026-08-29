@@ -1,9 +1,9 @@
 # Changelog
 
 
-## Unreleased
+## v26.1.0 - _(2026-08-29)_
 
-Maintenance: compatibility with SimpleW v26.1.x.
+First stable release, compatible with SimpleW v26.1.x.
 
 ### feature
 
@@ -21,14 +21,3 @@ Maintenance: compatibility with SimpleW v26.1.x.
 - Keep the non-concurrent schedule guard active while an occurrence is queued, running, or retrying, and release it only when the job reaches a terminal state.
 - Reset attempt-scoped progress before a retry and only accept progress reports while user code is running.
 - Track delayed jobs and retries in one priority queue, release their captured delegates promptly on cancellation, and cancel all non-terminal work during shutdown.
-
-
-
-## v26.0.0 - _(2026-05-??)_
-
-Initial release of `SimpleW.Service.Background`.
-
-### feature
-
-- Initial `SimpleW.Service.Background` package release for SimpleW v26.
-- Add in-process background jobs and cron scheduling for SimpleW.

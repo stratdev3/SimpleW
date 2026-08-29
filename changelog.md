@@ -8,17 +8,23 @@ Notes :
 - No long-term support or backports for major versions, just stick to the latest update.
 
 
-## v26.1.0 / _(2026-08-??)_
+## v26.1.0 - _(2026-08-29)_
 
 This major release completely rewrites `ISimpleWEngine` so alternative engines can be provided as addons, and introduces Ioxide as the first alternative engine implementation.
 
 ### feature
 
+- feature(SimpleW): expose the transport abstraction required by custom engines, including transport input/output, deferred-flush and TLS features, and delegate-based transports
+- feature(SimpleW): make `HttpRequestParser` public for custom engine and parser integrations
+- feature(SimpleW): add `ModuleStateRegistry` and `ModuleInstanceRegistry` for per-server addon state and runtime instances
 - feature(SimpleW): introduce a real SimpleWServerState (#415)
 - feature(SimpleW): replace lifecycle callbacks with OnStateChanged (#416)
 
 ### fix
 
+- fix(SimpleW): harden WebSocket handshake, frame validation, UTF-8 handling, message limits, and close handling
+- fix(SimpleW): support deferred transport flushes in `ServerSentEventsModule`
+- fix(SimpleW): do not apply IP socket options to Unix Domain Sockets
 - fix(SimpleW): harden HttpResponse public methods against response splitting (#413)
 - fix(SimpleW): allow Content-Length on HEAD responses without a body (#417)
 - fix(SimpleW): expose listener reload and rollback failures (#414)

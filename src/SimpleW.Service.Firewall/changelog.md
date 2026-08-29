@@ -1,15 +1,19 @@
 # Changelog
 
 
-## Unreleased
+## v26.1.0 - _(2026-08-29)_
 
-Maintenance: compatibility with SimpleW v26.1.x.
+Maintenance release with new features and compatibility with SimpleW v26.1.x.
 
 ### feature
 
 - Emit OpenTelemetry events for blocks and rate limits (#395)
 - Add `GetFirewall().Update(...)` for atomic runtime updates for global firewall rules and options.
 - Add country resolution support for MaxMind City and Enterprise databases, in addition to Country databases.
+
+### fix
+
+- Propagate GeoIP database and lookup failures as server errors instead of treating them as unknown countries; only `AddressNotFoundException` remains an unknown-country result.
 
 ### breakingChange
 
@@ -40,6 +44,7 @@ Maintenance release for handler-level firewall rules.
 - Add `FirewallRateLimitWindowUnit` to configure attribute-based rate-limit windows in milliseconds, seconds, minutes, or hours.
 - Allow controller-level and method-level firewall metadata to be combined.
 - Allow `UseFirewallModule(...)` to update the firewall configuration while installing the middleware only once per server.
+- Add `RateLimitWhitelistRules` for IP/CIDR rules that bypass global and handler rate limiting without bypassing allow or deny firewall rules. (#393)
 
 ### changed
 
