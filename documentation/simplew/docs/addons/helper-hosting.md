@@ -1,4 +1,11 @@
-# Hosting <Badge type="tip" text="Official" />
+# Hosting
+
+<AddonMeta
+    package="SimpleW.Helper.Hosting"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Helper.Hosting`](https://www.nuget.org/packages/SimpleW.Helper.Hosting) package provides a helper that allows you to run a **SimpleW server** using the **Microsoft.Extensions.Hosting** infrastructure.
 

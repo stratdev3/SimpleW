@@ -1,4 +1,11 @@
-# OpenID <Badge type="tip" text="Official" />
+# OpenID
+
+<AddonMeta
+    package="SimpleW.Helper.OpenID"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Helper.OpenID`](https://www.nuget.org/packages/SimpleW.Helper.OpenID) package provides a lightweight OpenID Connect helper for SimpleW.
 

@@ -1,4 +1,11 @@
-# BasicAuth <Badge type="tip" text="Official" />
+# BasicAuth
+
+<AddonMeta
+    package="SimpleW.Helper.BasicAuth"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Helper.BasicAuth`](https://www.nuget.org/packages/SimpleW.Helper.BasicAuth) package provides a lightweight HTTP Basic authentication helper for SimpleW.
 

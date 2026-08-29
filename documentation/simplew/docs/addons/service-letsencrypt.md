@@ -1,4 +1,11 @@
-# LetsEncrypt <Badge type="tip" text="Official" />
+# LetsEncrypt
+
+<AddonMeta
+    package="SimpleW.Service.LetsEncrypt"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Service.Letsencrypt`](https://www.nuget.org/packages/SimpleW.Service.Letsencrypt) package provides automatic TLS certificate management for SimpleW using **Let's Encrypt** and the **ACME HTTP-01 challenge**. It is implemented as a SimpleW middleware.
 

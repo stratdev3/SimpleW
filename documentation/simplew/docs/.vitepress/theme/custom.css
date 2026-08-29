@@ -5,3 +5,23 @@
     content: none !important;
     display: none !important;
 }
+
+.addon-meta {
+    display: flex;
+    gap: .375rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin: .75rem 0 1.25rem;
+}
+.addon-meta__item {
+    display: inline-flex;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+.addon-meta__item > img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: 20px;
+    margin: 0;
+}

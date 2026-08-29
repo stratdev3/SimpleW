@@ -1,4 +1,11 @@
-# Dependency Injection <Badge type="tip" text="Official" />
+# Dependency Injection
+
+<AddonMeta
+    package="SimpleW.Helper.DependencyInjection"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Helper.DependencyInjection`](https://www.nuget.org/packages/SimpleW.Helper.DependencyInjection) package adds dependency injection support for SimpleW controllers.
 

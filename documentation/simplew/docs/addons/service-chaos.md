@@ -1,4 +1,11 @@
-# Chaos <Badge type="tip" text="Official" />
+# Chaos
+
+<AddonMeta
+    package="SimpleW.Service.Chaos"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Service.Chaos`](https://www.nuget.org/packages/SimpleW.Service.Chaos) package provides a [**chaos engineering module**](https://en.wikipedia.org/wiki/Chaos_engineering) for the SimpleW web server. It is implemented as a SimpleW middleware.
 

@@ -1,4 +1,11 @@
-# Background <Badge type="tip" text="Official" />
+# Background
+
+<AddonMeta
+    package="SimpleW.Service.Background"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Service.Background`](https://www.nuget.org/packages/SimpleW.Service.Background) package provides an **in-process background job queue**, delayed jobs, retries, timeouts, and recurring cron or fixed-interval schedules for SimpleW.
 

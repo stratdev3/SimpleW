@@ -1,4 +1,11 @@
-# Templates <Badge type="tip" text="Official" />
+# Templates
+
+<AddonMeta
+    package="SimpleW.Templates"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 
 The [`SimpleW.Templates`](https://www.nuget.org/packages/SimpleW.Templates) package provides a simple and efficient way to scaffold new

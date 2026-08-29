@@ -1,4 +1,11 @@
-# Latency <Badge type="tip" text="Official" />
+# Latency
+
+<AddonMeta
+    package="SimpleW.Service.Latency"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Service.Latency`](https://www.nuget.org/packages/SimpleW.Service.Latency) package provides a **latency injection module** for the SimpleW web server.
  It is implemented as a SimpleW middleware.

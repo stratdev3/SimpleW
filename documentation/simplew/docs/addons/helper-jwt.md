@@ -1,4 +1,11 @@
-# Jwt <Badge type="tip" text="Official" />
+# Jwt
+
+<AddonMeta
+    package="SimpleW.Helper.Jwt"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Helper.Jwt`](https://www.nuget.org/packages/SimpleW.Helper.Jwt) package provides a lightweight JWT Bearer helper for SimpleW.
 

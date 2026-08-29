@@ -1,4 +1,11 @@
-# Firewall <Badge type="tip" text="Official" />
+# Firewall
+
+<AddonMeta
+    package="SimpleW.Service.Firewall"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Service.Firewall`](https://www.nuget.org/packages/SimpleW.Service.Firewall) package provides an application-level firewall module for SimpleW. It runs as middleware and reads SimpleW handler metadata for route-specific rules.
 

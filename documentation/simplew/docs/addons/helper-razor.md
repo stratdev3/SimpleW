@@ -1,4 +1,11 @@
-# Razor <Badge type="tip" text="Official" />
+# Razor
+
+<AddonMeta
+    package="SimpleW.Helper.Razor"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.Helper.Razor`](https://www.nuget.org/packages/SimpleW.Helper.Razor) package is a Razor templating module for the SimpleW web server.
 It enables server-side HTML rendering using Razor syntax (via RazorLight) and integrates with SimpleW’s routing/controller system by introducing a `ViewResult` that the module can render into an HTTP response.

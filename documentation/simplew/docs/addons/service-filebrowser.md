@@ -1,4 +1,12 @@
-# FileBrowser <Badge type="tip" text="Official" />
+# FileBrowser
+
+<AddonMeta
+    package="SimpleW.Service.FileBrowser"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+    experimental
+/>
 
 The [`SimpleW.Service.FileBrowser`](https://www.nuget.org/packages/SimpleW.Service.FileBrowser) package provides a web file browser and chunked upload module for SimpleW.
 

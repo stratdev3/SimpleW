@@ -2,11 +2,11 @@
 
 Stop talking, show me the code !
 
-<div class="images-inline">
-    <a href="https://github.com/stratdev3/SimpleW/blob/master/licence" target="_blank"><img src="https://img.shields.io/badge/License-MIT-7737d1.svg" alt="Licence MIT" /></a>
-    <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/v/SimpleW?color=7737d1&label=version&logo=NuGet&style=flat" /></a>
-    <a href="https://www.nuget.org/packages/SimpleW" target="_blank"><img src="https://img.shields.io/nuget/dt/SimpleW?color=7737d1&label=downloads&logo=NuGet&style=flat" alt="NuGet Downloads" /></a>
-</div>
+<AddonMeta
+    package="SimpleW"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 
 ## Installation
@@ -302,17 +302,3 @@ namespace Sample {
 :::
 
 Then just open your browser to [http://localhost:2015/](http://localhost:2015/) and interact with the form.
-
-
-<style>
-.images-inline {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-.images-inline > img {
-    max-width: 30% !important;
-    height: auto !important;
-}
-</style>

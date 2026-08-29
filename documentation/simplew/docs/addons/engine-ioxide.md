@@ -1,4 +1,11 @@
-# Ioxide <Badge type="tip" text="Official" />
+# Ioxide
+
+<AddonMeta
+    package="SimpleW.Engine.Ioxide"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 [`SimpleW.Engine.Ioxide`](https://www.nuget.org/packages/SimpleW.Engine.Ioxide) replaces the default Socket engine with the Linux-native io_uring runtime while keeping the SimpleW routing, module, handler, response, SSE, and WebSocket APIs.
 

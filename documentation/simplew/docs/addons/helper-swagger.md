@@ -1,4 +1,11 @@
-# Swagger <Badge type="tip" text="Official" />
+# Swagger
+
+<AddonMeta
+    package="SimpleW.Helper.Swagger"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 
 The [`SimpleW.Helper.Swagger`](https://www.nuget.org/packages/SimpleW.Helper.Swagger) package provides **Swagger / OpenAPI documentation** support for the SimpleW web server.

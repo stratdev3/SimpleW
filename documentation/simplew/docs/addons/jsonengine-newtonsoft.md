@@ -1,4 +1,11 @@
-# Newtonsoft <Badge type="tip" text="Official" />
+# Newtonsoft
+
+<AddonMeta
+    package="SimpleW.JsonEngine.Newtonsoft"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 The [`SimpleW.JsonEngine.Newtonsoft`](https://www.nuget.org/packages/SimpleW.JsonEngine.Newtonsoft) is an optional integration package that replaces the default SimpleW JSON engine with **Newtonsoft.Json**.
 

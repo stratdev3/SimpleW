@@ -1,4 +1,11 @@
-# Serilog <Badge type="tip" text="Official" />
+# Serilog
+
+<AddonMeta
+    package="SimpleW.Helper.Serilog"
+    status="official"
+    license="MIT"
+    license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
+/>
 
 
 The [`SimpleW.Helper.Serilog`](https://www.nuget.org/packages/SimpleW.Helper.Serilog) package provides a **bridge between the SimpleW internal logging system and Serilog**.
