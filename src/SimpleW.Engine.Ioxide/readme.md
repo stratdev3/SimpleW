@@ -91,7 +91,7 @@ await server.RunAsync();
 
 The same options also accept `CertificatePem` and `KeyPem` for in-memory PEM content. Exactly one certificate source and one key source must be configured. OpenSSL 3 is required; the Linux `tls` kernel module is not.
 
-This HTTP/1.x engine requires `Alpn = ["http/1.1"]`. `KernelTx` and `KernelRx` must remain `false`. The resulting transport exposes `session.IsSsl`, `NegotiatedApplicationProtocol`, `ClientCertificateSubject` and `IsClientCertificateAuthenticated`. Ioxide 0.4.184 does not expose the client certificate email separately, so `ClientCertificateEmailAddress` is `null`.
+This HTTP/1.x engine requires `Alpn = ["http/1.1"]`. `KernelTx` and `KernelRx` must remain `false`. The resulting transport exposes `session.IsEncrypted`, `NegotiatedApplicationProtocol`, `ClientCertificateSubject` and `IsClientCertificateAuthenticated`.
 
 #### Mutual TLS
 
