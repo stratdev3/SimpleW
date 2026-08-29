@@ -492,7 +492,7 @@ jobs:
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
   timeout: 3600
-- name: CD all nugets
+- name: CD prerelease all nugets
   steps:
   - type: CheckoutStep
     name: checkout code
@@ -1276,8 +1276,6 @@ jobs:
       - value: beta
         color: '#0d87e9'
       - value: rc
-        color: '#0d87e9'
-      - value: release
         color: '#0d87e9'
     defaultValueProvider:
       type: SpecifiedDefaultValue
