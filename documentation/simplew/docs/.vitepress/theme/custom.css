@@ -26,6 +26,13 @@
     margin: 0;
 }
 
+.VPFeatures .VPFeature .icon svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+    color: var(--vp-c-brand-1);
+}
+
 @media (min-width: 960px) {
     .VPHero.has-image .text {
         max-width: none;
