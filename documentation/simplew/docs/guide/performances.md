@@ -45,7 +45,7 @@ Evaluate request on a single text file `message.txt` which contains `hello world
 -->
 
 ::: tip NOTE
-Browse the [http-arena](https://http-arena.com) for the latest benchmark reults.
+Browse the [http-arena](https://http-arena.com) for the latest benchmark results.
 :::
 
 

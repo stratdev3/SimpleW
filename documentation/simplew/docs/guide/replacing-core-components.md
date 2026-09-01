@@ -37,11 +37,10 @@ Typical use cases :
 - Experiment with another low-level listener implementation
 - Extend the default engine behavior in a dedicated class
 
-
-### Available Network Engines
-
+::: tip Available Network Engines
 See [Addons](../addons/addons.md) to find all the available Network engines.
 The most performant is [ioxide](../addons/engine-ioxide.md).
+:::
 
 
 ## Replace Router
@@ -99,7 +98,9 @@ Typical use cases :
 - Customize action parameter binding or controller lifecycle
 - Add specialized instrumentation around controller execution
 
-Example : the official [Dependency Injection helper](../addons/helper-dependency-injection.md) uses this extension point to resolve controllers from `Microsoft.Extensions.DependencyInjection`.
+::: tip Example
+The official [Dependency Injection helper](../addons/helper-dependency-injection.md) uses this extension point to resolve controllers from `Microsoft.Extensions.DependencyInjection`.
+:::
 
 
 ## Replace JSON Engine
@@ -143,7 +144,7 @@ This makes it possible to :
 - Wrap an existing JSON library
 - Apply project-specific conventions
 
-### Available JSON Engines
-
+::: tip Available JSON Engines
 See [Addons](../addons/addons.md) to find all the available JSON engines.
 The most famous, `Newtonsoft`, has its [wrapper](../addons/jsonengine-newtonsoft.md).
+:::

@@ -56,7 +56,7 @@ namespace Sample {
 
 :::
 
-Then just open your browser to [http://localhost:2015/api/test](http://localhost:2015/api/test) and you will see the `{ "message": "Hello Chris !" }` JSON response.
+Then just open your browser to [http://localhost:2015/api/test](http://localhost:2015/api/test) and you will see the `{ "message": "Hello World !" }` JSON response.
 
 ::: info
 See the [Templates](../addons/template-templates.md#simplew-minimal) addons to quickly create a minimal project.

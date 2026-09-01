@@ -228,7 +228,7 @@ export default defineConfig({
 
         footer: {
             message: 'Released under the MIT License.',
-            copyright: 'Copyright © 2021-present <a href="#" onclick="location.href=\'mailto:\'+atob(\'Y29udGFjdEBzaW1wbGV3Lm5ldA==\');return false;">Christophe CHATEAU</a>'
+            copyright: 'Copyright © 2021-2026 <a href="#" onclick="location.href=\'mailto:\'+atob(\'Y29udGFjdEBzaW1wbGV3Lm5ldA==\');return false;">Christophe CHATEAU</a>'
         },
 
         search: {
