@@ -48,7 +48,7 @@ const examples = {
     title: 'Controller routing',
     family: 'core',
     package: 'INCLUDED',
-    guide: './guide/getting-started#controller-example',
+    guide: './guide/routing',
     code: `<span class="token-keyword">using</span> System.Net;
 <span class="token-keyword">using</span> SimpleW;
 

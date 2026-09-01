@@ -7,7 +7,7 @@ export default defineConfig({
     titleTemplate: 'SimpleW',
     description: "SimpleW is a lightweight web server for .NET. Simple by design. Standalone or embedded.",
     head: [
-        ['link', { rel: 'icon', href: 'favicon.ico' }],
+        ['link', { rel: 'icon', href: '/favicon.ico' }],
         // analytics
         ['script', { async: '', src: 'https://cloud.umami.is/script.js', 'data-website-id': '6cb0147f-6faa-4c64-ba68-6bd607980ea5' } ],
         // og
