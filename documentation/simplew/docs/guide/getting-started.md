@@ -1,6 +1,17 @@
+---
+title: Getting Started
+description: Build and run your first SimpleW HTTP endpoint in a few minutes.
+outline: deep
+---
+
+<script setup>
+import GettingStartedTerminal from '../.vitepress/theme/components/GettingStartedTerminal.vue'
+import GettingStartedNextSteps from '../.vitepress/theme/components/GettingStartedNextSteps.vue'
+</script>
+
 # Getting Started
 
-Stop talking, show me the code !
+Build your first SimpleW HTTP endpoint and see it running in just a few minutes.
 
 <AddonMeta
     package="SimpleW"
@@ -8,297 +19,121 @@ Stop talking, show me the code !
     license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
 />
 
+::: tip What you will build
+A small HTTP server listening on `localhost:2015` with one endpoint that returns a JSON response.
+:::
 
-## Installation
 
-Using the NuGet package, always prefer the latest version.
+## Before you start
+
+You need the [.NET 8 SDK or later](https://dotnet.microsoft.com/download) and a terminal. The commands below work on Windows, macOS and Linux.
+
+You can check the SDK installed on your machine with:
 
 ```sh
+dotnet --version
+```
+
+
+## 1. Create the project
+
+Start with a regular .NET console application. SimpleW does not require a special host or project type.
+
+```sh
+mkdir hello-simplew
+cd hello-simplew
+dotnet new console
 dotnet add package SimpleW
 ```
 
-
-## Minimal example
-
-The following minimal example can be used for rapid prototyping :
-
-::: code-group
-
-```csharp:line-numbers [Program.cs]
-using System;
-using System.Net;
-using SimpleW;
-using SimpleW.Observability;
-
-namespace Sample {
-    class Program {
-
-        static async Task Main() {
-
-            // debug log
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
-
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // minimal api
-            server.MapGet("/api/test", () => {
-                return new { message = "Hello World !" };
-            });
-
-            // run server
-            await server.RunAsync();
-        }
-    }
-
-}
-```
-
-:::
-
-Then just open your browser to [http://localhost:2015/api/test](http://localhost:2015/api/test) and you will see the `{ "message": "Hello World !" }` JSON response.
-
-::: info
-See the [Templates](../addons/template-templates.md#simplew-minimal) addons to quickly create a minimal project.
-:::
+Your project is ready. There is no additional dependency or configuration file to install.
 
 
-## Controller Example
+## 2. Write your first server
 
-The following example builds a REST API with clear routing using a structured controller/method class.
-
-::: code-group
+Replace the content of `Program.cs` with the following code:
 
 ```csharp:line-numbers [Program.cs]
 using System.Net;
 using SimpleW;
 using SimpleW.Observability;
 
-namespace Sample {
-    class Program {
+Log.SetSink(Log.ConsoleWriteLine);
 
-        static async Task Main() {
+var server = new SimpleWServer(IPAddress.Loopback, 2015);
 
-            // debug
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
+server.MapGet("/api/hello", static () => {
+    return new { message = "Hello from SimpleW!" };
+});
 
-            // listen to all IPs on port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // find all classes based on Controller class, and serve on the "/api" endpoint
-            server.MapControllers<Controller>("/api");
-
-            // run server
-            await server.RunAsync();
-        }
-    }
-
-}
+await server.RunAsync();
 ```
 
-```csharp:line-numbers [TestController.cs]
-using System.Net;
-using SimpleW;
+This is a complete SimpleW application: one server, one route and one call that keeps it running.
 
-namespace Sample {
 
-    // inherit from Controller
-    public class SomeController : Controller {
+## 3. Start SimpleW
 
-        // use the Route attribute to target a public method
-        [Route("GET", "/test")]
-        public object SomePublicMethod(string name = "World") {
-            // the return will be serialized to json and sent as response to client
-            return new {
-                message = $"Hello {name} !"
-            };
-        }
+Run the application from the project directory:
 
-    }
-
-}
+```sh
+dotnet run
 ```
 
-:::
+You should see output similar to the terminal below. Timestamps will naturally be different on your machine.
+
+<GettingStartedTerminal />
+
+The process stays active while SimpleW is listening. Leave this terminal open for the next step.
 
 
-Then just open your browser to [http://localhost:2015/api/test?name=Chris](http://localhost:2015/api/test?name=Chris) and you will see the `{ "message": "Hello Chris !" }` JSON response.
+## 4. Make your first request
 
-
-## Static Files Example
-
-The following example serves static files from your `c:\www` directory.
+Open a second terminal and call the endpoint:
 
 ::: code-group
 
-```csharp:line-numbers [Program.cs]
-using System;
-using System.Net;
-using SimpleW;
-using SimpleW.Observability;
-using SimpleW.Modules;
-
-namespace Sample {
-    class Program {
-
-        static async Task Main() {
-
-            // debug log
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
-
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // use the StaticFilesModule
-            server.UseStaticFilesModule(options => {
-                options.Path = @"C:\www\";                      // serve your files located here
-                options.Prefix = "/";                           // to "/" endpoint
-                options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
-                options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
-            });
-
-            // run server
-            await server.RunAsync();
-        }
-    }
-}
+```powershell [PowerShell]
+Invoke-RestMethod http://localhost:2015/api/hello
 ```
 
-```html:line-numbers [C:\www\index.html]
-<html>
-    <head>
-        <title>index</title>
-    </head>
-    <body>
-        <h1>Welcome</h1>
-        <p>Hello World !</p>
-    </body>
-</html>
+```sh [Command Prompt, macOS or Linux]
+curl http://localhost:2015/api/hello
 ```
 
 :::
 
+Or open [http://localhost:2015/api/hello](http://localhost:2015/api/hello) directly in your browser.
 
-Then just open your browser to [http://localhost:2015/](http://localhost:2015/).
+SimpleW serializes the returned object as JSON:
 
-
-## FullStack Example
-
-The following example serves both static files from your `c:\www` directory and a REST API.
-
-::: code-group
-
-```csharp:line-numbers [Program.cs]
-using System;
-using System.Net;
-using SimpleW;
-using SimpleW.Observability;
-using SimpleW.Modules;
-
-namespace Sample {
-    class Program {
-
-        static async Task Main() {
-
-            // debug log
-            Log.SetSink(Log.ConsoleWriteLine, LogLevel.Debug);
-
-            // listen to all IPs port 2015
-            var server = new SimpleWServer(IPAddress.Any, 2015);
-
-            // find all classes based on Controller class, and serve on the "/api" endpoint
-            server.MapControllers<Controller>("/api");
-
-            // use the StaticFilesModule
-            server.UseStaticFilesModule(options => {
-                options.Path = @"C:\www\";                      // serve your files located here
-                options.Prefix = "/";                           // to "/" endpoint
-                options.CacheTimeout = TimeSpan.FromDays(1);    // cached for 24h
-                options.AutoIndex = true;                       // enable autoindex if no index.html exists in the directory
-            });
-
-            // run server
-            await server.RunAsync();
-        }
-    }
-
+```json
+{
+  "message": "Hello from SimpleW!"
 }
 ```
 
-```csharp:line-numbers [TestController.cs]
-using System;
-using System.Net;
-using SimpleW;
+You have just created and served your first SimpleW endpoint.
 
-namespace Sample {
 
-    [Route("/test")]
-    public class TestController : Controller {
+## 5. Understand the code
 
-        [Route("GET", "/hello")]
-        public object Hello(string? name = null) {
+| Code | What it does |
+| --- | --- |
+| `Log.SetSink(...)` | Sends SimpleW lifecycle messages to the console. |
+| `SimpleWServer(...)` | Creates a server bound locally to port `2015`. |
+| `MapGet(...)` | Maps `GET /api/hello` to a C# delegate. |
+| `RunAsync()` | Starts listening and waits until the application is stopped. |
 
-            if (string.IsNullOrWhiteSpace(name)) {
-                return Response.NotFound("you must set a name parameter");
-            }
+Press <kbd>Ctrl</kbd> + <kbd>C</kbd> in the first terminal when you want to stop the server.
 
-            // the return will be serialized to json
-            return new {
-                message = $"{name}, Hello World !"
-            };
-        }
-
-    }
-
-}
-```
-
-```html:line-numbers [C:\www\index.html]
-<html>
-    <head>
-        <title>index</title>
-    </head>
-    <body>
-        <h1>Welcome</h1>
-        <input type="text" id="nameInput" placeholder="Enter your name" />
-        <button id="greetBtn">Greet me</button>
-        <p id="hello"></p>
-    </body>
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-
-        const input  = document.getElementById('nameInput');
-        const button = document.getElementById('greetBtn');
-        const output = document.getElementById('hello');
-
-        button.addEventListener('click', () => {
-            const name = input.value.trim();
-
-            if (!name) {
-                output.textContent = 'Please enter a name.';
-                return;
-            }
-
-            fetch(`/api/test/hello?name=${encodeURIComponent(name)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    output.textContent = data.message || 'No message in response';
-                })
-                .catch(err => {
-                    console.error('Fetch error:', err);
-                    output.textContent = 'Failed to fetch greeting.';
-                });
-        });
-    });
-    </script>
-</html>
-```
-
+::: details Prefer to start from a template?
+SimpleW also provides project templates. See the [Templates addon](../addons/template-templates.md#simplew-minimal) when you want to skip the manual project setup.
 :::
 
-Then just open your browser to [http://localhost:2015/](http://localhost:2015/) and interact with the form.
+
+## Where to go next
+
+Choose the path that matches what you want to build.
+
+<GettingStartedNextSteps />
