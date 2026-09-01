@@ -38,9 +38,9 @@ Most .NET web stacks are powerful but complex. I wanted a **minimal, hackable se
 
 But there is more: the .NET environment suffers from a major issue :
 > **There is only one _professionally accepted_ web server**.
-> ASP.NET Core is the de facto standard and if you're not using it, you're considered a serious... amateur.
+> ASP.NET Core is the de facto standard, and choosing something else is often viewed as an amateur decision.
 
-**That's a shame !** Not only does an ecosystem need alternatives to grow and improve, but no single product can cover 100% of its users’ needs. I'm certainly not claiming to replace ASP.NET Core or event compete with it, but I want to bring something different in an opinionated way. And I'm not the only one, other devs have done the same :
+**That's a shame !** Not only does an ecosystem need alternatives to grow and improve, but no single product can cover 100% of its users’ needs. I'm certainly not claiming to replace ASP.NET Core or even compete with it, but I want to bring something different in an opinionated way. And I'm not the only one, other devs have done the same :
 
 - [NetCoreServer](https://github.com/chronoxor/NetCoreServer): still the state of the art in terms of performance and design!
 - [Fast-Endpoints](https://fast-endpoints.com/): built on top of ASP.NET Core, but with a cleaner and nicer API!

@@ -61,7 +61,7 @@ Take a look at [`SimpleWEngineOptions`](../reference/simplewengineoptions.md#tls
 
 ## Example for local test
 
-The example bellow will use a pregerenarated certificate. Use only locally for testing, do not use in production !!
+The example below uses a pregenerated certificate. Use it only for local testing; do not use it in production!
 
 ```csharp
 using System;

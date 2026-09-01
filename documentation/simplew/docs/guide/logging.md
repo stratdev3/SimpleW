@@ -25,12 +25,12 @@ private static readonly ILogger _log = new Logger<MyClass>();
 ## Log Levels
 
 SimpleW defines several log levels :
-- **Trace** : _You're desperately tracking something you can't debug, good luck_
-- **Debug** : _It smells shit, I want maximum informations_
-- **Info** : _Normal Operation, foods my social media infinite scroll_
-- **Warning** : _It's like a compiler warning, nobody take care but it should_
-- **Error** : _Prod can continue but fix that error quickly, seriously_
-- **Fatal** : _Rest In Peace_
+- **Trace** : _You are tracking down something difficult to reproduce and need every available detail_
+- **Debug** : _Something looks wrong and you need detailed diagnostic information_
+- **Info** : _Normal operation and noteworthy application events_
+- **Warning** : _Something unexpected happened, but the application can continue_
+- **Error** : _An operation failed; fix it promptly, although the application may continue_
+- **Fatal** : _The application cannot continue_
 
 
 ## Minimum Log Level
