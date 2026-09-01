@@ -52,10 +52,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\SimpleW\logo-transparent.png">
+    <None Include="logo-transparent.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
-      <Link>logo-transparent.png</Link>
     </None>
     <None Include="readme.md">
       <Pack>True</Pack>
