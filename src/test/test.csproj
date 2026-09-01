@@ -18,17 +18,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SimpleW.Service.BasicAuth\SimpleW.Service.BasicAuth.csproj" />
-    <ProjectReference Include="..\SimpleW.Helper.BasicAuth\SimpleW.Helper.BasicAuth.csproj" />
-    <ProjectReference Include="..\SimpleW.Helper.DependencyInjection\SimpleW.Helper.DependencyInjection.csproj" />
-    <ProjectReference Include="..\SimpleW.Helper.Hosting\SimpleW.Helper.Hosting.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.Jwt\SimpleW.Service.Jwt.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.Background\SimpleW.Service.Background.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.Firewall\SimpleW.Service.Firewall.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.FileBrowser\SimpleW.Service.FileBrowser.csproj" />
-    <ProjectReference Include="..\SimpleW.Helper.Jwt\SimpleW.Helper.Jwt.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.BasicAuth\SimpleW.Service.BasicAuth.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Helper.BasicAuth\SimpleW.Helper.BasicAuth.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Helper.DependencyInjection\SimpleW.Helper.DependencyInjection.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Helper.Hosting\SimpleW.Helper.Hosting.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.Jwt\SimpleW.Service.Jwt.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.Background\SimpleW.Service.Background.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.Firewall\SimpleW.Service.Firewall.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.FileBrowser\SimpleW.Service.FileBrowser.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Helper.Jwt\SimpleW.Helper.Jwt.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
-    <ProjectReference Include="..\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
   </ItemGroup>
 
 </Project>

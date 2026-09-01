@@ -47,7 +47,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Engine.Ioxide/
+        cd src/Addons/SimpleW.Engine.Ioxide/
         dotnet build -c @param:build_configuration@ SimpleW.Engine.Ioxide.csproj
     runAs: 0:0
     useTTY: false
@@ -61,7 +61,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.BasicAuth/
+        cd src/Addons/SimpleW.Helper.BasicAuth/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.BasicAuth.csproj
     runAs: 0:0
     useTTY: false
@@ -75,7 +75,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.DependencyInjection/
+        cd src/Addons/SimpleW.Helper.DependencyInjection/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.DependencyInjection.csproj
     runAs: 0:0
     useTTY: false
@@ -89,7 +89,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Hosting/
+        cd src/Addons/SimpleW.Helper.Hosting/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Hosting.csproj
     runAs: 0:0
     useTTY: false
@@ -103,7 +103,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Jwt/
+        cd src/Addons/SimpleW.Helper.Jwt/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Jwt.csproj
     runAs: 0:0
     useTTY: false
@@ -117,7 +117,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Log4net/
+        cd src/Addons/SimpleW.Helper.Log4net/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Log4net.csproj
     runAs: 0:0
     useTTY: false
@@ -131,7 +131,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.OpenID/
+        cd src/Addons/SimpleW.Helper.OpenID/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.OpenID.csproj
     runAs: 0:0
     useTTY: false
@@ -145,7 +145,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Razor/
+        cd src/Addons/SimpleW.Helper.Razor/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Razor.csproj
     runAs: 0:0
     useTTY: false
@@ -159,7 +159,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Serilog/
+        cd src/Addons/SimpleW.Helper.Serilog/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Serilog.csproj
     runAs: 0:0
     useTTY: false
@@ -173,7 +173,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Swagger/
+        cd src/Addons/SimpleW.Helper.Swagger/
         dotnet build -c @param:build_configuration@ SimpleW.Helper.Swagger.csproj
     runAs: 0:0
     useTTY: false
@@ -187,7 +187,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft/
+        cd src/Addons/SimpleW.JsonEngine.Newtonsoft/
         dotnet build -c @param:build_configuration@ SimpleW.JsonEngine.Newtonsoft.csproj
     runAs: 0:0
     useTTY: false
@@ -201,7 +201,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Background/
+        cd src/Addons/SimpleW.Service.Background/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Background.csproj
     runAs: 0:0
     useTTY: false
@@ -215,7 +215,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.BasicAuth/
+        cd src/Addons/SimpleW.Service.BasicAuth/
         dotnet build -c @param:build_configuration@ SimpleW.Service.BasicAuth.csproj
     runAs: 0:0
     useTTY: false
@@ -229,7 +229,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Chaos/
+        cd src/Addons/SimpleW.Service.Chaos/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Chaos.csproj
     runAs: 0:0
     useTTY: false
@@ -243,7 +243,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Firewall/
+        cd src/Addons/SimpleW.Service.Firewall/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Firewall.csproj
     runAs: 0:0
     useTTY: false
@@ -257,7 +257,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.FileBrowser/
+        cd src/Addons/SimpleW.Service.FileBrowser/
         dotnet build -c @param:build_configuration@ SimpleW.Service.FileBrowser.csproj
     runAs: 0:0
     useTTY: false
@@ -271,7 +271,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Jwt/
+        cd src/Addons/SimpleW.Service.Jwt/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Jwt.csproj
     runAs: 0:0
     useTTY: false
@@ -285,7 +285,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Latency/
+        cd src/Addons/SimpleW.Service.Latency/
         dotnet build -c @param:build_configuration@ SimpleW.Service.Latency.csproj
     runAs: 0:0
     useTTY: false
@@ -299,7 +299,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.LetsEncrypt/
+        cd src/Addons/SimpleW.Service.LetsEncrypt/
         dotnet build -c @param:build_configuration@ SimpleW.Service.LetsEncrypt.csproj
     runAs: 0:0
     useTTY: false
@@ -313,7 +313,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.OpenID/
+        cd src/Addons/SimpleW.Service.OpenID/
         dotnet build -c @param:build_configuration@ SimpleW.Service.OpenID.csproj
     runAs: 0:0
     useTTY: false
@@ -327,7 +327,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Templates/
+        cd src/Addons/SimpleW.Templates/
         dotnet build -c @param:build_configuration@ SimpleW.Templates.csproj
     runAs: 0:0
     useTTY: false
@@ -341,121 +341,121 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Engine.Ioxide
-    sourcePath: src/SimpleW.Engine.Ioxide/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Engine.Ioxide/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Engine.Ioxide.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.BasicAuth
-    sourcePath: src/SimpleW.Helper.BasicAuth/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.BasicAuth/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.BasicAuth.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.DependencyInjection
-    sourcePath: src/SimpleW.Helper.DependencyInjection/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.DependencyInjection/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.DependencyInjection.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
-    sourcePath: src/SimpleW.Helper.Hosting/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.Hosting/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Hosting.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Jwt
-    sourcePath: src/SimpleW.Helper.Jwt/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.Jwt/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Jwt.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Log4net
-    sourcePath: src/SimpleW.Helper.Log4net/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.Log4net/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Log4net.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.OpenID
-    sourcePath: src/SimpleW.Helper.OpenID/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.OpenID/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.OpenID.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Razor
-    sourcePath: src/SimpleW.Helper.Razor/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.Razor/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Razor.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Serilog
-    sourcePath: src/SimpleW.Helper.Serilog/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.Serilog/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Serilog.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Swagger
-    sourcePath: src/SimpleW.Helper.Swagger/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Helper.Swagger/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Swagger.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.JsonEngine.Newtonsoft
-    sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.JsonEngine.Newtonsoft/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.JsonEngine.Newtonsoft.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Background
-    sourcePath: src/SimpleW.Service.Background/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.Background/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.Background.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.BasicAuth
-    sourcePath: src/SimpleW.Service.BasicAuth/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.BasicAuth/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.BasicAuth.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Chaos
-    sourcePath: src/SimpleW.Service.Chaos/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.Chaos/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.Chaos.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Firewall
-    sourcePath: src/SimpleW.Service.Firewall/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.Firewall/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.Firewall.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.FileBrowser
-    sourcePath: src/SimpleW.Service.FileBrowser/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.FileBrowser/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.FileBrowser.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Jwt
-    sourcePath: src/SimpleW.Service.Jwt/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.Jwt/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.Jwt.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Latency
-    sourcePath: src/SimpleW.Service.Latency/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.Latency/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.Latency.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.LetsEncrypt
-    sourcePath: src/SimpleW.Service.LetsEncrypt/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.LetsEncrypt/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.LetsEncrypt.dll'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.OpenID
-    sourcePath: src/SimpleW.Service.OpenID/bin/@param:build_configuration@/
+    sourcePath: src/Addons/SimpleW.Service.OpenID/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Service.OpenID.dll'
     condition: SUCCESSFUL
     optional: false
@@ -514,7 +514,7 @@ jobs:
         cd src/SimpleW
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Addons/Directory.Build.props; fi
         dotnet pack -c Release SimpleW.csproj
     runAs: 0:0
     useTTY: false
@@ -528,7 +528,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Engine.Ioxide
+        cd src/Addons/SimpleW.Engine.Ioxide
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Engine.Ioxide.csproj; fi
         dotnet pack -c Release SimpleW.Engine.Ioxide.csproj
@@ -544,7 +544,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.BasicAuth
+        cd src/Addons/SimpleW.Helper.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj; fi
         dotnet pack -c Release SimpleW.Helper.BasicAuth.csproj
@@ -560,7 +560,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.DependencyInjection
+        cd src/Addons/SimpleW.Helper.DependencyInjection
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
         dotnet pack -c Release SimpleW.Helper.DependencyInjection.csproj
@@ -576,7 +576,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Hosting
+        cd src/Addons/SimpleW.Helper.Hosting
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Hosting.csproj
@@ -592,7 +592,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Jwt
+        cd src/Addons/SimpleW.Helper.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Jwt.csproj
@@ -608,7 +608,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Log4net
+        cd src/Addons/SimpleW.Helper.Log4net
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Log4net.csproj
@@ -624,7 +624,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.OpenID
+        cd src/Addons/SimpleW.Helper.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj; fi
         dotnet pack -c Release SimpleW.Helper.OpenID.csproj
@@ -640,7 +640,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Swagger
+        cd src/Addons/SimpleW.Helper.Swagger
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Swagger.csproj
@@ -656,7 +656,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Razor
+        cd src/Addons/SimpleW.Helper.Razor
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Razor.csproj
@@ -672,7 +672,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Serilog
+        cd src/Addons/SimpleW.Helper.Serilog
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj; fi
         dotnet pack -c Release SimpleW.Helper.Serilog.csproj
@@ -688,7 +688,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft
+        cd src/Addons/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj; fi
         dotnet pack -c Release SimpleW.JsonEngine.Newtonsoft.csproj
@@ -704,7 +704,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Background
+        cd src/Addons/SimpleW.Service.Background
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Background.csproj; fi
         dotnet pack -c Release SimpleW.Service.Background.csproj
@@ -720,7 +720,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.BasicAuth
+        cd src/Addons/SimpleW.Service.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj; fi
         dotnet pack -c Release SimpleW.Service.BasicAuth.csproj
@@ -736,7 +736,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Chaos
+        cd src/Addons/SimpleW.Service.Chaos
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj; fi
         dotnet pack -c Release SimpleW.Service.Chaos.csproj
@@ -752,7 +752,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Firewall
+        cd src/Addons/SimpleW.Service.Firewall
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj; fi
         dotnet pack -c Release SimpleW.Service.Firewall.csproj
@@ -768,7 +768,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Jwt
+        cd src/Addons/SimpleW.Service.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj; fi
         dotnet pack -c Release SimpleW.Service.Jwt.csproj
@@ -784,7 +784,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Latency
+        cd src/Addons/SimpleW.Service.Latency
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Latency.csproj; fi
         dotnet pack -c Release SimpleW.Service.Latency.csproj
@@ -800,7 +800,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.LetsEncrypt
+        cd src/Addons/SimpleW.Service.LetsEncrypt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj; fi
         dotnet pack -c Release SimpleW.Service.LetsEncrypt.csproj
@@ -816,7 +816,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.OpenID
+        cd src/Addons/SimpleW.Service.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj; fi
         dotnet pack -c Release SimpleW.Service.OpenID.csproj
@@ -832,7 +832,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Templates
+        cd src/Addons/SimpleW.Templates
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Templates.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.AspNetCore/ModuleName.csproj; fi
@@ -851,121 +851,121 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Engine.Ioxide
-    sourcePath: src/SimpleW.Engine.Ioxide/bin/Release/
+    sourcePath: src/Addons/SimpleW.Engine.Ioxide/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.BasicAuth
-    sourcePath: src/SimpleW.Helper.BasicAuth/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.BasicAuth/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.DependencyInjection
-    sourcePath: src/SimpleW.Helper.DependencyInjection/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.DependencyInjection/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
-    sourcePath: src/SimpleW.Helper.Hosting/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Hosting/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Jwt
-    sourcePath: src/SimpleW.Helper.Jwt/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Jwt/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Log4net
-    sourcePath: src/SimpleW.Helper.Log4net/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Log4net/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.OpenID
-    sourcePath: src/SimpleW.Helper.OpenID/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.OpenID/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Razor
-    sourcePath: src/SimpleW.Helper.Razor/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Razor/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Serilog
-    sourcePath: src/SimpleW.Helper.Serilog/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Serilog/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Swagger
-    sourcePath: src/SimpleW.Helper.Swagger/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Swagger/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.JsonEngine.Newtonsoft
-    sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/Release/
+    sourcePath: src/Addons/SimpleW.JsonEngine.Newtonsoft/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Background
-    sourcePath: src/SimpleW.Service.Background/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Background/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.BasicAuth
-    sourcePath: src/SimpleW.Service.BasicAuth/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.BasicAuth/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Chaos
-    sourcePath: src/SimpleW.Service.Chaos/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Chaos/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Firewall
-    sourcePath: src/SimpleW.Service.Firewall/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Firewall/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Jwt
-    sourcePath: src/SimpleW.Service.Jwt/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Jwt/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Latency
-    sourcePath: src/SimpleW.Service.Latency/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Latency/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.LetsEncrypt
-    sourcePath: src/SimpleW.Service.LetsEncrypt/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.LetsEncrypt/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.OpenID
-    sourcePath: src/SimpleW.Service.OpenID/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.OpenID/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Templates
-    sourcePath: src/SimpleW.Templates/bin/Release/
+    sourcePath: src/Addons/SimpleW.Templates/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -991,7 +991,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Engine.Ioxide/bin/Release
+        cd src/Addons/SimpleW.Engine.Ioxide/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1005,7 +1005,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.BasicAuth/bin/Release
+        cd src/Addons/SimpleW.Helper.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1019,7 +1019,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.DependencyInjection/bin/Release
+        cd src/Addons/SimpleW.Helper.DependencyInjection/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1033,7 +1033,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Hosting/bin/Release
+        cd src/Addons/SimpleW.Helper.Hosting/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1047,7 +1047,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Jwt/bin/Release
+        cd src/Addons/SimpleW.Helper.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1061,7 +1061,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Log4net/bin/Release
+        cd src/Addons/SimpleW.Helper.Log4net/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1075,7 +1075,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.OpenID/bin/Release
+        cd src/Addons/SimpleW.Helper.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1089,7 +1089,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Razor/bin/Release
+        cd src/Addons/SimpleW.Helper.Razor/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1103,7 +1103,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Serilog/bin/Release
+        cd src/Addons/SimpleW.Helper.Serilog/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1117,7 +1117,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Swagger/bin/Release
+        cd src/Addons/SimpleW.Helper.Swagger/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1131,7 +1131,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        cd src/Addons/SimpleW.JsonEngine.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1145,7 +1145,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Background/bin/Release
+        cd src/Addons/SimpleW.Service.Background/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1159,7 +1159,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.BasicAuth/bin/Release
+        cd src/Addons/SimpleW.Service.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1173,7 +1173,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Chaos/bin/Release
+        cd src/Addons/SimpleW.Service.Chaos/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1187,7 +1187,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Firewall/bin/Release
+        cd src/Addons/SimpleW.Service.Firewall/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1201,7 +1201,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Jwt/bin/Release
+        cd src/Addons/SimpleW.Service.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1215,7 +1215,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Latency/bin/Release
+        cd src/Addons/SimpleW.Service.Latency/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1229,7 +1229,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.LetsEncrypt/bin/Release
+        cd src/Addons/SimpleW.Service.LetsEncrypt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1243,7 +1243,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.OpenID/bin/Release
+        cd src/Addons/SimpleW.Service.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1257,7 +1257,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Templates/bin/Release
+        cd src/Addons/SimpleW.Templates/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1397,7 +1397,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Engine.Ioxide
+        cd src/Addons/SimpleW.Engine.Ioxide
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Engine.Ioxide.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1408,7 +1408,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Engine.Ioxide
-    sourcePath: src/SimpleW.Engine.Ioxide/bin/Release/
+    sourcePath: src/Addons/SimpleW.Engine.Ioxide/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1420,7 +1420,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Engine.Ioxide/bin/Release
+        cd src/Addons/SimpleW.Engine.Ioxide/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1480,7 +1480,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.BasicAuth
+        cd src/Addons/SimpleW.Helper.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1491,7 +1491,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.BasicAuth
-    sourcePath: src/SimpleW.Helper.BasicAuth/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.BasicAuth/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1503,7 +1503,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.BasicAuth/bin/Release
+        cd src/Addons/SimpleW.Helper.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1563,7 +1563,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.DependencyInjection
+        cd src/Addons/SimpleW.Helper.DependencyInjection
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1574,7 +1574,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.DependencyInjection
-    sourcePath: src/SimpleW.Helper.DependencyInjection/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.DependencyInjection/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1586,7 +1586,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.DependencyInjection/bin/Release
+        cd src/Addons/SimpleW.Helper.DependencyInjection/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1646,7 +1646,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Hosting
+        cd src/Addons/SimpleW.Helper.Hosting
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1657,7 +1657,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
-    sourcePath: src/SimpleW.Helper.Hosting/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Hosting/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1669,7 +1669,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Hosting/bin/Release
+        cd src/Addons/SimpleW.Helper.Hosting/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1729,7 +1729,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Jwt
+        cd src/Addons/SimpleW.Helper.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1740,7 +1740,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Jwt
-    sourcePath: src/SimpleW.Helper.Jwt/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Jwt/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1752,7 +1752,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Jwt/bin/Release
+        cd src/Addons/SimpleW.Helper.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1812,7 +1812,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Log4net
+        cd src/Addons/SimpleW.Helper.Log4net
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1823,7 +1823,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Log4net
-    sourcePath: src/SimpleW.Helper.Log4net/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Log4net/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1835,7 +1835,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Log4net/bin/Release
+        cd src/Addons/SimpleW.Helper.Log4net/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1895,7 +1895,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.OpenID
+        cd src/Addons/SimpleW.Helper.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1906,7 +1906,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.OpenID
-    sourcePath: src/SimpleW.Helper.OpenID/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.OpenID/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -1918,7 +1918,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.OpenID/bin/Release
+        cd src/Addons/SimpleW.Helper.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1978,7 +1978,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Razor
+        cd src/Addons/SimpleW.Helper.Razor
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -1989,7 +1989,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Razor
-    sourcePath: src/SimpleW.Helper.Razor/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Razor/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2001,7 +2001,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Razor/bin/Release
+        cd src/Addons/SimpleW.Helper.Razor/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2061,7 +2061,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Serilog
+        cd src/Addons/SimpleW.Helper.Serilog
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2072,7 +2072,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Serilog
-    sourcePath: src/SimpleW.Helper.Serilog/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Serilog/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2084,7 +2084,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Serilog/bin/Release
+        cd src/Addons/SimpleW.Helper.Serilog/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2144,7 +2144,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Swagger
+        cd src/Addons/SimpleW.Helper.Swagger
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2155,7 +2155,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Swagger
-    sourcePath: src/SimpleW.Helper.Swagger/bin/Release/
+    sourcePath: src/Addons/SimpleW.Helper.Swagger/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2167,7 +2167,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Helper.Swagger/bin/Release
+        cd src/Addons/SimpleW.Helper.Swagger/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2227,7 +2227,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft
+        cd src/Addons/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2238,7 +2238,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.JsonEngine.Newtonsoft
-    sourcePath: src/SimpleW.JsonEngine.Newtonsoft/bin/Release/
+    sourcePath: src/Addons/SimpleW.JsonEngine.Newtonsoft/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2250,7 +2250,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.JsonEngine.Newtonsoft/bin/Release
+        cd src/Addons/SimpleW.JsonEngine.Newtonsoft/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2310,7 +2310,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Background
+        cd src/Addons/SimpleW.Service.Background
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Background.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2321,7 +2321,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Background
-    sourcePath: src/SimpleW.Service.Background/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Background/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2333,7 +2333,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Background/bin/Release
+        cd src/Addons/SimpleW.Service.Background/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2393,7 +2393,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.BasicAuth
+        cd src/Addons/SimpleW.Service.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2404,7 +2404,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.BasicAuth
-    sourcePath: src/SimpleW.Service.BasicAuth/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.BasicAuth/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2416,7 +2416,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.BasicAuth/bin/Release
+        cd src/Addons/SimpleW.Service.BasicAuth/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2476,7 +2476,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Jwt
+        cd src/Addons/SimpleW.Service.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2487,7 +2487,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Jwt
-    sourcePath: src/SimpleW.Service.Jwt/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Jwt/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2499,7 +2499,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Jwt/bin/Release
+        cd src/Addons/SimpleW.Service.Jwt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2559,7 +2559,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Chaos
+        cd src/Addons/SimpleW.Service.Chaos
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2570,7 +2570,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Chaos
-    sourcePath: src/SimpleW.Service.Chaos/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Chaos/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2582,7 +2582,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Chaos/bin/Release
+        cd src/Addons/SimpleW.Service.Chaos/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2642,7 +2642,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Firewall
+        cd src/Addons/SimpleW.Service.Firewall
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2653,7 +2653,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Firewall
-    sourcePath: src/SimpleW.Service.Firewall/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Firewall/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2665,7 +2665,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Firewall/bin/Release
+        cd src/Addons/SimpleW.Service.Firewall/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2725,7 +2725,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.FileBrowser
+        cd src/Addons/SimpleW.Service.FileBrowser
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.FileBrowser.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2736,7 +2736,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.FileBrowser
-    sourcePath: src/SimpleW.Service.FileBrowser/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.FileBrowser/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2748,7 +2748,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.FileBrowser/bin/Release
+        cd src/Addons/SimpleW.Service.FileBrowser/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2808,7 +2808,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Latency
+        cd src/Addons/SimpleW.Service.Latency
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Latency.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2819,7 +2819,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.Latency
-    sourcePath: src/SimpleW.Service.Latency/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.Latency/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2831,7 +2831,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.Latency/bin/Release
+        cd src/Addons/SimpleW.Service.Latency/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2891,7 +2891,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.LetsEncrypt
+        cd src/Addons/SimpleW.Service.LetsEncrypt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2902,7 +2902,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.LetsEncrypt
-    sourcePath: src/SimpleW.Service.LetsEncrypt/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.LetsEncrypt/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2914,7 +2914,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.LetsEncrypt/bin/Release
+        cd src/Addons/SimpleW.Service.LetsEncrypt/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -2974,7 +2974,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.OpenID
+        cd src/Addons/SimpleW.Service.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
@@ -2985,7 +2985,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Service.OpenID
-    sourcePath: src/SimpleW.Service.OpenID/bin/Release/
+    sourcePath: src/Addons/SimpleW.Service.OpenID/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -2997,7 +2997,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Service.OpenID/bin/Release
+        cd src/Addons/SimpleW.Service.OpenID/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -3057,7 +3057,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Templates
+        cd src/Addons/SimpleW.Templates
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Templates.csproj; fi
         if [ "@param:version@" != "release" ]; then sed -i -E "s#Version=\"([0-9]+\.[0-9]+\.[0-9]+)[^\"]*\"#Version=\"\\1-@param:version@.${TS}\"#g" templates/SimpleW.AspNetCore/ModuleName.csproj; fi
@@ -3070,7 +3070,7 @@ jobs:
     optional: false
   - type: PublishArtifactStep
     name: publish artifact SimpleW.Templates
-    sourcePath: src/SimpleW.Templates/bin/Release/
+    sourcePath: src/Addons/SimpleW.Templates/bin/Release/
     artifacts: '*.*nupkg'
     condition: SUCCESSFUL
     optional: false
@@ -3082,7 +3082,7 @@ jobs:
       type: PosixInterpreter
       shell: sh
       commands: |
-        cd src/SimpleW.Templates/bin/Release
+        cd src/Addons/SimpleW.Templates/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false

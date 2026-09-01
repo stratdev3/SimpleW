@@ -23,16 +23,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SimpleW.Service.Chaos\SimpleW.Service.Chaos.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.Firewall\SimpleW.Service.Firewall.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.FileBrowser\SimpleW.Service.FileBrowser.csproj" />
-    <ProjectReference Include="..\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.Latency\SimpleW.Service.Latency.csproj" />
-    <ProjectReference Include="..\SimpleW.Helper.Razor\SimpleW.Helper.Razor.csproj" />
-    <ProjectReference Include="..\SimpleW.Helper.Swagger\SimpleW.Helper.Swagger.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.LetsEncrypt\SimpleW.Service.LetsEncrypt.csproj" />
-    <ProjectReference Include="..\SimpleW.Service.OpenID\SimpleW.Service.OpenID.csproj" />
-    <ProjectReference Include="..\SimpleW.Engine.Ioxide\SimpleW.Engine.Ioxide.csproj" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.Chaos\SimpleW.Service.Chaos.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.Firewall\SimpleW.Service.Firewall.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.FileBrowser\SimpleW.Service.FileBrowser.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.JsonEngine.Newtonsoft\SimpleW.JsonEngine.Newtonsoft.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.Latency\SimpleW.Service.Latency.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Helper.Razor\SimpleW.Helper.Razor.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Helper.Swagger\SimpleW.Helper.Swagger.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.LetsEncrypt\SimpleW.Service.LetsEncrypt.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Service.OpenID\SimpleW.Service.OpenID.csproj" />
+    <ProjectReference Include="..\Addons\SimpleW.Engine.Ioxide\SimpleW.Engine.Ioxide.csproj" Condition="'$(TargetFramework)' == 'net10.0'" />
     <ProjectReference Include="..\SimpleW\SimpleW.csproj" />
   </ItemGroup>
 
