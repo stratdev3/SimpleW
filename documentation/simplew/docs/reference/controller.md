@@ -103,7 +103,7 @@ See the [HandlerMetadataCollection](../guide/handler-attribute.md) class for use
 
 ## OnBeforeMethod
 
-This [callback](../guide/callback#onbeforemethod) is defined as
+This [callback](../guide/controller-callback#onbeforemethod) is defined as
 
 ```csharp
 /// <summary>

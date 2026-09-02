@@ -183,7 +183,7 @@ Yes. SimpleW and its official addons are released under the MIT License. The sou
 
 ### Where can I ask a question?
 
-Join the [SimpleW Discord server](https://discord.gg/mDNRjyV8Ak) for usage questions, design discussions, and feedback.
+Join the [SimpleW Discord server](https://discord.gg/8rVv95jrMN) for usage questions, design discussions, and feedback.
 
 Before asking, include the SimpleW version, operating system, relevant configuration, a minimal code sample, and the observed behavior. Good context usually turns a long investigation into a short answer.
 

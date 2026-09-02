@@ -111,6 +111,30 @@ server.UseEngine(options => {
 ```
 
 
+## Unix Sockets
+
+[Unix Domain Socket](https://en.wikipedia.org/wiki/Unix_domain_socket) (UDS) can also be used as an entrypoint for the server.
+They are supported on : **Linux**, **MacOS**, **Android**... and even **Windows** !
+
+With just a small change, the [basic api example](./getting-started.md#minimal-example) can also be served over a Unix socket.
+
+
+```csharp{13}
+string unixSocketPath = @"C:\www\server.sock";
+var server = new SimpleWServer(new UnixDomainSocketEndPoint(unixSocketPath));
+```
+
+You can use `curl` to test :
+
+```
+$ curl --unix-socket C:\www\test.sock http://localhost/api/test
+> { "message" : "Hello World !" }
+```
+
+There is only one change :
+- L13 : use the `SimpleWServer()` constructor with `UnixDomainSocketEndPoint` argument.
+
+
 ## Starting the server
 
 ### StartAsync (non-blocking)

@@ -7,13 +7,20 @@
     license-url="https://github.com/Stratdev3/SimpleW/blob/master/licence"
 />
 
-[`SimpleW.Engine.Ioxide`](https://www.nuget.org/packages/SimpleW.Engine.Ioxide) replaces the default Socket engine with the Linux-native `io_uring` runtime while keeping the SimpleW routing, module, handler, response, SSE, and WebSocket APIs.
-
-The current engine supports HTTP/1.x over plaintext TCP or native OpenSSL TLS. It does not use `Socket`, `SslStream`, `PipeReader`, or kTLS on its connection hot paths.
+[`SimpleW.Engine.Ioxide`](https://www.nuget.org/packages/SimpleW.Engine.Ioxide) replaces the default Socket engine with the Linux-native `io_uring` runtime while keeping all the SimpleW core features.
 
 ::: tip NOTE
 For all information about ioxide, please refer to the [official website](https://mda2av.github.io/ioxide/).
 :::
+
+
+## Benchmarks
+
+The underlying Ioxide runtime has a dedicated [HttpArena benchmark page](https://www.http-arena.com/frameworks/simplew-tuned/). HttpArena runs every entry through the same profiles on the same dedicated hardware and publishes both the benchmark implementation and its raw results.
+
+The badge below tracks Ioxide's live HTTP/1.1 engine ranking and updates automatically whenever the leaderboard is republished:
+
+[![HTTP Arena](https://img.shields.io/endpoint?url=https://www.http-arena.com/badge/simplew-tuned/h1.json)](https://www.http-arena.com/frameworks/simplew-tuned/)
 
 
 ## Requirements
@@ -53,7 +60,7 @@ server.MapGet("/", () => new {
 await server.RunAsync();
 ```
 
-The main port always comes from `SimpleWServer.EndPoint`. Any `ServerConfig.Tcp.Port` value is replaced during startup. Other TCP settings and `ExtraPorts` are preserved. UDP and QUIC are disabled by this HTTP/1.x engine.
+The main port always comes from `SimpleWServer.EndPoint`. Any `ServerConfig.Tcp.Port` value is replaced during startup. Other TCP settings and `ExtraPorts` are preserved.
 
 
 ## Configuration

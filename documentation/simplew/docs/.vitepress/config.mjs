@@ -25,7 +25,7 @@ export default defineConfig({
         nav: [
             {
                 text: 'Guide',
-                link: '/guide/what-is-simplew',
+                link: '/guide/getting-started',
                 activeMatch: '/guide/'
             },
             {
@@ -34,7 +34,7 @@ export default defineConfig({
                 activeMatch: '/addons/'
             },
             {
-                text: 'Reference',
+                text: 'API Reference',
                 link: '/reference/simplewserver',
                 activeMatch: '/reference/'
             },
@@ -54,55 +54,58 @@ export default defineConfig({
                 {
                     text: 'Introduction',
                     items: [
-                        { text: 'What is SimpleW?', link: '/guide/what-is-simplew' },
                         { text: 'Getting Started', link: '/guide/getting-started' },
-                        { text: 'Performances', link: '/guide/performances' },
-                        //{ text: 'Lifecycle', link: '/guide/lifecycle' },
+                        { text: 'What is SimpleW?', link: '/guide/what-is-simplew' },
                     ]
                 },
                 {
                     text: 'Core',
                     items: [
                         { text: 'Server', link: '/guide/server' },
-                        { text: 'Handler', link: '/guide/handler' },
                         { text: 'Routing', link: '/guide/routing' },
-                        { text: 'Response', link: '/guide/response' },
+                        { text: 'Handler', link: '/guide/handler' },
                         { text: 'Request', link: '/guide/request' },
+                        { text: 'Response', link: '/guide/response' },
                     ]
                 },
                 {
-                    text: 'Extensibility',
+                    text: 'Content & Realtime',
                     items: [
-                        { text: 'Middleware', link: '/guide/middleware' },
-                        { text: 'Attribute', link: '/guide/handler-attribute' },
-                        { text: 'Module', link: '/guide/module' },
-                        { text: 'Callback', link: '/guide/callback' },
-                        { text: 'Result Handler', link: '/guide/resulthandler' },
-                        { text: 'Replacing Core', link: '/guide/replacing-core-components' },
+                        { text: 'Static Files', link: '/guide/staticfiles' },
+                        { text: 'Websockets', link: '/guide/websockets' },
+                        { text: 'Server Sent Events', link: '/guide/serversentevents' },
                     ]
                 },
                 {
                     text: 'Security',
                     items: [
                         { text: 'Principal', link: '/guide/principal' },
-                        { text: 'Cross-Origin Resource Sharing', link: '/guide/cors' },
+                        { text: 'CORS', link: '/guide/cors' },
                         { text: 'TLS Certificates', link: '/guide/tls-certificates' },
                     ]
                 },
                 {
-                    text: 'Communication',
+                    text: 'Extensibility',
                     items: [
-                        { text: 'Server Sent Events', link: '/guide/serversentevents' },
-                        { text: 'Websockets', link: '/guide/websockets' },
+                        { text: 'Middleware', link: '/guide/middleware' },
+                        { text: 'Module', link: '/guide/module' },
+                        { text: 'Handler Metadata', link: '/guide/handler-attribute' },
+                        { text: 'Result Handler', link: '/guide/resulthandler' },
                     ]
                 },
                 {
                     text: 'Operations',
                     items: [
-                        { text: 'Static Files', link: '/guide/staticfiles' },
-                        { text: 'Observability', link: '/guide/observability' },
                         { text: 'Logging', link: '/guide/logging' },
-                        { text: 'Unix Sockets', link: '/guide/unix-sockets' },
+                        { text: 'Observability', link: '/guide/observability' },
+                        { text: 'Performances', link: '/guide/performances' },
+                    ]
+                },
+                {
+                    text: 'Advanced',
+                    items: [
+                        { text: 'Controller Callback', link: '/guide/controller-callback' },
+                        { text: 'Replacing Core Components', link: '/guide/replacing-core-components' },
                     ]
                 },
                 {
@@ -222,7 +225,7 @@ export default defineConfig({
 
         socialLinks: [
             { icon: 'github', link: 'https://github.com/stratdev3/SimpleW' },
-            { icon: 'discord', link: 'https://discord.gg/mDNRjyV8Ak' },
+            { icon: 'discord', link: 'https://discord.gg/8rVv95jrMN' },
             //{ icon: 'nuget', link: 'https://www.nuget.org/packages/SimpleW' },
         ],
 

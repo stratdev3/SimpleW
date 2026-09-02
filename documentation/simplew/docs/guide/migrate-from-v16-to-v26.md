@@ -11,7 +11,7 @@ For example, I've migrated a full project _(thirty controllers / four hundred me
 - 1h : 90% of searches and replaces _(mostly Request and Response syntax change)_
 - 1h : 10% of real things to rewrite/adapt _(SimpleWServer options, CORS, WebSockets, Telemetry)_
 
-If you have issue with the migration, [ping me on Discord](https://discord.gg/mDNRjyV8Ak) and I'll try to look at it.
+If you have issue with the migration, [ping me on Discord](https://discord.gg/8rVv95jrMN) and I'll try to look at it.
 
 You can stay in v16, but I will never update/fix that one. The v26 is the new better way to go, and a smart move for a long run.
 

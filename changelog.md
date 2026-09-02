@@ -144,7 +144,7 @@ There is a [complete migration guide](https://simplew.net/guide/migrate-from-v16
 | Listener reload                      | ❌                                     | ✅ `ReloadListenerAsync()`                                  |
 | Documentation                        | ✅                                     | ✅ [simplew.net](https://simplew.net/v26/)                  |
 | Tests                                | ✅                                     | ✅ (more tests)                                             |
-| Support                              | ❌                                     | ✅ [Discord](https://discord.gg/mDNRjyV8Ak)                 |
+| Support                              | ❌                                     | ✅ [Discord](https://discord.gg/8rVv95jrMN)                 |
 | Addons                               | ❌                                     | ✅ BasicAuth, Chaos, Firewall, Hosting, Jwt, Latency, Log4net, OpenID, Razor, Swagger, LetsEncrypt, Templates, Serilog, DependencyInjection, Newtonsoft |
 
 

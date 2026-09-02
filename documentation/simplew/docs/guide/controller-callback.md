@@ -1,4 +1,4 @@
-# Callback
+# Controller Callback
 
 SimpleW provides a small but powerful set of extension points that allow you to inject logic into the execution flow without modifying the routing or handler model.
 

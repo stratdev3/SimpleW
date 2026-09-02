@@ -30,23 +30,7 @@ Command : [`bombardier -c 200 -d 30s http://127.0.0.1:8080/api/test/hello`](http
 | <a href="https://fastify.dev" target="_blank" class="no-external-link-icon" title="site">Fastify</a> <a href="/snippets/perf-fastify-dynamic-1.js.txt" target="_blank" class="no-external-link-icon no-link-decoration" title="source code benchmark">📄</a>                                                              |       8    |       958.221    |       35.793   |         31.940    |
 | <a href="https://github.com/unosquare/embedio" target="_blank" class="no-external-link-icon" title="site">EmbedIO</a> <a href="/snippets/perf-embedio-dynamic-1.cs.txt" target="_blank" class="no-external-link-icon no-link-decoration" title="source code benchmark">📄</a>                                             |       1    |       144.493    |       10.934   |          4.819    |
 
-
-SimpleW is very close to Node. ActixWeb is still on top.
-
-
-<!--
-
-#### Evaluate request with a server containing a single route and returning json object
-
-### Static Files
-
-Evaluate request on a single text file `message.txt` which contains `hello world`.
-
--->
-
-::: tip NOTE
 Browse the [http-arena](https://http-arena.com) for the latest benchmark results.
-:::
 
 
 ## Performance-Oriented Configuration
@@ -76,10 +60,10 @@ server.UseEngine(options => {
 });
 ```
 
-These options improve :
-- Connection acceptance scalability
-- Latency under load
-- CPU core utilization
+::: tip Need even more speed?
+Switch to the [SimpleW.Engine.Ioxide](../addons/engine-ioxide.md) addon. This Linux-native engine replaces the default Socket implementation with an `io_uring` runtime. It is not a small optimization — **it is an absolute performance monster**.
+:::
+
 
 ## Common Performance Killers
 
