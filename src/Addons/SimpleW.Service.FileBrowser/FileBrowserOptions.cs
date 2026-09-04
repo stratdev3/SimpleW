@@ -56,6 +56,21 @@ namespace SimpleW.Service.FileBrowser {
         public long MaxUploadBytes { get; set; } = 50L * 1024 * 1024 * 1024;
 
         /// <summary>
+        /// Maximum size of one file extracted from an archive.
+        /// </summary>
+        public long MaxExtractedFileBytes { get; set; } = 10L * 1024 * 1024 * 1024;
+
+        /// <summary>
+        /// Maximum combined size of all files extracted from one archive.
+        /// </summary>
+        public long MaxExtractedBytes { get; set; } = 50L * 1024 * 1024 * 1024;
+
+        /// <summary>
+        /// Maximum number of entries allowed in one archive.
+        /// </summary>
+        public int MaxArchiveEntries { get; set; } = 10000;
+
+        /// <summary>
         /// Files larger than this threshold are uploaded in chunks.
         /// </summary>
         public long UploadChunkThresholdBytes { get; set; } = 100L * 1024 * 1024;
@@ -64,6 +79,16 @@ namespace SimpleW.Service.FileBrowser {
         /// Size of one uploaded chunk.
         /// </summary>
         public long UploadChunkBytes { get; set; } = 16L * 1024 * 1024;
+
+        /// <summary>
+        /// Default number of entries returned by one list request.
+        /// </summary>
+        public int DefaultPageSize { get; set; } = 100;
+
+        /// <summary>
+        /// Maximum number of entries returned by one list request.
+        /// </summary>
+        public int MaxPageSize { get; set; } = 1000;
 
         /// <summary>
         /// Directory used as trash. Defaults to Path/.trash.
@@ -92,11 +117,32 @@ namespace SimpleW.Service.FileBrowser {
             if (MaxUploadBytes < MaxFileBytes) {
                 throw new ArgumentException($"{nameof(MaxUploadBytes)} must be greater than or equal to {nameof(MaxFileBytes)}.");
             }
+            if (MaxExtractedFileBytes <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(MaxExtractedFileBytes), "Must be > 0.");
+            }
+            if (MaxExtractedBytes <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(MaxExtractedBytes), "Must be > 0.");
+            }
+            if (MaxExtractedBytes < MaxExtractedFileBytes) {
+                throw new ArgumentException($"{nameof(MaxExtractedBytes)} must be greater than or equal to {nameof(MaxExtractedFileBytes)}.");
+            }
+            if (MaxArchiveEntries <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(MaxArchiveEntries), "Must be > 0.");
+            }
             if (UploadChunkThresholdBytes < 0) {
                 throw new ArgumentOutOfRangeException(nameof(UploadChunkThresholdBytes), "Must be >= 0.");
             }
             if (UploadChunkBytes <= 0) {
                 throw new ArgumentOutOfRangeException(nameof(UploadChunkBytes), "Must be > 0.");
+            }
+            if (DefaultPageSize <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(DefaultPageSize), "Must be > 0.");
+            }
+            if (MaxPageSize <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(MaxPageSize), "Must be > 0.");
+            }
+            if (DefaultPageSize > MaxPageSize) {
+                throw new ArgumentException($"{nameof(DefaultPageSize)} must be lower than or equal to {nameof(MaxPageSize)}.");
             }
             if (!AllowAnonymous && Authorize == null) {
                 throw new ArgumentException($"{nameof(Authorize)} must be configured unless {nameof(AllowAnonymous)} is true.");

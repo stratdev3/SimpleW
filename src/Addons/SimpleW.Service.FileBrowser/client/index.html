@@ -11,27 +11,76 @@
 <header>
   <h1>Files</h1>
   <div class="toolbar">
-    <button id="refresh">Refresh</button>
-    <button id="newFolder">New folder</button>
-    <button id="rename" disabled>Rename</button>
-    <button id="move" disabled>Move</button>
-    <button id="delete" class="danger" disabled>Delete</button>
-    <button id="upload">Upload</button>
-    <button id="toggleOperations" class="icon-button operations-toggle" aria-label="Operations" aria-expanded="false" title="Operations">
-      <span class="operations-glyph" aria-hidden="true"></span>
-      <span id="operationCount" class="badge">0</span>
+    <button id="themeToggle" class="icon-button" aria-label="Color mode: System" title="Color mode: System">
+      <span id="themeGlyph" class="theme-glyph" aria-hidden="true">&#9680;</span>
     </button>
   </div>
 </header>
 <main id="main">
   <section class="pane">
-    <div id="crumbs" class="crumbs"></div>
-    <table>
-      <thead><tr><th>Name</th><th>Size</th><th>Modified</th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
+    <div class="browser-bar">
+      <div id="crumbs" class="crumbs"></div>
+      <div class="file-actions">
+        <button id="refresh">Refresh</button>
+        <button id="newFolder">New folder</button>
+        <button id="upload">Upload</button>
+        <button id="openTrash" type="button">Trash <span id="trashCount" class="button-count" hidden></span></button>
+        <button id="toggleOperations" class="icon-button operations-toggle" aria-label="Operations" aria-expanded="false" title="Operations">
+          <svg class="operations-glyph" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.74v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span id="operationCount" class="badge" aria-hidden="true" hidden>0/0</span>
+        </button>
+      </div>
+      <div id="selectionBar" class="selection-bar" aria-live="polite" aria-hidden="true" inert>
+        <div class="selection-status">
+          <strong id="selectionSummary">0 items selected</strong>
+        </div>
+        <div class="selection-actions" role="toolbar" aria-label="Selection actions">
+          <button id="downloadSelected" type="button">Download</button>
+          <button id="archiveSelected" type="button">Archive</button>
+          <button id="rename" type="button" title="Rename selected item (F2)">Rename</button>
+          <button id="move" type="button">Move</button>
+          <button id="delete" type="button" title="Delete selected items (Delete)">Delete</button>
+        </div>
+      </div>
+    </div>
+    <div class="list-controls">
+      <div class="search-box">
+        <label class="sr-only" for="search">Search in current folder</label>
+        <input id="search" type="search" placeholder="Search in current folder" autocomplete="off">
+        <button id="clearSearch" class="icon-button clear-search-button" type="button" aria-label="Clear search" title="Clear search" hidden>
+          <span class="clear-search-glyph" aria-hidden="true"></span>
+        </button>
+      </div>
+      <label class="page-size-label" for="pageSize">Rows</label>
+      <select id="pageSize" aria-label="Rows per page"></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th id="nameHeader" aria-sort="ascending">
+            <div class="name-header">
+              <input id="selectionToggle" class="header-selection" type="checkbox" aria-label="Select all items">
+              <button class="sort-button" data-sort="name">Name <span class="sort-indicator" aria-hidden="true">&#8593;</span></button>
+            </div>
+          </th>
+          <th id="sizeHeader" aria-sort="none"><button class="sort-button" data-sort="size">Size <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          <th id="modifiedHeader" aria-sort="none"><button class="sort-button" data-sort="modified">Modified <span class="sort-indicator" aria-hidden="true"></span></button></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="pagination" aria-label="File list pagination">
+      <span id="pageSummary" class="muted">Page 1</span>
+      <div class="pagination-actions">
+        <button id="previousPage" type="button" disabled>Previous</button>
+        <button id="nextPage" type="button" disabled>Next</button>
+      </div>
+    </div>
   </section>
-  <aside id="operationsPanel" class="operations-panel" hidden>
+  <aside id="operationsPanel" class="operations-panel" aria-hidden="true">
     <div class="operations-header">
       <h2>Operations</h2>
       <div class="operations-actions">
@@ -43,23 +92,253 @@
         </button>
       </div>
     </div>
-    <progress id="globalProgress" value="0" max="100"></progress>
+    <progress id="globalProgress" class="global-progress" value="0" max="100" hidden></progress>
     <div id="operations" class="operations"></div>
   </aside>
 </main>
-<footer id="status">Ready</footer>
+<footer id="status" aria-live="polite">Ready</footer>
+</div>
+<div id="newFolderModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-new-folder></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="newFolderTitle">
+    <header class="modal-header">
+      <h2 id="newFolderTitle">Create folder</h2>
+      <button id="closeNewFolder" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal-context">
+      <span>Location</span>
+      <strong id="newFolderLocation"></strong>
+    </div>
+    <div class="modal-form-field">
+      <label for="newFolderName">Folder name</label>
+      <input id="newFolderName" type="text" autocomplete="off">
+      <small>Create: <strong id="newFolderDestinationPreview"></strong></small>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelNewFolder" type="button">Cancel</button>
+      <button id="confirmNewFolder" class="primary" type="button">Create folder</button>
+    </div>
+  </section>
 </div>
 <div id="uploadModal" class="modal" hidden>
   <div class="modal-backdrop" data-close-upload></div>
   <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
     <header class="modal-header">
       <h2 id="uploadTitle">Upload</h2>
-      <button id="closeUpload" aria-label="Close">Close</button>
+      <button id="closeUpload" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
     </header>
-    <div id="uploadDrop" class="drop">Drop files or folders</div>
+    <div class="upload-destination">
+      <span>Upload to</span>
+      <strong id="uploadDestination">/</strong>
+    </div>
+    <div id="uploadDrop" class="drop">
+      <p class="drop-copy">Drop files or folders here</p>
+      <div class="drop-actions">
+        <button id="chooseFiles" class="drop-link" type="button">Select files</button>
+        <button id="chooseFolder" class="drop-link" type="button">Select folder</button>
+      </div>
+      <div id="uploadStaging" class="upload-staging" aria-live="polite" hidden></div>
+    </div>
     <div class="modal-actions">
-      <button id="chooseFiles" class="primary">Select files</button>
-      <button id="chooseFolder">Select folder</button>
+      <button id="startUpload" class="primary" type="button" disabled>Upload</button>
+    </div>
+  </section>
+</div>
+<div id="trashModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-trash></div>
+  <section class="modal-panel trash-modal-panel" role="dialog" aria-modal="true" aria-labelledby="trashTitle">
+    <header class="modal-header">
+      <h2 id="trashTitle">Trash</h2>
+      <button id="closeTrash" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <p class="trash-intro">Restore deleted items to their original location or delete them permanently.</p>
+    <div id="trashList" class="trash-list" aria-live="polite"></div>
+    <div class="modal-actions">
+      <button id="emptyTrash" type="button" disabled>Empty trash</button>
+      <button id="doneTrash" type="button">Close</button>
+    </div>
+  </section>
+</div>
+<div id="purgeModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-purge></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="purgeTitle" aria-describedby="purgeMessage">
+    <header class="modal-header">
+      <h2 id="purgeTitle">Delete permanently</h2>
+      <button id="closePurge" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal-context">
+      <span>Items</span>
+      <strong id="purgeSelectionSummary"></strong>
+    </div>
+    <p id="purgeMessage" class="modal-message">This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button id="cancelPurge" type="button">Cancel</button>
+      <button id="confirmPurge" class="primary" type="button">Delete permanently</button>
+    </div>
+  </section>
+</div>
+<div id="restoreElsewhereModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-restore-elsewhere></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="restoreElsewhereTitle">
+    <header class="modal-header">
+      <h2 id="restoreElsewhereTitle">Restore elsewhere</h2>
+      <button id="closeRestoreElsewhere" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal-context">
+      <span>Item</span>
+      <strong id="restoreElsewhereItem"></strong>
+    </div>
+    <div class="modal-form-field">
+      <label for="restoreElsewhereDestination">Destination path</label>
+      <input id="restoreElsewhereDestination" type="text" autocomplete="off">
+      <small>Restore to: <strong id="restoreElsewherePreview"></strong></small>
+    </div>
+    <p class="modal-message">The original location is unavailable. Choose the complete destination path, including the item name.</p>
+    <div class="modal-actions">
+      <button id="cancelRestoreElsewhere" type="button">Cancel</button>
+      <button id="confirmRestoreElsewhere" class="primary" type="button">Restore</button>
+    </div>
+  </section>
+</div>
+<div id="renameModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-rename></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="renameTitle">
+    <header class="modal-header">
+      <h2 id="renameTitle">Rename item</h2>
+      <button id="closeRename" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal-context">
+      <span>Item</span>
+      <strong id="renameSource"></strong>
+    </div>
+    <div class="modal-form-field">
+      <label for="renameName">New name</label>
+      <input id="renameName" type="text" autocomplete="off">
+      <small>Destination: <strong id="renameDestinationPreview"></strong></small>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelRename" type="button">Cancel</button>
+      <button id="confirmRename" class="primary" type="button">Rename</button>
+    </div>
+  </section>
+</div>
+<div id="moveModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-move></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="moveTitle">
+    <header class="modal-header">
+      <h2 id="moveTitle">Move items</h2>
+      <button id="closeMove" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal-context">
+      <span>Items</span>
+      <strong id="moveSelectionSummary"></strong>
+    </div>
+    <div class="modal-form-field">
+      <label for="moveDestination">Destination folder</label>
+      <input id="moveDestination" type="text" autocomplete="off" placeholder="/">
+      <small>Destination: <strong id="moveDestinationPreview"></strong></small>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelMove" type="button">Cancel</button>
+      <button id="confirmMove" class="primary" type="button">Move</button>
+    </div>
+  </section>
+</div>
+<div id="deleteModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-delete></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+    <header class="modal-header">
+      <h2 id="deleteTitle">Delete items</h2>
+      <button id="closeDelete" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal-context">
+      <span>Items</span>
+      <strong id="deleteSelectionSummary"></strong>
+    </div>
+    <p id="deleteMessage" class="modal-message"></p>
+    <div class="modal-actions">
+      <button id="cancelDelete" type="button">Cancel</button>
+      <button id="confirmDelete" class="primary" type="button">Delete</button>
+    </div>
+  </section>
+</div>
+<div id="archiveModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-archive></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
+    <header class="modal-header">
+      <h2 id="archiveTitle">Create archive</h2>
+      <button id="closeArchive" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="archive-source">
+      <span>Items</span>
+      <strong id="archiveSelectionSummary"></strong>
+    </div>
+    <div class="archive-name-field">
+      <label for="archiveName">Archive name</label>
+      <input id="archiveName" type="text" autocomplete="off">
+      <small>Destination: <strong id="archiveDestinationPreview"></strong></small>
+    </div>
+    <div class="modal-actions">
+      <button id="confirmArchive" class="primary" type="button">Archive</button>
+    </div>
+  </section>
+</div>
+<div id="extractModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-extract></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="extractTitle">
+    <header class="modal-header">
+      <h2 id="extractTitle">Extract archive</h2>
+      <button id="closeExtract" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="extract-source">
+      <span>Archive</span>
+      <strong id="extractArchiveName"></strong>
+    </div>
+    <fieldset class="extract-options">
+      <legend>Destination</legend>
+      <label class="extract-option">
+        <input id="extractToFolder" type="radio" name="extractDestinationMode" value="folder" checked>
+        <span>
+          <strong>Dedicated folder</strong>
+          <small>Creates a new folder before extraction.</small>
+        </span>
+      </label>
+      <div class="extract-folder-field">
+        <label for="extractFolderName">Folder name</label>
+        <input id="extractFolderName" type="text" autocomplete="off">
+        <small>Destination: <strong id="extractFolderPreview"></strong></small>
+      </div>
+      <label class="extract-option">
+        <input id="extractHere" type="radio" name="extractDestinationMode" value="here">
+        <span>
+          <strong>Here</strong>
+          <small>Extract directly into <span id="extractHerePreview"></span>.</small>
+        </span>
+      </label>
+    </fieldset>
+    <p class="extract-safety-note">Server limits protect the number of entries and extracted sizes.</p>
+    <div class="modal-actions">
+      <button id="confirmExtract" class="primary" type="button">Extract</button>
     </div>
   </section>
 </div>

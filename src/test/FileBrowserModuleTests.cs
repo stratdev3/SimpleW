@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -37,6 +38,21 @@ namespace test {
         }
 
         [Fact]
+        public void UseFileBrowserModule_Should_Validate_Page_Sizes() {
+            string root = CreateRoot(nameof(UseFileBrowserModule_Should_Validate_Page_Sizes));
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
+
+            Check.ThatCode(() => {
+                server.UseFileBrowserModule(options => {
+                    options.Path = root;
+                    options.AllowAnonymous = true;
+                    options.DefaultPageSize = 101;
+                    options.MaxPageSize = 100;
+                });
+            }).Throws<ArgumentException>();
+        }
+
+        [Fact]
         public async Task List_Should_Return_Forbidden_When_Authorize_Denies() {
             string root = CreateRoot(nameof(List_Should_Return_Forbidden_When_Authorize_Denies));
             var server = new SimpleWServer(IPAddress.Loopback, 0);
@@ -54,6 +70,12 @@ namespace test {
                 HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list");
 
                 Check.That(response.StatusCode).Is(HttpStatusCode.Forbidden);
+
+                HttpResponseMessage downloadResponse = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/download?path=private.txt");
+                Check.That(downloadResponse.StatusCode).Is(HttpStatusCode.Forbidden);
+
+                HttpResponseMessage trashResponse = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/trash");
+                Check.That(trashResponse.StatusCode).Is(HttpStatusCode.Forbidden);
 
                 HttpResponseMessage eventsResponse = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/events");
                 Check.That(eventsResponse.StatusCode).Is(HttpStatusCode.Forbidden);
@@ -88,6 +110,13 @@ namespace test {
                 Check.That(response.StatusCode).Is(HttpStatusCode.OK);
                 JsonElement items = json.RootElement.GetProperty("items");
                 string content = items.ToString();
+                Check.That(json.RootElement.GetProperty("search").GetString()).IsEqualTo("");
+                Check.That(json.RootElement.GetProperty("sort").GetString()).IsEqualTo("name");
+                Check.That(json.RootElement.GetProperty("direction").GetString()).IsEqualTo("asc");
+                Check.That(json.RootElement.GetProperty("pageSize").GetInt32()).IsEqualTo(100);
+                Check.That(json.RootElement.GetProperty("keyCount").GetInt32()).IsEqualTo(2);
+                Check.That(json.RootElement.GetProperty("isTruncated").GetBoolean()).IsFalse();
+                Check.That(json.RootElement.GetProperty("nextContinuationToken").ValueKind).IsEqualTo(JsonValueKind.Null);
                 Check.That(content).Contains("docs");
                 Check.That(content).Contains("readme.txt");
                 Check.That(content).DoesNotContain(".trash");
@@ -101,6 +130,207 @@ namespace test {
                     Check.That(item.TryGetProperty("Name", out _)).IsFalse();
                     Check.That(item.TryGetProperty("ModifiedUtc", out _)).IsFalse();
                 }
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task List_Should_Paginate_With_A_Stable_Continuation_Token() {
+            string root = CreateRoot(nameof(List_Should_Paginate_With_A_Stable_Continuation_Token));
+            for (int i = 0; i <= 100; i++) {
+                string name = $"{i:D3}.txt";
+                File.WriteAllText(Path.Combine(root, name), name);
+            }
+
+            var server = CreateAnonymousServer(root, 0);
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                HttpResponseMessage firstResponse = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list");
+                using JsonDocument first = await ReadJsonAsync(firstResponse);
+
+                Check.That(firstResponse.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(first.RootElement.GetProperty("keyCount").GetInt32()).IsEqualTo(100);
+                Check.That(first.RootElement.GetProperty("isTruncated").GetBoolean()).IsTrue();
+                string token = first.RootElement.GetProperty("nextContinuationToken").GetString()!;
+                string?[] firstNames = first.RootElement.GetProperty("items").EnumerateArray()
+                    .Select(item => item.GetProperty("name").GetString())
+                    .ToArray();
+                Check.That(firstNames.First()).IsEqualTo("000.txt");
+                Check.That(firstNames.Last()).IsEqualTo("099.txt");
+
+                HttpResponseMessage secondResponse = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/list?continuationToken={Uri.EscapeDataString(token)}"
+                );
+                using JsonDocument second = await ReadJsonAsync(secondResponse);
+
+                Check.That(secondResponse.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(second.RootElement.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("name").GetString()).ToArray())
+                    .ContainsExactly("100.txt");
+                Check.That(second.RootElement.GetProperty("isTruncated").GetBoolean()).IsFalse();
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task List_Should_Search_Only_Direct_Children_Case_Insensitively() {
+            string root = CreateRoot(nameof(List_Should_Search_Only_Direct_Children_Case_Insensitively));
+            Directory.CreateDirectory(Path.Combine(root, "archive"));
+            File.WriteAllText(Path.Combine(root, "Annual-REPORT.pdf"), "report");
+            File.WriteAllText(Path.Combine(root, "notes.txt"), "notes");
+            File.WriteAllText(Path.Combine(root, "archive", "nested-report.txt"), "nested");
+
+            var server = CreateAnonymousServer(root, 0);
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                HttpResponseMessage response = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/list?search=report"
+                );
+                using JsonDocument json = await ReadJsonAsync(response);
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(json.RootElement.GetProperty("keyCount").GetInt32()).IsEqualTo(1);
+                Check.That(json.RootElement.GetProperty("items").EnumerateArray().Single().GetProperty("name").GetString()).IsEqualTo("Annual-REPORT.pdf");
+                Check.That(json.RootElement.GetProperty("items").ToString()).DoesNotContain("nested-report.txt");
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Theory]
+        [InlineData("name", "asc", "a.txt,b.bin,c.log")]
+        [InlineData("name", "desc", "c.log,b.bin,a.txt")]
+        [InlineData("size", "asc", "a.txt,c.log,b.bin")]
+        [InlineData("size", "desc", "b.bin,c.log,a.txt")]
+        [InlineData("modified", "asc", "b.bin,c.log,a.txt")]
+        [InlineData("modified", "desc", "a.txt,c.log,b.bin")]
+        public async Task List_Should_Sort_By_The_Requested_Column(string sort, string direction, string expectedNames) {
+            string root = CreateRoot($"{nameof(List_Should_Sort_By_The_Requested_Column)}_{sort}_{direction}");
+            string a = Path.Combine(root, "a.txt");
+            string b = Path.Combine(root, "b.bin");
+            string c = Path.Combine(root, "c.log");
+            File.WriteAllText(a, "1");
+            File.WriteAllText(b, "333");
+            File.WriteAllText(c, "22");
+            File.SetLastWriteTimeUtc(a, new DateTime(2024, 1, 3, 0, 0, 0, DateTimeKind.Utc));
+            File.SetLastWriteTimeUtc(b, new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+            File.SetLastWriteTimeUtc(c, new DateTime(2024, 1, 2, 0, 0, 0, DateTimeKind.Utc));
+
+            var server = CreateAnonymousServer(root, 0);
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                HttpResponseMessage response = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/list?sort={sort}&direction={direction}"
+                );
+                using JsonDocument json = await ReadJsonAsync(response);
+
+                string?[] names = json.RootElement.GetProperty("items").EnumerateArray()
+                    .Select(item => item.GetProperty("name").GetString())
+                    .ToArray();
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(names).ContainsExactly(expectedNames.Split(','));
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task List_Should_Keep_Directories_Before_Files_For_Descending_Sorts() {
+            string root = CreateRoot(nameof(List_Should_Keep_Directories_Before_Files_For_Descending_Sorts));
+            Directory.CreateDirectory(Path.Combine(root, "folder"));
+            File.WriteAllText(Path.Combine(root, "large.bin"), "large");
+
+            var server = CreateAnonymousServer(root, 0);
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                HttpResponseMessage response = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/list?sort=size&direction=desc"
+                );
+                using JsonDocument json = await ReadJsonAsync(response);
+
+                string?[] types = json.RootElement.GetProperty("items").EnumerateArray()
+                    .Select(item => item.GetProperty("type").GetString())
+                    .ToArray();
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(types).ContainsExactly("directory", "file");
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task List_Should_Reject_Invalid_Paging_And_Cursor_Parameters() {
+            string root = CreateRoot(nameof(List_Should_Reject_Invalid_Paging_And_Cursor_Parameters));
+            File.WriteAllText(Path.Combine(root, "a.txt"), "a");
+            File.WriteAllText(Path.Combine(root, "b.txt"), "b");
+            var server = CreateAnonymousServer(root, 0, options => {
+                options.DefaultPageSize = 10;
+                options.MaxPageSize = 10;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                Check.That((await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list?pageSize=11")).StatusCode)
+                    .Is(HttpStatusCode.BadRequest);
+                Check.That((await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list?sort=unknown")).StatusCode)
+                    .Is(HttpStatusCode.BadRequest);
+                Check.That((await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list?direction=sideways")).StatusCode)
+                    .Is(HttpStatusCode.BadRequest);
+                Check.That((await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list?continuationToken=not-a-token")).StatusCode)
+                    .Is(HttpStatusCode.BadRequest);
+
+                HttpResponseMessage firstResponse = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/list?pageSize=1"
+                );
+                using JsonDocument first = await ReadJsonAsync(firstResponse);
+                string token = first.RootElement.GetProperty("nextContinuationToken").GetString()!;
+                HttpResponseMessage mismatched = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/list?pageSize=1&search=a&continuationToken={Uri.EscapeDataString(token)}"
+                );
+                Check.That(mismatched.StatusCode).Is(HttpStatusCode.BadRequest);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Download_Should_Return_The_Requested_File_As_An_Attachment() {
+            string root = CreateRoot(nameof(Download_Should_Return_The_Requested_File_As_An_Attachment));
+            File.WriteAllText(Path.Combine(root, "report.txt"), "download-content");
+            var server = CreateAnonymousServer(root, 0);
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                HttpResponseMessage response = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/download?path=report.txt"
+                );
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(response.Content.Headers.ContentDisposition?.DispositionType).IsEqualTo("attachment");
+                Check.That(response.Content.Headers.ContentDisposition?.FileName).IsEqualTo("report.txt");
+                Check.That(await response.Content.ReadAsStringAsync()).IsEqualTo("download-content");
+
+                HttpResponseMessage traversal = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/download?path=..%2Foutside.txt"
+                );
+                Check.That(traversal.StatusCode).Is(HttpStatusCode.BadRequest);
             }
             finally {
                 await server.StopAsync();
@@ -122,12 +352,74 @@ namespace test {
                 string html = await ui.Content.ReadAsStringAsync();
                 Check.That(ui.StatusCode).Is(HttpStatusCode.OK);
                 Check.That(html).Contains("SimpleW File Browser");
+                Check.That(html).Contains("id=\"openTrash\"");
+                Check.That(html).Contains("id=\"trashCount\" class=\"button-count\" hidden");
+                Check.That(html).Contains("id=\"trashModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"trashList\" class=\"trash-list\"");
+                Check.That(html).Contains("id=\"emptyTrash\" type=\"button\" disabled>Empty trash</button>");
+                Check.That(html).Contains("id=\"purgeModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"restoreElsewhereModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"restoreElsewhereDestination\" type=\"text\"");
+                Check.That(html).Contains("id=\"confirmRestoreElsewhere\" class=\"primary\" type=\"button\">Restore</button>");
+                Check.That(html).Contains("id=\"newFolderModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"newFolderName\" type=\"text\"");
+                Check.That(html).Contains("id=\"newFolderLocation\"");
+                Check.That(html).Contains("id=\"confirmNewFolder\" class=\"primary\" type=\"button\">Create folder</button>");
+                Check.That(html).Contains("class=\"icon-button modal-close\" type=\"button\" aria-label=\"Close\" title=\"Close\"");
+                Check.That(html).Contains("class=\"close-glyph\" aria-hidden=\"true\"");
+                Check.That(html).DoesNotContain("aria-label=\"Close\">Close</button>");
                 Check.That(html).Contains("id=\"uploadModal\"");
+                Check.That(html).Contains("id=\"uploadDrop\" class=\"drop\"");
+                Check.That(html).Contains("id=\"chooseFiles\" class=\"drop-link\" type=\"button\">Select files</button>");
+                Check.That(html).Contains("id=\"chooseFolder\" class=\"drop-link\" type=\"button\">Select folder</button>");
+                Check.That(html).Contains("id=\"uploadStaging\" class=\"upload-staging\" aria-live=\"polite\" hidden");
+                Check.That(html).Contains("id=\"startUpload\" class=\"primary\" type=\"button\" disabled>Upload</button>");
+                Check.That(html).Contains("id=\"uploadDestination\">/</strong>");
+                Check.That(html).Contains("id=\"renameModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"renameName\" type=\"text\"");
+                Check.That(html).Contains("id=\"confirmRename\" class=\"primary\" type=\"button\">Rename</button>");
+                Check.That(html).Contains("id=\"moveModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"moveDestination\" type=\"text\"");
+                Check.That(html).Contains("id=\"confirmMove\" class=\"primary\" type=\"button\">Move</button>");
+                Check.That(html).Contains("id=\"deleteModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"confirmDelete\" class=\"primary\" type=\"button\">Delete</button>");
+                Check.That(html).Contains("id=\"archiveModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"archiveName\" type=\"text\"");
+                Check.That(html).Contains("id=\"confirmArchive\" class=\"primary\" type=\"button\">Archive</button>");
+                Check.That(html).Contains("id=\"extractModal\" class=\"modal\" hidden");
+                Check.That(html).Contains("id=\"extractToFolder\" type=\"radio\" name=\"extractDestinationMode\" value=\"folder\" checked");
+                Check.That(html).Contains("id=\"extractHere\" type=\"radio\" name=\"extractDestinationMode\" value=\"here\"");
+                Check.That(html).Contains("id=\"confirmExtract\" class=\"primary\" type=\"button\">Extract</button>");
                 Check.That(html).Contains("id=\"toggleOperations\"");
-                Check.That(html).Contains("id=\"operationCount\"");
-                Check.That(html).Contains("id=\"operationsPanel\" class=\"operations-panel\" hidden");
+                Check.That(html).Contains("class=\"operations-glyph\"");
+                Check.That(html).Contains("<circle cx=\"12\" cy=\"12\" r=\"3\"></circle>");
+                Check.That(html).Contains("id=\"themeToggle\"");
+                Check.That(html).Contains("class=\"browser-bar\"");
+                Check.That(html).Contains("class=\"file-actions\"");
+                Check.That(html).Contains("id=\"selectionBar\" class=\"selection-bar\" aria-live=\"polite\" aria-hidden=\"true\" inert");
+                Check.That(html).Contains("id=\"selectionSummary\"");
+                Check.That(html).Contains("id=\"selectionToggle\" class=\"header-selection\" type=\"checkbox\"");
+                Check.That(html).Contains("id=\"downloadSelected\"");
+                Check.That(html).Contains("id=\"archiveSelected\"");
+                Check.That(html).DoesNotContain("id=\"selectionMenu\"");
+                Check.That(html).DoesNotContain("id=\"invertSelection\"");
+                Check.That(html).DoesNotContain(">Clear selection</button>");
+                Check.That(html).Contains("id=\"delete\" type=\"button\"");
+                Check.That(html).DoesNotContain("id=\"delete\" class=\"danger\"");
+                Check.That(html).Contains("id=\"operationCount\" class=\"badge\" aria-hidden=\"true\" hidden>0/0</span>");
+                Check.That(html).Contains("id=\"operationsPanel\" class=\"operations-panel\" aria-hidden=\"true\"");
                 Check.That(html).Contains("id=\"clearOperations\"");
                 Check.That(html).Contains("id=\"cancelOperations\"");
+                Check.That(html).Contains("id=\"globalProgress\" class=\"global-progress\" value=\"0\" max=\"100\" hidden");
+                Check.That(html).Contains("id=\"search\"");
+                Check.That(html).Contains("class=\"clear-search-glyph\"");
+                Check.That(html).Contains("title=\"Clear search\" hidden");
+                Check.That(html).Contains("id=\"pageSize\"");
+                Check.That(html).DoesNotContain("id=\"displayDensity\"");
+                Check.That(html).DoesNotContain("value=\"compact\"");
+                Check.That(html).Contains("id=\"previousPage\"");
+                Check.That(html).Contains("id=\"nextPage\"");
+                Check.That(html).Contains("data-sort=\"modified\"");
                 Check.That(html).Contains("<h2>Operations</h2>");
                 Check.That(html).DoesNotContain("id=\"drop\"");
                 Check.That(html).DoesNotContain("id=\"queue\"");
@@ -137,18 +429,148 @@ namespace test {
                 Check.That(css.StatusCode).Is(HttpStatusCode.OK);
                 Check.That(css.Content.Headers.ContentType?.MediaType).IsEqualTo("text/css");
                 Check.That(cssText).Contains(".shell");
+                Check.That(cssText).Contains(".folder-icon");
+                Check.That(cssText).Contains(".file-icon");
+                Check.That(cssText).Contains(".clear-search-button[hidden]");
+                Check.That(cssText).Contains(".upload-staging[hidden]");
+                Check.That(cssText).Contains(".upload-staged-item");
+                Check.That(cssText).Contains(".trash-modal-panel");
+                Check.That(cssText).Contains(".trash-item-actions");
+                Check.That(cssText).Contains(".trash-list-message");
+                Check.That(cssText).Contains(".drop-link");
+                Check.That(cssText).Contains(".pane.upload-drop-current");
+                Check.That(cssText).Contains("tbody tr.directory-row.upload-drop-target");
+                Check.That(cssText).Contains(".upload-destination");
+                Check.That(cssText).Contains(".modal-form-field");
+                Check.That(cssText).Contains(".modal-message");
+                Check.That(cssText).Contains(".archive-name-field");
+                Check.That(cssText).Contains(".extract-options");
+                Check.That(cssText).Contains(".extract-safety-note");
+                Check.That(cssText).Contains("tbody tr:not(.list-message):hover");
+                Check.That(cssText).Contains("tbody tr.directory-row { cursor: pointer; }");
+                Check.That(cssText).Contains(".item-row-actions");
+                Check.That(cssText).Contains("tbody tr:not(.list-message):hover .item-row-actions");
+                Check.That(cssText).Contains("tbody tr:hover .row-selection");
+                Check.That(cssText).Contains("tbody tr.selected .row-selection");
+                Check.That(cssText).Contains(":root[data-theme=\"dark\"]");
+                Check.That(cssText).Contains("td:first-child { width: 100%; }");
+                Check.That(cssText).Contains(".file-link:hover");
+                Check.That(cssText).Contains(".file-actions");
+                Check.That(cssText).Contains(".browser-bar.selection-active > .selection-bar");
+                Check.That(cssText).Contains(".browser-bar.selection-active > .file-actions");
+                Check.That(cssText).Contains(".header-selection");
+                Check.That(cssText).DoesNotContain(".selection-menu");
+                Check.That(cssText).Contains("flex-wrap: nowrap;");
+                Check.That(cssText).DoesNotContain(":root[data-density=\"compact\"]");
+                Check.That(cssText).Contains("position: sticky;");
+                Check.That(cssText).Contains("top: var(--browser-bar-height, 53px);");
+                Check.That(cssText).Contains("overflow: visible;");
+                Check.That(cssText).DoesNotContain("scrollbar-gutter: stable;");
+                Check.That(cssText).DoesNotContain("max-height: max(240px, calc(100vh");
+                Check.That(cssText).Contains("main.operations-open .operations-panel");
+                Check.That(cssText).Contains(".operations-panel progress[hidden]");
+                Check.That(cssText).Contains(".operation-status-badge");
+                Check.That(cssText).Contains(".operation-progress-row");
+                Check.That(cssText).Contains(".operation-item.operation-state-running");
+                Check.That(cssText).Contains("button:not(:disabled):hover");
+                Check.That(cssText).Contains("button.primary:not(:disabled):hover");
+                Check.That(cssText).Contains(".modal-close:not(:disabled):hover");
+                Check.That(cssText).Contains(".close-glyph::before");
 
                 HttpResponseMessage js = await client.GetAsync($"http://{server.Address}:{server.Port}/files/app.js");
                 string jsText = await js.Content.ReadAsStringAsync();
                 Check.That(js.StatusCode).Is(HttpStatusCode.OK);
                 Check.That(js.Content.Headers.ContentType?.MediaType).IsEqualTo("text/javascript");
                 Check.That(jsText).Contains("loadConfig");
+                Check.That(jsText).Contains("loadTrash");
+                Check.That(jsText).Contains("restoreTrashItems");
+                Check.That(jsText).Contains("openRestoreElsewhereModal");
+                Check.That(jsText).Contains("performRestoreElsewhere");
+                Check.That(jsText).Contains("canRestoreElsewhere");
+                Check.That(jsText).Contains("openPurgeModal");
+                Check.That(jsText).Contains("`${api}/trash/restore`");
+                Check.That(jsText).Contains("`${api}/trash/delete`");
+                Check.That(jsText).Contains("`${api}/trash/empty`");
                 Check.That(jsText).Contains("uploadModal");
+                Check.That(jsText).Contains("createStagedUploadItems");
+                Check.That(jsText).Contains("addStagedUploadItems");
+                Check.That(jsText).Contains("removeStagedUploadItem");
+                Check.That(jsText).Contains("upload-remove-glyph");
+                Check.That(jsText).Contains("collectDroppedUploadItems");
+                Check.That(jsText).Contains("startUploadButton.onclick = uploadStagedItems");
+                Check.That(jsText).Contains("updateBrowserUploadDropTarget");
+                Check.That(jsText).Contains("browserPane.addEventListener(\"drop\"");
+                Check.That(jsText).Contains("openUploadModal(destinationPath)");
+                Check.That(jsText).Contains("startUpload(files, destinationPath)");
                 Check.That(jsText).Contains("trackQueuedOperation");
                 Check.That(jsText).Contains("cancelAllOperations");
                 Check.That(jsText).Contains("clearOperationHistory");
+                Check.That(jsText).Contains("runningCount");
+                Check.That(jsText).Contains("queuedCount");
+                Check.That(jsText).Contains("globalProgress.hidden = true");
+                Check.That(jsText).Contains("globalProgress.hidden = false");
+                Check.That(jsText).Contains("operationStateLabel");
+                Check.That(jsText).Contains("operation-progress-label");
+                Check.That(jsText).Contains("scheduleOperationRender");
+                Check.That(jsText).DoesNotContain("status: \"server received\"");
+                Check.That(jsText).DoesNotContain("status: \"uploading\"");
                 Check.That(jsText).Contains("filebrowser.operation.cancelled");
                 Check.That(jsText).Contains("filebrowser.upload.cancelled");
+                Check.That(jsText).Contains("continuationToken");
+                Check.That(jsText).Contains("syncNavigationState");
+                Check.That(jsText).Contains("simplew.filebrowser.theme");
+                Check.That(jsText).Contains("applyTheme");
+                Check.That(jsText).DoesNotContain("simplew.filebrowser.density");
+                Check.That(jsText).DoesNotContain("applyDensity");
+                Check.That(jsText).Contains("syncStickyTableHeader");
+                Check.That(jsText).Contains("ResizeObserver");
+                Check.That(jsText).Contains("/download?");
+                Check.That(jsText).Contains("setTimeout(applySearch, 300)");
+                Check.That(jsText).Contains("class=\"row-selection\" type=\"checkbox\"");
+                Check.That(jsText).Contains("setRowSelection");
+                Check.That(jsText).Contains("checkbox.onclick = e => e.stopPropagation()");
+                Check.That(jsText).Contains("tr.classList.add(\"directory-row\")");
+                Check.That(jsText).Contains("data-item-action=\"rename\"");
+                Check.That(jsText).Contains("data-item-action=\"move\"");
+                Check.That(jsText).Contains("data-item-action=\"delete\"");
+                Check.That(jsText).Contains("renameItem(item.path)");
+                Check.That(jsText).Contains("moveItems([item.path])");
+                Check.That(jsText).Contains("deleteItems([item.path])");
+                Check.That(jsText).Contains("openRenameModal(path)");
+                Check.That(jsText).Contains("openMoveModal(paths)");
+                Check.That(jsText).Contains("openDeleteModal(paths)");
+                Check.That(jsText).Contains("runAction(performRename)");
+                Check.That(jsText).Contains("runAction(performMove)");
+                Check.That(jsText).Contains("runAction(performDelete)");
+                Check.That(jsText).Contains("openNewFolderModal");
+                Check.That(jsText).Contains("runAction(createNewFolder)");
+                Check.That(jsText).DoesNotContain("prompt(\"Folder name\"");
+                Check.That(jsText).DoesNotContain("prompt(\"New name\"");
+                Check.That(jsText).DoesNotContain("prompt(\"Destination folder\"");
+                Check.That(jsText).DoesNotContain("confirm(`Delete");
+                Check.That(jsText).Contains("data-item-action=\"archive\"");
+                Check.That(jsText).Contains("openArchiveModal([item.path])");
+                Check.That(jsText).Contains("archiveSelectedButton.onclick = () => openArchiveModal([...selected])");
+                Check.That(jsText).Contains("`${api}/archive`");
+                Check.That(jsText).Contains("data-item-action=\"extract\"");
+                Check.That(jsText).Contains("item.name.toLowerCase().endsWith(\".zip\")");
+                Check.That(jsText).Contains("openExtractModal(item.path)");
+                Check.That(jsText).Contains("`${api}/extract`");
+                Check.That(jsText).Contains("tr.onclick = () => navigateTo(item.path)");
+                Check.That(jsText).DoesNotContain("setRowSelection(tr, checkbox, item.path, !selected.has(item.path))");
+                Check.That(jsText).Contains("downloadSelectedFiles");
+                Check.That(jsText).Contains("clearSelection");
+                Check.That(jsText).Contains("selectionToggle.indeterminate = partlySelected");
+                Check.That(jsText).Contains("selectionToggle.onchange = () =>");
+                Check.That(jsText).DoesNotContain("setSelectionMenuOpen");
+                Check.That(jsText).Contains("updateSortIndicators");
+                Check.That(jsText).Contains("browserBar.classList.toggle(\"selection-active\", hasSelection)");
+                Check.That(jsText).Contains("selectionBar.removeAttribute(\"inert\")");
+                Check.That(jsText).Contains("selectAllCurrentItems");
+                Check.That(jsText).Contains("activateSelectedItem");
+                Check.That(jsText).Contains("e.key === \"Delete\"");
+                Check.That(jsText).Contains("e.key === \"F2\"");
+                Check.That(jsText).DoesNotContain("if (!e.ctrlKey && !e.metaKey) selected.clear()");
                 Check.That(jsText).DoesNotContain("renderQueue");
 
                 string? etag = js.Headers.ETag?.Tag;
@@ -172,6 +594,8 @@ namespace test {
                 Check.That(config.StatusCode).Is(HttpStatusCode.OK);
                 Check.That(configJson.RootElement.GetProperty("prefix").GetString()).IsEqualTo("/files");
                 Check.That(configJson.RootElement.GetProperty("apiPrefix").GetString()).IsEqualTo("/files/api");
+                Check.That(configJson.RootElement.GetProperty("defaultPageSize").GetInt32()).IsEqualTo(100);
+                Check.That(configJson.RootElement.GetProperty("maxPageSize").GetInt32()).IsEqualTo(1000);
 
                 HttpResponseMessage list = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list");
                 using JsonDocument listJson = await ReadJsonAsync(list);
@@ -525,6 +949,178 @@ namespace test {
                 await WaitUntilAsync(() => !File.Exists(Path.Combine(root, "target", "renamed.txt")));
                 Check.That(File.Exists(Path.Combine(root, "target", "renamed.txt"))).IsFalse();
                 Check.That(Directory.EnumerateFileSystemEntries(Path.Combine(root, ".trash")).Any()).IsTrue();
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Trash_Should_List_Restore_Delete_Permanently_And_Empty() {
+            string root = CreateRoot(nameof(Trash_Should_List_Restore_Delete_Permanently_And_Empty));
+            File.WriteAllText(Path.Combine(root, "restore.txt"), "restore me");
+            File.WriteAllText(Path.Combine(root, "purge.txt"), "purge me");
+            Directory.CreateDirectory(Path.Combine(root, ".trash"));
+            const string legacyId = "20260905010101001-legacy_file.txt";
+            File.WriteAllText(Path.Combine(root, ".trash", legacyId), "legacy file");
+
+            var server = CreateAnonymousServer(root, 0);
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+
+                HttpResponseMessage delete = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/delete",
+                    JsonContent(new { paths = new[] { "restore.txt", "purge.txt" } })
+                );
+                Check.That(delete.StatusCode).Is(HttpStatusCode.Accepted);
+                await WaitUntilAsync(() => !File.Exists(Path.Combine(root, "restore.txt")) && !File.Exists(Path.Combine(root, "purge.txt")));
+
+                HttpResponseMessage list = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/trash");
+                using JsonDocument listJson = await ReadJsonAsync(list);
+                Check.That(list.StatusCode).Is(HttpStatusCode.OK);
+                JsonElement[] items = listJson.RootElement.GetProperty("items").EnumerateArray().ToArray();
+                Check.That(items.Length).IsEqualTo(3);
+                JsonElement restoreItem = items.Single(item => item.GetProperty("originalPath").GetString() == "restore.txt");
+                JsonElement purgeItem = items.Single(item => item.GetProperty("originalPath").GetString() == "purge.txt");
+                JsonElement legacyItem = items.Single(item => item.GetProperty("id").GetString() == legacyId);
+                Check.That(restoreItem.GetProperty("canRestore").GetBoolean()).IsTrue();
+                Check.That(legacyItem.GetProperty("canRestore").GetBoolean()).IsFalse();
+                Check.That(legacyItem.GetProperty("canRestoreElsewhere").GetBoolean()).IsTrue();
+
+                string restoreId = restoreItem.GetProperty("id").GetString()!;
+                HttpResponseMessage restore = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/trash/restore",
+                    JsonContent(new { ids = new[] { restoreId } })
+                );
+                Check.That(restore.StatusCode).Is(HttpStatusCode.Accepted);
+                await WaitUntilAsync(() => File.Exists(Path.Combine(root, "restore.txt")));
+                Check.That(File.ReadAllText(Path.Combine(root, "restore.txt"))).IsEqualTo("restore me");
+
+                string purgeId = purgeItem.GetProperty("id").GetString()!;
+                HttpResponseMessage purge = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/trash/delete",
+                    JsonContent(new { ids = new[] { purgeId } })
+                );
+                Check.That(purge.StatusCode).Is(HttpStatusCode.Accepted);
+                await WaitUntilAsync(() => !Directory.Exists(Path.Combine(root, ".trash", purgeId)));
+
+                HttpResponseMessage restoreLegacy = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/trash/restore",
+                    JsonContent(new { ids = new[] { legacyId }, destinationPath = "recovered/legacy.txt" })
+                );
+                Check.That(restoreLegacy.StatusCode).Is(HttpStatusCode.Accepted);
+                string restoredLegacyPath = Path.Combine(root, "recovered", "legacy.txt");
+                await WaitUntilAsync(() => File.Exists(restoredLegacyPath));
+                Check.That(File.ReadAllText(restoredLegacyPath)).IsEqualTo("legacy file");
+
+                File.WriteAllText(Path.Combine(root, "empty.txt"), "empty me");
+                HttpResponseMessage deleteForEmpty = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/delete",
+                    JsonContent(new { paths = new[] { "empty.txt" } })
+                );
+                Check.That(deleteForEmpty.StatusCode).Is(HttpStatusCode.Accepted);
+                await WaitUntilAsync(() => !File.Exists(Path.Combine(root, "empty.txt")));
+
+                HttpResponseMessage empty = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/trash/empty",
+                    JsonContent(new { })
+                );
+                Check.That(empty.StatusCode).Is(HttpStatusCode.Accepted);
+                await WaitUntilAsync(() => !Directory.EnumerateFileSystemEntries(Path.Combine(root, ".trash")).Any());
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Archive_Should_Include_Selected_File_And_Complete_Directory() {
+            string root = CreateRoot(nameof(Archive_Should_Include_Selected_File_And_Complete_Directory));
+            Directory.CreateDirectory(Path.Combine(root, "folder", "empty"));
+            File.WriteAllText(Path.Combine(root, "file.txt"), "root file");
+            File.WriteAllText(Path.Combine(root, "folder", "nested.txt"), "nested file");
+
+            var server = CreateAnonymousServer(root, 0);
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+
+                HttpResponseMessage response = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/archive",
+                    JsonContent(new {
+                        paths = new[] { "file.txt", "folder" },
+                        destinationPath = "bundle.zip"
+                    })
+                );
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.Accepted);
+                string archivePath = Path.Combine(root, "bundle.zip");
+                await WaitUntilAsync(() => File.Exists(archivePath));
+
+                using ZipArchive archive = ZipFile.OpenRead(archivePath);
+                string[] entries = archive.Entries.Select(entry => entry.FullName).ToArray();
+                Check.That(entries).Contains("file.txt");
+                Check.That(entries).Contains("folder/");
+                Check.That(entries).Contains("folder/nested.txt");
+                Check.That(entries).Contains("folder/empty/");
+
+                ZipArchiveEntry nestedEntry = archive.GetEntry("folder/nested.txt")!;
+                using StreamReader reader = new(nestedEntry.Open());
+                Check.That(reader.ReadToEnd()).IsEqualTo("nested file");
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Extract_Should_Extract_Zip_Here_Or_Into_A_New_Directory() {
+            string root = CreateRoot(nameof(Extract_Should_Extract_Zip_Here_Or_Into_A_New_Directory));
+            string dedicatedArchivePath = Path.Combine(root, "dedicated.zip");
+            using (ZipArchive archive = ZipFile.Open(dedicatedArchivePath, ZipArchiveMode.Create)) {
+                ZipArchiveEntry entry = archive.CreateEntry("nested/file.txt");
+                using StreamWriter writer = new(entry.Open());
+                writer.Write("dedicated");
+            }
+
+            string hereArchivePath = Path.Combine(root, "here.zip");
+            using (ZipArchive archive = ZipFile.Open(hereArchivePath, ZipArchiveMode.Create)) {
+                ZipArchiveEntry entry = archive.CreateEntry("here.txt");
+                using StreamWriter writer = new(entry.Open());
+                writer.Write("here");
+            }
+
+            var server = CreateAnonymousServer(root, 0);
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+
+                HttpResponseMessage dedicated = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/extract",
+                    JsonContent(new {
+                        path = "dedicated.zip",
+                        destinationDirectory = "dedicated",
+                        createDestinationDirectory = true
+                    })
+                );
+                Check.That(dedicated.StatusCode).Is(HttpStatusCode.Accepted);
+                string dedicatedFile = Path.Combine(root, "dedicated", "nested", "file.txt");
+                await WaitUntilAsync(() => File.Exists(dedicatedFile));
+                Check.That(File.ReadAllText(dedicatedFile)).IsEqualTo("dedicated");
+
+                HttpResponseMessage here = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/extract",
+                    JsonContent(new {
+                        path = "here.zip",
+                        destinationDirectory = "",
+                        createDestinationDirectory = false
+                    })
+                );
+                Check.That(here.StatusCode).Is(HttpStatusCode.Accepted);
+                string hereFile = Path.Combine(root, "here.txt");
+                await WaitUntilAsync(() => File.Exists(hereFile));
+                Check.That(File.ReadAllText(hereFile)).IsEqualTo("here");
             }
             finally {
                 await server.StopAsync();

@@ -17,7 +17,7 @@ It exposes a ready-to-use browser UI and an HTTP API to list files and directori
 
 - Browse files and directories below a configured root
 - Create folders, rename entries, and move files or directories
-- Move one or more entries to an internal trash directory
+- Move one or more entries to an internal trash directory, then restore or permanently delete them
 - Upload files and directory trees
 - Split large files into configurable chunks
 - Execute file mutations asynchronously through an in-process queue
@@ -86,6 +86,9 @@ The module is closed by default. Installation fails unless `Authorize` is config
 | `EventsPrefix` | `Prefix + "/api/events"` | Custom SSE endpoint. With `Prefix = "/"`, the default is `/api/events`. |
 | `MaxFileBytes` | `10 GiB` | Maximum declared size of one logical file. |
 | `MaxUploadBytes` | `50 GiB` | Maximum combined size of all files in one upload session. Must be greater than or equal to `MaxFileBytes`. |
+| `MaxExtractedFileBytes` | `10 GiB` | Maximum expanded size of one file extracted from an archive. |
+| `MaxExtractedBytes` | `50 GiB` | Maximum combined expanded size of one archive. Must be greater than or equal to `MaxExtractedFileBytes`. |
+| `MaxArchiveEntries` | `10000` | Maximum number of entries allowed when creating or extracting one archive. |
 | `UploadChunkThresholdBytes` | `100 MiB` | Files larger than this value must use chunk upload. Set to `0` to chunk every non-empty file. |
 | `UploadChunkBytes` | `16 MiB` | Maximum body size of one chunk request. |
 | `TrashPath` | `Path/.trash` | Directory receiving deleted files and directories. It can be overridden with another directory. |
@@ -196,7 +199,7 @@ The browser works with relative paths below `Path`. Mutating operations are plac
 
 The queue performs create, rename, move, delete, and upload finalization operations sequentially. Queue and upload-session state are held in memory and do not survive a process restart.
 
-Deleting an entry does not erase it immediately. The module moves it to `TrashPath` using a unique timestamped name. FileBrowser does not expose an API to empty or restore the trash; retention and cleanup of that directory remain application responsibilities.
+Deleting an entry does not erase it immediately. The module moves it into a uniquely named container below `TrashPath` and records its original relative path so it can be restored after a process restart. The bundled UI can list, restore, permanently delete, or empty these entries. Items created by older FileBrowser versions remain visible; because their original path was not recorded, the UI asks for a new destination when restoring them.
 
 
 ## HTTP API
@@ -211,6 +214,12 @@ The bundled UI uses the following endpoints. They can also be used by a custom c
 | `POST` | `/api/rename` | `{ "path": "reports/draft.txt", "name": "final.txt" }` | `202` |
 | `POST` | `/api/move` | `{ "sourcePath": "draft.txt", "destinationDirectory": "reports", "name": "final.txt" }` | `202` |
 | `POST` | `/api/delete` | `{ "path": "old.txt" }` or `{ "paths": ["a.txt", "b.txt"] }` | `202` |
+| `GET` | `/api/trash` | None | `200` |
+| `POST` | `/api/trash/restore` | `{ "ids": ["trash-item-id"] }` or `{ "ids": ["legacy-id"], "destinationPath": "recovered/item.txt" }` | `202` |
+| `POST` | `/api/trash/delete` | `{ "ids": ["trash-item-id"] }` | `202` |
+| `POST` | `/api/trash/empty` | No body required | `202` |
+| `POST` | `/api/archive` | `{ "paths": ["reports", "summary.txt"], "destinationPath": "backup.zip" }` | `202` |
+| `POST` | `/api/extract` | `{ "path": "bundle.zip", "destinationDirectory": "bundle", "createDestinationDirectory": true }` | `202` |
 | `POST` | `/api/operations/cancel` | No body required | `202` |
 | `POST` | `/api/uploads` | `{ "files": [{ "path": "data.csv", "size": 1024 }] }` | `201` |
 | `POST` | `/api/uploads/:id/files` | Binary body and `X-File-Path` header | `200` |
@@ -218,6 +227,10 @@ The bundled UI uses the following endpoints. They can also be used by a custom c
 | `POST` | `/api/uploads/:id/complete` | No body required | `202` |
 
 The routes in this table are relative to `Prefix`. With the default prefix, `/api/list` is available at `/files/api/list`.
+
+ZIP creation recursively includes selected directories, preserves empty directories, and refuses filesystem reparse points. The archive is written to the internal temporary directory and moved to `destinationPath` only when complete, so a cancelled or failed operation does not expose a partial ZIP.
+
+ZIP extraction runs in the same cancellable operation queue as rename, move, and delete. Set `createDestinationDirectory` to `false` to extract into an existing directory, or to `true` to require and create a new destination directory. Archive paths are constrained to that destination, existing files are never overwritten, and `MaxArchiveEntries`, `MaxExtractedFileBytes`, and `MaxExtractedBytes` limit decompression-bomb impact.
 
 `X-File-Path` can be replaced by a `path` query parameter on the two binary upload endpoints.
 

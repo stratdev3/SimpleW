@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Channels;
@@ -11,6 +12,8 @@ namespace SimpleW.Service.FileBrowser {
     internal sealed class FileBrowserModule : IHttpModule {
 
         private const string TempDirectoryName = ".filebrowser-tmp";
+        private const string TrashMetadataFileName = ".trash-item.json";
+        private const string TrashPayloadName = "payload";
         private const string EventsRoom = "filebrowser";
         private static readonly ILogger _log = new Logger<FileBrowserModule>();
         private static readonly Lazy<ClientAsset[]> EmbeddedClientAssets = new(LoadEmbeddedClientAssets);
@@ -94,10 +97,18 @@ namespace SimpleW.Service.FileBrowser {
 
             server.MapGet(Route("/api/config"), (HttpSession session) => ConfigAsync(session));
             server.MapGet(Route("/api/list"), (HttpSession session) => ListAsync(session));
+            server.MapGet(Route("/api/download"), (HttpSession session) => DownloadAsync(session));
+            server.Map("HEAD", Route("/api/download"), (HttpSession session) => DownloadAsync(session));
             server.Map("POST", Route("/api/folders"), (HttpSession session) => CreateFolderAsync(session));
             server.Map("POST", Route("/api/rename"), (HttpSession session) => RenameAsync(session));
             server.Map("POST", Route("/api/move"), (HttpSession session) => MoveAsync(session));
             server.Map("POST", Route("/api/delete"), (HttpSession session) => DeleteAsync(session));
+            server.MapGet(Route("/api/trash"), (HttpSession session) => ListTrashAsync(session));
+            server.Map("POST", Route("/api/trash/restore"), (HttpSession session) => RestoreTrashAsync(session));
+            server.Map("POST", Route("/api/trash/delete"), (HttpSession session) => DeleteTrashAsync(session));
+            server.Map("POST", Route("/api/trash/empty"), (HttpSession session) => EmptyTrashAsync(session));
+            server.Map("POST", Route("/api/archive"), (HttpSession session) => ArchiveAsync(session));
+            server.Map("POST", Route("/api/extract"), (HttpSession session) => ExtractAsync(session));
             server.Map("POST", Route("/api/operations/cancel"), (HttpSession session) => CancelOperationsAsync(session));
             server.Map("POST", Route("/api/uploads"), (HttpSession session) => CreateUploadAsync(session));
             server.Map("POST", Route("/api/uploads/:id/files"), (HttpSession session) => UploadFileAsync(session));
@@ -401,7 +412,12 @@ namespace SimpleW.Service.FileBrowser {
                 uploadChunkThresholdBytes = _options.UploadChunkThresholdBytes,
                 uploadChunkBytes = _options.UploadChunkBytes,
                 maxFileBytes = _options.MaxFileBytes,
-                maxUploadBytes = _options.MaxUploadBytes
+                maxUploadBytes = _options.MaxUploadBytes,
+                maxExtractedFileBytes = _options.MaxExtractedFileBytes,
+                maxExtractedBytes = _options.MaxExtractedBytes,
+                maxArchiveEntries = _options.MaxArchiveEntries,
+                defaultPageSize = _options.DefaultPageSize,
+                maxPageSize = _options.MaxPageSize
             });
         }
 
@@ -419,37 +435,227 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 404, "directory_not_found");
             }
 
-            List<BrowserItem> items = new();
+            string search = session.Request.Query.TryGetValue("search", out string? rawSearch)
+                ? (rawSearch ?? string.Empty).Trim()
+                : string.Empty;
+            string sort = session.Request.Query.TryGetValue("sort", out string? rawSort) && !string.IsNullOrWhiteSpace(rawSort)
+                ? rawSort.Trim().ToLowerInvariant()
+                : "name";
+            if (sort != "name" && sort != "size" && sort != "modified") {
+                return ErrorAsync(session, 400, "invalid_sort");
+            }
+
+            string direction = session.Request.Query.TryGetValue("direction", out string? rawDirection) && !string.IsNullOrWhiteSpace(rawDirection)
+                ? rawDirection.Trim().ToLowerInvariant()
+                : "asc";
+            if (direction != "asc" && direction != "desc") {
+                return ErrorAsync(session, 400, "invalid_direction");
+            }
+
+            int pageSize = _options.DefaultPageSize;
+            if (session.Request.Query.TryGetValue("pageSize", out string? rawPageSize)) {
+                if (!int.TryParse(rawPageSize, NumberStyles.None, CultureInfo.InvariantCulture, out pageSize)
+                    || pageSize <= 0
+                    || pageSize > _options.MaxPageSize) {
+                    return ErrorAsync(session, 400, "invalid_page_size");
+                }
+            }
+
+            BrowserItem? cursorItem = null;
+            if (session.Request.Query.TryGetValue("continuationToken", out string? rawContinuationToken)
+                && !string.IsNullOrWhiteSpace(rawContinuationToken)) {
+                if (!TryDecodeContinuationToken(
+                    rawContinuationToken,
+                    resolved.RelativePath,
+                    search,
+                    sort,
+                    direction,
+                    pageSize,
+                    out cursorItem
+                )) {
+                    return ErrorAsync(session, 400, "invalid_continuation_token");
+                }
+            }
+
+            BrowserItemComparer comparer = new(sort, direction == "desc");
+            List<BrowserItem> items = new(pageSize + 1);
             foreach (string directory in Directory.EnumerateDirectories(resolved.FullPath)) {
                 if (IsInternalPath(directory)) {
                     continue;
                 }
                 DirectoryInfo info = new(directory);
-                items.Add(new BrowserItem(info.Name, CombineRelative(resolved.RelativePath, info.Name), "directory", 0, info.LastWriteTimeUtc));
+                if (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) {
+                    AddPageCandidate(
+                        items,
+                        new BrowserItem(info.Name, CombineRelative(resolved.RelativePath, info.Name), "directory", 0, info.LastWriteTimeUtc),
+                        cursorItem,
+                        pageSize + 1,
+                        comparer
+                    );
+                }
             }
             foreach (string file in Directory.EnumerateFiles(resolved.FullPath)) {
                 if (IsInternalPath(file)) {
                     continue;
                 }
                 FileInfo info = new(file);
-                items.Add(new BrowserItem(info.Name, CombineRelative(resolved.RelativePath, info.Name), "file", info.Length, info.LastWriteTimeUtc));
+                if (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) {
+                    AddPageCandidate(
+                        items,
+                        new BrowserItem(info.Name, CombineRelative(resolved.RelativePath, info.Name), "file", info.Length, info.LastWriteTimeUtc),
+                        cursorItem,
+                        pageSize + 1,
+                        comparer
+                    );
+                }
             }
+
+            bool isTruncated = items.Count > pageSize;
+            if (isTruncated) {
+                items.RemoveAt(items.Count - 1);
+            }
+            string? nextContinuationToken = isTruncated && items.Count > 0
+                ? EncodeContinuationToken(resolved.RelativePath, search, sort, direction, pageSize, items[^1])
+                : null;
 
             return JsonAsync(session, 200, new {
                 ok = true,
                 path = resolved.RelativePath,
                 parent = ParentRelative(resolved.RelativePath),
-                items = items.OrderBy(static i => i.Type, StringComparer.Ordinal)
-                             .ThenBy(static i => i.Name, StringComparer.OrdinalIgnoreCase)
-                             .Select(static i => new {
-                                 name = i.Name,
-                                 path = i.Path,
-                                 type = i.Type,
-                                 size = i.Size,
-                                 modifiedUtc = i.ModifiedUtc
-                             })
-                             .ToArray()
+                search,
+                sort,
+                direction,
+                pageSize,
+                keyCount = items.Count,
+                isTruncated,
+                nextContinuationToken,
+                items = items.Select(static i => new {
+                    name = i.Name,
+                    path = i.Path,
+                    type = i.Type,
+                    size = i.Size,
+                    modifiedUtc = i.ModifiedUtc
+                }).ToArray()
             });
+        }
+
+        private static void AddPageCandidate(
+            List<BrowserItem> items,
+            BrowserItem item,
+            BrowserItem? cursorItem,
+            int capacity,
+            BrowserItemComparer comparer
+        ) {
+            if (cursorItem != null && comparer.Compare(item, cursorItem) <= 0) {
+                return;
+            }
+
+            int index = items.BinarySearch(item, comparer);
+            if (index < 0) {
+                index = ~index;
+            }
+            if (index >= capacity) {
+                return;
+            }
+
+            items.Insert(index, item);
+            if (items.Count > capacity) {
+                items.RemoveAt(capacity);
+            }
+        }
+
+        private static string EncodeContinuationToken(
+            string path,
+            string search,
+            string sort,
+            string direction,
+            int pageSize,
+            BrowserItem item
+        ) {
+            byte[] data = JsonSerializer.SerializeToUtf8Bytes(new ListContinuationToken(
+                1,
+                path,
+                search,
+                sort,
+                direction,
+                pageSize,
+                item.Name,
+                item.Path,
+                item.Type,
+                item.Size,
+                item.ModifiedUtc.Ticks
+            ));
+            return Convert.ToBase64String(data).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        }
+
+        private static bool TryDecodeContinuationToken(
+            string token,
+            string path,
+            string search,
+            string sort,
+            string direction,
+            int pageSize,
+            out BrowserItem? item
+        ) {
+            item = null;
+            try {
+                string base64 = token.Replace('-', '+').Replace('_', '/');
+                int padding = base64.Length % 4;
+                if (padding == 1) {
+                    return false;
+                }
+                if (padding > 0) {
+                    base64 = base64.PadRight(base64.Length + 4 - padding, '=');
+                }
+
+                ListContinuationToken? value = JsonSerializer.Deserialize<ListContinuationToken>(Convert.FromBase64String(base64));
+                if (value == null
+                    || value.Version != 1
+                    || !string.Equals(value.Path, path, StringComparison.Ordinal)
+                    || !string.Equals(value.Search, search, StringComparison.Ordinal)
+                    || !string.Equals(value.Sort, sort, StringComparison.Ordinal)
+                    || !string.Equals(value.Direction, direction, StringComparison.Ordinal)
+                    || value.PageSize != pageSize
+                    || (value.Type != "directory" && value.Type != "file")
+                    || string.IsNullOrEmpty(value.Name)
+                    || string.IsNullOrEmpty(value.ItemPath)) {
+                    return false;
+                }
+
+                item = new BrowserItem(
+                    value.Name,
+                    value.ItemPath,
+                    value.Type,
+                    value.Size,
+                    new DateTime(value.ModifiedUtcTicks, DateTimeKind.Utc)
+                );
+                return true;
+            }
+            catch (Exception exception) when (exception is FormatException or JsonException or ArgumentOutOfRangeException) {
+                return false;
+            }
+        }
+
+        private ValueTask DownloadAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+
+            session.Request.Query.TryGetValue("path", out string? rawPath);
+            if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
+                return ErrorAsync(session, 400, error);
+            }
+
+            FileInfo file = new(resolved.FullPath);
+            if (!file.Exists) {
+                return ErrorAsync(session, 404, "file_not_found");
+            }
+
+            return session.Response
+                          .Status(200)
+                          .File(file)
+                          .Attachment(file.Name)
+                          .SendAsync();
         }
 
         private ValueTask CreateFolderAsync(HttpSession session) {
@@ -656,15 +862,8 @@ namespace SimpleW.Service.FileBrowser {
                         throw new FileNotFoundException("source_not_found", source.FullPath);
                     }
 
-                    string trashFull = CreateUniqueTrashPath(source.RelativePath);
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (File.Exists(source.FullPath)) {
-                        File.Move(source.FullPath, trashFull);
-                    }
-                    else {
-                        Directory.Move(source.FullPath, trashFull);
-                    }
-                    deleted.Add(new { path = source.RelativePath });
+                    TrashEntry trashEntry = MoveEntryToTrash(source, cancellationToken);
+                    deleted.Add(new { path = source.RelativePath, trashId = trashEntry.Id });
                     changedPaths.Add(ParentRelative(source.RelativePath));
                 }
 
@@ -673,6 +872,666 @@ namespace SimpleW.Service.FileBrowser {
                     Payload: new { deleted }
                 );
             });
+        }
+
+        private ValueTask ListTrashAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+
+            Directory.CreateDirectory(_options.NormalizedTrashPath);
+            TrashEntry[] entries = ListTrashEntries()
+                .OrderByDescending(entry => entry.DeletedUtc)
+                .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return JsonAsync(session, 200, new {
+                ok = true,
+                count = entries.Length,
+                items = entries.Select(entry => new {
+                    id = entry.Id,
+                    name = entry.Name,
+                    originalPath = entry.OriginalPath,
+                    type = entry.Type,
+                    size = entry.Size,
+                    deletedUtc = entry.DeletedUtc,
+                    canRestore = entry.CanRestore,
+                    canRestoreElsewhere = entry.CanRestoreElsewhere
+                }).ToArray()
+            });
+        }
+
+        private ValueTask RestoreTrashAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+            TrashRequest? request = ReadJson<TrashRequest>(session, out string? jsonError);
+            if (request == null) {
+                return ErrorAsync(session, 400, jsonError);
+            }
+            bool restoreElsewhere = !string.IsNullOrWhiteSpace(request.DestinationPath);
+            if (!TryResolveTrashEntries(request.Ids, requireRestorable: !restoreElsewhere, out List<TrashEntry> entries, out string? trashError)) {
+                return ErrorAsync(session, trashError == "trash_item_not_found" ? 404 : 400, trashError);
+            }
+            if (restoreElsewhere && entries.Count != 1) {
+                return ErrorAsync(session, 400, "single_trash_item_required");
+            }
+            if (restoreElsewhere && !entries[0].CanRestoreElsewhere) {
+                return ErrorAsync(session, 409, "trash_item_cannot_be_restored");
+            }
+
+            List<TrashRestorePlan> plans = new(entries.Count);
+            foreach (TrashEntry entry in entries) {
+                string? destinationPath = restoreElsewhere ? request.DestinationPath : entry.OriginalPath;
+                if (!TryResolve(destinationPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
+                    return ErrorAsync(session, 400, destinationError);
+                }
+                if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
+                    return ErrorAsync(session, 409, "destination_exists");
+                }
+                plans.Add(new TrashRestorePlan(entry, destination));
+            }
+
+            string operationPath = plans.Count == 1 ? plans[0].Destination.RelativePath : ParentRelative(plans[0].Destination.RelativePath);
+            return EnqueueOperationAsync(session, "restore", operationPath, cancellationToken => {
+                List<object> restored = new();
+                List<string> changedPaths = new();
+                foreach (TrashRestorePlan plan in plans) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!File.Exists(plan.Entry.PayloadPath) && !Directory.Exists(plan.Entry.PayloadPath)) {
+                        throw new FileNotFoundException("trash_item_not_found", plan.Entry.PayloadPath);
+                    }
+                    if (File.Exists(plan.Destination.FullPath) || Directory.Exists(plan.Destination.FullPath)) {
+                        throw new IOException("destination_exists");
+                    }
+
+                    string? destinationParent = System.IO.Path.GetDirectoryName(plan.Destination.FullPath);
+                    if (!string.IsNullOrEmpty(destinationParent)) {
+                        Directory.CreateDirectory(destinationParent);
+                    }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (plan.Entry.Type == "directory") {
+                        Directory.Move(plan.Entry.PayloadPath, plan.Destination.FullPath);
+                    }
+                    else {
+                        File.Move(plan.Entry.PayloadPath, plan.Destination.FullPath);
+                    }
+
+                    if (plan.Entry.CanRestore) {
+                        TryDeleteFile(System.IO.Path.Combine(plan.Entry.RootPath, TrashMetadataFileName));
+                        Directory.Delete(plan.Entry.RootPath, recursive: false);
+                    }
+                    restored.Add(new { id = plan.Entry.Id, path = plan.Destination.RelativePath });
+                    changedPaths.Add(ParentRelative(plan.Destination.RelativePath));
+                }
+
+                return new OperationResult(
+                    ChangedPaths: changedPaths.Distinct(StringComparer.Ordinal).ToArray(),
+                    Payload: new { restored }
+                );
+            });
+        }
+
+        private ValueTask DeleteTrashAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+            TrashRequest? request = ReadJson<TrashRequest>(session, out string? jsonError);
+            if (request == null) {
+                return ErrorAsync(session, 400, jsonError);
+            }
+            if (!TryResolveTrashEntries(request.Ids, requireRestorable: false, out List<TrashEntry> entries, out string? trashError)) {
+                return ErrorAsync(session, trashError == "trash_item_not_found" ? 404 : 400, trashError);
+            }
+
+            return EnqueueOperationAsync(session, "purge", "Trash", cancellationToken =>
+                PermanentlyDeleteTrashEntries(entries, cancellationToken));
+        }
+
+        private ValueTask EmptyTrashAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+
+            Directory.CreateDirectory(_options.NormalizedTrashPath);
+            return EnqueueOperationAsync(session, "emptyTrash", "Trash", cancellationToken =>
+                PermanentlyDeleteTrashEntries(ListTrashEntries().ToList(), cancellationToken));
+        }
+
+        private OperationResult PermanentlyDeleteTrashEntries(IReadOnlyList<TrashEntry> entries, CancellationToken cancellationToken) {
+            List<string> deletedIds = new(entries.Count);
+            foreach (TrashEntry entry in entries) {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!File.Exists(entry.RootPath) && !Directory.Exists(entry.RootPath)) {
+                    continue;
+                }
+                DeleteFileSystemEntry(entry.RootPath, cancellationToken);
+                deletedIds.Add(entry.Id);
+            }
+            return new OperationResult(
+                ChangedPaths: Array.Empty<string>(),
+                Payload: new { deletedIds }
+            );
+        }
+
+        private TrashEntry MoveEntryToTrash(ResolvedPath source, CancellationToken cancellationToken) {
+            bool isDirectory = Directory.Exists(source.FullPath);
+            DateTimeOffset deletedUtc = DateTimeOffset.UtcNow;
+            string id = $"{deletedUtc:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}";
+            string rootPath = System.IO.Path.Combine(_options.NormalizedTrashPath, id);
+            string payloadPath = System.IO.Path.Combine(rootPath, TrashPayloadName);
+            string name = System.IO.Path.GetFileName(TrimEndingDirectorySeparator(source.FullPath));
+            TrashItemMetadata metadata = new(1, source.RelativePath, name, isDirectory ? "directory" : "file", deletedUtc);
+
+            Directory.CreateDirectory(rootPath);
+            try {
+                File.WriteAllText(System.IO.Path.Combine(rootPath, TrashMetadataFileName), JsonSerializer.Serialize(metadata, JsonOptions));
+                cancellationToken.ThrowIfCancellationRequested();
+                if (isDirectory) {
+                    Directory.Move(source.FullPath, payloadPath);
+                }
+                else {
+                    File.Move(source.FullPath, payloadPath);
+                }
+            }
+            catch {
+                TryDeleteFile(System.IO.Path.Combine(rootPath, TrashMetadataFileName));
+                try {
+                    Directory.Delete(rootPath, recursive: false);
+                }
+                catch {
+                    // Keep any successfully moved payload in trash rather than deleting user data.
+                }
+                throw;
+            }
+
+            long? size = isDirectory ? null : new FileInfo(payloadPath).Length;
+            return new TrashEntry(id, rootPath, payloadPath, name, source.RelativePath, isDirectory ? "directory" : "file", size, deletedUtc, true, true);
+        }
+
+        private IEnumerable<TrashEntry> ListTrashEntries() {
+            foreach (string rootPath in Directory.EnumerateFileSystemEntries(_options.NormalizedTrashPath)) {
+                string id = System.IO.Path.GetFileName(rootPath);
+                if (TryReadManagedTrashEntry(id, rootPath, out TrashEntry managedEntry)) {
+                    yield return managedEntry;
+                    continue;
+                }
+
+                bool isDirectory = Directory.Exists(rootPath);
+                long? size = isDirectory ? null : new FileInfo(rootPath).Length;
+                DateTimeOffset deletedUtc = File.GetLastWriteTimeUtc(rootPath);
+                yield return new TrashEntry(id, rootPath, rootPath, id, null, isDirectory ? "directory" : "file", size, deletedUtc, false, true);
+            }
+        }
+
+        private bool TryReadManagedTrashEntry(string id, string rootPath, out TrashEntry entry) {
+            entry = default!;
+            if (!Directory.Exists(rootPath)) {
+                return false;
+            }
+            string metadataPath = System.IO.Path.Combine(rootPath, TrashMetadataFileName);
+            if (!File.Exists(metadataPath)) {
+                return false;
+            }
+
+            try {
+                TrashItemMetadata? metadata = JsonSerializer.Deserialize<TrashItemMetadata>(File.ReadAllText(metadataPath), JsonOptions);
+                if (metadata == null
+                    || metadata.Version != 1
+                    || (metadata.Type != "file" && metadata.Type != "directory")
+                    || string.IsNullOrWhiteSpace(metadata.Name)
+                    || !TryResolve(metadata.OriginalPath, allowRoot: false, mustBeRelativeToRoot: true, out _, out _)) {
+                    return false;
+                }
+
+                string payloadPath = System.IO.Path.Combine(rootPath, TrashPayloadName);
+                bool payloadExists = metadata.Type == "directory" ? Directory.Exists(payloadPath) : File.Exists(payloadPath);
+                if (!payloadExists) {
+                    return false;
+                }
+                long? size = metadata.Type == "file" ? new FileInfo(payloadPath).Length : null;
+                entry = new TrashEntry(id, rootPath, payloadPath, metadata.Name, metadata.OriginalPath, metadata.Type, size, metadata.DeletedUtc, true, true);
+                return true;
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException) {
+                return false;
+            }
+        }
+
+        private bool TryResolveTrashEntries(IReadOnlyList<string>? ids, bool requireRestorable, out List<TrashEntry> entries, out string? error) {
+            entries = new List<TrashEntry>();
+            error = null;
+            if (ids == null || ids.Count == 0) {
+                error = "trash_item_required";
+                return false;
+            }
+
+            StringComparer comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            foreach (string? rawId in ids.Distinct(comparer)) {
+                if (!TryValidateName(rawId, out _)) {
+                    error = "invalid_trash_item";
+                    return false;
+                }
+                string id = rawId!.Trim();
+                string rootPath = System.IO.Path.Combine(_options.NormalizedTrashPath, id);
+                if (!File.Exists(rootPath) && !Directory.Exists(rootPath)) {
+                    error = "trash_item_not_found";
+                    return false;
+                }
+
+                TrashEntry entry;
+                if (!TryReadManagedTrashEntry(id, rootPath, out entry)) {
+                    bool isDirectory = Directory.Exists(rootPath);
+                    long? size = isDirectory ? null : new FileInfo(rootPath).Length;
+                    entry = new TrashEntry(id, rootPath, rootPath, id, null, isDirectory ? "directory" : "file", size, File.GetLastWriteTimeUtc(rootPath), false, true);
+                }
+                if (requireRestorable && !entry.CanRestore) {
+                    error = "restore_location_unavailable";
+                    return false;
+                }
+                entries.Add(entry);
+            }
+            return true;
+        }
+
+        private static void DeleteFileSystemEntry(string path, CancellationToken cancellationToken) {
+            cancellationToken.ThrowIfCancellationRequested();
+            FileAttributes attributes = File.GetAttributes(path);
+            if ((attributes & FileAttributes.Directory) == 0) {
+                File.Delete(path);
+                return;
+            }
+            if ((attributes & FileAttributes.ReparsePoint) != 0) {
+                Directory.Delete(path, recursive: false);
+                return;
+            }
+
+            foreach (string childPath in Directory.EnumerateFileSystemEntries(path)) {
+                DeleteFileSystemEntry(childPath, cancellationToken);
+            }
+            Directory.Delete(path, recursive: false);
+        }
+
+        private ValueTask ArchiveAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+
+            ArchiveRequest? request = ReadJson<ArchiveRequest>(session, out string? jsonError);
+            if (request == null) {
+                return ErrorAsync(session, 400, jsonError);
+            }
+            if (request.Paths == null || request.Paths.Count == 0) {
+                return ErrorAsync(session, 400, "path_required");
+            }
+
+            List<ResolvedPath> sources = new();
+            HashSet<string> sourcePaths = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+            foreach (string? rawPath in request.Paths) {
+                if (string.IsNullOrWhiteSpace(rawPath)) {
+                    return ErrorAsync(session, 400, "path_required");
+                }
+                if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
+                    return ErrorAsync(session, 400, sourceError);
+                }
+                if (!File.Exists(source.FullPath) && !Directory.Exists(source.FullPath)) {
+                    return ErrorAsync(session, 404, "source_not_found");
+                }
+                if (sourcePaths.Add(source.FullPath)) {
+                    sources.Add(source);
+                }
+            }
+
+            if (!TryResolve(request.DestinationPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
+                return ErrorAsync(session, 400, destinationError);
+            }
+            if (!string.Equals(System.IO.Path.GetExtension(destination.FullPath), ".zip", StringComparison.OrdinalIgnoreCase)) {
+                return ErrorAsync(session, 400, "archive_extension_required");
+            }
+            if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
+                return ErrorAsync(session, 409, "destination_exists");
+            }
+
+            string destinationParent = System.IO.Path.GetDirectoryName(destination.FullPath) ?? _options.NormalizedPath;
+            if (!Directory.Exists(destinationParent)) {
+                return ErrorAsync(session, 404, "destination_directory_not_found");
+            }
+
+            for (int i = 0; i < sources.Count; i++) {
+                ResolvedPath source = sources[i];
+                if (string.Equals(source.FullPath, destination.FullPath, _pathComparison)) {
+                    return ErrorAsync(session, 409, "archive_destination_is_source");
+                }
+                if (Directory.Exists(source.FullPath) && IsInsideOrEqual(destination.FullPath, source.FullPath)) {
+                    return ErrorAsync(session, 409, "archive_destination_inside_source");
+                }
+
+                for (int j = i + 1; j < sources.Count; j++) {
+                    ResolvedPath other = sources[j];
+                    if ((Directory.Exists(source.FullPath) && IsInsideOrEqual(other.FullPath, source.FullPath))
+                        || (Directory.Exists(other.FullPath) && IsInsideOrEqual(source.FullPath, other.FullPath))) {
+                        return ErrorAsync(session, 409, "overlapping_sources");
+                    }
+                }
+            }
+
+            return EnqueueOperationAsync(session, "archive", destination.RelativePath, cancellationToken =>
+                CreateArchive(sources, destination, cancellationToken));
+        }
+
+        private OperationResult CreateArchive(IReadOnlyList<ResolvedPath> sources, ResolvedPath destination, CancellationToken cancellationToken) {
+            string tempArchivePath = System.IO.Path.Combine(_tempPath, $"archive-{Guid.NewGuid():N}.zip");
+            try {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
+                    throw new IOException("destination_exists");
+                }
+
+                HashSet<string> archiveEntryNames = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+                byte[] buffer = new byte[81920];
+                int entryCount = 0;
+                using (FileStream tempStream = new(tempArchivePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
+                using (ZipArchive archive = new(tempStream, ZipArchiveMode.Create, leaveOpen: false)) {
+                    foreach (ResolvedPath source in sources) {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        string rootName = System.IO.Path.GetFileName(TrimEndingDirectorySeparator(source.FullPath));
+                        if (string.IsNullOrWhiteSpace(rootName)) {
+                            throw new InvalidDataException("invalid_source_name");
+                        }
+
+                        if (File.Exists(source.FullPath)) {
+                            AddFileToArchive(archive, source.FullPath, rootName, archiveEntryNames, buffer, ref entryCount, cancellationToken);
+                        }
+                        else if (Directory.Exists(source.FullPath)) {
+                            AddDirectoryToArchive(archive, source.FullPath, rootName, archiveEntryNames, buffer, ref entryCount, cancellationToken);
+                        }
+                        else {
+                            throw new FileNotFoundException("source_not_found", source.FullPath);
+                        }
+                    }
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
+                    throw new IOException("destination_exists");
+                }
+                File.Move(tempArchivePath, destination.FullPath);
+                return new OperationResult(
+                    ChangedPaths: [ParentRelative(destination.RelativePath)],
+                    Payload: new {
+                        paths = sources.Select(source => source.RelativePath).ToArray(),
+                        destinationPath = destination.RelativePath,
+                        entries = entryCount
+                    }
+                );
+            }
+            catch {
+                TryDeleteFile(tempArchivePath);
+                throw;
+            }
+        }
+
+        private void AddDirectoryToArchive(
+            ZipArchive archive,
+            string directoryPath,
+            string entryPath,
+            HashSet<string> archiveEntryNames,
+            byte[] buffer,
+            ref int entryCount,
+            CancellationToken cancellationToken) {
+
+            cancellationToken.ThrowIfCancellationRequested();
+            FileAttributes attributes = File.GetAttributes(directoryPath);
+            if ((attributes & FileAttributes.ReparsePoint) != 0) {
+                throw new InvalidDataException("archive_reparse_point_forbidden");
+            }
+
+            string directoryEntryPath = entryPath.Replace('\\', '/').TrimEnd('/') + "/";
+            AddArchiveEntryName(directoryEntryPath, archiveEntryNames, ref entryCount);
+            archive.CreateEntry(directoryEntryPath);
+
+            foreach (string childPath in Directory.EnumerateFileSystemEntries(directoryPath).OrderBy(path => path, StringComparer.OrdinalIgnoreCase)) {
+                cancellationToken.ThrowIfCancellationRequested();
+                string childEntryPath = directoryEntryPath + System.IO.Path.GetFileName(childPath);
+                FileAttributes childAttributes = File.GetAttributes(childPath);
+                if ((childAttributes & FileAttributes.ReparsePoint) != 0) {
+                    throw new InvalidDataException("archive_reparse_point_forbidden");
+                }
+                if ((childAttributes & FileAttributes.Directory) != 0) {
+                    AddDirectoryToArchive(archive, childPath, childEntryPath, archiveEntryNames, buffer, ref entryCount, cancellationToken);
+                }
+                else {
+                    AddFileToArchive(archive, childPath, childEntryPath, archiveEntryNames, buffer, ref entryCount, cancellationToken);
+                }
+            }
+        }
+
+        private void AddFileToArchive(
+            ZipArchive archive,
+            string filePath,
+            string entryPath,
+            HashSet<string> archiveEntryNames,
+            byte[] buffer,
+            ref int entryCount,
+            CancellationToken cancellationToken) {
+
+            cancellationToken.ThrowIfCancellationRequested();
+            FileAttributes attributes = File.GetAttributes(filePath);
+            if ((attributes & FileAttributes.ReparsePoint) != 0) {
+                throw new InvalidDataException("archive_reparse_point_forbidden");
+            }
+
+            string normalizedEntryPath = entryPath.Replace('\\', '/');
+            AddArchiveEntryName(normalizedEntryPath, archiveEntryNames, ref entryCount);
+            ZipArchiveEntry entry = archive.CreateEntry(normalizedEntryPath, CompressionLevel.Optimal);
+            using FileStream input = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using Stream output = entry.Open();
+            int read;
+            while ((read = input.Read(buffer, 0, buffer.Length)) > 0) {
+                cancellationToken.ThrowIfCancellationRequested();
+                output.Write(buffer, 0, read);
+            }
+        }
+
+        private void AddArchiveEntryName(string entryPath, HashSet<string> archiveEntryNames, ref int entryCount) {
+            if (!archiveEntryNames.Add(entryPath)) {
+                throw new InvalidDataException("duplicate_archive_entry");
+            }
+            entryCount++;
+            if (entryCount > _options.MaxArchiveEntries) {
+                throw new InvalidDataException("archive_too_many_entries");
+            }
+        }
+
+        private ValueTask ExtractAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+
+            ExtractRequest? request = ReadJson<ExtractRequest>(session, out string? jsonError);
+            if (request == null) {
+                return ErrorAsync(session, 400, jsonError);
+            }
+            if (!TryResolve(request.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
+                return ErrorAsync(session, 400, sourceError);
+            }
+            if (!File.Exists(source.FullPath)) {
+                return ErrorAsync(session, 404, "source_not_found");
+            }
+            if (!string.Equals(System.IO.Path.GetExtension(source.FullPath), ".zip", StringComparison.OrdinalIgnoreCase)) {
+                return ErrorAsync(session, 400, "unsupported_archive");
+            }
+            if (!TryResolve(request.DestinationDirectory, allowRoot: true, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
+                return ErrorAsync(session, 400, destinationError);
+            }
+
+            if (request.CreateDestinationDirectory) {
+                if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
+                    return ErrorAsync(session, 409, "destination_exists");
+                }
+            }
+            else if (!Directory.Exists(destination.FullPath)) {
+                return ErrorAsync(session, 404, "destination_directory_not_found");
+            }
+
+            return EnqueueOperationAsync(session, "extract", source.RelativePath, cancellationToken =>
+                ExtractArchive(source, destination, request.CreateDestinationDirectory, cancellationToken));
+        }
+
+        private OperationResult ExtractArchive(ResolvedPath source, ResolvedPath destination, bool createDestinationDirectory, CancellationToken cancellationToken) {
+            bool createdDestination = false;
+            try {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!File.Exists(source.FullPath)) {
+                    throw new FileNotFoundException("source_not_found", source.FullPath);
+                }
+                if (createDestinationDirectory) {
+                    if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
+                        throw new IOException("destination_exists");
+                    }
+                }
+                else if (!Directory.Exists(destination.FullPath)) {
+                    throw new DirectoryNotFoundException("destination_directory_not_found");
+                }
+
+                using ZipArchive archive = ZipFile.OpenRead(source.FullPath);
+                if (archive.Entries.Count > _options.MaxArchiveEntries) {
+                    throw new InvalidDataException("archive_too_many_entries");
+                }
+
+                StringComparer pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+                HashSet<string> plannedPaths = new(pathComparer);
+                HashSet<string> plannedFiles = new(pathComparer);
+                List<ArchiveEntryPlan> plan = new(archive.Entries.Count);
+                long declaredTotal = 0;
+
+                foreach (ZipArchiveEntry entry in archive.Entries) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string archivePath = entry.FullName.Replace('\\', '/');
+                    string[] segments = archivePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                    if (segments.Length == 0) {
+                        continue;
+                    }
+                    if (segments.Any(segment => segment == "." || segment == "..")) {
+                        throw new InvalidDataException("archive_path_traversal_forbidden");
+                    }
+
+                    string entryFullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(destination.FullPath, System.IO.Path.Combine(segments)));
+                    if (!IsInsideOrEqual(entryFullPath, destination.FullPath) || !TryEnsureInsideRoot(entryFullPath)) {
+                        throw new InvalidDataException("archive_path_outside_destination");
+                    }
+                    if (!plannedPaths.Add(entryFullPath)) {
+                        throw new InvalidDataException("duplicate_archive_entry");
+                    }
+
+                    bool isDirectory = archivePath.EndsWith("/", StringComparison.Ordinal) || string.IsNullOrEmpty(entry.Name);
+                    if (isDirectory) {
+                        if (File.Exists(entryFullPath)) {
+                            throw new IOException("destination_exists");
+                        }
+                    }
+                    else {
+                        if (entry.Length > _options.MaxExtractedFileBytes) {
+                            throw new InvalidDataException("archive_entry_too_large");
+                        }
+                        if (entry.Length > _options.MaxExtractedBytes - declaredTotal) {
+                            throw new InvalidDataException("archive_too_large");
+                        }
+                        declaredTotal += entry.Length;
+                        if (File.Exists(entryFullPath) || Directory.Exists(entryFullPath)) {
+                            throw new IOException("destination_exists");
+                        }
+                        plannedFiles.Add(entryFullPath);
+                    }
+
+                    plan.Add(new ArchiveEntryPlan(entry, entryFullPath, isDirectory));
+                }
+
+                foreach (ArchiveEntryPlan item in plan) {
+                    string? parent = System.IO.Path.GetDirectoryName(item.FullPath);
+                    while (!string.IsNullOrEmpty(parent) && !string.Equals(parent, destination.FullPath, _pathComparison)) {
+                        if (plannedFiles.Contains(parent) || File.Exists(parent)) {
+                            throw new InvalidDataException("archive_path_conflict");
+                        }
+                        parent = System.IO.Path.GetDirectoryName(parent);
+                    }
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                if (createDestinationDirectory) {
+                    if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
+                        throw new IOException("destination_exists");
+                    }
+                    Directory.CreateDirectory(destination.FullPath);
+                    createdDestination = true;
+                }
+
+                byte[] buffer = new byte[81920];
+                long extractedTotal = 0;
+                int extractedFiles = 0;
+                foreach (ArchiveEntryPlan item in plan) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (item.IsDirectory) {
+                        Directory.CreateDirectory(item.FullPath);
+                        continue;
+                    }
+
+                    string parent = System.IO.Path.GetDirectoryName(item.FullPath) ?? destination.FullPath;
+                    Directory.CreateDirectory(parent);
+                    bool createdFile = false;
+                    try {
+                        using Stream input = item.Entry.Open();
+                        using FileStream output = new(item.FullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                        createdFile = true;
+                        long extractedEntry = 0;
+                        int read;
+                        while ((read = input.Read(buffer, 0, buffer.Length)) > 0) {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            if (read > _options.MaxExtractedFileBytes - extractedEntry) {
+                                throw new InvalidDataException("archive_entry_too_large");
+                            }
+                            if (read > _options.MaxExtractedBytes - extractedTotal) {
+                                throw new InvalidDataException("archive_too_large");
+                            }
+                            output.Write(buffer, 0, read);
+                            extractedEntry += read;
+                            extractedTotal += read;
+                        }
+                        extractedFiles++;
+                    }
+                    catch {
+                        if (createdFile) {
+                            TryDeleteFile(item.FullPath);
+                        }
+                        throw;
+                    }
+                }
+
+                string changedPath = createDestinationDirectory
+                    ? ParentRelative(destination.RelativePath)
+                    : destination.RelativePath;
+                return new OperationResult(
+                    ChangedPaths: [changedPath],
+                    Payload: new {
+                        path = source.RelativePath,
+                        destinationDirectory = destination.RelativePath,
+                        createdDestinationDirectory = createDestinationDirectory,
+                        extractedFiles,
+                        extractedBytes = extractedTotal
+                    }
+                );
+            }
+            catch {
+                if (createdDestination) {
+                    try {
+                        Directory.Delete(destination.FullPath, recursive: true);
+                    }
+                    catch {
+                        // best effort rollback of the newly created extraction directory
+                    }
+                }
+                throw;
+            }
         }
 
         private async ValueTask CancelOperationsAsync(HttpSession session) {
@@ -1151,29 +2010,6 @@ namespace SimpleW.Service.FileBrowser {
             return IsInsideOrEqual(full, _options.NormalizedTrashPath) || IsInsideOrEqual(full, _tempPath);
         }
 
-        private string CreateUniqueTrashPath(string relativePath) {
-            string leaf = SanitizeTrashName(relativePath);
-            string timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
-            string candidate = System.IO.Path.Combine(_options.NormalizedTrashPath, $"{timestamp}-{leaf}");
-            int i = 1;
-            while (File.Exists(candidate) || Directory.Exists(candidate)) {
-                candidate = System.IO.Path.Combine(_options.NormalizedTrashPath, $"{timestamp}-{i.ToString(CultureInfo.InvariantCulture)}-{leaf}");
-                i++;
-            }
-            return candidate;
-        }
-
-        private static string SanitizeTrashName(string relativePath) {
-            string name = relativePath.Replace('/', '_').Replace('\\', '_').Trim('_');
-            if (string.IsNullOrWhiteSpace(name)) {
-                return "item";
-            }
-            foreach (char c in InvalidSegmentChars) {
-                name = name.Replace(c, '_');
-            }
-            return name;
-        }
-
         private static bool TryValidateName(string? name, out string? error) {
             error = null;
             if (string.IsNullOrWhiteSpace(name)) {
@@ -1245,6 +2081,94 @@ namespace SimpleW.Service.FileBrowser {
         private static ValueTask ForbiddenAsync(HttpSession session) {
             return ErrorAsync(session, 403, "forbidden");
         }
+
+        private sealed class BrowserItemComparer : IComparer<BrowserItem> {
+
+            private readonly string _sort;
+            private readonly bool _descending;
+
+            public BrowserItemComparer(string sort, bool descending) {
+                _sort = sort;
+                _descending = descending;
+            }
+
+            public int Compare(BrowserItem? x, BrowserItem? y) {
+                if (ReferenceEquals(x, y)) {
+                    return 0;
+                }
+                if (x == null) {
+                    return -1;
+                }
+                if (y == null) {
+                    return 1;
+                }
+
+                int result = TypeRank(x.Type).CompareTo(TypeRank(y.Type));
+                if (result != 0) {
+                    return result;
+                }
+
+                result = _sort switch {
+                    "size" => x.Size.CompareTo(y.Size),
+                    "modified" => x.ModifiedUtc.CompareTo(y.ModifiedUtc),
+                    _ => StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name)
+                };
+                if (result != 0) {
+                    return _descending ? -result : result;
+                }
+
+                result = StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name);
+                if (result != 0) {
+                    return result;
+                }
+                result = StringComparer.Ordinal.Compare(x.Name, y.Name);
+                return result != 0 ? result : StringComparer.Ordinal.Compare(x.Path, y.Path);
+            }
+
+            private static int TypeRank(string type) {
+                return type == "directory" ? 0 : 1;
+            }
+
+        }
+
+        private sealed record ListContinuationToken(
+            int Version,
+            string Path,
+            string Search,
+            string Sort,
+            string Direction,
+            int PageSize,
+            string Name,
+            string ItemPath,
+            string Type,
+            long Size,
+            long ModifiedUtcTicks
+        );
+
+        private sealed record ArchiveEntryPlan(ZipArchiveEntry Entry, string FullPath, bool IsDirectory);
+
+        private sealed record TrashItemMetadata(
+            int Version,
+            string OriginalPath,
+            string Name,
+            string Type,
+            DateTimeOffset DeletedUtc
+        );
+
+        private sealed record TrashEntry(
+            string Id,
+            string RootPath,
+            string PayloadPath,
+            string Name,
+            string? OriginalPath,
+            string Type,
+            long? Size,
+            DateTimeOffset DeletedUtc,
+            bool CanRestore,
+            bool CanRestoreElsewhere
+        );
+
+        private sealed record TrashRestorePlan(TrashEntry Entry, ResolvedPath Destination);
 
         private sealed record ClientAsset(string RouteSuffix, string ContentType, byte[] Data, string ETag);
 
