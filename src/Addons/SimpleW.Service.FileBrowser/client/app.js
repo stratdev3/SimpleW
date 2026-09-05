@@ -1,3 +1,7 @@
+// =============================================================================
+// Routing and application state
+// =============================================================================
+
 const scriptUrl = new URL(document.currentScript?.src || "app.js", location.href);
 const initialBase = scriptUrl.pathname.replace(/\/app\.js$/, "").replace(/\/$/, "");
 let base = initialBase === "" ? "" : initialBase;
@@ -22,9 +26,15 @@ let trashReloadTimer = 0;
 let cancelGeneration = 0;
 let operationRenderFrame = 0;
 
+// =============================================================================
+// Cached DOM elements
+// =============================================================================
+
 const mainEl = document.getElementById("main");
 const browserPane = document.querySelector(".pane");
 const browserBar = document.querySelector(".browser-bar");
+
+// Directory listing and navigation.
 const rows = document.getElementById("rows");
 const statusEl = document.getElementById("status");
 const openTrashButton = document.getElementById("openTrash");
@@ -42,6 +52,8 @@ const selectionSummary = document.getElementById("selectionSummary");
 const selectionToggle = document.getElementById("selectionToggle");
 const downloadSelectedButton = document.getElementById("downloadSelected");
 const archiveSelectedButton = document.getElementById("archiveSelected");
+
+// Background operation panel.
 const operationsPanel = document.getElementById("operationsPanel");
 const operationsEl = document.getElementById("operations");
 const globalProgress = document.getElementById("globalProgress");
@@ -49,6 +61,8 @@ const toggleOperations = document.getElementById("toggleOperations");
 const operationCountEl = document.getElementById("operationCount");
 const clearOperationsButton = document.getElementById("clearOperations");
 const cancelOperationsButton = document.getElementById("cancelOperations");
+
+// Folder creation and upload dialogs.
 const newFolderModal = document.getElementById("newFolderModal");
 const newFolderLocation = document.getElementById("newFolderLocation");
 const newFolderName = document.getElementById("newFolderName");
@@ -61,6 +75,8 @@ const uploadStaging = document.getElementById("uploadStaging");
 const startUploadButton = document.getElementById("startUpload");
 const filesInput = document.getElementById("files");
 const folderInput = document.getElementById("folder");
+
+// Trash management dialogs.
 const trashModal = document.getElementById("trashModal");
 const trashList = document.getElementById("trashList");
 const emptyTrashButton = document.getElementById("emptyTrash");
@@ -72,6 +88,8 @@ const restoreElsewhereItem = document.getElementById("restoreElsewhereItem");
 const restoreElsewhereDestination = document.getElementById("restoreElsewhereDestination");
 const restoreElsewherePreview = document.getElementById("restoreElsewherePreview");
 const confirmRestoreElsewhereButton = document.getElementById("confirmRestoreElsewhere");
+
+// Rename, move and deletion dialogs.
 const renameModal = document.getElementById("renameModal");
 const renameSource = document.getElementById("renameSource");
 const renameName = document.getElementById("renameName");
@@ -86,6 +104,8 @@ const deleteModal = document.getElementById("deleteModal");
 const deleteSelectionSummary = document.getElementById("deleteSelectionSummary");
 const deleteMessage = document.getElementById("deleteMessage");
 const confirmDeleteButton = document.getElementById("confirmDelete");
+
+// Archive creation and extraction dialogs.
 const archiveModal = document.getElementById("archiveModal");
 const archiveSelectionSummary = document.getElementById("archiveSelectionSummary");
 const archiveName = document.getElementById("archiveName");
@@ -98,6 +118,11 @@ const extractFolderPreview = document.getElementById("extractFolderPreview");
 const extractHerePreview = document.getElementById("extractHerePreview");
 const extractToFolder = document.getElementById("extractToFolder");
 const confirmExtractButton = document.getElementById("confirmExtract");
+
+// =============================================================================
+// Operation, upload and modal state
+// =============================================================================
+
 const operations = new Map();
 const uploadOperationIdsByPath = new Map();
 const uploadOperationIdsByUploadId = new Map();
@@ -118,6 +143,11 @@ let archiveDestinationDirectory = "";
 let extractArchivePath = "";
 let newFolderParentPath = "";
 
+// =============================================================================
+// General UI helpers
+// =============================================================================
+
+/** Returns whether at least one application dialog is currently visible. */
 function isModalOpen() {
   return !newFolderModal.hidden
     || !uploadModal.hidden
@@ -131,6 +161,7 @@ function isModalOpen() {
     || !extractModal.hidden;
 }
 
+/** Formats a byte count using compact binary units. */
 function fmtSize(n) {
   if (n == null || n === "") return "\u2014";
   n = Number(n);
@@ -144,7 +175,10 @@ function fmtSize(n) {
   return `${n.toFixed(i ? 1 : 0)} ${units[i]}`;
 }
 
+/** Replaces the footer status message. */
 function setStatus(text) { statusEl.textContent = text; }
+
+/** Reads the persisted color theme, falling back to the system preference. */
 function readStoredTheme() {
   try {
     const value = localStorage.getItem("simplew.filebrowser.theme");
@@ -155,6 +189,7 @@ function readStoredTheme() {
   }
 }
 
+/** Applies a color theme and optionally persists the user choice. */
 function applyTheme(mode, persist = true) {
   const modes = ["system", "light", "dark"];
   const labels = { system: "System", light: "Light", dark: "Dark" };
@@ -174,6 +209,7 @@ function applyTheme(mode, persist = true) {
 
 applyTheme(readStoredTheme(), false);
 
+/** Keeps sticky table headers immediately below the dynamic browser toolbar. */
 function syncStickyTableHeader() {
   const height = Math.ceil(browserBar.getBoundingClientRect().height);
   document.documentElement.style.setProperty("--browser-bar-height", `${height}px`);
@@ -184,11 +220,17 @@ browserBarResizeObserver?.observe(browserBar);
 window.addEventListener("resize", syncStickyTableHeader);
 syncStickyTableHeader();
 
+// =============================================================================
+// Operation tracking and activity panel
+// =============================================================================
+
+/** Parses a server-sent event payload and returns an empty object for malformed data. */
 function parseEvent(e) {
   try { return JSON.parse(e.data || "{}"); }
   catch { return {}; }
 }
 
+/** Returns the user-facing label associated with an operation kind. */
 function operationLabel(kind) {
   switch (kind) {
     case "createFolder": return "Create folder";
@@ -206,14 +248,17 @@ function operationLabel(kind) {
   }
 }
 
+/** Returns whether an operation status no longer requires active tracking. */
 function isTerminalStatus(status) {
   return status === "done" || status === "failed" || status === "cancelled";
 }
 
+/** Returns whether an operation contributes to the active-operation count. */
 function isActiveOperation(operation) {
   return !isTerminalStatus(operation.status);
 }
 
+/** Builds the detailed status text shown for an operation. */
 function operationStatusLabel(operation) {
   if (operation.error) return operation.error;
   if (operation.total > 1) {
@@ -222,6 +267,7 @@ function operationStatusLabel(operation) {
   return operationStateLabel(operation.status);
 }
 
+/** Maps an internal operation status to a compact state label. */
 function operationStateLabel(status) {
   switch (status) {
     case "queued": return "Queued";
@@ -234,6 +280,7 @@ function operationStateLabel(status) {
   }
 }
 
+/** Adds or replaces an operation while preserving its insertion order. */
 function trackOperation(input) {
   const id = String(input.id || `operation:${Date.now()}:${Math.random()}`);
   const currentOperation = operations.get(id) || {};
@@ -251,6 +298,7 @@ function trackOperation(input) {
   return next;
 }
 
+/** Coalesces operation-panel rendering to one update per animation frame. */
 function scheduleOperationRender() {
   if (operationRenderFrame) return;
   operationRenderFrame = requestAnimationFrame(() => {
@@ -259,6 +307,7 @@ function scheduleOperationRender() {
   });
 }
 
+/** Starts tracking an operation accepted by the server queue. */
 function trackQueuedOperation(response) {
   if (!response || !response.operationId) return;
   trackOperation({
@@ -271,12 +320,14 @@ function trackQueuedOperation(response) {
   });
 }
 
+/** Applies a partial update to an existing tracked operation. */
 function updateOperation(id, patch) {
   if (!id) return;
   const currentOperation = operations.get(String(id));
   trackOperation({ id, ...(currentOperation || {}), ...patch });
 }
 
+/** Synchronizes operation buttons, counters and global progress. */
 function updateOperationControls() {
   const values = [...operations.values()];
   const queuedCount = values.filter(operation => operation.status === "queued").length;
@@ -295,6 +346,7 @@ function updateOperationControls() {
   clearOperationsButton.disabled = !hasHistory;
 }
 
+/** Rebuilds the activity panel from the current operation map. */
 function renderOperations() {
   operationsEl.innerHTML = "";
   const visible = [...operations.values()];
@@ -368,6 +420,7 @@ function renderOperations() {
   updateOperationControls();
 }
 
+/** Removes upload lookup references associated with a terminal operation. */
 function cleanupOperationReferences(id) {
   for (const [path, operationId] of uploadOperationIdsByPath) {
     if (operationId === id) {
@@ -383,6 +436,7 @@ function cleanupOperationReferences(id) {
   activeRequests.delete(id);
 }
 
+/** Removes terminal operations while retaining queued or running work. */
 function clearOperationHistory() {
   for (const [id, operation] of operations) {
     if (isTerminalStatus(operation.status)) {
@@ -394,16 +448,19 @@ function clearOperationHistory() {
   setStatus("Operation history cleared");
 }
 
+/** Shows or hides the operation panel and persists that preference. */
 function setOperationsPanelVisible(visible) {
   mainEl.classList.toggle("operations-open", visible);
   toggleOperations.setAttribute("aria-expanded", String(visible));
   operationsPanel.setAttribute("aria-hidden", String(!visible));
 }
 
+/** Toggles the operation panel visibility. */
 function toggleOperationsPanel() {
   setOperationsPanelVisible(!mainEl.classList.contains("operations-open"));
 }
 
+/** Requests cancellation of server operations, uploads and active HTTP transfers. */
 async function cancelAllOperations() {
   const active = [...operations.values()].filter(isActiveOperation);
   if (!active.length) return;
@@ -427,6 +484,11 @@ async function cancelAllOperations() {
   setStatus(`Cancellation requested (${response.cancelledOperations || 0} operations, ${response.cancelledUploads || 0} uploads)`);
 }
 
+// =============================================================================
+// API requests and trash management
+// =============================================================================
+
+/** Sends JSON to an API endpoint and raises a normalized error for non-success responses. */
 async function apiJson(url, body) {
   const response = await fetch(url, {
     method: "POST",
@@ -438,11 +500,13 @@ async function apiJson(url, body) {
   return json;
 }
 
+/** Derives a readable name from a legacy trash identifier. */
 function legacyTrashDisplayName(id) {
   const match = id.match(/^\d{17}(?:-\d+)?-(.+)$/);
   return match ? match[1] : id;
 }
 
+/** Synchronizes the trash badge and empty-trash action. */
 function updateTrashCount() {
   trashCount.textContent = `(${trashItems.length})`;
   trashCount.hidden = trashItems.length === 0;
@@ -452,6 +516,7 @@ function updateTrashCount() {
   emptyTrashButton.disabled = trashItems.length === 0;
 }
 
+/** Rebuilds the trash dialog from the latest server response. */
 function renderTrashItems() {
   trashList.innerHTML = "";
   if (!trashItems.length) {
@@ -517,6 +582,7 @@ function renderTrashItems() {
   updateTrashCount();
 }
 
+/** Loads the current trash contents. */
 async function loadTrash() {
   const response = await fetch(`${api}/trash`);
   const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
@@ -525,6 +591,7 @@ async function loadTrash() {
   renderTrashItems();
 }
 
+/** Opens the trash dialog and refreshes its contents. */
 async function openTrashModal() {
   trashModal.hidden = false;
   trashList.innerHTML = '<div class="trash-list-message">Loading trash...</div>';
@@ -537,10 +604,12 @@ async function openTrashModal() {
   }
 }
 
+/** Closes the trash dialog. */
 function closeTrashModal() {
   trashModal.hidden = true;
 }
 
+/** Queues restoration of selected trash entries. */
 async function restoreTrashItems(ids, destinationPath = "") {
   const body = { ids };
   if (destinationPath) body.destinationPath = destinationPath;
@@ -551,6 +620,7 @@ async function restoreTrashItems(ids, destinationPath = "") {
   queueReloadFallback(op.path);
 }
 
+/** Validates and previews the custom restoration destination. */
 function updateRestoreElsewhereDestination() {
   const rawDestination = restoreElsewhereDestination.value.trim();
   const destinationPath = normalizedMoveDestination(rawDestination);
@@ -566,6 +636,7 @@ function updateRestoreElsewhereDestination() {
   confirmRestoreElsewhereButton.disabled = !validDestination;
 }
 
+/** Opens the custom-destination restoration dialog for one trash entry. */
 function openRestoreElsewhereModal(item) {
   restoreElsewhereTrashId = item.id;
   const displayName = legacyTrashDisplayName(item.name || item.id);
@@ -579,11 +650,13 @@ function openRestoreElsewhereModal(item) {
   restoreElsewhereDestination.setSelectionRange(nameStart, restoreElsewhereDestination.value.length);
 }
 
+/** Closes and resets the custom restoration dialog. */
 function closeRestoreElsewhereModal() {
   restoreElsewhereModal.hidden = true;
   restoreElsewhereTrashId = "";
 }
 
+/** Queues restoration to the destination entered by the user. */
 async function performRestoreElsewhere() {
   updateRestoreElsewhereDestination();
   if (confirmRestoreElsewhereButton.disabled || !restoreElsewhereTrashId) return;
@@ -592,6 +665,7 @@ async function performRestoreElsewhere() {
   closeRestoreElsewhereModal();
 }
 
+/** Opens the permanent-deletion confirmation dialog. */
 function openPurgeModal(ids, all) {
   if (!ids.length) return;
   purgeTrashIds = [...ids];
@@ -609,12 +683,14 @@ function openPurgeModal(ids, all) {
   confirmPurgeButton.focus();
 }
 
+/** Closes and resets the permanent-deletion dialog. */
 function closePurgeModal() {
   purgeModal.hidden = true;
   purgeTrashIds = [];
   purgeAllTrash = false;
 }
 
+/** Permanently deletes the selected entries or empties the trash. */
 async function performPurge() {
   if (!purgeTrashIds.length) return;
   const endpoint = purgeAllTrash ? `${api}/trash/empty` : `${api}/trash/delete`;
@@ -625,6 +701,11 @@ async function performPurge() {
   queueTrashReloadFallback();
 }
 
+// =============================================================================
+// Configuration, navigation and live refresh
+// =============================================================================
+
+/** Loads server limits and resolves the effective API and event endpoints. */
 async function loadConfig() {
   const response = await fetch(`${api}/config`);
   const json = await response.json();
@@ -638,6 +719,7 @@ async function loadConfig() {
   populatePageSizes();
 }
 
+/** Builds allowed page-size choices from the server limits. */
 function populatePageSizes() {
   const sizes = [25, 50, 100, 250, 500, 1000]
     .filter(value => value <= maxPageSize);
@@ -654,6 +736,7 @@ function populatePageSizes() {
   pageSizeSelect.value = String(defaultPageSize);
 }
 
+/** Restores directory, search, sort and pagination state from history or the URL. */
 function readNavigationState(state = history.state) {
   const params = new URL(location.href).searchParams;
   const requestedSort = params.get("sort") || "name";
@@ -685,6 +768,7 @@ function readNavigationState(state = history.state) {
   }
 }
 
+/** Writes current navigation state to browser history and the address bar. */
 function syncNavigationState(mode) {
   if (mode === "none") return;
 
@@ -704,17 +788,20 @@ function syncNavigationState(mode) {
   history[mode === "push" ? "pushState" : "replaceState"](state, "", url);
 }
 
+/** Returns whether a changed path affects the directory currently displayed. */
 function shouldReload(path) {
   path = (path || "").replace(/^\/+|\/+$/g, "");
   return !path || !current || path === current || current.startsWith(`${path}/`) || path.startsWith(`${current}/`);
 }
 
+/** Debounces a listing refresh caused by a file-system event. */
 function scheduleReload(path) {
   if (!shouldReload(path)) return;
   clearTimeout(reloadTimer);
   reloadTimer = setTimeout(() => load().catch(err => setStatus(err.message)), 80);
 }
 
+/** Schedules a delayed refresh when live events may be unavailable. */
 function queueReloadFallback(path) {
   if (eventsUrl && typeof EventSource !== "undefined") return;
   for (const delay of [250, 1000, 3000]) {
@@ -722,15 +809,18 @@ function queueReloadFallback(path) {
   }
 }
 
+/** Returns whether an operation kind can change trash contents. */
 function operationChangesTrash(kind) {
   return kind === "delete" || kind === "restore" || kind === "purge" || kind === "emptyTrash";
 }
 
+/** Debounces a trash refresh after a relevant event. */
 function scheduleTrashReload(delay = 80) {
   clearTimeout(trashReloadTimer);
   trashReloadTimer = setTimeout(() => loadTrash().catch(err => setStatus(err.message || "trash_load_failed")), delay);
 }
 
+/** Schedules a conservative trash refresh when live events may be unavailable. */
 function queueTrashReloadFallback() {
   if (eventsUrl && typeof EventSource !== "undefined") return;
   for (const delay of [250, 1000, 3000]) {
@@ -738,6 +828,7 @@ function queueTrashReloadFallback() {
   }
 }
 
+/** Connects the server-sent event stream and maps events to UI state updates. */
 function setupEvents() {
   if (!eventsUrl || typeof EventSource === "undefined") return;
   const es = new EventSource(eventsUrl);
@@ -811,6 +902,11 @@ function setupEvents() {
   es.onerror = () => setStatus("Live updates reconnecting");
 }
 
+// =============================================================================
+// Directory listing, pagination and selection
+// =============================================================================
+
+/** Loads and renders one directory page while discarding stale responses. */
 async function load(path = current, options = {}) {
   const samePath = path === current;
   const requestedSearch = search;
@@ -889,6 +985,7 @@ async function load(path = current, options = {}) {
   }
 }
 
+/** Navigates to a directory and resets cursor-based pagination. */
 function navigateTo(path) {
   clearTimeout(searchTimer);
   searchInput.value = search;
@@ -896,6 +993,7 @@ function navigateTo(path) {
   return load(path, { token: "", cursorHistory: [], historyMode: "push" });
 }
 
+/** Displays an empty-state or error row in the file table. */
 function renderListMessage(message, isError = false) {
   rows.innerHTML = "";
   const tr = document.createElement("tr");
@@ -907,6 +1005,7 @@ function renderListMessage(message, isError = false) {
   rows.append(tr);
 }
 
+/** Synchronizes sort arrows and accessible sort state. */
 function updateSortIndicators(previewSort = "") {
   for (const header of document.querySelectorAll("th[aria-sort]")) {
     const button = header.querySelector("[data-sort]");
@@ -920,6 +1019,7 @@ function updateSortIndicators(previewSort = "") {
   }
 }
 
+/** Synchronizes search, pagination and page-size controls. */
 function updateListControls() {
   pageSummary.textContent = `Page ${cursorHistory.length + 1} - ${currentItems.length} item${currentItems.length === 1 ? "" : "s"}`;
   previousPageButton.disabled = cursorHistory.length === 0;
@@ -929,6 +1029,7 @@ function updateListControls() {
   updateSortIndicators(previewButton?.dataset.sort || "");
 }
 
+/** Rebuilds breadcrumb navigation for the current directory. */
 function renderCrumbs() {
   const el = document.getElementById("crumbs");
   el.innerHTML = "";
@@ -948,6 +1049,7 @@ function renderCrumbs() {
   }
 }
 
+/** Rebuilds file rows and their selection/action controls. */
 function renderRows() {
   rows.innerHTML = "";
   if (current) {
@@ -1028,6 +1130,7 @@ function renderRows() {
   }
 }
 
+/** Updates one row and the global selection set together. */
 function setRowSelection(row, checkbox, path, checked) {
   if (checked) selected.add(path);
   else selected.delete(path);
@@ -1037,11 +1140,13 @@ function setRowSelection(row, checkbox, path, checked) {
   updateButtons();
 }
 
+/** Returns the parent directory of a browser-relative path. */
 function parentOf(path) {
   const i = path.lastIndexOf("/");
   return i < 0 ? "" : path.slice(0, i);
 }
 
+/** Synchronizes toolbar actions with the current selection. */
 function updateButtons() {
   const count = selected.size;
   const one = count === 1;
@@ -1061,6 +1166,7 @@ function updateButtons() {
   updateHeaderSelection();
 }
 
+/** Synchronizes the select-all checkbox, including its indeterminate state. */
 function updateHeaderSelection() {
   const total = currentItems.length;
   const count = currentItems.reduce((value, item) => value + (selected.has(item.path) ? 1 : 0), 0);
@@ -1074,12 +1180,14 @@ function updateHeaderSelection() {
     : allSelected ? "Deselect all items" : "Select all items");
 }
 
+/** Clears all selected paths and refreshes selection controls. */
 function clearSelection() {
   selected.clear();
   renderRows();
   updateButtons();
 }
 
+/** Selects every selectable item on the current page. */
 function selectAllCurrentItems() {
   selected = new Set(currentItems.map(item => item.path));
   renderRows();
@@ -1087,6 +1195,7 @@ function selectAllCurrentItems() {
   setStatus(`${selected.size} item${selected.size === 1 ? "" : "s"} selected`);
 }
 
+/** Starts browser downloads for each selected file. */
 function downloadSelectedFiles() {
   const files = currentItems.filter(item => selected.has(item.path) && item.type === "file");
   if (!files.length) return;
@@ -1106,6 +1215,7 @@ function downloadSelectedFiles() {
   setStatus(skippedCount ? `${downloadLabel}; ${skippedCount} folder${skippedCount === 1 ? "" : "s"} skipped` : downloadLabel);
 }
 
+/** Opens the single selected directory or downloads the single selected file. */
 async function activateSelectedItem() {
   if (selected.size !== 1) return;
   const path = [...selected][0];
@@ -1118,19 +1228,23 @@ async function activateSelectedItem() {
   downloadSelectedFiles();
 }
 
+/** Returns whether keyboard shortcuts must defer to an editable control. */
 function isKeyboardShortcutTarget(target) {
   return target instanceof Element && target.closest("input, textarea, select, button, a, [contenteditable='true']") !== null;
 }
 
+/** Returns whether a drag event carries files. */
 function isFileDrag(event) {
   return [...(event.dataTransfer?.types || [])].includes("Files");
 }
 
+/** Clears drag-over highlighting from the browser and directory rows. */
 function clearBrowserUploadDropTarget() {
   browserPane.classList.remove("upload-drop-current");
   browserPane.querySelector(".upload-drop-target")?.classList.remove("upload-drop-target");
 }
 
+/** Highlights the directory that would receive a browser-level drop. */
 function updateBrowserUploadDropTarget(target) {
   clearBrowserUploadDropTarget();
   const row = target instanceof Element ? target.closest("tbody tr.directory-row[data-path]") : null;
@@ -1143,6 +1257,11 @@ function updateBrowserUploadDropTarget(target) {
   return current;
 }
 
+// =============================================================================
+// Action dialogs and path validation
+// =============================================================================
+
+/** Opens the upload staging dialog for a destination directory. */
 function openUploadModal(destinationPath = current) {
   resetUploadStaging();
   uploadDestinationPath = (destinationPath || "").replace(/^\/+|\/+$/g, "");
@@ -1153,20 +1272,24 @@ function openUploadModal(destinationPath = current) {
   uploadDrop.classList.remove("hot");
 }
 
+/** Closes and resets the upload staging dialog. */
 function closeUploadModal() {
   uploadModal.hidden = true;
   uploadDrop.classList.remove("hot");
   resetUploadStaging();
 }
 
+/** Returns the root-aware display form of a browser path. */
 function displayBrowserPath(path) {
   return path ? `/${path}` : "/";
 }
 
+/** Combines browser-relative path components with normalized separators. */
 function combineBrowserPath(parent, name) {
   return parent ? `${parent}/${name}` : name;
 }
 
+/** Validates a single file or directory name for modal input. */
 function validItemName(name) {
   return name !== ""
     && name !== "."
@@ -1175,6 +1298,7 @@ function validItemName(name) {
     && !name.includes("\\");
 }
 
+/** Validates and previews the new-folder destination. */
 function updateNewFolderDestination() {
   const name = newFolderName.value.trim();
   const validName = validItemName(name);
@@ -1187,6 +1311,7 @@ function updateNewFolderDestination() {
   confirmNewFolderButton.disabled = !validName;
 }
 
+/** Opens the new-folder dialog in the current directory. */
 function openNewFolderModal() {
   newFolderParentPath = current;
   const location = displayBrowserPath(newFolderParentPath);
@@ -1199,12 +1324,14 @@ function openNewFolderModal() {
   newFolderName.select();
 }
 
+/** Closes and resets the new-folder dialog. */
 function closeNewFolderModal() {
   newFolderModal.hidden = true;
   newFolderParentPath = "";
   newFolderName.value = "";
 }
 
+/** Queues creation of the validated folder. */
 async function createNewFolder() {
   updateNewFolderDestination();
   if (confirmNewFolderButton.disabled) {
@@ -1220,6 +1347,7 @@ async function createNewFolder() {
   queueReloadFallback(op.path);
 }
 
+/** Validates and previews the rename destination. */
 function updateRenameDestination() {
   const nextName = renameName.value.trim();
   const currentName = renameTargetPath.split("/").pop() || "";
@@ -1234,6 +1362,7 @@ function updateRenameDestination() {
   confirmRenameButton.disabled = !validName;
 }
 
+/** Opens the rename dialog for one file-system entry. */
 function openRenameModal(path) {
   renameTargetPath = path;
   const label = displayBrowserPath(path);
@@ -1246,11 +1375,13 @@ function openRenameModal(path) {
   renameName.select();
 }
 
+/** Closes and resets the rename dialog. */
 function closeRenameModal() {
   renameModal.hidden = true;
   renameTargetPath = "";
 }
 
+/** Queues the validated rename operation. */
 async function performRename() {
   updateRenameDestination();
   if (confirmRenameButton.disabled) return;
@@ -1261,10 +1392,12 @@ async function performRename() {
   queueReloadFallback(op.path);
 }
 
+/** Normalizes user input representing a move destination directory. */
 function normalizedMoveDestination(value) {
   return value.trim().replace(/^\/+|\/+$/g, "");
 }
 
+/** Validates and previews the move destination. */
 function updateMoveDestination() {
   const rawDestination = moveDestination.value.trim();
   const destinationDirectory = normalizedMoveDestination(rawDestination);
@@ -1283,6 +1416,7 @@ function updateMoveDestination() {
   confirmMoveButton.disabled = !validDestination;
 }
 
+/** Opens the move dialog for selected paths. */
 function openMoveModal(paths) {
   if (!paths.length) return;
   moveSourcePaths = [...paths];
@@ -1297,11 +1431,13 @@ function openMoveModal(paths) {
   moveDestination.select();
 }
 
+/** Closes and resets the move dialog. */
 function closeMoveModal() {
   moveModal.hidden = true;
   moveSourcePaths = [];
 }
 
+/** Queues moves for the validated source paths and destination. */
 async function performMove() {
   updateMoveDestination();
   if (confirmMoveButton.disabled) return;
@@ -1315,6 +1451,7 @@ async function performMove() {
   closeMoveModal();
 }
 
+/** Opens the move-to-trash confirmation dialog. */
 function openDeleteModal(paths) {
   if (!paths.length) return;
   deleteSourcePaths = [...paths];
@@ -1329,11 +1466,13 @@ function openDeleteModal(paths) {
   confirmDeleteButton.focus();
 }
 
+/** Closes and resets the move-to-trash dialog. */
 function closeDeleteModal() {
   deleteModal.hidden = true;
   deleteSourcePaths = [];
 }
 
+/** Queues deletion of the selected paths. */
 async function performDelete() {
   const paths = [...deleteSourcePaths];
   if (!paths.length) return;
@@ -1348,11 +1487,13 @@ async function performDelete() {
   queueTrashReloadFallback();
 }
 
+/** Ensures an archive name uses the ZIP extension. */
 function normalizedArchiveName(value) {
   const name = value.trim();
   return name.toLowerCase().endsWith(".zip") ? name : `${name}.zip`;
 }
 
+/** Validates and previews the archive destination. */
 function updateArchiveDestination() {
   const rawName = archiveName.value.trim();
   const validName = rawName !== ""
@@ -1367,6 +1508,7 @@ function updateArchiveDestination() {
   confirmArchiveButton.disabled = !validName;
 }
 
+/** Opens the archive creation dialog for selected paths. */
 function openArchiveModal(paths) {
   if (!paths.length) return;
   archiveSourcePaths = [...paths];
@@ -1382,12 +1524,14 @@ function openArchiveModal(paths) {
   archiveName.select();
 }
 
+/** Closes and resets the archive creation dialog. */
 function closeArchiveModal() {
   archiveModal.hidden = true;
   archiveSourcePaths = [];
   archiveDestinationDirectory = "";
 }
 
+/** Queues creation of the configured archive. */
 async function createArchive() {
   updateArchiveDestination();
   if (confirmArchiveButton.disabled) {
@@ -1408,6 +1552,7 @@ async function createArchive() {
   queueReloadFallback(destinationPath);
 }
 
+/** Validates and previews the selected archive extraction mode. */
 function updateExtractDestination() {
   const dedicatedFolder = extractToFolder.checked;
   const folderName = extractFolderName.value.trim();
@@ -1425,6 +1570,7 @@ function updateExtractDestination() {
   confirmExtractButton.disabled = dedicatedFolder && !validFolderName;
 }
 
+/** Opens the extraction dialog for a ZIP archive. */
 function openExtractModal(path) {
   extractArchivePath = path;
   const leaf = path.split("/").pop() || "archive.zip";
@@ -1439,11 +1585,13 @@ function openExtractModal(path) {
   extractFolderName.select();
 }
 
+/** Closes and resets the archive extraction dialog. */
 function closeExtractModal() {
   extractModal.hidden = true;
   extractArchivePath = "";
 }
 
+/** Queues extraction using the validated destination settings. */
 async function extractArchive() {
   updateExtractDestination();
   if (confirmExtractButton.disabled) {
@@ -1467,11 +1615,17 @@ async function extractArchive() {
   queueReloadFallback(destinationDirectory);
 }
 
+// =============================================================================
+// Upload staging
+// =============================================================================
+
+/** Returns the normalized relative path represented by a staged upload item. */
 function uploadFileRelativePath(item) {
   const file = item.file || item;
   return (item.uploadRelativePath || file.webkitRelativePath || file.name).replaceAll("\\", "/");
 }
 
+/** Groups selected files into stable staged items for files or directories. */
 function createStagedUploadItems(files) {
   const items = [];
   const folders = new Map();
@@ -1497,6 +1651,7 @@ function createStagedUploadItems(files) {
   return items;
 }
 
+/** Adds non-duplicate items to the upload staging area. */
 function addStagedUploadItems(items) {
   const existingPaths = new Set(stagedUploadItems.flatMap(item => item.files.map(uploadFileRelativePath)));
   let added = 0;
@@ -1517,11 +1672,13 @@ function addStagedUploadItems(items) {
   if (!added && items.length) setStatus("Items already selected");
 }
 
+/** Removes one item from the upload staging area. */
 function removeStagedUploadItem(id) {
   stagedUploadItems = stagedUploadItems.filter(item => item.id !== id);
   renderStagedUploads();
 }
 
+/** Rebuilds the upload staging list and start button state. */
 function renderStagedUploads() {
   uploadStaging.innerHTML = "";
   uploadStaging.hidden = stagedUploadItems.length === 0;
@@ -1562,6 +1719,7 @@ function renderStagedUploads() {
   }
 }
 
+/** Starts uploading every currently staged file. */
 function uploadStagedItems() {
   const files = stagedUploadItems.flatMap(item => item.files);
   if (!files.length) return;
@@ -1570,6 +1728,7 @@ function uploadStagedItems() {
   beginUpload(files, destinationPath);
 }
 
+/** Clears staged upload data and native file inputs. */
 function resetUploadStaging() {
   stagedUploadItems = [];
   filesInput.value = "";
@@ -1577,6 +1736,7 @@ function resetUploadStaging() {
   renderStagedUploads();
 }
 
+/** Starts the upload workflow and converts rejected promises into UI status. */
 function beginUpload(files, destinationPath = current) {
   startUpload(files, destinationPath).catch(err => {
     if ((err.message || "") !== "upload_cancelled") {
@@ -1585,21 +1745,17 @@ function beginUpload(files, destinationPath = current) {
   });
 }
 
+/** Executes an asynchronous UI action with centralized error reporting. */
 function runAction(action) {
   action().catch(err => setStatus(err.message || "operation_failed"));
 }
 
-document.getElementById("refresh").onclick = () => load().catch(err => setStatus(err.message || "refresh_failed"));
-openTrashButton.onclick = () => runAction(openTrashModal);
-themeToggle.onclick = () => {
-  const modes = ["system", "light", "dark"];
-  const currentTheme = document.documentElement.dataset.theme || "system";
-  applyTheme(modes[(modes.indexOf(currentTheme) + 1) % modes.length]);
-};
+/** Reloads the current directory after resetting cursor pagination. */
 function reloadFromFirstPage(historyMode) {
   return load(current, { token: "", cursorHistory: [], historyMode });
 }
 
+/** Applies the search field value and reloads the first result page. */
 function applySearch() {
   clearTimeout(searchTimer);
   const value = searchInput.value.trim();
@@ -1608,6 +1764,49 @@ function applySearch() {
   search = value;
   reloadFromFirstPage("replace").catch(err => setStatus(err.message || "search_failed"));
 }
+
+/** Opens rename for an explicitly selected row action. */
+async function renameItem(path) {
+  openRenameModal(path);
+}
+
+/** Opens rename for the single selected item. */
+async function renameSelected() {
+  await renameItem([...selected][0]);
+}
+
+/** Opens move for an explicit path collection. */
+async function moveItems(paths) {
+  openMoveModal(paths);
+}
+
+/** Opens move for the current selection. */
+async function moveSelected() {
+  await moveItems([...selected]);
+}
+
+/** Opens deletion for an explicit path collection. */
+async function deleteItems(paths) {
+  openDeleteModal(paths);
+}
+
+/** Opens deletion for the current selection. */
+async function deleteSelected() {
+  await deleteItems([...selected]);
+}
+
+// =============================================================================
+// User interaction bindings
+// =============================================================================
+
+// Navigation, theme, search, sorting and pagination.
+document.getElementById("refresh").onclick = () => load().catch(err => setStatus(err.message || "refresh_failed"));
+openTrashButton.onclick = () => runAction(openTrashModal);
+themeToggle.onclick = () => {
+  const modes = ["system", "light", "dark"];
+  const currentTheme = document.documentElement.dataset.theme || "system";
+  applyTheme(modes[(modes.indexOf(currentTheme) + 1) % modes.length]);
+};
 
 searchInput.oninput = () => {
   clearSearchButton.hidden = !searchInput.value;
@@ -1662,31 +1861,8 @@ nextPageButton.onclick = () => {
     historyMode: "push"
   }).catch(err => setStatus(err.message || "list_failed"));
 };
+// Selection and primary file actions.
 document.getElementById("newFolder").onclick = openNewFolderModal;
-async function renameItem(path) {
-  openRenameModal(path);
-}
-
-async function renameSelected() {
-  await renameItem([...selected][0]);
-}
-
-async function moveItems(paths) {
-  openMoveModal(paths);
-}
-
-async function moveSelected() {
-  await moveItems([...selected]);
-}
-
-async function deleteItems(paths) {
-  openDeleteModal(paths);
-}
-
-async function deleteSelected() {
-  await deleteItems([...selected]);
-}
-
 downloadSelectedButton.onclick = downloadSelectedFiles;
 archiveSelectedButton.onclick = () => openArchiveModal([...selected]);
 document.getElementById("rename").onclick = () => runAction(renameSelected);
@@ -1697,6 +1873,7 @@ selectionToggle.onchange = () => {
   else clearSelection();
 };
 
+// Operation panel and modal-specific actions.
 toggleOperations.onclick = toggleOperationsPanel;
 clearOperationsButton.onclick = clearOperationHistory;
 cancelOperationsButton.onclick = () => runAction(cancelAllOperations);
@@ -1785,6 +1962,7 @@ extractFolderName.onkeydown = e => {
     runAction(extractArchive);
   }
 };
+// Global keyboard shortcuts and escape handling.
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
     if (!newFolderModal.hidden) {
@@ -1853,6 +2031,7 @@ document.addEventListener("keydown", e => {
     runAction(activateSelectedItem);
   }
 });
+// File pickers and drag-and-drop surfaces.
 filesInput.onchange = e => {
   addStagedUploadItems(createStagedUploadItems([...e.target.files]));
   e.target.value = "";
@@ -1914,6 +2093,11 @@ uploadDrop.addEventListener("drop", async e => {
   }
 });
 
+// =============================================================================
+// Drag-and-drop traversal and upload transport
+// =============================================================================
+
+/** Converts dropped browser entries into staged files while preserving folders. */
 async function collectDroppedUploadItems(dataTransfer) {
   const items = [...(dataTransfer?.items || [])];
   const entries = items
@@ -1937,6 +2121,7 @@ async function collectDroppedUploadItems(dataTransfer) {
   return stagedItems;
 }
 
+/** Recursively walks a dropped file-system entry. */
 async function walkDroppedEntry(entry, parentPath, files) {
   if (entry.isFile) {
     const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
@@ -1959,6 +2144,7 @@ async function walkDroppedEntry(entry, parentPath, files) {
   } while (batch.length);
 }
 
+/** Marks unfinished local upload operations as cancelled. */
 function markEntriesCancelled(entries) {
   for (const entry of entries) {
     updateOperation(entry.id, {
@@ -1970,6 +2156,7 @@ function markEntriesCancelled(entries) {
   }
 }
 
+/** Creates an upload session, transfers each file and queues finalization. */
 async function startUpload(files, destinationPath = current) {
   if (!files.length) return;
   const generation = cancelGeneration;
@@ -2050,6 +2237,7 @@ async function startUpload(files, destinationPath = current) {
   queueReloadFallback(destinationPath);
 }
 
+/** Sends a file or chunk with XMLHttpRequest so transfer progress can be observed. */
 function sendBlob(url, entry, blob, offset, generation) {
   if (generation !== cancelGeneration) {
     return Promise.reject(new Error("upload_cancelled"));
@@ -2091,6 +2279,7 @@ function sendBlob(url, entry, blob, offset, generation) {
   });
 }
 
+/** Applies server-reported upload progress to the matching local operation. */
 function updateUploadProgress(path, receivedBytes, totalBytes, completed) {
   if (!path) return;
   let id = uploadOperationIdsByPath.get(path);
@@ -2112,6 +2301,7 @@ function updateUploadProgress(path, receivedBytes, totalBytes, completed) {
   });
 }
 
+/** Marks operations referenced by an upload-cancelled event as cancelled. */
 function markUploadCancelled(message) {
   const ids = new Set();
   const paths = new Map();
@@ -2143,6 +2333,10 @@ function markUploadCancelled(message) {
   }
   setStatus("Upload cancelled");
 }
+
+// =============================================================================
+// Application bootstrap
+// =============================================================================
 
 renderOperations();
 setOperationsPanelVisible(false);

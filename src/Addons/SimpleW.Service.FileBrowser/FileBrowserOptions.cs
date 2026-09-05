@@ -5,6 +5,8 @@ namespace SimpleW.Service.FileBrowser {
     /// </summary>
     public sealed class FileBrowserOptions {
 
+        #region public options
+
         /// <summary>
         /// Root directory exposed by the browser.
         /// </summary>
@@ -95,12 +97,23 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         public string? TrashPath { get; set; }
 
+        #endregion public options
+
+        #region normalized options
+
         internal string NormalizedPath { get; private set; } = string.Empty;
         internal string NormalizedTrashPath { get; private set; } = string.Empty;
         internal string NormalizedPrefix { get; private set; } = string.Empty;
         internal string NormalizedEventsPrefix { get; private set; } = string.Empty;
         internal string? NormalizedClientPath { get; private set; }
 
+        #endregion normalized options
+
+        #region validation
+
+        /// <summary>
+        /// Validates option combinations and computes the normalized runtime values.
+        /// </summary>
         internal FileBrowserOptions ValidateAndNormalize() {
             if (string.IsNullOrWhiteSpace(Path)) {
                 throw new ArgumentException($"{nameof(FileBrowserOptions)}.{nameof(Path)} must not be null or empty.", nameof(Path));
@@ -166,6 +179,9 @@ namespace SimpleW.Service.FileBrowser {
             return this;
         }
 
+        /// <summary>
+        /// Returns an absolute directory path ending with a platform separator.
+        /// </summary>
         private static string NormalizeDirectory(string path) {
             string full = System.IO.Path.GetFullPath(path);
             if (!full.EndsWith(System.IO.Path.DirectorySeparatorChar) && !full.EndsWith(System.IO.Path.AltDirectorySeparatorChar)) {
@@ -173,6 +189,8 @@ namespace SimpleW.Service.FileBrowser {
             }
             return full;
         }
+
+        #endregion validation
 
     }
 

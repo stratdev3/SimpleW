@@ -2,7 +2,12 @@ using System.Threading;
 
 namespace SimpleW.Service.FileBrowser {
 
+    /// <summary>
+    /// Tracks received ranges and synchronization for one file in an upload session.
+    /// </summary>
     internal sealed class UploadFileState {
+
+        #region fields and properties
 
         private readonly List<ReceivedRange> _ranges = new();
 
@@ -15,6 +20,15 @@ namespace SimpleW.Service.FileBrowser {
         public bool Completed { get; set; }
         public bool IsComplete => Size == 0 || (_ranges.Count == 1 && _ranges[0].Start == 0 && _ranges[0].End == Size);
 
+        #endregion fields and properties
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="relativePath"></param>
+        /// <param name="targetFullPath"></param>
+        /// <param name="tempPath"></param>
+        /// <param name="size"></param>
         public UploadFileState(string relativePath, string targetFullPath, string tempPath, long size) {
             RelativePath = relativePath;
             TargetFullPath = targetFullPath;
@@ -22,12 +36,23 @@ namespace SimpleW.Service.FileBrowser {
             Size = size;
         }
 
+        #region received ranges
+
+        /// <summary>
+        /// Replaces the received ranges with a single range starting at zero.
+        /// </summary>
+        /// <param name="length"></param>
         public void SetSingleRange(long length) {
             _ranges.Clear();
             _ranges.Add(new ReceivedRange(0, length));
             ReceivedBytes = length;
         }
 
+        /// <summary>
+        /// Adds a received byte range and merges overlaps before recomputing progress.
+        /// </summary>
+        /// <param name="start"></param>
+        /// <param name="length"></param>
         public void AddRange(long start, long length) {
             long end = start + length;
             _ranges.Add(new ReceivedRange(start, end));
@@ -48,6 +73,8 @@ namespace SimpleW.Service.FileBrowser {
             _ranges.AddRange(merged);
             ReceivedBytes = _ranges.Sum(static r => r.End - r.Start);
         }
+
+        #endregion received ranges
 
     }
 

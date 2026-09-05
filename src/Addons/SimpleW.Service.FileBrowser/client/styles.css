@@ -1,3 +1,7 @@
+/* =============================================================================
+   Theme tokens and color modes
+   ============================================================================= */
+
 :root {
   color-scheme: light dark;
   --bg: #f6f7f9;
@@ -43,6 +47,10 @@
 }
 
 :root[data-theme="light"] { color-scheme: light; }
+
+/* =============================================================================
+   Document shell and global controls
+   ============================================================================= */
 
 * { box-sizing: border-box; }
 body {
@@ -125,6 +133,7 @@ button.danger:not(:disabled):hover {
   line-height: 1;
 }
 .badge[hidden] { display: none; }
+/* CSS-drawn toolbar glyphs share a fixed box and inherit the button color. */
 .operations-glyph,
 .cancel-glyph,
 .trash-glyph,
@@ -196,6 +205,10 @@ button.danger:not(:disabled):hover {
   border-radius: 1px;
 }
 
+/* =============================================================================
+   Browser workspace and sticky toolbar
+   ============================================================================= */
+
 main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 0;
@@ -232,6 +245,10 @@ main.operations-open { grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
   pointer-events: none;
   transition: opacity .12s ease, visibility 0s linear .12s;
 }
+/* =============================================================================
+   Search, pagination and selection controls
+   ============================================================================= */
+
 .list-controls { display: flex; gap: 10px; align-items: center; padding: 12px; border-bottom: 1px solid var(--line); }
 .search-box { position: relative; flex: 1 1 320px; max-width: 640px; }
 .search-box input {
@@ -257,8 +274,7 @@ main.operations-open { grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; }
   background: transparent;
 }
 .clear-search-button[hidden] { display: none; }
-.page-size-label { color: var(--muted); font-size: 12px; white-space: nowrap; }
-.page-size-label { margin-left: auto; }
+.page-size-label { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
 select {
   min-height: 36px;
   border: 1px solid var(--line);
@@ -311,6 +327,10 @@ select {
   min-width: 0;
   overflow: visible;
 }
+/* =============================================================================
+   Upload drop zone and staging list
+   ============================================================================= */
+
 .drop { display: grid; gap: 14px; border: 1px dashed var(--line); border-radius: 8px; padding: 22px 18px; text-align: center; color: var(--muted); }
 .drop.hot { border-color: var(--accent); color: var(--accent); }
 .drop-copy { margin: 0; }
@@ -350,6 +370,10 @@ select {
 .upload-staged-details { display: grid; flex: 1 1 auto; gap: 2px; min-width: 0; }
 .upload-staged-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upload-staged-item .upload-remove { width: 32px; min-width: 32px; min-height: 32px; padding: 0; }
+
+/* =============================================================================
+   File table, rows and item icons
+   ============================================================================= */
 
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
@@ -487,6 +511,10 @@ tbody tr.selected .row-selection {
 .file-link { display: inline-block; max-width: 100%; margin: -6px -8px; padding: 6px 8px; border-radius: 5px; color: var(--accent); text-decoration: none; }
 .file-link:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); text-decoration: underline; }
 
+/* =============================================================================
+   Background operation panel
+   ============================================================================= */
+
 .operations-panel {
   display: flex;
   flex-direction: column;
@@ -590,6 +618,10 @@ main.operations-open .operations-panel {
   color: var(--muted);
   text-align: center;
 }
+/* =============================================================================
+   Shared utilities and footer
+   ============================================================================= */
+
 .muted { color: var(--muted); }
 progress { width: 100%; height: 8px; }
 .operations-panel progress[hidden] { display: none; }
@@ -597,6 +629,10 @@ progress { width: 100%; height: 8px; }
 .bad { color: var(--danger); }
 input[type=file] { display: none; }
 footer { padding: 10px 18px; color: var(--muted); border-top: 1px solid var(--line); }
+
+/* =============================================================================
+   Modal framework and form controls
+   ============================================================================= */
 
 .modal[hidden] { display: none; }
 .modal { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; }
@@ -668,6 +704,7 @@ footer { padding: 10px 18px; color: var(--muted); border-top: 1px solid var(--li
 }
 .modal-form-field small.bad { color: var(--danger); }
 .modal-message { margin: 0; color: var(--muted); line-height: 1.5; }
+/* Trash and extraction dialogs extend the common modal framework. */
 .trash-modal-panel { width: min(760px, 100%); }
 .trash-intro { margin: 0; color: var(--muted); }
 .trash-list {
@@ -710,12 +747,15 @@ footer { padding: 10px 18px; color: var(--muted); border-top: 1px solid var(--li
 .extract-safety-note { margin: 0; font-size: 12px; }
 .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; padding-top: 14px; border-top: 1px solid var(--line); }
 
+/* =============================================================================
+   Responsive and accessibility adaptations
+   ============================================================================= */
+
 @media (max-width: 900px) {
   main,
   main.operations-open { grid-template-columns: 1fr; }
   main.operations-open { gap: 16px; }
-  .operations-panel { order: -1; }
-  .operations-panel { max-height: 0; transform: translateY(-12px); }
+  .operations-panel { order: -1; max-height: 0; transform: translateY(-12px); }
   main.operations-open .operations-panel { max-height: 70vh; transform: translateY(0); overflow-y: auto; }
   .browser-bar { align-items: stretch; flex-direction: column; gap: 0; }
   .file-actions { justify-content: flex-start; padding: 0 12px 12px; }

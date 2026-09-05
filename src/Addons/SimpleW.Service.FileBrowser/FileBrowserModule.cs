@@ -9,7 +9,12 @@ using SimpleW.Observability;
 
 namespace SimpleW.Service.FileBrowser {
 
+    /// <summary>
+    /// Installs and operates the file browser HTTP API, UI, uploads and background file operations.
+    /// </summary>
     internal sealed class FileBrowserModule : IHttpModule {
+
+        #region constants and fields
 
         private const string TempDirectoryName = ".filebrowser-tmp";
         private const string TrashMetadataFileName = ".trash-item.json";
@@ -35,11 +40,23 @@ namespace SimpleW.Service.FileBrowser {
         private CancellationTokenSource? _operationsCts;
         private Task? _operationsTask;
 
+        #endregion constants and fields
+
+        #region initialization
+
+        /// <summary>
+        /// Creates a module from validated file browser options.
+        /// </summary>
+        /// <param name="options"></param>
         public FileBrowserModule(FileBrowserOptions options) {
             _options = (options ?? throw new ArgumentNullException(nameof(options))).ValidateAndNormalize();
             _tempPath = System.IO.Path.Combine(_options.NormalizedPath, TempDirectoryName);
         }
 
+        /// <summary>
+        /// Creates required directories and registers the UI, API, events and lifecycle callbacks.
+        /// </summary>
+        /// <param name="server"></param>
         public void Install(SimpleWServer server) {
 
             Directory.CreateDirectory(_options.NormalizedPath);
@@ -118,6 +135,14 @@ namespace SimpleW.Service.FileBrowser {
             _log.Info($"installed with prefix {_options.NormalizedPrefix}");
         }
 
+        #endregion initialization
+
+        #region user interface
+
+        /// <summary>
+        /// Combines a module-relative route with the configured URL prefix.
+        /// </summary>
+        /// <param name="suffix"></param>
         private string Route(string suffix) {
             if (_options.NormalizedPrefix == "/") {
                 return suffix.StartsWith("/", StringComparison.Ordinal) ? suffix : "/" + suffix;
@@ -125,6 +150,10 @@ namespace SimpleW.Service.FileBrowser {
             return _options.NormalizedPrefix + (suffix.StartsWith("/", StringComparison.Ordinal) ? suffix : "/" + suffix);
         }
 
+        /// <summary>
+        /// Redirects the prefix without a trailing slash to the UI root.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask RedirectUiRootAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -138,6 +167,10 @@ namespace SimpleW.Service.FileBrowser {
             return session.Response.Redirect(location).SendAsync();
         }
 
+        /// <summary>
+        /// Resolves an explicit or development client directory when one is available.
+        /// </summary>
+        /// <param name="clientPath"></param>
         private bool TryResolveClientPath(out string clientPath) {
             if (!string.IsNullOrWhiteSpace(_options.NormalizedClientPath)) {
                 clientPath = _options.NormalizedClientPath!;
@@ -165,6 +198,10 @@ namespace SimpleW.Service.FileBrowser {
             return false;
         }
 
+        /// <summary>
+        /// Checks whether a directory contains the complete browser client.
+        /// </summary>
+        /// <param name="path"></param>
         private static bool IsClientDirectory(string path) {
             return Directory.Exists(path)
                 && File.Exists(System.IO.Path.Combine(path, "index.html"))
@@ -172,6 +209,10 @@ namespace SimpleW.Service.FileBrowser {
                 && File.Exists(System.IO.Path.Combine(path, "styles.css"));
         }
 
+        /// <summary>
+        /// Returns an absolute directory path ending with a separator.
+        /// </summary>
+        /// <param name="path"></param>
         private static string NormalizeDirectory(string path) {
             string full = System.IO.Path.GetFullPath(path);
             if (!full.EndsWith(System.IO.Path.DirectorySeparatorChar) && !full.EndsWith(System.IO.Path.AltDirectorySeparatorChar)) {
@@ -180,6 +221,10 @@ namespace SimpleW.Service.FileBrowser {
             return full;
         }
 
+        /// <summary>
+        /// Registers routes for client assets embedded in the assembly.
+        /// </summary>
+        /// <param name="server"></param>
         private void InstallEmbeddedClient(SimpleWServer server) {
             foreach (ClientAsset asset in EmbeddedClientAssets.Value) {
                 string route = Route(asset.RouteSuffix);
@@ -188,6 +233,11 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Sends an embedded client asset with ETag-based cache validation.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="asset"></param>
         private ValueTask EmbeddedClientAssetAsync(HttpSession session, ClientAsset asset) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -204,6 +254,9 @@ namespace SimpleW.Service.FileBrowser {
             return session.Response.Body(asset.Data, asset.ContentType).SendAsync();
         }
 
+        /// <summary>
+        /// Loads the complete embedded browser client once for the process.
+        /// </summary>
         private static ClientAsset[] LoadEmbeddedClientAssets() {
             return [
                 LoadEmbeddedClientAsset("/", "index.html", "text/html"),
@@ -212,6 +265,14 @@ namespace SimpleW.Service.FileBrowser {
             ];
         }
 
+        /// <summary>
+        /// Reads one embedded client asset and computes its stable ETag.
+        /// </summary>
+        /// <param name="routeSuffix"></param>
+        /// <param name="fileName"></param>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         private static ClientAsset LoadEmbeddedClientAsset(string routeSuffix, string fileName, string contentType) {
             string resourceName = $"SimpleW.Service.FileBrowser.Client.{fileName}";
             using Stream stream = typeof(FileBrowserModule).Assembly.GetManifestResourceStream(resourceName)
@@ -223,6 +284,12 @@ namespace SimpleW.Service.FileBrowser {
             return new ClientAsset(routeSuffix, contentType, data, etag);
         }
 
+        /// <summary>
+        /// Checks whether an If-None-Match header contains the current asset ETag.
+        /// </summary>
+        /// <param name="request"></param>
+        /// <param name="etag"></param>
+        /// <returns></returns>
         private static bool IfNoneMatchHasMatch(HttpRequest request, string etag) {
             if (!request.Headers.TryGetValue("If-None-Match", out string? value) || string.IsNullOrWhiteSpace(value)) {
                 return false;
@@ -237,6 +304,13 @@ namespace SimpleW.Service.FileBrowser {
             return false;
         }
 
+        #endregion user interface
+
+        #region operation queue
+
+        /// <summary>
+        /// Starts the single-reader background operation queue.
+        /// </summary>
         private void StartOperations() {
             if (_operationsTask != null) {
                 return;
@@ -246,6 +320,9 @@ namespace SimpleW.Service.FileBrowser {
             _operationsTask = Task.Run(() => RunOperationsAsync(_operationsCts.Token));
         }
 
+        /// <summary>
+        /// Cancels active work, cleans upload sessions and stops the operation queue.
+        /// </summary>
         private async Task StopOperationsAsync() {
             CancellationTokenSource? cts = _operationsCts;
             Task? task = _operationsTask;
@@ -273,6 +350,10 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Executes queued operations sequentially and publishes their lifecycle events.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
         private async Task RunOperationsAsync(CancellationToken cancellationToken) {
             await foreach (QueuedOperation operation in _operations.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
                 if (operation.Token.IsCancellationRequested) {
@@ -334,6 +415,14 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Adds a file-system operation to the queue and returns its tracking identifier.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="kind"></param>
+        /// <param name="path"></param>
+        /// <param name="work"></param>
+        /// <returns></returns>
         private ValueTask EnqueueOperationAsync(HttpSession session, string kind, string path, Func<CancellationToken, OperationResult> work) {
             Guid operationId = Guid.NewGuid();
             QueuedOperation operation = new(operationId, kind, path, work);
@@ -355,6 +444,14 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        #endregion operation queue
+
+        #region events
+
+        /// <summary>
+        /// Publishes the cancellation event for a queued operation.
+        /// </summary>
+        /// <param name="operation"></param>
         private ValueTask PublishOperationCancelledAsync(QueuedOperation operation) {
             return PublishEventAsync("filebrowser.operation.cancelled", new {
                 operationId = operation.Id,
@@ -365,6 +462,13 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Publishes a file browser change event for a modified path.
+        /// </summary>
+        /// <param name="operationId"></param>
+        /// <param name="operation"></param>
+        /// <param name="path"></param>
+        /// <returns></returns>
         private ValueTask PublishChangedAsync(Guid operationId, string operation, string path) {
             return PublishEventAsync("filebrowser.changed", new {
                 operationId,
@@ -375,6 +479,12 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Publishes the latest progress for one uploaded file.
+        /// </summary>
+        /// <param name="uploadId"></param>
+        /// <param name="file"></param>
+        /// <returns></returns>
         private ValueTask PublishUploadProgressAsync(Guid uploadId, UploadFileState file) {
             return PublishEventAsync("filebrowser.upload.progress", new {
                 uploadId,
@@ -386,6 +496,12 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Broadcasts an event when SSE support is enabled and initialized.
+        /// </summary>
+        /// <param name="eventName"></param>
+        /// <param name="payload"></param>
+        /// <returns></returns>
         private async ValueTask PublishEventAsync(string eventName, object payload) {
             if (!_options.EnableEvents || _eventsHub == null) {
                 return;
@@ -394,10 +510,22 @@ namespace SimpleW.Service.FileBrowser {
             await _eventsHub.BroadcastTextAsync(EventsRoom, SerializeEvent(payload), @event: eventName).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Serializes an SSE event payload with the module JSON settings.
+        /// </summary>
+        /// <param name="payload"></param>
         private static string SerializeEvent(object payload) {
             return JsonSerializer.Serialize(payload, JsonOptions);
         }
 
+        #endregion events
+
+        #region configuration and listing
+
+        /// <summary>
+        /// Returns the client-facing module configuration.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask ConfigAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -421,6 +549,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Lists one filtered, sorted and paginated directory page.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask ListAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -539,6 +671,14 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Inserts a listing candidate into the bounded page buffer.
+        /// </summary>
+        /// <param name="items"></param>
+        /// <param name="item"></param>
+        /// <param name="cursorItem"></param>
+        /// <param name="capacity"></param>
+        /// <param name="comparer"></param>
         private static void AddPageCandidate(
             List<BrowserItem> items,
             BrowserItem item,
@@ -564,6 +704,16 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Encodes the last returned item and current query settings into a continuation token.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="search"></param>
+        /// <param name="sort"></param>
+        /// <param name="direction"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="item"></param>
+        /// <returns></returns>
         private static string EncodeContinuationToken(
             string path,
             string search,
@@ -588,6 +738,17 @@ namespace SimpleW.Service.FileBrowser {
             return Convert.ToBase64String(data).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         }
 
+        /// <summary>
+        /// Validates and decodes a continuation token for the current listing query.
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="path"></param>
+        /// <param name="search"></param>
+        /// <param name="sort"></param>
+        /// <param name="direction"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="item"></param>
+        /// <returns></returns>
         private static bool TryDecodeContinuationToken(
             string token,
             string path,
@@ -636,6 +797,14 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        #endregion configuration and listing
+
+        #region file system endpoints
+
+        /// <summary>
+        /// Sends a validated file as a downloadable response.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask DownloadAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -658,6 +827,10 @@ namespace SimpleW.Service.FileBrowser {
                           .SendAsync();
         }
 
+        /// <summary>
+        /// Validates and queues the creation of a directory.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask CreateFolderAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -689,6 +862,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Validates and queues a file-system entry rename.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask RenameAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -743,6 +920,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Validates and queues a file or directory move.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask MoveAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -813,6 +994,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Validates and queues one or more entries for transfer to the trash.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask DeleteAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -874,6 +1059,14 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        #endregion file system endpoints
+
+        #region trash
+
+        /// <summary>
+        /// Returns all managed and legacy entries currently stored in the trash.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask ListTrashAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -901,6 +1094,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Validates and queues restoration of entries from the trash.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask RestoreTrashAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -972,6 +1169,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Validates and queues permanent deletion of selected trash entries.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask DeleteTrashAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -988,6 +1189,10 @@ namespace SimpleW.Service.FileBrowser {
                 PermanentlyDeleteTrashEntries(entries, cancellationToken));
         }
 
+        /// <summary>
+        /// Queues permanent deletion of every trash entry.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask EmptyTrashAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -998,6 +1203,11 @@ namespace SimpleW.Service.FileBrowser {
                 PermanentlyDeleteTrashEntries(ListTrashEntries().ToList(), cancellationToken));
         }
 
+        /// <summary>
+        /// Permanently removes resolved trash entries from disk.
+        /// </summary>
+        /// <param name="entries"></param>
+        /// <param name="cancellationToken"></param>
         private OperationResult PermanentlyDeleteTrashEntries(IReadOnlyList<TrashEntry> entries, CancellationToken cancellationToken) {
             List<string> deletedIds = new(entries.Count);
             foreach (TrashEntry entry in entries) {
@@ -1014,6 +1224,11 @@ namespace SimpleW.Service.FileBrowser {
             );
         }
 
+        /// <summary>
+        /// Moves one entry into an isolated trash directory and writes restoration metadata.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="cancellationToken"></param>
         private TrashEntry MoveEntryToTrash(ResolvedPath source, CancellationToken cancellationToken) {
             bool isDirectory = Directory.Exists(source.FullPath);
             DateTimeOffset deletedUtc = DateTimeOffset.UtcNow;
@@ -1049,6 +1264,9 @@ namespace SimpleW.Service.FileBrowser {
             return new TrashEntry(id, rootPath, payloadPath, name, source.RelativePath, isDirectory ? "directory" : "file", size, deletedUtc, true, true);
         }
 
+        /// <summary>
+        /// Enumerates valid managed entries and compatible legacy entries from the trash directory.
+        /// </summary>
         private IEnumerable<TrashEntry> ListTrashEntries() {
             foreach (string rootPath in Directory.EnumerateFileSystemEntries(_options.NormalizedTrashPath)) {
                 string id = System.IO.Path.GetFileName(rootPath);
@@ -1064,6 +1282,13 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Reads and validates metadata for one managed trash entry.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="rootPath"></param>
+        /// <param name="entry"></param>
+        /// <returns></returns>
         private bool TryReadManagedTrashEntry(string id, string rootPath, out TrashEntry entry) {
             entry = default!;
             if (!Directory.Exists(rootPath)) {
@@ -1098,6 +1323,14 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Resolves requested trash identifiers and optionally requires restoration metadata.
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="requireRestorable"></param>
+        /// <param name="entries"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
         private bool TryResolveTrashEntries(IReadOnlyList<string>? ids, bool requireRestorable, out List<TrashEntry> entries, out string? error) {
             entries = new List<TrashEntry>();
             error = null;
@@ -1134,6 +1367,11 @@ namespace SimpleW.Service.FileBrowser {
             return true;
         }
 
+        /// <summary>
+        /// Deletes a file or directory after observing cancellation.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="cancellationToken"></param>
         private static void DeleteFileSystemEntry(string path, CancellationToken cancellationToken) {
             cancellationToken.ThrowIfCancellationRequested();
             FileAttributes attributes = File.GetAttributes(path);
@@ -1152,6 +1390,14 @@ namespace SimpleW.Service.FileBrowser {
             Directory.Delete(path, recursive: false);
         }
 
+        #endregion trash
+
+        #region archives
+
+        /// <summary>
+        /// Validates and queues creation of a ZIP archive.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask ArchiveAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -1219,6 +1465,13 @@ namespace SimpleW.Service.FileBrowser {
                 CreateArchive(sources, destination, cancellationToken));
         }
 
+        /// <summary>
+        /// Creates a ZIP archive from validated source paths.
+        /// </summary>
+        /// <param name="sources"></param>
+        /// <param name="destination"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         private OperationResult CreateArchive(IReadOnlyList<ResolvedPath> sources, ResolvedPath destination, CancellationToken cancellationToken) {
             string tempArchivePath = System.IO.Path.Combine(_tempPath, $"archive-{Guid.NewGuid():N}.zip");
             try {
@@ -1271,6 +1524,17 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Adds a directory tree to an archive while enforcing entry and path limits.
+        /// </summary>
+        /// <param name="archive"></param>
+        /// <param name="directoryPath"></param>
+        /// <param name="entryPath"></param>
+        /// <param name="archiveEntryNames"></param>
+        /// <param name="buffer"></param>
+        /// <param name="entryCount"></param>
+        /// <param name="cancellationToken"></param>
+        /// <exception cref="InvalidDataException"></exception>
         private void AddDirectoryToArchive(
             ZipArchive archive,
             string directoryPath,
@@ -1306,6 +1570,17 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Adds one file to an archive when its entry name has not already been used.
+        /// </summary>
+        /// <param name="archive"></param>
+        /// <param name="filePath"></param>
+        /// <param name="entryPath"></param>
+        /// <param name="archiveEntryNames"></param>
+        /// <param name="buffer"></param>
+        /// <param name="entryCount"></param>
+        /// <param name="cancellationToken"></param>
+        /// <exception cref="InvalidDataException"></exception>
         private void AddFileToArchive(
             ZipArchive archive,
             string filePath,
@@ -1333,6 +1608,13 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Tracks a unique archive entry name and enforces the configured entry limit.
+        /// </summary>
+        /// <param name="entryPath"></param>
+        /// <param name="archiveEntryNames"></param>
+        /// <param name="entryCount"></param>
+        /// <exception cref="InvalidDataException"></exception>
         private void AddArchiveEntryName(string entryPath, HashSet<string> archiveEntryNames, ref int entryCount) {
             if (!archiveEntryNames.Add(entryPath)) {
                 throw new InvalidDataException("duplicate_archive_entry");
@@ -1343,6 +1625,11 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Validates and queues extraction of a ZIP archive.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <returns></returns>
         private ValueTask ExtractAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -1378,6 +1665,18 @@ namespace SimpleW.Service.FileBrowser {
                 ExtractArchive(source, destination, request.CreateDestinationDirectory, cancellationToken));
         }
 
+        /// <summary>
+        /// Extracts validated ZIP entries while protecting against traversal and archive bombs.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="destination"></param>
+        /// <param name="createDestinationDirectory"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="FileNotFoundException"></exception>
+        /// <exception cref="IOException"></exception>
+        /// <exception cref="DirectoryNotFoundException"></exception>
+        /// <exception cref="InvalidDataException"></exception>
         private OperationResult ExtractArchive(ResolvedPath source, ResolvedPath destination, bool createDestinationDirectory, CancellationToken cancellationToken) {
             bool createdDestination = false;
             try {
@@ -1534,6 +1833,14 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        #endregion archives
+
+        #region uploads
+
+        /// <summary>
+        /// Cancels all tracked file operations and active upload sessions.
+        /// </summary>
+        /// <param name="session"></param>
         private async ValueTask CancelOperationsAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
@@ -1566,6 +1873,10 @@ namespace SimpleW.Service.FileBrowser {
             }).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Publishes the cancellation event for an upload session.
+        /// </summary>
+        /// <param name="upload"></param>
         private ValueTask PublishUploadCancelledAsync(UploadSession upload) {
             return PublishEventAsync("filebrowser.upload.cancelled", new {
                 uploadId = upload.Id,
@@ -1574,6 +1885,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Validates file declarations and creates a tracked upload session.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask CreateUploadAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -1628,6 +1943,10 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Receives an entire small file into its upload session temporary file.
+        /// </summary>
+        /// <param name="session"></param>
         private async ValueTask UploadFileAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
@@ -1690,6 +2009,10 @@ namespace SimpleW.Service.FileBrowser {
             await JsonAsync(session, 200, new { ok = true, path = file.RelativePath, receivedBytes = file.ReceivedBytes, completed = file.IsComplete }).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Receives one validated byte range for a chunked upload.
+        /// </summary>
+        /// <param name="session"></param>
         private async ValueTask UploadChunkAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
@@ -1756,6 +2079,10 @@ namespace SimpleW.Service.FileBrowser {
             await JsonAsync(session, 200, new { ok = true, path = file.RelativePath, receivedBytes = file.ReceivedBytes, completed = file.IsComplete }).ConfigureAwait(false);
         }
 
+        /// <summary>
+        /// Validates upload completeness and queues final placement of uploaded files.
+        /// </summary>
+        /// <param name="session"></param>
         private ValueTask CompleteUploadAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
                 return ForbiddenAsync(session);
@@ -1828,6 +2155,14 @@ namespace SimpleW.Service.FileBrowser {
             });
         }
 
+        /// <summary>
+        /// Resolves an upload session and file from route values and request headers.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="upload"></param>
+        /// <param name="file"></param>
+        /// <param name="errorResponse"></param>
+        /// <returns></returns>
         private bool TryGetUploadFile(HttpSession session, out UploadSession? upload, out UploadFileState? file, out ValueTask errorResponse) {
             upload = null;
             file = null;
@@ -1856,6 +2191,12 @@ namespace SimpleW.Service.FileBrowser {
             return true;
         }
 
+        /// <summary>
+        /// Reads a valid upload identifier from the current route values.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="uploadId"></param>
+        /// <returns></returns>
         private bool TryGetUploadId(HttpSession session, out Guid uploadId) {
             uploadId = default;
             return session.Request.RouteValues != null
@@ -1863,6 +2204,11 @@ namespace SimpleW.Service.FileBrowser {
                    && Guid.TryParse(raw, out uploadId);
         }
 
+        /// <summary>
+        /// Reads and URL-decodes the required upload file path header.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="path"></param>
         private static bool TryGetPathHeader(HttpSession session, out string? path) {
             if (session.Request.Headers.TryGetValue("X-File-Path", out path) && !string.IsNullOrWhiteSpace(path)) {
                 return true;
@@ -1874,6 +2220,12 @@ namespace SimpleW.Service.FileBrowser {
             return false;
         }
 
+        /// <summary>
+        /// Reads an invariant non-negative integer request header.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
         private static bool TryGetInt64Header(HttpSession session, string name, out long value) {
             value = 0;
             if (!session.Request.Headers.TryGetValue(name, out string? raw) || string.IsNullOrWhiteSpace(raw)) {
@@ -1882,6 +2234,10 @@ namespace SimpleW.Service.FileBrowser {
             return long.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out value);
         }
 
+        /// <summary>
+        /// Atomically promotes a completed temporary upload to its destination.
+        /// </summary>
+        /// <param name="file"></param>
         private void FinalizeFile(UploadFileState file) {
             string? parent = System.IO.Path.GetDirectoryName(file.TargetFullPath);
             if (!string.IsNullOrEmpty(parent)) {
@@ -1893,6 +2249,10 @@ namespace SimpleW.Service.FileBrowser {
             File.Move(file.TempPath, file.TargetFullPath, overwrite: true);
         }
 
+        /// <summary>
+        /// Deletes temporary files belonging to an upload session.
+        /// </summary>
+        /// <param name="upload"></param>
         private static void CleanupUploadSession(UploadSession upload) {
             foreach (UploadFileState file in upload.Files.Values) {
                 if (!file.Gate.Wait(0)) {
@@ -1907,6 +2267,10 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Performs best-effort deletion of a temporary file.
+        /// </summary>
+        /// <param name="path"></param>
         private static void TryDeleteFile(string path) {
             try {
                 if (File.Exists(path)) {
@@ -1918,6 +2282,15 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        #endregion uploads
+
+        #region authorization and paths
+
+        /// <summary>
+        /// Applies anonymous-access settings or the configured authorization callback.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <returns></returns>
         private bool IsAuthorized(HttpSession session) {
             if (_options.AllowAnonymous) {
                 return true;
@@ -1925,6 +2298,15 @@ namespace SimpleW.Service.FileBrowser {
             return _options.Authorize?.Invoke(session) == true;
         }
 
+        /// <summary>
+        /// Resolves a client path and optionally requires it to remain inside the configured root.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="allowRoot"></param>
+        /// <param name="mustBeRelativeToRoot"></param>
+        /// <param name="resolved"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
         private bool TryResolve(string? input, bool allowRoot, bool mustBeRelativeToRoot, out ResolvedPath resolved, out string? error) {
             resolved = default;
             if (!TryNormalizeRelative(input, allowRoot, out string relativePath, out error)) {
@@ -1949,6 +2331,14 @@ namespace SimpleW.Service.FileBrowser {
             return true;
         }
 
+        /// <summary>
+        /// Normalizes a client path into a safe slash-separated relative path.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="allowRoot"></param>
+        /// <param name="relativePath"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
         private bool TryNormalizeRelative(string? input, bool allowRoot, out string relativePath, out string? error) {
             relativePath = string.Empty;
             error = null;
@@ -1988,11 +2378,21 @@ namespace SimpleW.Service.FileBrowser {
             return true;
         }
 
+        /// <summary>
+        /// Checks whether a full path remains inside the exposed browser root.
+        /// </summary>
+        /// <param name="fullPath"></param>
+        /// <returns></returns>
         private bool TryEnsureInsideRoot(string fullPath) {
             string normalized = System.IO.Path.GetFullPath(fullPath);
             return IsInsideOrEqual(normalized, _options.NormalizedPath) && !IsInternalPath(normalized);
         }
 
+        /// <summary>
+        /// Checks whether a path equals or is contained by a normalized root path.
+        /// </summary>
+        /// <param name="fullPath"></param>
+        /// <param name="rootPath"></param>
         private bool IsInsideOrEqual(string fullPath, string rootPath) {
             string full = System.IO.Path.GetFullPath(fullPath);
             string root = EnsureTrailingSeparator(System.IO.Path.GetFullPath(rootPath));
@@ -2005,11 +2405,20 @@ namespace SimpleW.Service.FileBrowser {
             return full.StartsWith(root, _pathComparison);
         }
 
+        /// <summary>
+        /// Identifies module-owned temporary and trash paths hidden from normal operations.
+        /// </summary>
+        /// <param name="fullPath"></param>
         private bool IsInternalPath(string fullPath) {
             string full = System.IO.Path.GetFullPath(fullPath);
             return IsInsideOrEqual(full, _options.NormalizedTrashPath) || IsInsideOrEqual(full, _tempPath);
         }
 
+        /// <summary>
+        /// Validates a single file-system entry name.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="error"></param>
         private static bool TryValidateName(string? name, out string? error) {
             error = null;
             if (string.IsNullOrWhiteSpace(name)) {
@@ -2024,16 +2433,29 @@ namespace SimpleW.Service.FileBrowser {
             return true;
         }
 
+        /// <summary>
+        /// Combines two relative path components with URL-style separators.
+        /// </summary>
+        /// <param name="parent"
+        /// <param name="name"></param>
         private static string CombineRelative(string? parent, string name) {
             parent = (parent ?? string.Empty).Trim('/');
             return parent.Length == 0 ? name : parent + "/" + name;
         }
 
+        /// <summary>
+        /// Returns the parent of a relative path using URL-style separators.
+        /// </summary>
+        /// <param name="relativePath"></param>
         private static string ParentRelative(string relativePath) {
             int slash = relativePath.LastIndexOf('/');
             return slash < 0 ? string.Empty : relativePath[..slash];
         }
 
+        /// <summary>
+        /// Decodes percent-encoded UTF-8 data from a request value.
+        /// </summary>
+        /// <param name="value"></param>
         private static string UrlDecode(string value) {
             try {
                 return value.IndexOf('%') >= 0 ? Uri.UnescapeDataString(value) : value;
@@ -2043,6 +2465,10 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Ensures a full directory path ends with a platform separator.
+        /// </summary>
+        /// <param name="path"></param>
         private static string EnsureTrailingSeparator(string path) {
             if (!path.EndsWith(System.IO.Path.DirectorySeparatorChar) && !path.EndsWith(System.IO.Path.AltDirectorySeparatorChar)) {
                 path += System.IO.Path.DirectorySeparatorChar;
@@ -2050,10 +2476,25 @@ namespace SimpleW.Service.FileBrowser {
             return path;
         }
 
+        /// <summary>
+        /// Removes trailing platform directory separators from a path.
+        /// </summary>
+        /// <param name="path"></param>
         private static string TrimEndingDirectorySeparator(string path) {
             return path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
         }
 
+        #endregion authorization and paths
+
+        #region request and response helpers
+
+        /// <summary>
+        /// Deserializes a JSON request body and returns a stable client error on failure.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="session"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
         private static T? ReadJson<T>(HttpSession session, out string? error) where T : class {
             error = null;
             if (string.IsNullOrWhiteSpace(session.Request.BodyString)) {
@@ -2070,28 +2511,65 @@ namespace SimpleW.Service.FileBrowser {
             }
         }
 
+        /// <summary>
+        /// Sends a JSON response with the supplied status code.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="status"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
         private static ValueTask JsonAsync(HttpSession session, int status, object value) {
             return session.Response.Status(status).Json(value).SendAsync();
         }
 
+        /// <summary>
+        /// Sends the standard file browser JSON error envelope.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="status"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
         private static ValueTask ErrorAsync(HttpSession session, int status, string? error) {
             return session.Response.Status(status).Json(new { ok = false, error = error ?? "error" }).SendAsync();
         }
 
+        /// <summary>
+        /// Sends the standard forbidden response.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <returns></returns>
         private static ValueTask ForbiddenAsync(HttpSession session) {
             return ErrorAsync(session, 403, "forbidden");
         }
 
+        #endregion request and response helpers
+
+        #region private types
+
+        /// <summary>
+        /// Orders browser items by type and the requested sort field.
+        /// </summary>
         private sealed class BrowserItemComparer : IComparer<BrowserItem> {
 
             private readonly string _sort;
             private readonly bool _descending;
 
+            /// <summary>
+            /// Creates a comparer for the selected sort field and direction.
+            /// </summary>
+            /// <param name="sort"></param>
+            /// <param name="descending"></param>
             public BrowserItemComparer(string sort, bool descending) {
                 _sort = sort;
                 _descending = descending;
             }
 
+            /// <summary>
+            /// Compares directories before files, then applies the configured item ordering.
+            /// </summary>
+            /// <param name="x"></param>
+            /// <param name="y"></param>
+            /// <returns></returns>
             public int Compare(BrowserItem? x, BrowserItem? y) {
                 if (ReferenceEquals(x, y)) {
                     return 0;
@@ -2125,12 +2603,30 @@ namespace SimpleW.Service.FileBrowser {
                 return result != 0 ? result : StringComparer.Ordinal.Compare(x.Path, y.Path);
             }
 
+            /// <summary>
+            /// Returns the stable ordering rank associated with an item type.
+            /// </summary>
+            /// <param name="type"></param>
             private static int TypeRank(string type) {
                 return type == "directory" ? 0 : 1;
             }
 
         }
 
+        /// <summary>
+        /// Captures the listing query and last item required to resume pagination.
+        /// </summary>
+        /// <param name="Version"></param>
+        /// <param name="Path"></param>
+        /// <param name="Search"></param>
+        /// <param name="Sort"></param>
+        /// <param name="Direction"></param>
+        /// <param name="PageSize"></param>
+        /// <param name="Name"></param>
+        /// <param name="ItemPath"></param>
+        /// <param name="Type"></param>
+        /// <param name="Size"></param>
+        /// <param name="ModifiedUtcTicks"></param>
         private sealed record ListContinuationToken(
             int Version,
             string Path,
@@ -2145,8 +2641,19 @@ namespace SimpleW.Service.FileBrowser {
             long ModifiedUtcTicks
         );
 
+        /// <summary>
+        /// Describes one validated archive entry before it is extracted.
+        /// </summary>
         private sealed record ArchiveEntryPlan(ZipArchiveEntry Entry, string FullPath, bool IsDirectory);
 
+        /// <summary>
+        /// Stores persistent metadata required to restore a managed trash entry.
+        /// </summary>
+        /// <param name="Version"></param>
+        /// <param name="OriginalPath"></param>
+        /// <param name="Name"></param>
+        /// <param name="Type"></param>
+        /// <param name="DeletedUtc"></param>
         private sealed record TrashItemMetadata(
             int Version,
             string OriginalPath,
@@ -2155,6 +2662,9 @@ namespace SimpleW.Service.FileBrowser {
             DateTimeOffset DeletedUtc
         );
 
+        /// <summary>
+        /// Describes a resolved managed or legacy trash entry.
+        /// </summary>
         private sealed record TrashEntry(
             string Id,
             string RootPath,
@@ -2168,9 +2678,23 @@ namespace SimpleW.Service.FileBrowser {
             bool CanRestoreElsewhere
         );
 
+        /// <summary>
+        /// Associates a trash entry with its validated restoration destination.
+        /// </summary>
+        /// <param name="Entry"></param>
+        /// <param name="Destination"></param>
         private sealed record TrashRestorePlan(TrashEntry Entry, ResolvedPath Destination);
 
+        /// <summary>
+        /// Holds the route, media type, content and ETag of an embedded UI asset.
+        /// </summary>
+        /// <param name="RouteSuffix"></param>
+        /// <param name="ContentType"></param>
+        /// <param name="Data"></param>
+        /// <param name="ETag"></param>
         private sealed record ClientAsset(string RouteSuffix, string ContentType, byte[] Data, string ETag);
+
+        #endregion private types
 
     }
 

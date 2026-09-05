@@ -5,6 +5,8 @@ namespace SimpleW.Service.FileBrowser {
     /// </summary>
     public static class FileBrowserModuleExtension {
 
+        #region module registration
+
         /// <summary>
         /// Adds a file browser and chunked upload endpoint to the server.
         /// </summary>
@@ -17,6 +19,8 @@ namespace SimpleW.Service.FileBrowser {
             server.UseModule(new FileBrowserModule(options));
             return server;
         }
+
+        #endregion module registration
 
     }
 
