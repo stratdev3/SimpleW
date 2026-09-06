@@ -514,7 +514,7 @@ jobs:
         cd src/SimpleW
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Addons/Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Addons/Directory.Build.props ../Addons/*/*.csproj; fi
         dotnet pack -c Release SimpleW.csproj
     runAs: 0:0
     useTTY: false
@@ -1400,7 +1400,7 @@ jobs:
         cd src/Addons/SimpleW.Engine.Ioxide
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Engine.Ioxide.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Engine.Ioxide.csproj
     runAs: 0:0
     useTTY: false
@@ -1483,7 +1483,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.BasicAuth.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.BasicAuth.csproj
     runAs: 0:0
     useTTY: false
@@ -1566,7 +1566,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.DependencyInjection
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.DependencyInjection.csproj
     runAs: 0:0
     useTTY: false
@@ -1649,7 +1649,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.Hosting
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Hosting.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Hosting.csproj
     runAs: 0:0
     useTTY: false
@@ -1732,7 +1732,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Jwt.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Jwt.csproj
     runAs: 0:0
     useTTY: false
@@ -1815,7 +1815,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.Log4net
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Log4net.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Log4net.csproj
     runAs: 0:0
     useTTY: false
@@ -1898,7 +1898,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.OpenID.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.OpenID.csproj
     runAs: 0:0
     useTTY: false
@@ -1981,7 +1981,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.Razor
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Razor.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Razor.csproj
     runAs: 0:0
     useTTY: false
@@ -2064,7 +2064,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.Serilog
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Serilog.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Serilog.csproj
     runAs: 0:0
     useTTY: false
@@ -2147,7 +2147,7 @@ jobs:
         cd src/Addons/SimpleW.Helper.Swagger
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.Swagger.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.Swagger.csproj
     runAs: 0:0
     useTTY: false
@@ -2230,7 +2230,7 @@ jobs:
         cd src/Addons/SimpleW.JsonEngine.Newtonsoft
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.JsonEngine.Newtonsoft.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.JsonEngine.Newtonsoft.csproj
     runAs: 0:0
     useTTY: false
@@ -2313,7 +2313,7 @@ jobs:
         cd src/Addons/SimpleW.Service.Background
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Background.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Background.csproj
     runAs: 0:0
     useTTY: false
@@ -2396,7 +2396,7 @@ jobs:
         cd src/Addons/SimpleW.Service.BasicAuth
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.BasicAuth.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.BasicAuth.csproj
     runAs: 0:0
     useTTY: false
@@ -2479,7 +2479,7 @@ jobs:
         cd src/Addons/SimpleW.Service.Jwt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Jwt.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Jwt.csproj
     runAs: 0:0
     useTTY: false
@@ -2562,7 +2562,7 @@ jobs:
         cd src/Addons/SimpleW.Service.Chaos
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Chaos.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Chaos.csproj
     runAs: 0:0
     useTTY: false
@@ -2645,7 +2645,7 @@ jobs:
         cd src/Addons/SimpleW.Service.Firewall
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Firewall.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Firewall.csproj
     runAs: 0:0
     useTTY: false
@@ -2728,7 +2728,7 @@ jobs:
         cd src/Addons/SimpleW.Service.FileBrowser
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.FileBrowser.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.FileBrowser.csproj
     runAs: 0:0
     useTTY: false
@@ -2811,7 +2811,7 @@ jobs:
         cd src/Addons/SimpleW.Service.Latency
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.Latency.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.Latency.csproj
     runAs: 0:0
     useTTY: false
@@ -2894,7 +2894,7 @@ jobs:
         cd src/Addons/SimpleW.Service.LetsEncrypt
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.LetsEncrypt.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.LetsEncrypt.csproj
     runAs: 0:0
     useTTY: false
@@ -2977,7 +2977,7 @@ jobs:
         cd src/Addons/SimpleW.Service.OpenID
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Service.OpenID.csproj; fi
-        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
         dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Service.OpenID.csproj
     runAs: 0:0
     useTTY: false
