@@ -652,7 +652,7 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             session.Request.Query.TryGetValue("path", out string? rawPath);
-            if (!TryResolve(rawPath, allowRoot: true, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
+            if (!TryResolve(rawPath, allowRoot: true, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
             }
             if (!CanAccessPath(session, resolved.RelativePath)) {
@@ -912,7 +912,7 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             session.Request.Query.TryGetValue("path", out string? rawPath);
-            if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
+            if (!TryResolve(rawPath, allowRoot: false, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
             }
             if (!CanAccessPath(session, resolved.RelativePath)) {
@@ -947,7 +947,7 @@ namespace SimpleW.Service.FileBrowser {
             if (request == null) {
                 return ErrorAsync(session, 400, jsonError);
             }
-            if (!TryResolve(request.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
+            if (!TryResolve(request.Path, allowRoot: false, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
             }
             if (!CanAccessPath(session, resolved.RelativePath)) {
@@ -986,7 +986,7 @@ namespace SimpleW.Service.FileBrowser {
             if (request == null) {
                 return ErrorAsync(session, 400, jsonError);
             }
-            if (!TryResolve(request.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
+            if (!TryResolve(request.Path, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
             if (!CanAccessPath(session, source.RelativePath)) {
@@ -1054,13 +1054,13 @@ namespace SimpleW.Service.FileBrowser {
             if (request == null) {
                 return ErrorAsync(session, 400, jsonError);
             }
-            if (!TryResolve(request.SourcePath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
+            if (!TryResolve(request.SourcePath, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
             if (!CanAccessPath(session, source.RelativePath)) {
                 return ForbiddenAsync(session);
             }
-            if (!TryResolve(request.DestinationDirectory, allowRoot: true, mustBeRelativeToRoot: true, out ResolvedPath destinationDirectory, out string? destinationError)) {
+            if (!TryResolve(request.DestinationDirectory, allowRoot: true, out ResolvedPath destinationDirectory, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
             }
             if (!CanAccessPath(session, destinationDirectory.RelativePath)) {
@@ -1166,7 +1166,7 @@ namespace SimpleW.Service.FileBrowser {
             }
             List<ResolvedPath> sources = new();
             foreach (string rawPath in rawPaths.Distinct(StringComparer.Ordinal)) {
-                if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
+                if (!TryResolve(rawPath, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                     return ErrorAsync(session, 400, sourceError);
                 }
                 if (!CanAccessPath(session, source.RelativePath)) {
@@ -1274,7 +1274,7 @@ namespace SimpleW.Service.FileBrowser {
                     return ForbiddenAsync(session);
                 }
                 string? destinationPath = restoreElsewhere ? request.DestinationPath : entry.OriginalPath;
-                if (!TryResolve(destinationPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
+                if (!TryResolve(destinationPath, allowRoot: false, out ResolvedPath destination, out string? destinationError)) {
                     return ErrorAsync(session, 400, destinationError);
                 }
                 if (!CanAccessPath(session, destination.RelativePath)) {
@@ -1497,7 +1497,7 @@ namespace SimpleW.Service.FileBrowser {
                     || metadata.Version != 1
                     || (metadata.Type != "file" && metadata.Type != "directory")
                     || string.IsNullOrWhiteSpace(metadata.Name)
-                    || !TryResolve(metadata.OriginalPath, allowRoot: false, mustBeRelativeToRoot: true, out _, out _)) {
+                    || !TryResolve(metadata.OriginalPath, allowRoot: false, out _, out _)) {
                     return false;
                 }
 
@@ -1615,7 +1615,7 @@ namespace SimpleW.Service.FileBrowser {
                 if (string.IsNullOrWhiteSpace(rawPath)) {
                     return ErrorAsync(session, 400, "path_required");
                 }
-                if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
+                if (!TryResolve(rawPath, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                     return ErrorAsync(session, 400, sourceError);
                 }
                 if (!CanAccessPath(session, source.RelativePath)) {
@@ -1629,7 +1629,7 @@ namespace SimpleW.Service.FileBrowser {
                 }
             }
 
-            if (!TryResolve(request.DestinationPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
+            if (!TryResolve(request.DestinationPath, allowRoot: false, out ResolvedPath destination, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
             }
             if (!string.Equals(System.IO.Path.GetExtension(destination.FullPath), ".zip", StringComparison.OrdinalIgnoreCase)) {
@@ -1849,7 +1849,7 @@ namespace SimpleW.Service.FileBrowser {
             if (request == null) {
                 return ErrorAsync(session, 400, jsonError);
             }
-            if (!TryResolve(request.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
+            if (!TryResolve(request.Path, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
             if (!CanAccessPath(session, source.RelativePath)) {
@@ -1861,7 +1861,7 @@ namespace SimpleW.Service.FileBrowser {
             if (!string.Equals(System.IO.Path.GetExtension(source.FullPath), ".zip", StringComparison.OrdinalIgnoreCase)) {
                 return ErrorAsync(session, 400, "unsupported_archive");
             }
-            if (!TryResolve(request.DestinationDirectory, allowRoot: true, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
+            if (!TryResolve(request.DestinationDirectory, allowRoot: true, out ResolvedPath destination, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
             }
             if (!CanAccessPath(session, destination.RelativePath)) {
@@ -2198,7 +2198,7 @@ namespace SimpleW.Service.FileBrowser {
                 if (total > _options.MaxUploadBytes) {
                     return ErrorAsync(session, 413, "upload_too_large");
                 }
-                if (!TryResolve(file.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
+                if (!TryResolve(file.Path, allowRoot: false, out ResolvedPath resolved, out string? error)) {
                     return ErrorAsync(session, 400, error);
                 }
                 if (!CanAccessPath(session, resolved.RelativePath)) {
@@ -2880,15 +2880,14 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         /// <summary>
-        /// Resolves a client path and optionally requires it to remain inside the configured root.
+        /// Resolves a client path and requires it to remain inside the configured root.
         /// </summary>
         /// <param name="input"></param>
         /// <param name="allowRoot"></param>
-        /// <param name="mustBeRelativeToRoot"></param>
         /// <param name="resolved"></param>
         /// <param name="error"></param>
         /// <returns></returns>
-        private bool TryResolve(string? input, bool allowRoot, bool mustBeRelativeToRoot, out ResolvedPath resolved, out string? error) {
+        private bool TryResolve(string? input, bool allowRoot, out ResolvedPath resolved, out string? error) {
             resolved = default;
             if (!TryNormalizeRelative(input, allowRoot, out string relativePath, out error)) {
                 return false;
@@ -2899,7 +2898,7 @@ namespace SimpleW.Service.FileBrowser {
                 : System.IO.Path.Combine(_options.NormalizedPath, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
 
             full = System.IO.Path.GetFullPath(full);
-            if (mustBeRelativeToRoot && !IsInsideOrEqual(full, _options.NormalizedPath)) {
+            if (!IsInsideOrEqual(full, _options.NormalizedPath)) {
                 error = "path_outside_root";
                 return false;
             }
