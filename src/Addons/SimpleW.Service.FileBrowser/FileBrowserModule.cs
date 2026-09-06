@@ -29,6 +29,7 @@ namespace SimpleW.Service.FileBrowser {
 
         private readonly FileBrowserOptions _options;
         private readonly ConcurrentDictionary<Guid, UploadSession> _uploads = new();
+        private readonly object _uploadsSync = new();
         private readonly ConcurrentDictionary<Guid, QueuedOperation> _trackedOperations = new();
         private readonly Channel<QueuedOperation> _operations = Channel.CreateUnbounded<QueuedOperation>(new UnboundedChannelOptions {
             SingleReader = true,
@@ -39,6 +40,7 @@ namespace SimpleW.Service.FileBrowser {
         private ServerSentEventsHub? _eventsHub;
         private CancellationTokenSource? _operationsCts;
         private Task? _operationsTask;
+        private Task? _uploadCleanupTask;
 
         #endregion constants and fields
 
@@ -62,6 +64,7 @@ namespace SimpleW.Service.FileBrowser {
             Directory.CreateDirectory(_options.NormalizedPath);
             Directory.CreateDirectory(_options.NormalizedTrashPath);
             Directory.CreateDirectory(_tempPath);
+            CleanupAbandonedUploadFiles(DateTimeOffset.UtcNow);
 
             if (_options.EnableEvents) {
                 server.UseServerSentEventsModule(sse => {
@@ -128,6 +131,8 @@ namespace SimpleW.Service.FileBrowser {
             server.Map("POST", Route("/api/extract"), (HttpSession session) => ExtractAsync(session));
             server.Map("POST", Route("/api/operations/cancel"), (HttpSession session) => CancelOperationsAsync(session));
             server.Map("POST", Route("/api/uploads"), (HttpSession session) => CreateUploadAsync(session));
+            server.MapGet(Route("/api/uploads/:id"), (HttpSession session) => GetUploadAsync(session));
+            server.Map("DELETE", Route("/api/uploads/:id"), (HttpSession session) => DeleteUploadAsync(session));
             server.Map("POST", Route("/api/uploads/:id/files"), (HttpSession session) => UploadFileAsync(session));
             server.Map("POST", Route("/api/uploads/:id/chunks"), (HttpSession session) => UploadChunkAsync(session));
             server.Map("POST", Route("/api/uploads/:id/complete"), (HttpSession session) => CompleteUploadAsync(session));
@@ -317,7 +322,9 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             _operationsCts = new CancellationTokenSource();
-            _operationsTask = Task.Run(() => RunOperationsAsync(_operationsCts.Token));
+            CancellationToken cancellationToken = _operationsCts.Token;
+            _operationsTask = Task.Run(() => RunOperationsAsync(cancellationToken));
+            _uploadCleanupTask = Task.Run(() => RunUploadCleanupAsync(cancellationToken));
         }
 
         /// <summary>
@@ -326,10 +333,12 @@ namespace SimpleW.Service.FileBrowser {
         private async Task StopOperationsAsync() {
             CancellationTokenSource? cts = _operationsCts;
             Task? task = _operationsTask;
+            Task? uploadCleanupTask = _uploadCleanupTask;
             _operationsCts = null;
             _operationsTask = null;
+            _uploadCleanupTask = null;
 
-            if (cts == null || task == null) {
+            if (cts == null) {
                 return;
             }
 
@@ -337,16 +346,50 @@ namespace SimpleW.Service.FileBrowser {
                 foreach (QueuedOperation operation in _trackedOperations.Values) {
                     operation.Cancel();
                 }
-                foreach (UploadSession upload in _uploads.Values) {
-                    upload.Cancel();
-                    CleanupUploadSession(upload);
-                }
                 cts.Cancel();
-                await task.ConfigureAwait(false);
+
+                foreach (KeyValuePair<Guid, UploadSession> item in _uploads.ToArray()) {
+                    if (!TryRemoveUpload(item.Key, out UploadSession upload)) {
+                        continue;
+                    }
+
+                    upload.Cancel();
+                    await CleanupUploadSessionAsync(upload).ConfigureAwait(false);
+                    upload.Dispose();
+                }
+
+                if (task != null && uploadCleanupTask != null) {
+                    await Task.WhenAll(task, uploadCleanupTask).ConfigureAwait(false);
+                }
+                else if (task != null) {
+                    await task.ConfigureAwait(false);
+                }
+                else if (uploadCleanupTask != null) {
+                    await uploadCleanupTask.ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) { }
             finally {
                 cts.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Periodically expires inactive upload sessions and removes orphaned upload parts.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        private async Task RunUploadCleanupAsync(CancellationToken cancellationToken) {
+            long intervalTicks = Math.Min(_options.UploadSessionTimeout.Ticks / 2, TimeSpan.FromMinutes(1).Ticks);
+            TimeSpan interval = TimeSpan.FromTicks(Math.Max(intervalTicks, TimeSpan.FromSeconds(1).Ticks));
+            using PeriodicTimer timer = new(interval);
+
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false)) {
+                try {
+                    await CleanupExpiredUploadsAsync(DateTimeOffset.UtcNow).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested) {
+                    _log.Warn("upload cleanup failed", ex);
+                }
             }
         }
 
@@ -539,6 +582,8 @@ namespace SimpleW.Service.FileBrowser {
                 enableEvents = _options.EnableEvents,
                 uploadChunkThresholdBytes = _options.UploadChunkThresholdBytes,
                 uploadChunkBytes = _options.UploadChunkBytes,
+                uploadSessionTimeoutSeconds = _options.UploadSessionTimeout.TotalSeconds,
+                maxConcurrentUploadSessions = _options.MaxConcurrentUploadSessions,
                 maxFileBytes = _options.MaxFileBytes,
                 maxUploadBytes = _options.MaxUploadBytes,
                 maxExtractedFileBytes = _options.MaxExtractedFileBytes,
@@ -1857,12 +1902,22 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             foreach (KeyValuePair<Guid, UploadSession> item in _uploads.ToArray()) {
-                UploadSession upload = item.Value;
-                if (upload.Cancel()) {
+                if (!TryRemoveUpload(item.Key, out UploadSession upload)) {
+                    continue;
+                }
+
+                bool cancelled = upload.Cancel();
+                if (cancelled) {
                     cancelledUploads++;
-                    CleanupUploadSession(upload);
-                    _uploads.TryRemove(item.Key, out _);
-                    await PublishUploadCancelledAsync(upload).ConfigureAwait(false);
+                }
+                try {
+                    await CleanupUploadSessionAsync(upload).ConfigureAwait(false);
+                    if (cancelled) {
+                        await PublishUploadCancelledAsync(upload).ConfigureAwait(false);
+                    }
+                }
+                finally {
+                    upload.Dispose();
                 }
             }
 
@@ -1877,10 +1932,12 @@ namespace SimpleW.Service.FileBrowser {
         /// Publishes the cancellation event for an upload session.
         /// </summary>
         /// <param name="upload"></param>
-        private ValueTask PublishUploadCancelledAsync(UploadSession upload) {
+        /// <param name="reason"></param>
+        private ValueTask PublishUploadCancelledAsync(UploadSession upload, string reason = "cancelled") {
             return PublishEventAsync("filebrowser.upload.cancelled", new {
                 uploadId = upload.Id,
                 files = upload.Files.Keys.ToArray(),
+                reason,
                 timestampUtc = DateTimeOffset.UtcNow
             });
         }
@@ -1933,14 +1990,117 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             UploadSession upload = new(uploadId, files, total);
-            _uploads[uploadId] = upload;
+            if (!TryAddUpload(upload)) {
+                upload.Dispose();
+                return ErrorAsync(session, 429, "too_many_upload_sessions");
+            }
 
             return JsonAsync(session, 201, new {
                 ok = true,
                 uploadId,
                 chunkThresholdBytes = _options.UploadChunkThresholdBytes,
-                chunkBytes = _options.UploadChunkBytes
+                chunkBytes = _options.UploadChunkBytes,
+                expiresAtUtc = upload.LastActivityAtUtc + _options.UploadSessionTimeout
             });
+        }
+
+        /// <summary>
+        /// Returns the received ranges required to resume an active upload session.
+        /// </summary>
+        /// <param name="session"></param>
+        private async ValueTask GetUploadAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                await ForbiddenAsync(session).ConfigureAwait(false);
+                return;
+            }
+            if (!TryGetUploadId(session, out Guid uploadId)) {
+                await ErrorAsync(session, 400, "invalid_upload_id").ConfigureAwait(false);
+                return;
+            }
+            if (!_uploads.TryGetValue(uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
+                await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
+                return;
+            }
+
+            List<object> files = new(upload.Files.Count);
+            long receivedBytes = 0;
+            bool readyToComplete = true;
+            try {
+                foreach (UploadFileState file in upload.Files.Values) {
+                    await file.Gate.WaitAsync(upload.Token).ConfigureAwait(false);
+                    try {
+                        receivedBytes += file.ReceivedBytes;
+                        readyToComplete &= file.IsComplete;
+                        files.Add(new {
+                            path = file.RelativePath,
+                            size = file.Size,
+                            receivedBytes = file.ReceivedBytes,
+                            completed = file.IsComplete,
+                            receivedRanges = file.GetReceivedRanges().Select(static range => new {
+                                start = range.Start,
+                                end = range.End
+                            }).ToArray()
+                        });
+                    }
+                    finally {
+                        file.Gate.Release();
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (upload.IsCancellationRequested) {
+                await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
+                return;
+            }
+
+            upload.TryTouch(_options.UploadSessionTimeout);
+            DateTimeOffset lastActivityAtUtc = upload.LastActivityAtUtc;
+            await JsonAsync(session, 200, new {
+                ok = true,
+                uploadId = upload.Id,
+                totalBytes = upload.TotalBytes,
+                receivedBytes,
+                chunkThresholdBytes = _options.UploadChunkThresholdBytes,
+                chunkBytes = _options.UploadChunkBytes,
+                createdAtUtc = upload.CreatedAtUtc,
+                lastActivityAtUtc,
+                expiresAtUtc = lastActivityAtUtc + _options.UploadSessionTimeout,
+                readyToComplete,
+                files
+            }).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Cancels an upload session and removes all of its temporary files.
+        /// </summary>
+        /// <param name="session"></param>
+        private async ValueTask DeleteUploadAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                await ForbiddenAsync(session).ConfigureAwait(false);
+                return;
+            }
+            if (!TryGetUploadId(session, out Guid uploadId)) {
+                await ErrorAsync(session, 400, "invalid_upload_id").ConfigureAwait(false);
+                return;
+            }
+            if (!TryRemoveUpload(uploadId, out UploadSession upload)) {
+                await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
+                return;
+            }
+
+            upload.Cancel();
+            try {
+                await CleanupUploadSessionAsync(upload).ConfigureAwait(false);
+                await PublishUploadCancelledAsync(upload).ConfigureAwait(false);
+            }
+            finally {
+                upload.Dispose();
+            }
+
+            await JsonAsync(session, 200, new {
+                ok = true,
+                uploadId,
+                cancelled = true
+            }).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1996,7 +2156,7 @@ namespace SimpleW.Service.FileBrowser {
                 }
             }
             catch (OperationCanceledException) when (upload.IsCancellationRequested) {
-                CleanupUploadSession(upload);
+                await CleanupUploadSessionAsync(upload).ConfigureAwait(false);
                 await ErrorAsync(session, 409, "upload_cancelled").ConfigureAwait(false);
                 return;
             }
@@ -2005,6 +2165,7 @@ namespace SimpleW.Service.FileBrowser {
                 return;
             }
 
+            upload.TryTouch(_options.UploadSessionTimeout);
             await PublishUploadProgressAsync(upload!.Id, file).ConfigureAwait(false);
             await JsonAsync(session, 200, new { ok = true, path = file.RelativePath, receivedBytes = file.ReceivedBytes, completed = file.IsComplete }).ConfigureAwait(false);
         }
@@ -2066,7 +2227,7 @@ namespace SimpleW.Service.FileBrowser {
                 }
             }
             catch (OperationCanceledException) when (upload.IsCancellationRequested) {
-                CleanupUploadSession(upload);
+                await CleanupUploadSessionAsync(upload).ConfigureAwait(false);
                 await ErrorAsync(session, 409, "upload_cancelled").ConfigureAwait(false);
                 return;
             }
@@ -2075,6 +2236,7 @@ namespace SimpleW.Service.FileBrowser {
                 return;
             }
 
+            upload.TryTouch(_options.UploadSessionTimeout);
             await PublishUploadProgressAsync(upload!.Id, file).ConfigureAwait(false);
             await JsonAsync(session, 200, new { ok = true, path = file.RelativePath, receivedBytes = file.ReceivedBytes, completed = file.IsComplete }).ConfigureAwait(false);
         }
@@ -2090,7 +2252,7 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryGetUploadId(session, out Guid uploadId)) {
                 return ErrorAsync(session, 400, "invalid_upload_id");
             }
-            if (!_uploads.TryGetValue(uploadId, out UploadSession? upload)) {
+            if (!_uploads.TryGetValue(uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 return ErrorAsync(session, 404, "upload_not_found");
             }
             if (upload.IsCancellationRequested) {
@@ -2115,6 +2277,7 @@ namespace SimpleW.Service.FileBrowser {
             return EnqueueOperationAsync(session, "completeUpload", string.Empty, cancellationToken => {
                 List<string> changedPaths = new();
                 List<object> completedFiles = new();
+                upload.TryTouch(_options.UploadSessionTimeout);
 
                 foreach (UploadFileState file in upload.Files.Values) {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -2145,7 +2308,9 @@ namespace SimpleW.Service.FileBrowser {
                     }
                 }
 
-                _uploads.TryRemove(uploadId, out _);
+                if (TryRemoveUpload(uploadId, out UploadSession completedUpload)) {
+                    completedUpload.Dispose();
+                }
 
                 return new OperationResult(
                     ChangedPaths: changedPaths.Distinct(StringComparer.Ordinal).ToArray(),
@@ -2172,7 +2337,7 @@ namespace SimpleW.Service.FileBrowser {
                 errorResponse = ErrorAsync(session, 400, "invalid_upload_id");
                 return false;
             }
-            if (!_uploads.TryGetValue(uploadId, out upload)) {
+            if (!_uploads.TryGetValue(uploadId, out upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 errorResponse = ErrorAsync(session, 404, "upload_not_found");
                 return false;
             }
@@ -2250,14 +2415,95 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         /// <summary>
-        /// Deletes temporary files belonging to an upload session.
+        /// Adds an upload session without exceeding the configured concurrent-session limit.
         /// </summary>
         /// <param name="upload"></param>
-        private static void CleanupUploadSession(UploadSession upload) {
-            foreach (UploadFileState file in upload.Files.Values) {
-                if (!file.Gate.Wait(0)) {
+        private bool TryAddUpload(UploadSession upload) {
+            lock (_uploadsSync) {
+                return _uploads.Count < _options.MaxConcurrentUploadSessions && _uploads.TryAdd(upload.Id, upload);
+            }
+        }
+
+        /// <summary>
+        /// Removes one upload session while synchronizing with concurrent creation.
+        /// </summary>
+        /// <param name="uploadId"></param>
+        /// <param name="upload"></param>
+        private bool TryRemoveUpload(Guid uploadId, out UploadSession upload) {
+            lock (_uploadsSync) {
+                return _uploads.TryRemove(uploadId, out upload!);
+            }
+        }
+
+        /// <summary>
+        /// Expires inactive sessions and removes old untracked upload parts.
+        /// </summary>
+        /// <param name="now"></param>
+        private async Task CleanupExpiredUploadsAsync(DateTimeOffset now) {
+            foreach (KeyValuePair<Guid, UploadSession> item in _uploads.ToArray()) {
+                UploadSession upload = item.Value;
+                if (upload.Files.Values.Any(static file => file.Gate.CurrentCount == 0)) {
                     continue;
                 }
+                if (!upload.TryExpire(now, _options.UploadSessionTimeout) || !TryRemoveUpload(item.Key, out UploadSession expiredUpload)) {
+                    continue;
+                }
+
+                try {
+                    await CleanupUploadSessionAsync(expiredUpload).ConfigureAwait(false);
+                    await PublishUploadCancelledAsync(expiredUpload, "expired").ConfigureAwait(false);
+                }
+                finally {
+                    expiredUpload.Dispose();
+                }
+            }
+
+            CleanupAbandonedUploadFiles(now);
+        }
+
+        /// <summary>
+        /// Deletes old upload parts that do not belong to a currently tracked session.
+        /// </summary>
+        /// <param name="now"></param>
+        private void CleanupAbandonedUploadFiles(DateTimeOffset now) {
+            if (!Directory.Exists(_tempPath)) {
+                return;
+            }
+
+            HashSet<string> trackedPaths = _uploads.Values
+                .SelectMany(static upload => upload.Files.Values)
+                .Select(static file => file.TempPath)
+                .ToHashSet(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+            DateTime cutoffUtc = (now - _options.UploadSessionTimeout).UtcDateTime;
+
+            try {
+                foreach (string path in Directory.EnumerateFiles(_tempPath, "*.part", SearchOption.TopDirectoryOnly)) {
+                    if (trackedPaths.Contains(path)) {
+                        continue;
+                    }
+
+                    try {
+                        if (File.GetLastWriteTimeUtc(path) <= cutoffUtc) {
+                            File.Delete(path);
+                        }
+                    }
+                    catch {
+                        // best effort cleanup only
+                    }
+                }
+            }
+            catch {
+                // best effort cleanup only
+            }
+        }
+
+        /// <summary>
+        /// Deletes temporary files belonging to an upload session after active writes finish.
+        /// </summary>
+        /// <param name="upload"></param>
+        private static async Task CleanupUploadSessionAsync(UploadSession upload) {
+            foreach (UploadFileState file in upload.Files.Values) {
+                await file.Gate.WaitAsync().ConfigureAwait(false);
                 try {
                     TryDeleteFile(file.TempPath);
                 }

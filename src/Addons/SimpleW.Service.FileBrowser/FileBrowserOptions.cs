@@ -83,6 +83,16 @@ namespace SimpleW.Service.FileBrowser {
         public long UploadChunkBytes { get; set; } = 16L * 1024 * 1024;
 
         /// <summary>
+        /// Maximum inactivity duration before an upload session and its temporary files are removed.
+        /// </summary>
+        public TimeSpan UploadSessionTimeout { get; set; } = TimeSpan.FromMinutes(30);
+
+        /// <summary>
+        /// Maximum number of upload sessions tracked at the same time.
+        /// </summary>
+        public int MaxConcurrentUploadSessions { get; set; } = 100;
+
+        /// <summary>
         /// Default number of entries returned by one list request.
         /// </summary>
         public int DefaultPageSize { get; set; } = 100;
@@ -147,6 +157,12 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (UploadChunkBytes <= 0) {
                 throw new ArgumentOutOfRangeException(nameof(UploadChunkBytes), "Must be > 0.");
+            }
+            if (UploadSessionTimeout <= TimeSpan.Zero) {
+                throw new ArgumentOutOfRangeException(nameof(UploadSessionTimeout), "Must be > 0.");
+            }
+            if (MaxConcurrentUploadSessions <= 0) {
+                throw new ArgumentOutOfRangeException(nameof(MaxConcurrentUploadSessions), "Must be > 0.");
             }
             if (DefaultPageSize <= 0) {
                 throw new ArgumentOutOfRangeException(nameof(DefaultPageSize), "Must be > 0.");

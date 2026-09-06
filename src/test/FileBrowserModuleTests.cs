@@ -907,6 +907,133 @@ namespace test {
         }
 
         [Fact]
+        public async Task Upload_Status_Should_Return_Received_Ranges_For_Resume() {
+            string root = CreateRoot(nameof(Upload_Status_Should_Return_Received_Ranges_For_Resume));
+            var server = CreateAnonymousServer(root, 0, options => {
+                options.UploadChunkThresholdBytes = 4;
+                options.UploadChunkBytes = 4;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                Guid uploadId = await CreateUploadAsync(client, server, "resume/file.bin", 8);
+                await SendChunkAsync(client, server, uploadId, "resume/file.bin", Encoding.UTF8.GetBytes("4567"), 4);
+
+                HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/uploads/{uploadId}");
+                using JsonDocument json = await ReadJsonAsync(response);
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(json.RootElement.GetProperty("uploadId").GetGuid()).IsEqualTo(uploadId);
+                Check.That(json.RootElement.GetProperty("receivedBytes").GetInt64()).IsEqualTo(4);
+                JsonElement file = json.RootElement.GetProperty("files")[0];
+                Check.That(file.GetProperty("path").GetString()).IsEqualTo("resume/file.bin");
+                Check.That(file.GetProperty("completed").GetBoolean()).IsFalse();
+                JsonElement range = file.GetProperty("receivedRanges")[0];
+                Check.That(range.GetProperty("start").GetInt64()).IsEqualTo(4);
+                Check.That(range.GetProperty("end").GetInt64()).IsEqualTo(8);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Upload_Delete_Should_Cancel_Session_And_Remove_Parts() {
+            string root = CreateRoot(nameof(Upload_Delete_Should_Cancel_Session_And_Remove_Parts));
+            var server = CreateAnonymousServer(root, 0, options => {
+                options.UploadChunkThresholdBytes = 4;
+                options.UploadChunkBytes = 4;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                Guid uploadId = await CreateUploadAsync(client, server, "cancel/file.bin", 8);
+                await SendChunkAsync(client, server, uploadId, "cancel/file.bin", Encoding.UTF8.GetBytes("0123"), 0);
+                string tempPath = Path.Combine(root, ".filebrowser-tmp");
+                Check.That(Directory.EnumerateFiles(tempPath, "*.part").Count()).IsEqualTo(1);
+
+                HttpResponseMessage delete = await client.DeleteAsync($"http://{server.Address}:{server.Port}/files/api/uploads/{uploadId}");
+                Check.That(delete.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(Directory.EnumerateFiles(tempPath, "*.part").Count()).IsEqualTo(0);
+
+                HttpResponseMessage status = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/uploads/{uploadId}");
+                Check.That(status.StatusCode).Is(HttpStatusCode.NotFound);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Upload_Create_Should_Enforce_Maximum_Concurrent_Sessions() {
+            string root = CreateRoot(nameof(Upload_Create_Should_Enforce_Maximum_Concurrent_Sessions));
+            var server = CreateAnonymousServer(root, 0, options => {
+                options.MaxConcurrentUploadSessions = 1;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                Guid uploadId = await CreateUploadAsync(client, server, "first.bin", 1);
+                HttpResponseMessage rejected = await client.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/uploads",
+                    JsonContent(new { files = new[] { new { path = "second.bin", size = 1 } } })
+                );
+                Check.That(rejected.StatusCode).Is(HttpStatusCode.TooManyRequests);
+
+                HttpResponseMessage delete = await client.DeleteAsync($"http://{server.Address}:{server.Port}/files/api/uploads/{uploadId}");
+                Check.That(delete.StatusCode).Is(HttpStatusCode.OK);
+                await CreateUploadAsync(client, server, "third.bin", 1);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Upload_Session_Should_Expire_And_Remove_Parts() {
+            string root = CreateRoot(nameof(Upload_Session_Should_Expire_And_Remove_Parts));
+            var server = CreateAnonymousServer(root, 0, options => {
+                options.UploadChunkThresholdBytes = 4;
+                options.UploadChunkBytes = 4;
+                options.UploadSessionTimeout = TimeSpan.FromMilliseconds(100);
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                Guid uploadId = await CreateUploadAsync(client, server, "expired/file.bin", 8);
+                await SendChunkAsync(client, server, uploadId, "expired/file.bin", Encoding.UTF8.GetBytes("0123"), 0);
+                string tempPath = Path.Combine(root, ".filebrowser-tmp");
+
+                await WaitUntilAsync(() => !Directory.EnumerateFiles(tempPath, "*.part").Any());
+                HttpResponseMessage status = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/uploads/{uploadId}");
+                Check.That(status.StatusCode).Is(HttpStatusCode.NotFound);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public void Upload_Install_Should_Remove_Old_Abandoned_Parts() {
+            string root = CreateRoot(nameof(Upload_Install_Should_Remove_Old_Abandoned_Parts));
+            string tempPath = Path.Combine(root, ".filebrowser-tmp");
+            Directory.CreateDirectory(tempPath);
+            string abandonedPart = Path.Combine(tempPath, "abandoned.part");
+            File.WriteAllText(abandonedPart, "partial");
+            File.SetLastWriteTimeUtc(abandonedPart, DateTime.UtcNow.AddHours(-1));
+
+            CreateAnonymousServer(root, 0, options => {
+                options.UploadSessionTimeout = TimeSpan.FromMinutes(30);
+            });
+
+            Check.That(File.Exists(abandonedPart)).IsFalse();
+        }
+
+        [Fact]
         public async Task Rename_Move_And_Delete_Should_Update_FileSystem() {
             string root = CreateRoot(nameof(Rename_Move_And_Delete_Should_Update_FileSystem));
             Directory.CreateDirectory(Path.Combine(root, "source", "child"));

@@ -30,6 +30,8 @@ server.UseFileBrowserModule(options => {
     options.AllowAnonymous = true;
     options.UploadChunkThresholdBytes = 100 * 1024 * 1024;
     options.UploadChunkBytes = 16 * 1024 * 1024;
+    options.UploadSessionTimeout = TimeSpan.FromMinutes(30);
+    options.MaxConcurrentUploadSessions = 100;
     options.DefaultPageSize = 100;
     options.MaxPageSize = 1000;
 });
@@ -57,6 +59,8 @@ File operations return `202 Accepted` and publish:
 - `filebrowser.changed`
 
 `POST /files/api/operations/cancel` cancels pending/running operations and active upload sessions on a best-effort basis.
+
+Upload sessions expire after `UploadSessionTimeout` without activity, and at most `MaxConcurrentUploadSessions` sessions may be active at once. Old orphaned `.part` files are removed at startup and periodically. `GET /files/api/uploads/:id` returns each file's received byte ranges so a client can resume only the missing chunks. `DELETE /files/api/uploads/:id` cancels one session and removes its temporary files.
 
 `UploadChunkBytes` must be lower than or equal to `SimpleWServerOptions.MaxRequestBodySize`, because SimpleW validates each request body before the module receives it.
 

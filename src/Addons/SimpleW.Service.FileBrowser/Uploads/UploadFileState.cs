@@ -74,6 +74,14 @@ namespace SimpleW.Service.FileBrowser {
             ReceivedBytes = _ranges.Sum(static r => r.End - r.Start);
         }
 
+        /// <summary>
+        /// Returns a stable snapshot of the received byte ranges.
+        /// The caller must hold <see cref="Gate"/>.
+        /// </summary>
+        public ReceivedRange[] GetReceivedRanges() {
+            return _ranges.ToArray();
+        }
+
         #endregion received ranges
 
     }
