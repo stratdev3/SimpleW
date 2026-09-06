@@ -8,6 +8,15 @@ Notes :
 - No long-term support or backports for major versions, just stick to the latest update.
 
 
+## Unreleased
+Maintenance
+
+### feature
+
+- feature(SimpleW): add a server-wide authentication challenge (#442)
+
+
+
 ## v26.1.0 - _(2026-08-29)_
 
 This major release completely rewrites `ISimpleWEngine` so alternative engines can be provided as addons, and introduces Ioxide as the first alternative engine implementation.

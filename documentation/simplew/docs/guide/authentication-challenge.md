@@ -1,4 +1,4 @@
-# Authentication Challenge
+# Authentication Challenge <Badge type="tip" text="v26.1.1-alpha" />
 
 An authentication challenge tells a client how to continue when a module-wide authorization gate rejects a request.
 
