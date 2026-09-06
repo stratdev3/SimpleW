@@ -2467,12 +2467,13 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         /// <summary>
-        /// Reads and URL-decodes the required upload file path header.
+        /// Reads the required upload file path, decoding the header once while preserving the already-decoded query value.
         /// </summary>
         /// <param name="session"></param>
         /// <param name="path"></param>
         private static bool TryGetPathHeader(HttpSession session, out string? path) {
             if (session.Request.Headers.TryGetValue("X-File-Path", out path) && !string.IsNullOrWhiteSpace(path)) {
+                path = DecodePathHeader(path);
                 return true;
             }
             if (session.Request.Query.TryGetValue("path", out path) && !string.IsNullOrWhiteSpace(path)) {
@@ -2695,7 +2696,7 @@ namespace SimpleW.Service.FileBrowser {
             relativePath = string.Empty;
             error = null;
 
-            string value = UrlDecode(input ?? string.Empty).Trim().Replace('\\', '/');
+            string value = (input ?? string.Empty).Trim().Replace('\\', '/');
             while (value.StartsWith("/", StringComparison.Ordinal)) {
                 value = value[1..];
             }
@@ -2892,10 +2893,10 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         /// <summary>
-        /// Decodes percent-encoded UTF-8 data from a request value.
+        /// Decodes percent-encoded UTF-8 data from the upload path header.
         /// </summary>
         /// <param name="value"></param>
-        private static string UrlDecode(string value) {
+        private static string DecodePathHeader(string value) {
             try {
                 return value.IndexOf('%') >= 0 ? Uri.UnescapeDataString(value) : value;
             }

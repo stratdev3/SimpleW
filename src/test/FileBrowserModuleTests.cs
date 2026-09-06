@@ -337,6 +337,29 @@ namespace test {
             }
         }
 
+        [Theory]
+        [InlineData("literal%2Fname.txt")]
+        [InlineData("%2e%2e")]
+        public async Task Download_Query_Path_Should_Not_Be_Decoded_Twice(string fileName) {
+            string root = CreateRoot(nameof(Download_Query_Path_Should_Not_Be_Decoded_Twice));
+            File.WriteAllText(Path.Combine(root, fileName), "literal-percent-content");
+            var server = CreateAnonymousServer(root, 0);
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                HttpResponseMessage response = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/download?path={Uri.EscapeDataString(fileName)}"
+                );
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(await response.Content.ReadAsStringAsync()).IsEqualTo("literal-percent-content");
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
         [Fact]
         public async Task Ui_Should_Serve_Static_Client_And_Keep_Api_Routes() {
             string root = CreateRoot(nameof(Ui_Should_Serve_Static_Client_And_Keep_Api_Routes));
@@ -854,6 +877,27 @@ namespace test {
                 await UploadDirectAsync(client, server, "nested/file.txt", "v2");
                 await WaitUntilAsync(() => File.ReadAllText(Path.Combine(root, "nested", "file.txt")) == "v2");
                 Check.That(File.ReadAllText(Path.Combine(root, "nested", "file.txt"))).IsEqualTo("v2");
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Upload_Header_Path_Should_Be_Decoded_Once() {
+            string root = CreateRoot(nameof(Upload_Header_Path_Should_Be_Decoded_Once));
+            var server = CreateAnonymousServer(root, 0);
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                const string relativePath = "encoded directory/literal%2Fname.txt";
+
+                await UploadDirectAsync(client, server, relativePath, "literal-percent-content");
+
+                string filePath = Path.Combine(root, "encoded directory", "literal%2Fname.txt");
+                await WaitUntilAsync(() => File.Exists(filePath));
+                Check.That(File.ReadAllText(filePath)).IsEqualTo("literal-percent-content");
             }
             finally {
                 await server.StopAsync();
