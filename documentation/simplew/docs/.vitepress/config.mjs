@@ -81,6 +81,7 @@ export default defineConfig({
                     text: 'Security',
                     items: [
                         { text: 'Principal', link: '/guide/principal' },
+                        { text: 'Authentication Challenge', link: '/guide/authentication-challenge' },
                         { text: 'CORS', link: '/guide/cors' },
                         { text: 'TLS Certificates', link: '/guide/tls-certificates' },
                     ]

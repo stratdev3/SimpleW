@@ -232,7 +232,13 @@ namespace SimpleW.Modules {
             /// <returns></returns>
             private async ValueTask HandlerAsync(HttpSession session) {
                 if (_options.Authorize != null && !_options.Authorize(session)) {
-                    await session.Response.Status(403).Text("Forbidden").SendAsync().ConfigureAwait(false);
+                    HttpChallengeHandler? challenge = session.Server.Challenge;
+                    if (challenge != null) {
+                        await challenge(session).ConfigureAwait(false);
+                    }
+                    else {
+                        await session.Response.Status(403).Text("Forbidden").SendAsync().ConfigureAwait(false);
+                    }
                     return;
                 }
 

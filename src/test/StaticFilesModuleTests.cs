@@ -37,6 +37,43 @@ namespace test {
                 using var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.dll");
 
                 Check.That(response.StatusCode).Is(HttpStatusCode.Forbidden);
+                Check.That(await response.Content.ReadAsStringAsync()).IsEqualTo("Forbidden");
+            }
+            finally {
+                if (started) {
+                    await server.StopAsync();
+                }
+            }
+        }
+
+        [Fact]
+        public async Task Get_StaticContent_Should_Use_Server_Challenge_When_Authorize_Denies() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
+            int challengeCount = 0;
+
+            server.ConfigureChallenge(session => {
+                challengeCount++;
+                return session.Response.Status(401).Text("Authenticate").SendAsync();
+            });
+
+            server.UseStaticFilesModule(options => {
+                options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+                options.Prefix = "/files";
+                options.Authorize = _ => false;
+            });
+
+            bool started = false;
+            try {
+                await server.StartAsync();
+                started = true;
+
+                using var client = new HttpClient();
+                using var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.dll");
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.Unauthorized);
+                Check.That(await response.Content.ReadAsStringAsync()).IsEqualTo("Authenticate");
+                Check.That(challengeCount).IsEqualTo(1);
             }
             finally {
                 if (started) {

@@ -78,6 +78,18 @@ namespace SimpleW {
 
     #endregion principal resolver
 
+    #region authentication challenge
+
+    /// <summary>
+    /// Handle an authentication challenge for a request rejected by a module authorization gate.
+    /// The handler must send the response.
+    /// </summary>
+    /// <param name="session"></param>
+    /// <returns></returns>
+    public delegate ValueTask HttpChallengeHandler(HttpSession session);
+
+    #endregion authentication challenge
+
     #region middleware
 
     /// <summary>

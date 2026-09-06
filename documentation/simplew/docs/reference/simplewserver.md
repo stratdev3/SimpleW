@@ -550,6 +550,43 @@ public SimpleWServer ConfigurePrincipalResolver(HttpPrincipalResolver resolver)
 See an [example](../guide/principal.md).
 
 
+## ConfigureChallenge
+
+```csharp
+/// <summary>
+/// Handle an authentication challenge for a request rejected by a module authorization gate.
+/// The handler must send the response.
+/// </summary>
+public delegate ValueTask HttpChallengeHandler(HttpSession session);
+```
+
+```csharp
+/// <summary>
+/// Authentication challenge invoked by modules when their authorization gate rejects a request.
+/// The handler must send the response.
+/// </summary>
+public HttpChallengeHandler? Challenge { get; private set; }
+```
+
+```csharp
+/// <summary>
+/// Configure the authentication challenge used by modules.
+/// </summary>
+public SimpleWServer ConfigureChallenge(HttpChallengeHandler challenge)
+```
+
+The challenge is shared by FileBrowser, StaticFiles, ServerSentEvents, and WebSocket authorization gates. It can redirect to a login page, send a `401`, or produce another application-owned response. When no challenge is configured, each module keeps its default `403 Forbidden` response.
+
+```csharp
+server.ConfigureChallenge(session =>
+    session.Response.Redirect("/auth/login").SendAsync());
+```
+
+The handler is not a global interceptor for arbitrary `401` or `403` responses. It is invoked only by modules whose `Authorize` callback rejects a request.
+
+See the [authentication challenge guide](../guide/authentication-challenge.md) for login redirects and SPA bearer-token navigation.
+
+
 ## ConfigureClientIPResolver
 
 ```csharp

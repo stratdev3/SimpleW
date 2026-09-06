@@ -1540,6 +1540,25 @@ namespace test {
 
         #endregion principal
 
+        #region authentication challenge
+
+        [Fact]
+        public void ConfigureChallenge_Should_Store_And_Replace_Handler() {
+
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
+            HttpChallengeHandler first = _ => ValueTask.CompletedTask;
+            HttpChallengeHandler second = _ => ValueTask.CompletedTask;
+
+            Check.That(server.Challenge).IsNull();
+            Check.That(server.ConfigureChallenge(first)).IsSameReferenceAs(server);
+            Check.That(server.Challenge).IsSameReferenceAs(first);
+            Check.That(server.ConfigureChallenge(second)).IsSameReferenceAs(server);
+            Check.That(server.Challenge).IsSameReferenceAs(second);
+            Assert.Throws<ArgumentNullException>(() => server.ConfigureChallenge(null!));
+        }
+
+        #endregion authentication challenge
+
         #region telemetry
 
         [Fact]

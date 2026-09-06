@@ -104,6 +104,9 @@ public string DefaultDocument { get; set; } = "index.html";
 
 ```csharp
 // serve statics files
+server.ConfigureChallenge(session =>
+    session.Response.Redirect("/auth/login").SendAsync());
+
 server.UseStaticFilesModule(options => {
     options.Path = @"C:\www\";                      // serve your files located here
     options.Prefix = "/";                           // to "/" endpoint
@@ -112,7 +115,10 @@ server.UseStaticFilesModule(options => {
     options.MaxCachedFileBytes = 4 * 1024 * 1024;   // at most 4 MiB per cached file
     options.MaxCacheTotalBytes = 256 * 1024 * 1024; // at most 256 MiB in memory
     options.MaxCacheEntries = 10_000;                // at most 10,000 cached files
+    options.Authorize = session => session.Principal.IsAuthenticated;
 });
 ```
+
+When `Authorize` returns `false`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`.
 
 See more [examples](../guide/staticfiles.md).

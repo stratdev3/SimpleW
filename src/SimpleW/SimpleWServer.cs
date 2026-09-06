@@ -1201,6 +1201,27 @@ namespace SimpleW {
 
         #endregion principal
 
+        #region authentication challenge
+
+        /// <summary>
+        /// Authentication challenge invoked by modules when their authorization gate rejects a request.
+        /// The handler must send the response.
+        /// </summary>
+        public HttpChallengeHandler? Challenge { get; private set; }
+
+        /// <summary>
+        /// Configure the authentication challenge used by modules.
+        /// </summary>
+        /// <param name="challenge"></param>
+        /// <returns></returns>
+        public SimpleWServer ConfigureChallenge(HttpChallengeHandler challenge) {
+            ArgumentNullException.ThrowIfNull(challenge);
+            Challenge = challenge;
+            return this;
+        }
+
+        #endregion authentication challenge
+
         #region client ip resolver
 
         /// <summary>

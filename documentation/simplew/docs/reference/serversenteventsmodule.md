@@ -25,10 +25,12 @@ See [examples](../guide/serversentevents.md) of use.
 Use `ServerSentEventsOptions.Authorize` to reject an SSE connection before the handshake:
 
 ```csharp
+server.ConfigureChallenge(session => session.Response.Unauthorized().SendAsync());
+
 server.UseServerSentEventsModule(options => {
     options.Prefix = "/events";
     options.Authorize = session => session.Principal.IsAuthenticated;
 });
 ```
 
-When the callback returns `false`, the module responds with `403 Forbidden` and does not switch the HTTP session to SSE streaming.
+When `Authorize` returns `false`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`. In both cases, the HTTP session is not switched to SSE streaming.

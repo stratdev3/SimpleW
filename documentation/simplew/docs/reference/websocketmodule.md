@@ -119,13 +119,15 @@ public void OnBinary(Func<WebSocketConnection, WebSocketContext, ReadOnlyMemory<
 Use `WebSocketOptions.Authorize` to reject a WebSocket connection before the handshake:
 
 ```csharp
+server.ConfigureChallenge(session => session.Response.Unauthorized().SendAsync());
+
 server.UseWebSocketModule(options => {
     options.Prefix = "/ws";
     options.Authorize = session => session.Principal.IsAuthenticated;
 });
 ```
 
-When the callback returns `false`, the module responds with `403 Forbidden` and does not switch the HTTP session to WebSocket.
+When `Authorize` returns `false`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`. In both cases, the HTTP session is not switched to WebSocket.
 
 
 ## Envelope
