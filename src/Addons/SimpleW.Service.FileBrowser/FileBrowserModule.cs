@@ -61,9 +61,15 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="server"></param>
         public void Install(SimpleWServer server) {
 
+            EnsureNoReparsePoints(_options.NormalizedPath);
             Directory.CreateDirectory(_options.NormalizedPath);
+            EnsureNoReparsePoints(_options.NormalizedPath);
+            EnsureNoTrashReparsePoints(_options.NormalizedTrashPath);
             Directory.CreateDirectory(_options.NormalizedTrashPath);
+            EnsureNoTrashReparsePoints(_options.NormalizedTrashPath);
+            EnsureNoReparsePoints(_tempPath);
             Directory.CreateDirectory(_tempPath);
+            EnsureNoReparsePoints(_tempPath);
             CleanupAbandonedUploadFiles(DateTimeOffset.UtcNow);
 
             if (_options.EnableEvents) {
@@ -656,8 +662,11 @@ namespace SimpleW.Service.FileBrowser {
 
             BrowserItemComparer comparer = new(sort, direction == "desc");
             List<BrowserItem> items = new(pageSize + 1);
+            if (!TryEnsureNoReparsePoints(resolved.FullPath, out error)) {
+                return ErrorAsync(session, 400, error);
+            }
             foreach (string directory in Directory.EnumerateDirectories(resolved.FullPath)) {
-                if (IsInternalPath(directory)) {
+                if (IsInternalPath(directory) || !TryEnsureNoReparsePoints(directory, out _)) {
                     continue;
                 }
                 DirectoryInfo info = new(directory);
@@ -672,7 +681,7 @@ namespace SimpleW.Service.FileBrowser {
                 }
             }
             foreach (string file in Directory.EnumerateFiles(resolved.FullPath)) {
-                if (IsInternalPath(file)) {
+                if (IsInternalPath(file) || !TryEnsureNoReparsePoints(file, out _)) {
                     continue;
                 }
                 FileInfo info = new(file);
@@ -864,6 +873,9 @@ namespace SimpleW.Service.FileBrowser {
             if (!file.Exists) {
                 return ErrorAsync(session, 404, "file_not_found");
             }
+            if (!TryEnsureNoReparsePoints(resolved.FullPath, out error)) {
+                return ErrorAsync(session, 400, error);
+            }
 
             return session.Response
                           .Status(200)
@@ -899,6 +911,7 @@ namespace SimpleW.Service.FileBrowser {
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
+                EnsureNoReparsePoints(resolved.FullPath);
                 Directory.CreateDirectory(resolved.FullPath);
                 return new OperationResult(
                     ChangedPaths: [ParentRelative(resolved.RelativePath)],
@@ -949,9 +962,13 @@ namespace SimpleW.Service.FileBrowser {
 
                 cancellationToken.ThrowIfCancellationRequested();
                 if (File.Exists(source.FullPath)) {
+                    EnsureNoReparsePoints(source.FullPath);
+                    EnsureNoReparsePoints(destinationFull);
                     File.Move(source.FullPath, destinationFull);
                 }
                 else if (Directory.Exists(source.FullPath)) {
+                    EnsureNoReparsePoints(source.FullPath);
+                    EnsureNoReparsePoints(destinationFull);
                     Directory.Move(source.FullPath, destinationFull);
                 }
                 else {
@@ -1026,9 +1043,13 @@ namespace SimpleW.Service.FileBrowser {
 
                 cancellationToken.ThrowIfCancellationRequested();
                 if (isDirectoryNow) {
+                    EnsureNoReparsePoints(source.FullPath);
+                    EnsureNoReparsePoints(destinationFull);
                     Directory.Move(source.FullPath, destinationFull);
                 }
                 else {
+                    EnsureNoReparsePoints(source.FullPath);
+                    EnsureNoReparsePoints(destinationFull);
                     File.Move(source.FullPath, destinationFull);
                 }
 
@@ -1068,7 +1089,13 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 400, "path_required");
             }
 
+            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
+                return ErrorAsync(session, 400, trashError);
+            }
             Directory.CreateDirectory(_options.NormalizedTrashPath);
+            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out trashError)) {
+                return ErrorAsync(session, 400, trashError);
+            }
             List<ResolvedPath> sources = new();
             foreach (string rawPath in rawPaths.Distinct(StringComparer.Ordinal)) {
                 if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
@@ -1088,6 +1115,7 @@ namespace SimpleW.Service.FileBrowser {
 
                 foreach (ResolvedPath source in sources) {
                     cancellationToken.ThrowIfCancellationRequested();
+                    EnsureNoReparsePoints(source.FullPath);
                     if (!File.Exists(source.FullPath) && !Directory.Exists(source.FullPath)) {
                         throw new FileNotFoundException("source_not_found", source.FullPath);
                     }
@@ -1117,7 +1145,13 @@ namespace SimpleW.Service.FileBrowser {
                 return ForbiddenAsync(session);
             }
 
+            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
+                return ErrorAsync(session, 400, trashError);
+            }
             Directory.CreateDirectory(_options.NormalizedTrashPath);
+            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out trashError)) {
+                return ErrorAsync(session, 400, trashError);
+            }
             TrashEntry[] entries = ListTrashEntries()
                 .OrderByDescending(entry => entry.DeletedUtc)
                 .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
@@ -1180,6 +1214,7 @@ namespace SimpleW.Service.FileBrowser {
                 List<string> changedPaths = new();
                 foreach (TrashRestorePlan plan in plans) {
                     cancellationToken.ThrowIfCancellationRequested();
+                    EnsureNoTrashReparsePoints(plan.Entry.PayloadPath);
                     if (!File.Exists(plan.Entry.PayloadPath) && !Directory.Exists(plan.Entry.PayloadPath)) {
                         throw new FileNotFoundException("trash_item_not_found", plan.Entry.PayloadPath);
                     }
@@ -1189,9 +1224,12 @@ namespace SimpleW.Service.FileBrowser {
 
                     string? destinationParent = System.IO.Path.GetDirectoryName(plan.Destination.FullPath);
                     if (!string.IsNullOrEmpty(destinationParent)) {
+                        EnsureNoReparsePoints(destinationParent);
                         Directory.CreateDirectory(destinationParent);
                     }
                     cancellationToken.ThrowIfCancellationRequested();
+                    EnsureNoReparsePoints(plan.Destination.FullPath);
+                    EnsureNoTrashReparsePoints(plan.Entry.PayloadPath);
                     if (plan.Entry.Type == "directory") {
                         Directory.Move(plan.Entry.PayloadPath, plan.Destination.FullPath);
                     }
@@ -1200,7 +1238,10 @@ namespace SimpleW.Service.FileBrowser {
                     }
 
                     if (plan.Entry.CanRestore) {
-                        TryDeleteFile(System.IO.Path.Combine(plan.Entry.RootPath, TrashMetadataFileName));
+                        string metadataPath = System.IO.Path.Combine(plan.Entry.RootPath, TrashMetadataFileName);
+                        EnsureNoTrashReparsePoints(metadataPath);
+                        TryDeleteFile(metadataPath);
+                        EnsureNoTrashReparsePoints(plan.Entry.RootPath);
                         Directory.Delete(plan.Entry.RootPath, recursive: false);
                     }
                     restored.Add(new { id = plan.Entry.Id, path = plan.Destination.RelativePath });
@@ -1243,7 +1284,13 @@ namespace SimpleW.Service.FileBrowser {
                 return ForbiddenAsync(session);
             }
 
+            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
+                return ErrorAsync(session, 400, trashError);
+            }
             Directory.CreateDirectory(_options.NormalizedTrashPath);
+            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out trashError)) {
+                return ErrorAsync(session, 400, trashError);
+            }
             return EnqueueOperationAsync(session, "emptyTrash", "Trash", cancellationToken =>
                 PermanentlyDeleteTrashEntries(ListTrashEntries().ToList(), cancellationToken));
         }
@@ -1260,6 +1307,7 @@ namespace SimpleW.Service.FileBrowser {
                 if (!File.Exists(entry.RootPath) && !Directory.Exists(entry.RootPath)) {
                     continue;
                 }
+                EnsureNoTrashReparsePoints(entry.RootPath);
                 DeleteFileSystemEntry(entry.RootPath, cancellationToken);
                 deletedIds.Add(entry.Id);
             }
@@ -1283,10 +1331,16 @@ namespace SimpleW.Service.FileBrowser {
             string name = System.IO.Path.GetFileName(TrimEndingDirectorySeparator(source.FullPath));
             TrashItemMetadata metadata = new(1, source.RelativePath, name, isDirectory ? "directory" : "file", deletedUtc);
 
+            EnsureNoTrashReparsePoints(rootPath);
             Directory.CreateDirectory(rootPath);
+            EnsureNoTrashReparsePoints(rootPath);
             try {
-                File.WriteAllText(System.IO.Path.Combine(rootPath, TrashMetadataFileName), JsonSerializer.Serialize(metadata, JsonOptions));
+                string metadataPath = System.IO.Path.Combine(rootPath, TrashMetadataFileName);
+                EnsureNoTrashReparsePoints(metadataPath);
+                File.WriteAllText(metadataPath, JsonSerializer.Serialize(metadata, JsonOptions));
                 cancellationToken.ThrowIfCancellationRequested();
+                EnsureNoReparsePoints(source.FullPath);
+                EnsureNoTrashReparsePoints(payloadPath);
                 if (isDirectory) {
                     Directory.Move(source.FullPath, payloadPath);
                 }
@@ -1295,9 +1349,14 @@ namespace SimpleW.Service.FileBrowser {
                 }
             }
             catch {
-                TryDeleteFile(System.IO.Path.Combine(rootPath, TrashMetadataFileName));
+                string metadataPath = System.IO.Path.Combine(rootPath, TrashMetadataFileName);
+                if (TryEnsureNoTrashReparsePoints(metadataPath, out _)) {
+                    TryDeleteFile(metadataPath);
+                }
                 try {
-                    Directory.Delete(rootPath, recursive: false);
+                    if (TryEnsureNoTrashReparsePoints(rootPath, out _)) {
+                        Directory.Delete(rootPath, recursive: false);
+                    }
                 }
                 catch {
                     // Keep any successfully moved payload in trash rather than deleting user data.
@@ -1313,7 +1372,11 @@ namespace SimpleW.Service.FileBrowser {
         /// Enumerates valid managed entries and compatible legacy entries from the trash directory.
         /// </summary>
         private IEnumerable<TrashEntry> ListTrashEntries() {
+            EnsureNoTrashReparsePoints(_options.NormalizedTrashPath);
             foreach (string rootPath in Directory.EnumerateFileSystemEntries(_options.NormalizedTrashPath)) {
+                if (!TryEnsureNoTrashReparsePoints(rootPath, out _)) {
+                    continue;
+                }
                 string id = System.IO.Path.GetFileName(rootPath);
                 if (TryReadManagedTrashEntry(id, rootPath, out TrashEntry managedEntry)) {
                     yield return managedEntry;
@@ -1336,11 +1399,11 @@ namespace SimpleW.Service.FileBrowser {
         /// <returns></returns>
         private bool TryReadManagedTrashEntry(string id, string rootPath, out TrashEntry entry) {
             entry = default!;
-            if (!Directory.Exists(rootPath)) {
+            if (!TryEnsureNoTrashReparsePoints(rootPath, out _) || !Directory.Exists(rootPath)) {
                 return false;
             }
             string metadataPath = System.IO.Path.Combine(rootPath, TrashMetadataFileName);
-            if (!File.Exists(metadataPath)) {
+            if (!TryEnsureNoTrashReparsePoints(metadataPath, out _) || !File.Exists(metadataPath)) {
                 return false;
             }
 
@@ -1355,6 +1418,9 @@ namespace SimpleW.Service.FileBrowser {
                 }
 
                 string payloadPath = System.IO.Path.Combine(rootPath, TrashPayloadName);
+                if (!TryEnsureNoTrashReparsePoints(payloadPath, out _)) {
+                    return false;
+                }
                 bool payloadExists = metadata.Type == "directory" ? Directory.Exists(payloadPath) : File.Exists(payloadPath);
                 if (!payloadExists) {
                     return false;
@@ -1392,6 +1458,9 @@ namespace SimpleW.Service.FileBrowser {
                 }
                 string id = rawId!.Trim();
                 string rootPath = System.IO.Path.Combine(_options.NormalizedTrashPath, id);
+                if (!TryEnsureNoTrashReparsePoints(rootPath, out error)) {
+                    return false;
+                }
                 if (!File.Exists(rootPath) && !Directory.Exists(rootPath)) {
                     error = "trash_item_not_found";
                     return false;
@@ -1528,10 +1597,12 @@ namespace SimpleW.Service.FileBrowser {
                 HashSet<string> archiveEntryNames = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                 byte[] buffer = new byte[81920];
                 int entryCount = 0;
+                EnsureNoReparsePoints(tempArchivePath);
                 using (FileStream tempStream = new(tempArchivePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
                 using (ZipArchive archive = new(tempStream, ZipArchiveMode.Create, leaveOpen: false)) {
                     foreach (ResolvedPath source in sources) {
                         cancellationToken.ThrowIfCancellationRequested();
+                        EnsureNoReparsePoints(source.FullPath);
                         string rootName = System.IO.Path.GetFileName(TrimEndingDirectorySeparator(source.FullPath));
                         if (string.IsNullOrWhiteSpace(rootName)) {
                             throw new InvalidDataException("invalid_source_name");
@@ -1553,6 +1624,8 @@ namespace SimpleW.Service.FileBrowser {
                 if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
                     throw new IOException("destination_exists");
                 }
+                EnsureNoReparsePoints(tempArchivePath);
+                EnsureNoReparsePoints(destination.FullPath);
                 File.Move(tempArchivePath, destination.FullPath);
                 return new OperationResult(
                     ChangedPaths: [ParentRelative(destination.RelativePath)],
@@ -1564,7 +1637,9 @@ namespace SimpleW.Service.FileBrowser {
                 );
             }
             catch {
-                TryDeleteFile(tempArchivePath);
+                if (TryEnsureNoReparsePoints(tempArchivePath, out _)) {
+                    TryDeleteFile(tempArchivePath);
+                }
                 throw;
             }
         }
@@ -1738,6 +1813,8 @@ namespace SimpleW.Service.FileBrowser {
                     throw new DirectoryNotFoundException("destination_directory_not_found");
                 }
 
+                EnsureNoReparsePoints(source.FullPath);
+                EnsureNoReparsePoints(destination.FullPath);
                 using ZipArchive archive = ZipFile.OpenRead(source.FullPath);
                 if (archive.Entries.Count > _options.MaxArchiveEntries) {
                     throw new InvalidDataException("archive_too_many_entries");
@@ -1806,7 +1883,9 @@ namespace SimpleW.Service.FileBrowser {
                     if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
                         throw new IOException("destination_exists");
                     }
+                    EnsureNoReparsePoints(destination.FullPath);
                     Directory.CreateDirectory(destination.FullPath);
+                    EnsureNoReparsePoints(destination.FullPath);
                     createdDestination = true;
                 }
 
@@ -1816,12 +1895,16 @@ namespace SimpleW.Service.FileBrowser {
                 foreach (ArchiveEntryPlan item in plan) {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (item.IsDirectory) {
+                        EnsureNoReparsePoints(item.FullPath);
                         Directory.CreateDirectory(item.FullPath);
+                        EnsureNoReparsePoints(item.FullPath);
                         continue;
                     }
 
                     string parent = System.IO.Path.GetDirectoryName(item.FullPath) ?? destination.FullPath;
+                    EnsureNoReparsePoints(parent);
                     Directory.CreateDirectory(parent);
+                    EnsureNoReparsePoints(item.FullPath);
                     bool createdFile = false;
                     try {
                         using Stream input = item.Entry.Open();
@@ -1844,7 +1927,7 @@ namespace SimpleW.Service.FileBrowser {
                         extractedFiles++;
                     }
                     catch {
-                        if (createdFile) {
+                        if (createdFile && TryEnsureNoReparsePoints(item.FullPath, out _)) {
                             TryDeleteFile(item.FullPath);
                         }
                         throw;
@@ -2131,10 +2214,14 @@ namespace SimpleW.Service.FileBrowser {
                 return;
             }
 
+            if (!TryEnsureNoReparsePoints(_tempPath, out string? tempError)) {
+                await ErrorAsync(session, 400, tempError).ConfigureAwait(false);
+                return;
+            }
             Directory.CreateDirectory(_tempPath);
-            string? parent = System.IO.Path.GetDirectoryName(file.TargetFullPath);
-            if (!string.IsNullOrEmpty(parent)) {
-                Directory.CreateDirectory(parent);
+            if (!TryEnsureNoReparsePoints(_tempPath, out tempError)) {
+                await ErrorAsync(session, 400, tempError).ConfigureAwait(false);
+                return;
             }
 
             bool alreadyCompleted = false;
@@ -2146,6 +2233,7 @@ namespace SimpleW.Service.FileBrowser {
                         alreadyCompleted = true;
                     }
                     else {
+                        EnsureNoReparsePoints(file.TempPath);
                         await using FileStream fs = new(file.TempPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true);
                         await session.Request.Body.CopyToAsync(fs, upload.Token).ConfigureAwait(false);
                         file.SetSingleRange(bodyLength);
@@ -2206,7 +2294,15 @@ namespace SimpleW.Service.FileBrowser {
                 return;
             }
 
+            if (!TryEnsureNoReparsePoints(_tempPath, out string? tempError)) {
+                await ErrorAsync(session, 400, tempError).ConfigureAwait(false);
+                return;
+            }
             Directory.CreateDirectory(_tempPath);
+            if (!TryEnsureNoReparsePoints(_tempPath, out tempError)) {
+                await ErrorAsync(session, 400, tempError).ConfigureAwait(false);
+                return;
+            }
             bool alreadyCompleted = false;
             try {
                 await file.Gate.WaitAsync(upload.Token).ConfigureAwait(false);
@@ -2216,6 +2312,7 @@ namespace SimpleW.Service.FileBrowser {
                         alreadyCompleted = true;
                     }
                     else {
+                        EnsureNoReparsePoints(file.TempPath);
                         await using FileStream fs = new(file.TempPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true);
                         fs.Seek(offset, SeekOrigin.Begin);
                         await session.Request.Body.CopyToAsync(fs, upload.Token).ConfigureAwait(false);
@@ -2406,11 +2503,15 @@ namespace SimpleW.Service.FileBrowser {
         private void FinalizeFile(UploadFileState file) {
             string? parent = System.IO.Path.GetDirectoryName(file.TargetFullPath);
             if (!string.IsNullOrEmpty(parent)) {
+                EnsureNoReparsePoints(parent);
                 Directory.CreateDirectory(parent);
             }
+            EnsureNoReparsePoints(file.TargetFullPath);
             if (Directory.Exists(file.TargetFullPath)) {
                 throw new IOException("destination_is_directory");
             }
+            EnsureNoReparsePoints(file.TempPath);
+            EnsureNoReparsePoints(file.TargetFullPath);
             File.Move(file.TempPath, file.TargetFullPath, overwrite: true);
         }
 
@@ -2466,7 +2567,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="now"></param>
         private void CleanupAbandonedUploadFiles(DateTimeOffset now) {
-            if (!Directory.Exists(_tempPath)) {
+            if (!Directory.Exists(_tempPath) || !TryEnsureNoReparsePoints(_tempPath, out _)) {
                 return;
             }
 
@@ -2483,7 +2584,7 @@ namespace SimpleW.Service.FileBrowser {
                     }
 
                     try {
-                        if (File.GetLastWriteTimeUtc(path) <= cutoffUtc) {
+                        if (TryEnsureNoReparsePoints(path, out _) && File.GetLastWriteTimeUtc(path) <= cutoffUtc) {
                             File.Delete(path);
                         }
                     }
@@ -2501,11 +2602,13 @@ namespace SimpleW.Service.FileBrowser {
         /// Deletes temporary files belonging to an upload session after active writes finish.
         /// </summary>
         /// <param name="upload"></param>
-        private static async Task CleanupUploadSessionAsync(UploadSession upload) {
+        private async Task CleanupUploadSessionAsync(UploadSession upload) {
             foreach (UploadFileState file in upload.Files.Values) {
                 await file.Gate.WaitAsync().ConfigureAwait(false);
                 try {
-                    TryDeleteFile(file.TempPath);
+                    if (TryEnsureNoReparsePoints(file.TempPath, out _)) {
+                        TryDeleteFile(file.TempPath);
+                    }
                 }
                 finally {
                     file.Gate.Release();
@@ -2572,6 +2675,9 @@ namespace SimpleW.Service.FileBrowser {
                 error = "internal_path_forbidden";
                 return false;
             }
+            if (!TryEnsureNoReparsePoints(full, out error)) {
+                return false;
+            }
 
             resolved = new ResolvedPath(relativePath, full);
             return true;
@@ -2632,6 +2738,93 @@ namespace SimpleW.Service.FileBrowser {
         private bool TryEnsureInsideRoot(string fullPath) {
             string normalized = System.IO.Path.GetFullPath(fullPath);
             return IsInsideOrEqual(normalized, _options.NormalizedPath) && !IsInternalPath(normalized);
+        }
+
+        /// <summary>
+        /// Rejects symbolic links, junctions and other reparse points between the browser root and a target path.
+        /// Non-existing trailing segments are allowed so destinations can be created safely after a final recheck.
+        /// </summary>
+        /// <param name="fullPath"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
+        private bool TryEnsureNoReparsePoints(string fullPath, out string? error) {
+            return TryEnsureNoReparsePoints(fullPath, _options.NormalizedPath, out error);
+        }
+
+        /// <summary>
+        /// Rejects reparse points between a trusted root and a target path.
+        /// </summary>
+        /// <param name="fullPath"></param>
+        /// <param name="rootPath"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
+        private bool TryEnsureNoReparsePoints(string fullPath, string rootPath, out string? error) {
+            error = null;
+            string root = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(rootPath));
+            string target = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(fullPath));
+            if (!IsInsideOrEqual(target, root)) {
+                error = "path_outside_root";
+                return false;
+            }
+
+            string current = root;
+            while (true) {
+                try {
+                    if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) {
+                        error = "reparse_point_forbidden";
+                        return false;
+                    }
+                }
+                catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException) {
+                    return true;
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) {
+                    error = "path_unavailable";
+                    return false;
+                }
+
+                if (string.Equals(current, target, _pathComparison)) {
+                    return true;
+                }
+
+                string relative = System.IO.Path.GetRelativePath(current, target);
+                int separatorIndex = relative.IndexOfAny([System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar]);
+                string segment = separatorIndex < 0 ? relative : relative[..separatorIndex];
+                current = System.IO.Path.Combine(current, segment);
+            }
+        }
+
+        /// <summary>
+        /// Revalidates a path immediately before a queued or direct file-system operation.
+        /// </summary>
+        /// <param name="fullPath"></param>
+        private void EnsureNoReparsePoints(string fullPath) {
+            if (!TryEnsureNoReparsePoints(fullPath, out string? error)) {
+                throw new IOException(error);
+            }
+        }
+
+        /// <summary>
+        /// Validates a path in the configured trash, using the browser root when the trash is internal.
+        /// </summary>
+        /// <param name="fullPath"></param>
+        /// <param name="error"></param>
+        /// <returns></returns>
+        private bool TryEnsureNoTrashReparsePoints(string fullPath, out string? error) {
+            string trustedRoot = IsInsideOrEqual(_options.NormalizedTrashPath, _options.NormalizedPath)
+                ? _options.NormalizedPath
+                : _options.NormalizedTrashPath;
+            return TryEnsureNoReparsePoints(fullPath, trustedRoot, out error);
+        }
+
+        /// <summary>
+        /// Revalidates a configured trash path before accessing or mutating it.
+        /// </summary>
+        /// <param name="fullPath"></param>
+        private void EnsureNoTrashReparsePoints(string fullPath) {
+            if (!TryEnsureNoTrashReparsePoints(fullPath, out string? error)) {
+                throw new IOException(error);
+            }
         }
 
         /// <summary>
