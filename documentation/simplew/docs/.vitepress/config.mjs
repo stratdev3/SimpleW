@@ -43,6 +43,7 @@ export default defineConfig({
                 text: 'v26.1.0',
                 items: [
                     { text: 'Changelog', link: '/version/changelog' },
+                    { text: 'Migration', link: '/version/migration' },
                     { text: 'FAQ', link: '/version/faq' },
                 ]
             },
