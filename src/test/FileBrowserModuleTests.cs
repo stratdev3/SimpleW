@@ -70,6 +70,7 @@ namespace test {
                 HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list");
 
                 Check.That(response.StatusCode).Is(HttpStatusCode.Forbidden);
+                Check.That(await response.Content.ReadAsStringAsync()).IsEqualTo("{\"ok\":false,\"error\":\"forbidden\"}");
 
                 HttpResponseMessage downloadResponse = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/download?path=private.txt");
                 Check.That(downloadResponse.StatusCode).Is(HttpStatusCode.Forbidden);
@@ -79,12 +80,136 @@ namespace test {
 
                 HttpResponseMessage eventsResponse = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/events");
                 Check.That(eventsResponse.StatusCode).Is(HttpStatusCode.Forbidden);
+                Check.That(await eventsResponse.Content.ReadAsStringAsync()).IsEqualTo("Forbidden");
 
                 HttpResponseMessage cancelResponse = await client.PostAsync(
                     $"http://{server.Address}:{server.Port}/files/api/operations/{Guid.NewGuid()}/cancel",
                     JsonContent(new { })
                 );
                 Check.That(cancelResponse.StatusCode).Is(HttpStatusCode.Forbidden);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Server_Challenge_Should_Handle_Ui_Api_And_Events() {
+            string root = CreateRoot(nameof(Server_Challenge_Should_Handle_Ui_Api_And_Events));
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
+            HashSet<string> challengedPaths = new(StringComparer.Ordinal);
+
+            server.ConfigureChallenge(session => {
+                challengedPaths.Add(session.Request.Path);
+                return session.Response.Redirect("/auth/login").SendAsync();
+            });
+
+            server.UseFileBrowserModule(options => {
+                options.Path = root;
+                options.Prefix = "/files";
+                options.Authorize = _ => false;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClientHandler handler = new() { AllowAutoRedirect = false };
+                using HttpClient client = new(handler);
+                string[] paths = [
+                    "/files",
+                    "/files/app.js",
+                    "/files/api/config",
+                    "/files/api/list",
+                    "/files/api/events"
+                ];
+
+                foreach (string path in paths) {
+                    using HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}{path}");
+                    Check.That(response.StatusCode).Is(HttpStatusCode.Found);
+                    Check.That(response.Headers.Location?.OriginalString).IsEqualTo("/auth/login");
+                }
+
+                Check.That(challengedPaths.Count).IsEqualTo(paths.Length);
+                foreach (string path in paths) {
+                    Check.That(challengedPaths.Contains(path)).IsTrue();
+                }
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Ui_ClientPath_Should_Use_Server_Challenge_When_Authorize_Denies() {
+            string root = CreateRoot(nameof(Ui_ClientPath_Should_Use_Server_Challenge_When_Authorize_Denies));
+            string clientRoot = Path.Combine(root, "custom-client");
+            Directory.CreateDirectory(clientRoot);
+            File.WriteAllText(Path.Combine(clientRoot, "index.html"), "<!doctype html><title>custom-client</title>");
+            File.WriteAllText(Path.Combine(clientRoot, "app.js"), "console.log('custom-client');");
+            File.WriteAllText(Path.Combine(clientRoot, "styles.css"), "body{margin:0}");
+
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
+            int challengeCount = 0;
+            server.ConfigureChallenge(session => {
+                challengeCount++;
+                return session.Response.Status(401).Text("Authenticate").SendAsync();
+            });
+            server.UseFileBrowserModule(options => {
+                options.Path = root;
+                options.Prefix = "/files";
+                options.ClientPath = clientRoot;
+                options.Authorize = _ => false;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                using HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/app.js");
+
+                Check.That(response.StatusCode).Is(HttpStatusCode.Unauthorized);
+                Check.That(challengeCount).IsEqualTo(1);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Capability_And_Path_Denials_Should_Not_Invoke_Challenge() {
+            string root = CreateRoot(nameof(Capability_And_Path_Denials_Should_Not_Invoke_Challenge));
+            File.WriteAllText(Path.Combine(root, "private.txt"), "private");
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
+            int challengeCount = 0;
+
+            server.ConfigureChallenge(session => {
+                challengeCount++;
+                return session.Response.Status(401).SendAsync();
+            });
+
+            server.UseFileBrowserModule(options => {
+                options.Path = root;
+                options.Prefix = "/files";
+                options.ServeUi = false;
+                options.EnableEvents = false;
+                options.Authorize = _ => true;
+                options.CanList = _ => true;
+                options.CanDownload = _ => false;
+                options.CanAccessPath = (_, _) => false;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+
+                using HttpResponseMessage config = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/config");
+                Check.That(config.StatusCode).Is(HttpStatusCode.OK);
+
+                using HttpResponseMessage list = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list");
+                Check.That(list.StatusCode).Is(HttpStatusCode.Forbidden);
+
+                using HttpResponseMessage download = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/download?path=private.txt");
+                Check.That(download.StatusCode).Is(HttpStatusCode.Forbidden);
+
+                Check.That(challengeCount).IsEqualTo(0);
             }
             finally {
                 await server.StopAsync();

@@ -41,6 +41,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- Override the common minimum SimpleW version -->
+    <SimpleWCompatVersion>[26.1.1,26.2.0)</SimpleWCompatVersion>
+
   </PropertyGroup>
 
   <!-- use for dotnet build -->

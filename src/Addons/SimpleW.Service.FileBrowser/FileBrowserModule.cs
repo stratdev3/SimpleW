@@ -169,8 +169,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask RedirectUiRootAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckModuleAccess(session);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             string location = _options.NormalizedPrefix + "/";
@@ -253,8 +254,9 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="session"></param>
         /// <param name="asset"></param>
         private ValueTask EmbeddedClientAssetAsync(HttpSession session, ClientAsset asset) {
-            if (!IsAuthorized(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckModuleAccess(session);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             session.Response
@@ -538,6 +540,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <summary>
         /// Publishes a file browser change event for a modified path.
         /// </summary>
+        /// <param name="ownerKey"></param>
         /// <param name="operationId"></param>
         /// <param name="operation"></param>
         /// <param name="path"></param>
@@ -572,6 +575,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <summary>
         /// Broadcasts an event when SSE support is enabled and initialized.
         /// </summary>
+        /// <param name="ownerKey"></param>
         /// <param name="eventName"></param>
         /// <param name="payload"></param>
         /// <returns></returns>
@@ -609,8 +613,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ConfigAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckModuleAccess(session);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             return JsonAsync(session, 200, new {
@@ -620,12 +625,12 @@ namespace SimpleW.Service.FileBrowser {
                 eventsPrefix = _options.EnableEvents ? _options.NormalizedEventsPrefix : null,
                 enableEvents = _options.EnableEvents,
                 capabilities = new {
-                    canList = CanList(session),
-                    canDownload = CanDownload(session),
-                    canUpload = CanUpload(session),
-                    canModify = CanModify(session),
-                    canDelete = CanDelete(session),
-                    canManageTrash = CanManageTrash(session)
+                    canList = HasCapabilityAfterModuleAccess(session, _options.CanList),
+                    canDownload = HasCapabilityAfterModuleAccess(session, _options.CanDownload),
+                    canUpload = HasCapabilityAfterModuleAccess(session, _options.CanUpload),
+                    canModify = HasCapabilityAfterModuleAccess(session, _options.CanModify),
+                    canDelete = HasCapabilityAfterModuleAccess(session, _options.CanDelete),
+                    canManageTrash = HasCapabilityAfterModuleAccess(session, _options.CanManageTrash)
                 },
                 uploadChunkThresholdBytes = _options.UploadChunkThresholdBytes,
                 uploadChunkBytes = _options.UploadChunkBytes,
@@ -647,8 +652,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ListAsync(HttpSession session) {
-            if (!CanList(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanList);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             session.Request.Query.TryGetValue("path", out string? rawPath);
@@ -907,8 +913,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DownloadAsync(HttpSession session) {
-            if (!CanDownload(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanDownload);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             session.Request.Query.TryGetValue("path", out string? rawPath);
@@ -939,8 +946,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CreateFolderAsync(HttpSession session) {
-            if (!CanModify(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             FolderRequest? request = ReadJson<FolderRequest>(session, out string? jsonError);
@@ -978,8 +986,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask RenameAsync(HttpSession session) {
-            if (!CanModify(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             RenameRequest? request = ReadJson<RenameRequest>(session, out string? jsonError);
@@ -1046,8 +1055,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask MoveAsync(HttpSession session) {
-            if (!CanModify(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             MoveRequest? request = ReadJson<MoveRequest>(session, out string? jsonError);
@@ -1133,8 +1143,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DeleteAsync(HttpSession session) {
-            if (!CanDelete(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanDelete);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             DeleteRequest? request = ReadJson<DeleteRequest>(session, out string? jsonError);
@@ -1212,8 +1223,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ListTrashAsync(HttpSession session) {
-            if (!CanManageTrash(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
@@ -1250,8 +1262,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask RestoreTrashAsync(HttpSession session) {
-            if (!CanManageTrash(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
             TrashRequest? request = ReadJson<TrashRequest>(session, out string? jsonError);
             if (request == null) {
@@ -1338,8 +1351,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DeleteTrashAsync(HttpSession session) {
-            if (!CanManageTrash(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
             TrashRequest? request = ReadJson<TrashRequest>(session, out string? jsonError);
             if (request == null) {
@@ -1361,8 +1375,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask EmptyTrashAsync(HttpSession session) {
-            if (!CanManageTrash(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
@@ -1597,8 +1612,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ArchiveAsync(HttpSession session) {
-            if (!CanModify(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             ArchiveRequest? request = ReadJson<ArchiveRequest>(session, out string? jsonError);
@@ -1841,8 +1857,9 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="session"></param>
         /// <returns></returns>
         private ValueTask ExtractAsync(HttpSession session) {
-            if (!CanModify(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             ExtractRequest? request = ReadJson<ExtractRequest>(session, out string? jsonError);
@@ -2066,8 +2083,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask GetOperationAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckModuleAccess(session);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
             if (!TryGetOperation(session, out QueuedOperation operation)) {
                 return ErrorAsync(session, 404, "operation_not_found");
@@ -2081,8 +2099,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CancelOperationAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckModuleAccess(session);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
             if (!TryGetOperation(session, out QueuedOperation operation)) {
                 return ErrorAsync(session, 404, "operation_not_found");
@@ -2167,8 +2186,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CreateUploadAsync(HttpSession session) {
-            if (!CanUpload(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
 
             CreateUploadRequest? request = ReadJson<CreateUploadRequest>(session, out string? jsonError);
@@ -2232,15 +2252,16 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask GetUploadAsync(HttpSession session) {
-            if (!CanUpload(session)) {
-                await ForbiddenAsync(session).ConfigureAwait(false);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            if (access != AccessDecision.Allowed) {
+                await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
             }
             if (!TryGetUploadId(session, out Guid uploadId)) {
                 await ErrorAsync(session, 400, "invalid_upload_id").ConfigureAwait(false);
                 return;
             }
-            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || upload == null || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
                 return;
             }
@@ -2297,8 +2318,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask DeleteUploadAsync(HttpSession session) {
-            if (!CanUpload(session)) {
-                await ForbiddenAsync(session).ConfigureAwait(false);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            if (access != AccessDecision.Allowed) {
+                await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
             }
             if (!TryGetUploadId(session, out Guid uploadId)) {
@@ -2331,8 +2353,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask UploadFileAsync(HttpSession session) {
-            if (!CanUpload(session)) {
-                await ForbiddenAsync(session).ConfigureAwait(false);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            if (access != AccessDecision.Allowed) {
+                await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
             }
             if (!TryGetUploadFile(session, out UploadSession? upload, out UploadFileState? file, out ValueTask errorResponse)) {
@@ -2403,8 +2426,9 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask UploadChunkAsync(HttpSession session) {
-            if (!CanUpload(session)) {
-                await ForbiddenAsync(session).ConfigureAwait(false);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            if (access != AccessDecision.Allowed) {
+                await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
             }
             if (!TryGetUploadFile(session, out UploadSession? upload, out UploadFileState? file, out ValueTask errorResponse)) {
@@ -2483,13 +2507,14 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CompleteUploadAsync(HttpSession session) {
-            if (!CanUpload(session)) {
-                return ForbiddenAsync(session);
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            if (access != AccessDecision.Allowed) {
+                return RejectAccessAsync(session, access);
             }
             if (!TryGetUploadId(session, out Guid uploadId)) {
                 return ErrorAsync(session, 400, "invalid_upload_id");
             }
-            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || upload == null || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 return ErrorAsync(session, 404, "upload_not_found");
             }
             if (upload.IsCancellationRequested) {
@@ -2574,7 +2599,7 @@ namespace SimpleW.Service.FileBrowser {
                 errorResponse = ErrorAsync(session, 400, "invalid_upload_id");
                 return false;
             }
-            if (!TryGetOwnedUpload(session, uploadId, out upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out upload) || upload == null || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 errorResponse = ErrorAsync(session, 404, "upload_not_found");
                 return false;
             }
@@ -2808,49 +2833,68 @@ namespace SimpleW.Service.FileBrowser {
         #region authorization and paths
 
         /// <summary>
-        /// Applies anonymous-access settings or the configured authorization callback.
+        /// Evaluates module-wide access and distinguishes a global authorization challenge from a capability denial.
         /// </summary>
         /// <param name="session"></param>
-        /// <returns></returns>
-        private bool IsAuthorized(HttpSession session) {
+        private AccessDecision CheckModuleAccess(HttpSession session) {
             if (_options.AllowAnonymous) {
-                return true;
+                return AccessDecision.Allowed;
             }
             if (_options.Authorize != null) {
-                return _options.Authorize(session);
+                return _options.Authorize(session) ? AccessDecision.Allowed : AccessDecision.Challenge;
             }
-            return _options.CanList?.Invoke(session) == true
+            bool hasCapability = _options.CanList?.Invoke(session) == true
                 || _options.CanDownload?.Invoke(session) == true
                 || _options.CanUpload?.Invoke(session) == true
                 || _options.CanModify?.Invoke(session) == true
                 || _options.CanDelete?.Invoke(session) == true
                 || _options.CanManageTrash?.Invoke(session) == true;
+            return hasCapability ? AccessDecision.Allowed : AccessDecision.Forbidden;
         }
 
         /// <summary>
-        /// Applies a granular capability or the legacy module-wide access rule.
+        /// Evaluates one granular capability after the optional module-wide authorization gate.
         /// </summary>
         /// <param name="session"></param>
         /// <param name="capability"></param>
-        private bool HasCapability(HttpSession session, Func<HttpSession, bool>? capability) {
-            if (capability != null) {
-                if (!_options.AllowAnonymous && _options.Authorize != null && !_options.Authorize(session)) {
-                    return false;
-                }
-                return capability(session);
+        private AccessDecision CheckCapabilityAccess(HttpSession session, Func<HttpSession, bool>? capability) {
+            if (!_options.AllowAnonymous && _options.Authorize != null && !_options.Authorize(session)) {
+                return AccessDecision.Challenge;
             }
-            if (_options.AllowAnonymous) {
-                return true;
+            if (capability != null && !capability(session)) {
+                return AccessDecision.Forbidden;
             }
-            return _options.Authorize?.Invoke(session) == true;
+            if (capability == null && !_options.AllowAnonymous && _options.Authorize == null) {
+                return AccessDecision.Forbidden;
+            }
+            return AccessDecision.Allowed;
         }
 
-        private bool CanList(HttpSession session) => HasCapability(session, _options.CanList);
-        private bool CanDownload(HttpSession session) => HasCapability(session, _options.CanDownload);
-        private bool CanUpload(HttpSession session) => HasCapability(session, _options.CanUpload);
-        private bool CanModify(HttpSession session) => HasCapability(session, _options.CanModify);
-        private bool CanDelete(HttpSession session) => HasCapability(session, _options.CanDelete);
-        private bool CanManageTrash(HttpSession session) => HasCapability(session, _options.CanManageTrash);
+        /// <summary>
+        /// Evaluates a capability after <see cref="CheckModuleAccess"/> has accepted the request.
+        /// </summary>
+        private bool HasCapabilityAfterModuleAccess(HttpSession session, Func<HttpSession, bool>? capability) {
+            if (capability != null) {
+                return capability(session);
+            }
+            return _options.AllowAnonymous || _options.Authorize != null;
+        }
+
+        /// <summary>
+        /// Adapter used by the static-file and SSE modules, whose authorization contract is boolean.
+        /// </summary>
+        private bool IsAuthorized(HttpSession session) => CheckModuleAccess(session) == AccessDecision.Allowed;
+
+        /// <summary>
+        /// Sends the configured challenge for a global authorization refusal, or the existing 403 response otherwise.
+        /// </summary>
+        private ValueTask RejectAccessAsync(HttpSession session, AccessDecision access) {
+            HttpChallengeHandler? challenge = session.Server.Challenge;
+            if (access == AccessDecision.Challenge && challenge != null) {
+                return challenge(session);
+            }
+            return ForbiddenAsync(session);
+        }
 
         /// <summary>
         /// Applies the optional normalized-path access rule.
@@ -3106,7 +3150,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <summary>
         /// Combines two relative path components with URL-style separators.
         /// </summary>
-        /// <param name="parent"
+        /// <param name="parent"></param>
         /// <param name="name"></param>
         private static string CombineRelative(string? parent, string name) {
             parent = (parent ?? string.Empty).Trim('/');
@@ -3215,6 +3259,15 @@ namespace SimpleW.Service.FileBrowser {
         #endregion request and response helpers
 
         #region private types
+
+        /// <summary>
+        /// Result of one module or capability access evaluation.
+        /// </summary>
+        private enum AccessDecision {
+            Allowed,
+            Challenge,
+            Forbidden
+        }
 
         /// <summary>
         /// Orders browser items by type and the requested sort field.

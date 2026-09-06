@@ -13,3 +13,4 @@
 - Isolate SSE events, uploads, and retained operation state by configurable owner scope.
 - Add granular list, download, upload, modify, delete, trash, and path capabilities.
 - Add per-operation status and cancellation endpoints with expiring terminal history.
+- Integrate the server-wide asynchronous authentication challenge for module-wide authorization refusals.

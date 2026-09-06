@@ -12,6 +12,8 @@ The [`SimpleW.Service.FileBrowser`](https://www.nuget.org/packages/SimpleW.Servi
 
 It exposes a ready-to-use browser UI and an HTTP API to list files and directories, create folders, rename or move entries, move entries to a trash directory, and upload complete directory trees.
 
+<img src="https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/modules/SimpleW.Service.FileBrowser.png" />
+
 
 ## Features
 
@@ -172,6 +174,31 @@ Unauthorized requests receive `403 Forbidden` with:
   "error": "forbidden"
 }
 ```
+
+Configure the server-wide challenge when the application must start an authentication flow instead of returning the default `403`. The callback owns the response and can redirect, return `401` with `WWW-Authenticate`, or render an application-specific login response:
+
+```csharp
+server.ConfigureChallenge(session => {
+    string returnUrl = string.IsNullOrWhiteSpace(session.Request.RawTarget)
+        ? session.Request.Path
+        : session.Request.RawTarget;
+
+    return session.Response
+        .Redirect("/auth/login?returnUrl=" + Uri.EscapeDataString(returnUrl))
+        .SendAsync();
+});
+
+server.UseFileBrowserModule(options => {
+    options.Path = "/srv/private-files";
+    options.Authorize = session => session.Principal.IsAuthenticated;
+});
+```
+
+The server challenge runs only when the module-wide `Authorize` callback refuses a request. A denied `CanList`, `CanDownload`, `CanUpload`, `CanModify`, `CanDelete`, `CanManageTrash`, or `CanAccessPath` check still returns `403` and does not restart authentication.
+
+A normal browser navigation cannot copy an `Authorization: Bearer` header from the page containing the link. For bearer-only applications, use the server challenge to redirect to an application-owned bootstrap endpoint that can recover or request authentication, establish a short-lived browser session or another suitable credential, and then return to the FileBrowser URL. FileBrowser deliberately does not define a token query parameter or token transport.
+
+See the [authentication challenge guide](../guide/authentication-challenge.md#spa-bearer-tokens-and-browser-navigation) for the complete SPA navigation workflow and a scoped-cookie example.
 
 For a local development-only browser, anonymous access can be enabled explicitly:
 

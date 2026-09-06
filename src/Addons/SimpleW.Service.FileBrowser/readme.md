@@ -21,6 +21,9 @@ server.Configure(options => {
     options.MaxRequestBodySize = 32 * 1024 * 1024;
 });
 
+server.ConfigureChallenge(session =>
+    session.Response.Redirect("/auth/login").SendAsync());
+
 server.UseFileBrowserModule(options => {
     options.Path = @"C:\uploads";
     options.Prefix = "/files";
@@ -49,6 +52,10 @@ await server.RunAsync();
 ```
 
 By default, the module is closed. Configure `Authorize`, at least one capability callback, or set `AllowAnonymous = true`. When configured, `Authorize` is the common gate evaluated before explicit capabilities. Capability callbacks fall back to `Authorize`/`AllowAnonymous` when omitted, which keeps existing configurations compatible and makes read-only access possible with `CanList` and `CanDownload` only.
+
+Use `server.ConfigureChallenge(...)` when a rejected `Authorize` request must redirect to a login URL, return `401` with `WWW-Authenticate`, or produce another application-owned authentication response. The callback is shared with the other server modules and must send the response. When omitted, the existing `403` response is preserved. Capability and path denials remain `403` and do not invoke the server challenge.
+
+A browser navigation does not forward an `Authorization: Bearer` header from the page containing the link. A bearer-only application can use the server challenge to redirect to its own bootstrap endpoint, recover or request authentication there, establish a short-lived browser credential, and return to FileBrowser. The module does not put bearer tokens in URLs or prescribe a token transport.
 
 `ScopeKey` must return the same non-empty value for every request from one owner. It isolates that owner's SSE room, upload sessions, and operations. The default uses the authenticated principal identifier, email, or name and falls back to `anonymous`; configure it explicitly when authentication does not populate `session.Principal` or when tenant-level isolation is required.
 
