@@ -51,7 +51,23 @@ Request also exposes structured request metadata :
 - [`Request.Query`](../reference/httprequest.md#query) – parsed query string
 - [`Request.RouteValues`](../reference/httprequest.md#routevalues) – extracted route parameters
 
-Example :
+Query String Example :
+
+```bash
+GET /users?active=true&limit=25
+```
+
+```csharp
+[Route("GET", "/users")]
+public object List(bool active = false, int limit = 20) {
+    return new { active, limit };
+}
+```
+
+Query-string values are matched to handler parameters by name. If `active` or `limit` is omitted, its default value is used.
+
+
+Route Values Example : 
 
 ```bash
 GET /users/42?active=true
@@ -63,6 +79,8 @@ public object Get(int id, bool active = false) {
     return new { id, active };
 }
 ```
+
+In this example, `id` comes from the route while `active` comes from the query string.
 
 
 ## Reading the Request Body
