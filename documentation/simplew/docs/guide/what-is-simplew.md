@@ -1,7 +1,7 @@
 # What is SimpleW?
 
-SimpleW is a modern web server for .NET.<br />
-It is designed for building fast and secure web applications.
+SimpleW is a lightweigh web server for .NET.<br />
+It is designed for building standalone or embedded web applications.
 
 <div class="tip custom-block" style="padding-top: 8px">
 
