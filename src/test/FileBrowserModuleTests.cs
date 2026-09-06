@@ -81,10 +81,93 @@ namespace test {
                 Check.That(eventsResponse.StatusCode).Is(HttpStatusCode.Forbidden);
 
                 HttpResponseMessage cancelResponse = await client.PostAsync(
-                    $"http://{server.Address}:{server.Port}/files/api/operations/cancel",
+                    $"http://{server.Address}:{server.Port}/files/api/operations/{Guid.NewGuid()}/cancel",
                     JsonContent(new { })
                 );
                 Check.That(cancelResponse.StatusCode).Is(HttpStatusCode.Forbidden);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Granular_Capabilities_Should_Allow_ReadOnly_Path_Filtering() {
+            string root = CreateRoot(nameof(Granular_Capabilities_Should_Allow_ReadOnly_Path_Filtering));
+            Directory.CreateDirectory(Path.Combine(root, "public"));
+            Directory.CreateDirectory(Path.Combine(root, "private"));
+            var server = new SimpleWServer(IPAddress.Loopback, 0);
+            server.UseFileBrowserModule(options => {
+                options.Path = root;
+                options.Prefix = "/files";
+                options.ServeUi = false;
+                options.EnableEvents = false;
+                options.CanList = _ => true;
+                options.CanDownload = _ => false;
+                options.CanAccessPath = (_, path) => path.Length == 0 || path.StartsWith("public", StringComparison.Ordinal);
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient client = new();
+                HttpResponseMessage list = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list");
+                using JsonDocument json = await ReadJsonAsync(list);
+
+                Check.That(list.StatusCode).Is(HttpStatusCode.OK);
+                Check.That(json.RootElement.GetProperty("items").ToString()).Contains("public");
+                Check.That(json.RootElement.GetProperty("items").ToString()).DoesNotContain("private");
+
+                HttpResponseMessage download = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/download?path=public/file.txt");
+                Check.That(download.StatusCode).Is(HttpStatusCode.Forbidden);
+            }
+            finally {
+                await server.StopAsync();
+            }
+        }
+
+        [Fact]
+        public async Task Operation_Status_Should_Be_Retained_And_Scope_Isolated() {
+            string root = CreateRoot(nameof(Operation_Status_Should_Be_Retained_And_Scope_Isolated));
+            var server = CreateAnonymousServer(root, 0, options => {
+                options.EnableEvents = false;
+                options.ScopeKey = session => session.Request.Headers.TryGetValue("X-Owner", out string? owner) ? owner! : string.Empty;
+            });
+
+            await server.StartAsync();
+            try {
+                using HttpClient owner = new();
+                owner.DefaultRequestHeaders.Add("X-Owner", "owner-a");
+                using HttpClient other = new();
+                other.DefaultRequestHeaders.Add("X-Owner", "owner-b");
+
+                HttpResponseMessage create = await owner.PostAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/folders",
+                    JsonContent(new { path = "owned" })
+                );
+                using JsonDocument accepted = await ReadJsonAsync(create);
+                Guid operationId = accepted.RootElement.GetProperty("operationId").GetGuid();
+
+                Check.That(create.StatusCode).Is(HttpStatusCode.Accepted);
+                HttpResponseMessage foreign = await other.GetAsync($"http://{server.Address}:{server.Port}/files/api/operations/{operationId}");
+                Check.That(foreign.StatusCode).Is(HttpStatusCode.NotFound);
+
+                JsonDocument? status = null;
+                using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(3));
+                while (!timeout.IsCancellationRequested) {
+                    HttpResponseMessage response = await owner.GetAsync($"http://{server.Address}:{server.Port}/files/api/operations/{operationId}", timeout.Token);
+                    status?.Dispose();
+                    status = await ReadJsonAsync(response);
+                    if (status.RootElement.GetProperty("isTerminal").GetBoolean()) {
+                        break;
+                    }
+                    await Task.Delay(25, timeout.Token);
+                }
+
+                using (status) {
+                    Check.That(status).IsNotNull();
+                    Check.That(status!.RootElement.GetProperty("state").GetString()).IsEqualTo("completed");
+                    Check.That(status.RootElement.GetProperty("payload").GetProperty("path").GetString()).IsEqualTo("owned");
+                }
             }
             finally {
                 await server.StopAsync();

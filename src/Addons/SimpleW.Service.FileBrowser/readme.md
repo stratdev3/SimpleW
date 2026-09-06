@@ -27,11 +27,20 @@ server.UseFileBrowserModule(options => {
     options.EventsPrefix = "/files/api/events";
     options.EnableEvents = true;
     // options.ClientPath = @"C:\custom-filebrowser-client";
-    options.AllowAnonymous = true;
+    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.ScopeKey = session => session.Principal.Identity.Identifier!;
+    options.CanList = session => true;
+    options.CanDownload = session => true;
+    options.CanUpload = session => session.Principal.IsInRole("file-editor");
+    options.CanModify = session => session.Principal.IsInRole("file-editor");
+    options.CanDelete = session => session.Principal.IsInRole("file-editor");
+    options.CanManageTrash = session => session.Principal.IsInRole("file-admin");
+    options.CanAccessPath = (session, path) => !path.StartsWith("private/", StringComparison.OrdinalIgnoreCase);
     options.UploadChunkThresholdBytes = 100 * 1024 * 1024;
     options.UploadChunkBytes = 16 * 1024 * 1024;
     options.UploadSessionTimeout = TimeSpan.FromMinutes(30);
     options.MaxConcurrentUploadSessions = 100;
+    options.OperationHistoryTimeout = TimeSpan.FromMinutes(5);
     options.DefaultPageSize = 100;
     options.MaxPageSize = 1000;
 });
@@ -39,7 +48,9 @@ server.UseFileBrowserModule(options => {
 await server.RunAsync();
 ```
 
-By default, the module is closed. Configure `Authorize` or set `AllowAnonymous = true`.
+By default, the module is closed. Configure `Authorize`, at least one capability callback, or set `AllowAnonymous = true`. When configured, `Authorize` is the common gate evaluated before explicit capabilities. Capability callbacks fall back to `Authorize`/`AllowAnonymous` when omitted, which keeps existing configurations compatible and makes read-only access possible with `CanList` and `CanDownload` only.
+
+`ScopeKey` must return the same non-empty value for every request from one owner. It isolates that owner's SSE room, upload sessions, and operations. The default uses the authenticated principal identifier, email, or name and falls back to `anonymous`; configure it explicitly when authentication does not populate `session.Principal` or when tenant-level isolation is required.
 
 The web UI is embedded directly in `SimpleW.Service.FileBrowser.dll`; the NuGet package does not copy a `client/` directory to the consuming application.
 Debug builds automatically serve the local `SimpleW.Service.FileBrowser/client` directory through `StaticFilesModule` when it can be found, so client changes are read directly from disk without rebuilding the module.
@@ -58,7 +69,7 @@ File operations return `202 Accepted` and publish:
 - `filebrowser.upload.cancelled`
 - `filebrowser.changed`
 
-`POST /files/api/operations/cancel` cancels pending/running operations and active upload sessions on a best-effort basis.
+`GET /files/api/operations/:id` returns the state and retained result of an operation owned by the current scope. `POST /files/api/operations/:id/cancel` requests cancellation of that operation only. Terminal states remain queryable for `OperationHistoryTimeout`, so clients can follow a `202 Accepted` response even without SSE. `DELETE /files/api/uploads/:id` cancels an owned upload session.
 
 Upload sessions expire after `UploadSessionTimeout` without activity, and at most `MaxConcurrentUploadSessions` sessions may be active at once. Old orphaned `.part` files are removed at startup and periodically. `GET /files/api/uploads/:id` returns each file's received byte ranges so a client can resume only the missing chunks. `DELETE /files/api/uploads/:id` cancels one session and removes its temporary files.
 

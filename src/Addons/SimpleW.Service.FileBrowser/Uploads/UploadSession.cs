@@ -16,6 +16,7 @@ namespace SimpleW.Service.FileBrowser {
         private bool _disposed;
 
         public Guid Id { get; }
+        public string OwnerKey { get; }
         public Dictionary<string, UploadFileState> Files { get; }
         public long TotalBytes { get; }
         public DateTimeOffset CreatedAtUtc { get; } = DateTimeOffset.UtcNow;
@@ -36,10 +37,12 @@ namespace SimpleW.Service.FileBrowser {
         /// Creates an upload session for the declared files.
         /// </summary>
         /// <param name="id"></param>
+        /// <param name="ownerKey"></param>
         /// <param name="files"></param>
         /// <param name="totalBytes"></param>
-        public UploadSession(Guid id, Dictionary<string, UploadFileState> files, long totalBytes) {
+        public UploadSession(Guid id, string ownerKey, Dictionary<string, UploadFileState> files, long totalBytes) {
             Id = id;
+            OwnerKey = ownerKey;
             Files = files;
             TotalBytes = totalBytes;
             _lastActivityAtUtc = CreatedAtUtc;

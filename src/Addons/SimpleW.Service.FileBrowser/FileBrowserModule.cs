@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
 using SimpleW.Modules;
@@ -19,7 +20,7 @@ namespace SimpleW.Service.FileBrowser {
         private const string TempDirectoryName = ".filebrowser-tmp";
         private const string TrashMetadataFileName = ".trash-item.json";
         private const string TrashPayloadName = "payload";
-        private const string EventsRoom = "filebrowser";
+        private const string EventsRoomPrefix = "filebrowser:";
         private static readonly ILogger _log = new Logger<FileBrowserModule>();
         private static readonly Lazy<ClientAsset[]> EmbeddedClientAssets = new(LoadEmbeddedClientAssets);
         private static readonly JsonSerializerOptions JsonOptions = new() {
@@ -75,9 +76,10 @@ namespace SimpleW.Service.FileBrowser {
             if (_options.EnableEvents) {
                 server.UseServerSentEventsModule(sse => {
                     sse.Prefix = _options.NormalizedEventsPrefix;
-                    sse.AutoJoinRoom = EventsRoom;
+                    sse.AutoJoinRoom = null;
                     sse.Authorize = IsAuthorized;
-                    sse.OnConnect = async (connection, _) => {
+                    sse.OnConnect = async (connection, context) => {
+                        await connection.JoinAsync(GetEventsRoom(GetScopeKey(context.Session))).ConfigureAwait(false);
                         await connection.SendEventAsync(
                             SerializeEvent(new {
                                 ok = true,
@@ -135,7 +137,8 @@ namespace SimpleW.Service.FileBrowser {
             server.Map("POST", Route("/api/trash/empty"), (HttpSession session) => EmptyTrashAsync(session));
             server.Map("POST", Route("/api/archive"), (HttpSession session) => ArchiveAsync(session));
             server.Map("POST", Route("/api/extract"), (HttpSession session) => ExtractAsync(session));
-            server.Map("POST", Route("/api/operations/cancel"), (HttpSession session) => CancelOperationsAsync(session));
+            server.MapGet(Route("/api/operations/:id"), (HttpSession session) => GetOperationAsync(session));
+            server.Map("POST", Route("/api/operations/:id/cancel"), (HttpSession session) => CancelOperationAsync(session));
             server.Map("POST", Route("/api/uploads"), (HttpSession session) => CreateUploadAsync(session));
             server.MapGet(Route("/api/uploads/:id"), (HttpSession session) => GetUploadAsync(session));
             server.Map("DELETE", Route("/api/uploads/:id"), (HttpSession session) => DeleteUploadAsync(session));
@@ -376,25 +379,32 @@ namespace SimpleW.Service.FileBrowser {
             }
             catch (OperationCanceledException) { }
             finally {
+                foreach (KeyValuePair<Guid, QueuedOperation> item in _trackedOperations.ToArray()) {
+                    if (_trackedOperations.TryRemove(item.Key, out QueuedOperation? operation)) {
+                        operation.Dispose();
+                    }
+                }
                 cts.Dispose();
             }
         }
 
         /// <summary>
-        /// Periodically expires inactive upload sessions and removes orphaned upload parts.
+        /// Periodically expires inactive uploads, retained operations and orphaned upload parts.
         /// </summary>
         /// <param name="cancellationToken"></param>
         private async Task RunUploadCleanupAsync(CancellationToken cancellationToken) {
-            long intervalTicks = Math.Min(_options.UploadSessionTimeout.Ticks / 2, TimeSpan.FromMinutes(1).Ticks);
+            long cleanupTimeoutTicks = Math.Min(_options.UploadSessionTimeout.Ticks, _options.OperationHistoryTimeout.Ticks);
+            long intervalTicks = Math.Min(cleanupTimeoutTicks / 2, TimeSpan.FromMinutes(1).Ticks);
             TimeSpan interval = TimeSpan.FromTicks(Math.Max(intervalTicks, TimeSpan.FromSeconds(1).Ticks));
             using PeriodicTimer timer = new(interval);
 
             while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false)) {
                 try {
                     await CleanupExpiredUploadsAsync(DateTimeOffset.UtcNow).ConfigureAwait(false);
+                    CleanupExpiredOperations(DateTimeOffset.UtcNow);
                 }
                 catch (Exception ex) when (!cancellationToken.IsCancellationRequested) {
-                    _log.Warn("upload cleanup failed", ex);
+                    _log.Warn("file browser state cleanup failed", ex);
                 }
             }
         }
@@ -408,13 +418,11 @@ namespace SimpleW.Service.FileBrowser {
                 if (operation.Token.IsCancellationRequested) {
                     operation.MarkCancelled();
                     await PublishOperationCancelledAsync(operation).ConfigureAwait(false);
-                    _trackedOperations.TryRemove(operation.Id, out _);
-                    operation.Dispose();
                     continue;
                 }
 
                 operation.MarkRunning();
-                await PublishEventAsync("filebrowser.operation.started", new {
+                await PublishEventAsync(operation.OwnerKey, "filebrowser.operation.started", new {
                     operationId = operation.Id,
                     operation = operation.Kind,
                     path = operation.Path,
@@ -425,9 +433,9 @@ namespace SimpleW.Service.FileBrowser {
                 try {
                     operation.Token.ThrowIfCancellationRequested();
                     OperationResult result = operation.Work(operation.Token);
-                    operation.MarkCompleted();
+                    operation.MarkCompleted(result.Payload);
 
-                    await PublishEventAsync("filebrowser.operation.completed", new {
+                    await PublishEventAsync(operation.OwnerKey, "filebrowser.operation.completed", new {
                         operationId = operation.Id,
                         operation = operation.Kind,
                         path = operation.Path,
@@ -436,11 +444,11 @@ namespace SimpleW.Service.FileBrowser {
                     }).ConfigureAwait(false);
 
                     foreach (object uploadCompletedPayload in result.UploadCompletedPayloads ?? Array.Empty<object>()) {
-                        await PublishEventAsync("filebrowser.upload.completed", uploadCompletedPayload).ConfigureAwait(false);
+                        await PublishEventAsync(operation.OwnerKey, "filebrowser.upload.completed", uploadCompletedPayload).ConfigureAwait(false);
                     }
 
                     foreach (string changedPath in result.ChangedPaths) {
-                        await PublishChangedAsync(operation.Id, operation.Kind, changedPath).ConfigureAwait(false);
+                        await PublishChangedAsync(operation.OwnerKey, operation.Id, operation.Kind, changedPath).ConfigureAwait(false);
                     }
                 }
                 catch (OperationCanceledException) when (operation.Token.IsCancellationRequested) {
@@ -448,18 +456,14 @@ namespace SimpleW.Service.FileBrowser {
                     await PublishOperationCancelledAsync(operation).ConfigureAwait(false);
                 }
                 catch (Exception ex) {
-                    operation.MarkFailed();
-                    await PublishEventAsync("filebrowser.operation.failed", new {
+                    operation.MarkFailed(ex.Message);
+                    await PublishEventAsync(operation.OwnerKey, "filebrowser.operation.failed", new {
                         operationId = operation.Id,
                         operation = operation.Kind,
                         path = operation.Path,
                         error = ex.Message,
                         timestampUtc = DateTimeOffset.UtcNow
                     }).ConfigureAwait(false);
-                }
-                finally {
-                    _trackedOperations.TryRemove(operation.Id, out _);
-                    operation.Dispose();
                 }
             }
         }
@@ -474,7 +478,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <returns></returns>
         private ValueTask EnqueueOperationAsync(HttpSession session, string kind, string path, Func<CancellationToken, OperationResult> work) {
             Guid operationId = Guid.NewGuid();
-            QueuedOperation operation = new(operationId, kind, path, work);
+            QueuedOperation operation = new(operationId, GetScopeKey(session), kind, path, work);
             if (!_trackedOperations.TryAdd(operationId, operation)) {
                 operation.Dispose();
                 return ErrorAsync(session, 503, "operation_queue_unavailable");
@@ -489,8 +493,28 @@ namespace SimpleW.Service.FileBrowser {
                 ok = true,
                 operationId,
                 operation = kind,
-                path
+                path,
+                statusUrl = Route($"/api/operations/{operationId}"),
+                cancelUrl = Route($"/api/operations/{operationId}/cancel")
             });
+        }
+
+        /// <summary>
+        /// Removes terminal operations after the configured history retention period.
+        /// </summary>
+        /// <param name="now"></param>
+        private void CleanupExpiredOperations(DateTimeOffset now) {
+            foreach (KeyValuePair<Guid, QueuedOperation> item in _trackedOperations.ToArray()) {
+                QueuedOperation operation = item.Value;
+                if (!operation.IsTerminal
+                    || !operation.CompletedAtUtc.HasValue
+                    || now - operation.CompletedAtUtc.Value < _options.OperationHistoryTimeout
+                    || !_trackedOperations.TryRemove(item.Key, out QueuedOperation? removed)) {
+                    continue;
+                }
+
+                removed.Dispose();
+            }
         }
 
         #endregion operation queue
@@ -502,7 +526,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="operation"></param>
         private ValueTask PublishOperationCancelledAsync(QueuedOperation operation) {
-            return PublishEventAsync("filebrowser.operation.cancelled", new {
+            return PublishEventAsync(operation.OwnerKey, "filebrowser.operation.cancelled", new {
                 operationId = operation.Id,
                 operation = operation.Kind,
                 path = operation.Path,
@@ -518,8 +542,8 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="operation"></param>
         /// <param name="path"></param>
         /// <returns></returns>
-        private ValueTask PublishChangedAsync(Guid operationId, string operation, string path) {
-            return PublishEventAsync("filebrowser.changed", new {
+        private ValueTask PublishChangedAsync(string ownerKey, Guid operationId, string operation, string path) {
+            return PublishEventAsync(ownerKey, "filebrowser.changed", new {
                 operationId,
                 operation,
                 path,
@@ -531,12 +555,12 @@ namespace SimpleW.Service.FileBrowser {
         /// <summary>
         /// Publishes the latest progress for one uploaded file.
         /// </summary>
-        /// <param name="uploadId"></param>
+        /// <param name="upload"></param>
         /// <param name="file"></param>
         /// <returns></returns>
-        private ValueTask PublishUploadProgressAsync(Guid uploadId, UploadFileState file) {
-            return PublishEventAsync("filebrowser.upload.progress", new {
-                uploadId,
+        private ValueTask PublishUploadProgressAsync(UploadSession upload, UploadFileState file) {
+            return PublishEventAsync(upload.OwnerKey, "filebrowser.upload.progress", new {
+                uploadId = upload.Id,
                 path = file.RelativePath,
                 receivedBytes = file.ReceivedBytes,
                 totalBytes = file.Size,
@@ -551,12 +575,21 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="eventName"></param>
         /// <param name="payload"></param>
         /// <returns></returns>
-        private async ValueTask PublishEventAsync(string eventName, object payload) {
+        private async ValueTask PublishEventAsync(string ownerKey, string eventName, object payload) {
             if (!_options.EnableEvents || _eventsHub == null) {
                 return;
             }
 
-            await _eventsHub.BroadcastTextAsync(EventsRoom, SerializeEvent(payload), @event: eventName).ConfigureAwait(false);
+            await _eventsHub.BroadcastTextAsync(GetEventsRoom(ownerKey), SerializeEvent(payload), @event: eventName).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Derives an opaque SSE room name without exposing the configured owner key.
+        /// </summary>
+        /// <param name="ownerKey"></param>
+        private static string GetEventsRoom(string ownerKey) {
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(ownerKey));
+            return EventsRoomPrefix + Convert.ToHexString(hash);
         }
 
         /// <summary>
@@ -586,9 +619,18 @@ namespace SimpleW.Service.FileBrowser {
                 apiPrefix = Route("/api"),
                 eventsPrefix = _options.EnableEvents ? _options.NormalizedEventsPrefix : null,
                 enableEvents = _options.EnableEvents,
+                capabilities = new {
+                    canList = CanList(session),
+                    canDownload = CanDownload(session),
+                    canUpload = CanUpload(session),
+                    canModify = CanModify(session),
+                    canDelete = CanDelete(session),
+                    canManageTrash = CanManageTrash(session)
+                },
                 uploadChunkThresholdBytes = _options.UploadChunkThresholdBytes,
                 uploadChunkBytes = _options.UploadChunkBytes,
                 uploadSessionTimeoutSeconds = _options.UploadSessionTimeout.TotalSeconds,
+                operationHistoryTimeoutSeconds = _options.OperationHistoryTimeout.TotalSeconds,
                 maxConcurrentUploadSessions = _options.MaxConcurrentUploadSessions,
                 maxFileBytes = _options.MaxFileBytes,
                 maxUploadBytes = _options.MaxUploadBytes,
@@ -605,13 +647,16 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ListAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanList(session)) {
                 return ForbiddenAsync(session);
             }
 
             session.Request.Query.TryGetValue("path", out string? rawPath);
             if (!TryResolve(rawPath, allowRoot: true, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
+            }
+            if (!CanAccessPath(session, resolved.RelativePath)) {
+                return ForbiddenAsync(session);
             }
 
             if (!Directory.Exists(resolved.FullPath)) {
@@ -670,10 +715,11 @@ namespace SimpleW.Service.FileBrowser {
                     continue;
                 }
                 DirectoryInfo info = new(directory);
-                if (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) {
+                string itemPath = CombineRelative(resolved.RelativePath, info.Name);
+                if (CanAccessPath(session, itemPath) && (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase))) {
                     AddPageCandidate(
                         items,
-                        new BrowserItem(info.Name, CombineRelative(resolved.RelativePath, info.Name), "directory", 0, info.LastWriteTimeUtc),
+                        new BrowserItem(info.Name, itemPath, "directory", 0, info.LastWriteTimeUtc),
                         cursorItem,
                         pageSize + 1,
                         comparer
@@ -685,10 +731,11 @@ namespace SimpleW.Service.FileBrowser {
                     continue;
                 }
                 FileInfo info = new(file);
-                if (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) {
+                string itemPath = CombineRelative(resolved.RelativePath, info.Name);
+                if (CanAccessPath(session, itemPath) && (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase))) {
                     AddPageCandidate(
                         items,
-                        new BrowserItem(info.Name, CombineRelative(resolved.RelativePath, info.Name), "file", info.Length, info.LastWriteTimeUtc),
+                        new BrowserItem(info.Name, itemPath, "file", info.Length, info.LastWriteTimeUtc),
                         cursorItem,
                         pageSize + 1,
                         comparer
@@ -860,13 +907,16 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DownloadAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanDownload(session)) {
                 return ForbiddenAsync(session);
             }
 
             session.Request.Query.TryGetValue("path", out string? rawPath);
             if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
+            }
+            if (!CanAccessPath(session, resolved.RelativePath)) {
+                return ForbiddenAsync(session);
             }
 
             FileInfo file = new(resolved.FullPath);
@@ -889,7 +939,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CreateFolderAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanModify(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -899,6 +949,9 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!TryResolve(request.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
+            }
+            if (!CanAccessPath(session, resolved.RelativePath)) {
+                return ForbiddenAsync(session);
             }
             if (File.Exists(resolved.FullPath) || Directory.Exists(resolved.FullPath)) {
                 return ErrorAsync(session, 409, "destination_exists");
@@ -925,7 +978,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask RenameAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanModify(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -936,12 +989,19 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(request.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
+            if (!CanAccessPath(session, source.RelativePath)) {
+                return ForbiddenAsync(session);
+            }
             if (!TryValidateName(request.Name, out string? nameError)) {
                 return ErrorAsync(session, 400, nameError);
             }
 
             string parent = System.IO.Path.GetDirectoryName(source.FullPath) ?? _options.NormalizedPath;
             string destinationFull = System.IO.Path.Combine(parent, request.Name!.Trim());
+            string destinationRelative = CombineRelative(ParentRelative(source.RelativePath), request.Name!.Trim());
+            if (!CanAccessPath(session, destinationRelative)) {
+                return ForbiddenAsync(session);
+            }
             if (!TryEnsureInsideRoot(destinationFull)) {
                 return ErrorAsync(session, 400, "invalid_path");
             }
@@ -953,7 +1013,6 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 404, "source_not_found");
             }
 
-            string destinationRelative = CombineRelative(ParentRelative(source.RelativePath), request.Name!.Trim());
             return EnqueueOperationAsync(session, "rename", source.RelativePath, cancellationToken => {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (File.Exists(destinationFull) || Directory.Exists(destinationFull)) {
@@ -987,7 +1046,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask MoveAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanModify(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -998,8 +1057,14 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(request.SourcePath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
+            if (!CanAccessPath(session, source.RelativePath)) {
+                return ForbiddenAsync(session);
+            }
             if (!TryResolve(request.DestinationDirectory, allowRoot: true, mustBeRelativeToRoot: true, out ResolvedPath destinationDirectory, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
+            }
+            if (!CanAccessPath(session, destinationDirectory.RelativePath)) {
+                return ForbiddenAsync(session);
             }
             if (!Directory.Exists(destinationDirectory.FullPath)) {
                 return ErrorAsync(session, 404, "destination_directory_not_found");
@@ -1011,6 +1076,10 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             string destinationFull = System.IO.Path.Combine(destinationDirectory.FullPath, name);
+            string destinationRelative = CombineRelative(destinationDirectory.RelativePath, name);
+            if (!CanAccessPath(session, destinationRelative)) {
+                return ForbiddenAsync(session);
+            }
             if (!TryEnsureInsideRoot(destinationFull)) {
                 return ErrorAsync(session, 400, "invalid_path");
             }
@@ -1026,7 +1095,6 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 409, "cannot_move_directory_into_itself");
             }
 
-            string destinationRelative = CombineRelative(destinationDirectory.RelativePath, name);
             return EnqueueOperationAsync(session, "move", source.RelativePath, cancellationToken => {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (File.Exists(destinationFull) || Directory.Exists(destinationFull)) {
@@ -1065,7 +1133,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DeleteAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanDelete(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -1100,6 +1168,9 @@ namespace SimpleW.Service.FileBrowser {
             foreach (string rawPath in rawPaths.Distinct(StringComparer.Ordinal)) {
                 if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
                     return ErrorAsync(session, 400, sourceError);
+                }
+                if (!CanAccessPath(session, source.RelativePath)) {
+                    return ForbiddenAsync(session);
                 }
                 if (!File.Exists(source.FullPath) && !Directory.Exists(source.FullPath)) {
                     return ErrorAsync(session, 404, "source_not_found");
@@ -1141,7 +1212,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ListTrashAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanManageTrash(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -1153,6 +1224,7 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 400, trashError);
             }
             TrashEntry[] entries = ListTrashEntries()
+                .Where(entry => string.IsNullOrWhiteSpace(entry.OriginalPath) || CanAccessPath(session, entry.OriginalPath))
                 .OrderByDescending(entry => entry.DeletedUtc)
                 .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
@@ -1178,7 +1250,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask RestoreTrashAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanManageTrash(session)) {
                 return ForbiddenAsync(session);
             }
             TrashRequest? request = ReadJson<TrashRequest>(session, out string? jsonError);
@@ -1198,9 +1270,15 @@ namespace SimpleW.Service.FileBrowser {
 
             List<TrashRestorePlan> plans = new(entries.Count);
             foreach (TrashEntry entry in entries) {
+                if (!string.IsNullOrWhiteSpace(entry.OriginalPath) && !CanAccessPath(session, entry.OriginalPath)) {
+                    return ForbiddenAsync(session);
+                }
                 string? destinationPath = restoreElsewhere ? request.DestinationPath : entry.OriginalPath;
                 if (!TryResolve(destinationPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
                     return ErrorAsync(session, 400, destinationError);
+                }
+                if (!CanAccessPath(session, destination.RelativePath)) {
+                    return ForbiddenAsync(session);
                 }
                 if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
                     return ErrorAsync(session, 409, "destination_exists");
@@ -1260,7 +1338,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DeleteTrashAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanManageTrash(session)) {
                 return ForbiddenAsync(session);
             }
             TrashRequest? request = ReadJson<TrashRequest>(session, out string? jsonError);
@@ -1269,6 +1347,9 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!TryResolveTrashEntries(request.Ids, requireRestorable: false, out List<TrashEntry> entries, out string? trashError)) {
                 return ErrorAsync(session, trashError == "trash_item_not_found" ? 404 : 400, trashError);
+            }
+            if (entries.Any(entry => !string.IsNullOrWhiteSpace(entry.OriginalPath) && !CanAccessPath(session, entry.OriginalPath))) {
+                return ForbiddenAsync(session);
             }
 
             return EnqueueOperationAsync(session, "purge", "Trash", cancellationToken =>
@@ -1280,7 +1361,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask EmptyTrashAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanManageTrash(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -1291,8 +1372,11 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out trashError)) {
                 return ErrorAsync(session, 400, trashError);
             }
+            List<TrashEntry> entries = ListTrashEntries()
+                .Where(entry => string.IsNullOrWhiteSpace(entry.OriginalPath) || CanAccessPath(session, entry.OriginalPath))
+                .ToList();
             return EnqueueOperationAsync(session, "emptyTrash", "Trash", cancellationToken =>
-                PermanentlyDeleteTrashEntries(ListTrashEntries().ToList(), cancellationToken));
+                PermanentlyDeleteTrashEntries(entries, cancellationToken));
         }
 
         /// <summary>
@@ -1513,7 +1597,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ArchiveAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanModify(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -1534,6 +1618,9 @@ namespace SimpleW.Service.FileBrowser {
                 if (!TryResolve(rawPath, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
                     return ErrorAsync(session, 400, sourceError);
                 }
+                if (!CanAccessPath(session, source.RelativePath)) {
+                    return ForbiddenAsync(session);
+                }
                 if (!File.Exists(source.FullPath) && !Directory.Exists(source.FullPath)) {
                     return ErrorAsync(session, 404, "source_not_found");
                 }
@@ -1547,6 +1634,9 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!string.Equals(System.IO.Path.GetExtension(destination.FullPath), ".zip", StringComparison.OrdinalIgnoreCase)) {
                 return ErrorAsync(session, 400, "archive_extension_required");
+            }
+            if (!CanAccessPath(session, destination.RelativePath)) {
+                return ForbiddenAsync(session);
             }
             if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
                 return ErrorAsync(session, 409, "destination_exists");
@@ -1751,7 +1841,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="session"></param>
         /// <returns></returns>
         private ValueTask ExtractAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanModify(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -1762,6 +1852,9 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(request.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
+            if (!CanAccessPath(session, source.RelativePath)) {
+                return ForbiddenAsync(session);
+            }
             if (!File.Exists(source.FullPath)) {
                 return ErrorAsync(session, 404, "source_not_found");
             }
@@ -1770,6 +1863,9 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!TryResolve(request.DestinationDirectory, allowRoot: true, mustBeRelativeToRoot: true, out ResolvedPath destination, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
+            }
+            if (!CanAccessPath(session, destination.RelativePath)) {
+                return ForbiddenAsync(session);
             }
 
             if (request.CreateDestinationDirectory) {
@@ -1963,53 +2059,94 @@ namespace SimpleW.Service.FileBrowser {
 
         #endregion archives
 
-        #region uploads
+        #region operation endpoints
 
         /// <summary>
-        /// Cancels all tracked file operations and active upload sessions.
+        /// Returns a queued, running or recently completed operation owned by the current scope.
         /// </summary>
         /// <param name="session"></param>
-        private async ValueTask CancelOperationsAsync(HttpSession session) {
+        private ValueTask GetOperationAsync(HttpSession session) {
             if (!IsAuthorized(session)) {
-                await ForbiddenAsync(session).ConfigureAwait(false);
-                return;
+                return ForbiddenAsync(session);
+            }
+            if (!TryGetOperation(session, out QueuedOperation operation)) {
+                return ErrorAsync(session, 404, "operation_not_found");
             }
 
-            int cancelledOperations = 0;
-            int cancelledUploads = 0;
-
-            foreach (QueuedOperation operation in _trackedOperations.Values) {
-                if (operation.Cancel()) {
-                    cancelledOperations++;
-                }
-            }
-
-            foreach (KeyValuePair<Guid, UploadSession> item in _uploads.ToArray()) {
-                if (!TryRemoveUpload(item.Key, out UploadSession upload)) {
-                    continue;
-                }
-
-                bool cancelled = upload.Cancel();
-                if (cancelled) {
-                    cancelledUploads++;
-                }
-                try {
-                    await CleanupUploadSessionAsync(upload).ConfigureAwait(false);
-                    if (cancelled) {
-                        await PublishUploadCancelledAsync(upload).ConfigureAwait(false);
-                    }
-                }
-                finally {
-                    upload.Dispose();
-                }
-            }
-
-            await JsonAsync(session, 202, new {
-                ok = true,
-                cancelledOperations,
-                cancelledUploads
-            }).ConfigureAwait(false);
+            return WriteOperationAsync(session, 200, operation);
         }
+
+        /// <summary>
+        /// Requests cancellation of one operation owned by the current scope.
+        /// </summary>
+        /// <param name="session"></param>
+        private ValueTask CancelOperationAsync(HttpSession session) {
+            if (!IsAuthorized(session)) {
+                return ForbiddenAsync(session);
+            }
+            if (!TryGetOperation(session, out QueuedOperation operation)) {
+                return ErrorAsync(session, 404, "operation_not_found");
+            }
+
+            bool cancellationRequested = operation.Cancel();
+            return WriteOperationAsync(session, cancellationRequested ? 202 : 200, operation, cancellationRequested);
+        }
+
+        /// <summary>
+        /// Resolves an operation identifier and enforces scope ownership without disclosing foreign identifiers.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="operation"></param>
+        private bool TryGetOperation(HttpSession session, out QueuedOperation operation) {
+            operation = null!;
+            if (session.Request.RouteValues == null
+                || !session.Request.RouteValues.TryGetValue("id", out string? raw)
+                || !Guid.TryParse(raw, out Guid operationId)
+                || !_trackedOperations.TryGetValue(operationId, out QueuedOperation? tracked)
+                || !string.Equals(tracked.OwnerKey, GetScopeKey(session), StringComparison.Ordinal)) {
+                return false;
+            }
+            if (tracked.IsTerminal
+                && tracked.CompletedAtUtc.HasValue
+                && DateTimeOffset.UtcNow - tracked.CompletedAtUtc.Value >= _options.OperationHistoryTimeout) {
+                if (_trackedOperations.TryRemove(operationId, out QueuedOperation? expired)) {
+                    expired.Dispose();
+                }
+                return false;
+            }
+
+            operation = tracked;
+            return true;
+        }
+
+        /// <summary>
+        /// Writes the public operation status representation.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="statusCode"></param>
+        /// <param name="operation"></param>
+        /// <param name="cancellationRequested"></param>
+        private ValueTask WriteOperationAsync(HttpSession session, int statusCode, QueuedOperation operation, bool cancellationRequested = false) {
+            return JsonAsync(session, statusCode, new {
+                ok = true,
+                operationId = operation.Id,
+                operation = operation.Kind,
+                path = operation.Path,
+                state = operation.State.ToString().ToLowerInvariant(),
+                isTerminal = operation.IsTerminal,
+                cancellationRequested = cancellationRequested || operation.IsCancellationRequested,
+                createdAtUtc = operation.CreatedAtUtc,
+                startedAtUtc = operation.StartedAtUtc,
+                completedAtUtc = operation.CompletedAtUtc,
+                expiresAtUtc = operation.CompletedAtUtc + _options.OperationHistoryTimeout,
+                payload = operation.Payload,
+                error = operation.Error
+            });
+        }
+
+        #endregion operation endpoints
+
+        #region uploads
 
         /// <summary>
         /// Publishes the cancellation event for an upload session.
@@ -2017,7 +2154,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="upload"></param>
         /// <param name="reason"></param>
         private ValueTask PublishUploadCancelledAsync(UploadSession upload, string reason = "cancelled") {
-            return PublishEventAsync("filebrowser.upload.cancelled", new {
+            return PublishEventAsync(upload.OwnerKey, "filebrowser.upload.cancelled", new {
                 uploadId = upload.Id,
                 files = upload.Files.Keys.ToArray(),
                 reason,
@@ -2030,7 +2167,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CreateUploadAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanUpload(session)) {
                 return ForbiddenAsync(session);
             }
 
@@ -2064,6 +2201,9 @@ namespace SimpleW.Service.FileBrowser {
                 if (!TryResolve(file.Path, allowRoot: false, mustBeRelativeToRoot: true, out ResolvedPath resolved, out string? error)) {
                     return ErrorAsync(session, 400, error);
                 }
+                if (!CanAccessPath(session, resolved.RelativePath)) {
+                    return ForbiddenAsync(session);
+                }
                 if (files.ContainsKey(resolved.RelativePath)) {
                     return ErrorAsync(session, 409, "duplicate_file_path");
                 }
@@ -2072,7 +2212,7 @@ namespace SimpleW.Service.FileBrowser {
                 files.Add(resolved.RelativePath, new UploadFileState(resolved.RelativePath, resolved.FullPath, tempFile, file.Size));
             }
 
-            UploadSession upload = new(uploadId, files, total);
+            UploadSession upload = new(uploadId, GetScopeKey(session), files, total);
             if (!TryAddUpload(upload)) {
                 upload.Dispose();
                 return ErrorAsync(session, 429, "too_many_upload_sessions");
@@ -2092,7 +2232,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask GetUploadAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanUpload(session)) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
                 return;
             }
@@ -2100,7 +2240,7 @@ namespace SimpleW.Service.FileBrowser {
                 await ErrorAsync(session, 400, "invalid_upload_id").ConfigureAwait(false);
                 return;
             }
-            if (!_uploads.TryGetValue(uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
                 return;
             }
@@ -2157,7 +2297,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask DeleteUploadAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanUpload(session)) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
                 return;
             }
@@ -2165,7 +2305,7 @@ namespace SimpleW.Service.FileBrowser {
                 await ErrorAsync(session, 400, "invalid_upload_id").ConfigureAwait(false);
                 return;
             }
-            if (!TryRemoveUpload(uploadId, out UploadSession upload)) {
+            if (!TryRemoveOwnedUpload(session, uploadId, out UploadSession upload)) {
                 await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
                 return;
             }
@@ -2191,7 +2331,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask UploadFileAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanUpload(session)) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
                 return;
             }
@@ -2254,7 +2394,7 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             upload.TryTouch(_options.UploadSessionTimeout);
-            await PublishUploadProgressAsync(upload!.Id, file).ConfigureAwait(false);
+            await PublishUploadProgressAsync(upload!, file).ConfigureAwait(false);
             await JsonAsync(session, 200, new { ok = true, path = file.RelativePath, receivedBytes = file.ReceivedBytes, completed = file.IsComplete }).ConfigureAwait(false);
         }
 
@@ -2263,7 +2403,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask UploadChunkAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanUpload(session)) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
                 return;
             }
@@ -2334,7 +2474,7 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             upload.TryTouch(_options.UploadSessionTimeout);
-            await PublishUploadProgressAsync(upload!.Id, file).ConfigureAwait(false);
+            await PublishUploadProgressAsync(upload!, file).ConfigureAwait(false);
             await JsonAsync(session, 200, new { ok = true, path = file.RelativePath, receivedBytes = file.ReceivedBytes, completed = file.IsComplete }).ConfigureAwait(false);
         }
 
@@ -2343,13 +2483,13 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CompleteUploadAsync(HttpSession session) {
-            if (!IsAuthorized(session)) {
+            if (!CanUpload(session)) {
                 return ForbiddenAsync(session);
             }
             if (!TryGetUploadId(session, out Guid uploadId)) {
                 return ErrorAsync(session, 400, "invalid_upload_id");
             }
-            if (!_uploads.TryGetValue(uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 return ErrorAsync(session, 404, "upload_not_found");
             }
             if (upload.IsCancellationRequested) {
@@ -2434,7 +2574,7 @@ namespace SimpleW.Service.FileBrowser {
                 errorResponse = ErrorAsync(session, 400, "invalid_upload_id");
                 return false;
             }
-            if (!_uploads.TryGetValue(uploadId, out upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out upload) || !upload.TryTouch(_options.UploadSessionTimeout)) {
                 errorResponse = ErrorAsync(session, 404, "upload_not_found");
                 return false;
             }
@@ -2523,6 +2663,37 @@ namespace SimpleW.Service.FileBrowser {
         private bool TryAddUpload(UploadSession upload) {
             lock (_uploadsSync) {
                 return _uploads.Count < _options.MaxConcurrentUploadSessions && _uploads.TryAdd(upload.Id, upload);
+            }
+        }
+
+        /// <summary>
+        /// Resolves an upload only when it belongs to the current scope.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="uploadId"></param>
+        /// <param name="upload"></param>
+        private bool TryGetOwnedUpload(HttpSession session, Guid uploadId, out UploadSession? upload) {
+            return _uploads.TryGetValue(uploadId, out upload)
+                && string.Equals(upload.OwnerKey, GetScopeKey(session), StringComparison.Ordinal)
+                && upload.Files.Keys.All(path => CanAccessPath(session, path));
+        }
+
+        /// <summary>
+        /// Atomically removes an upload only when it belongs to the current scope.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="uploadId"></param>
+        /// <param name="upload"></param>
+        private bool TryRemoveOwnedUpload(HttpSession session, Guid uploadId, out UploadSession upload) {
+            lock (_uploadsSync) {
+                if (!_uploads.TryGetValue(uploadId, out UploadSession? current)
+                    || !string.Equals(current.OwnerKey, GetScopeKey(session), StringComparison.Ordinal)
+                    || current.Files.Keys.Any(path => !CanAccessPath(session, path))) {
+                    upload = null!;
+                    return false;
+                }
+
+                return _uploads.TryRemove(uploadId, out upload!);
             }
         }
 
@@ -2645,7 +2816,67 @@ namespace SimpleW.Service.FileBrowser {
             if (_options.AllowAnonymous) {
                 return true;
             }
+            if (_options.Authorize != null) {
+                return _options.Authorize(session);
+            }
+            return _options.CanList?.Invoke(session) == true
+                || _options.CanDownload?.Invoke(session) == true
+                || _options.CanUpload?.Invoke(session) == true
+                || _options.CanModify?.Invoke(session) == true
+                || _options.CanDelete?.Invoke(session) == true
+                || _options.CanManageTrash?.Invoke(session) == true;
+        }
+
+        /// <summary>
+        /// Applies a granular capability or the legacy module-wide access rule.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="capability"></param>
+        private bool HasCapability(HttpSession session, Func<HttpSession, bool>? capability) {
+            if (capability != null) {
+                if (!_options.AllowAnonymous && _options.Authorize != null && !_options.Authorize(session)) {
+                    return false;
+                }
+                return capability(session);
+            }
+            if (_options.AllowAnonymous) {
+                return true;
+            }
             return _options.Authorize?.Invoke(session) == true;
+        }
+
+        private bool CanList(HttpSession session) => HasCapability(session, _options.CanList);
+        private bool CanDownload(HttpSession session) => HasCapability(session, _options.CanDownload);
+        private bool CanUpload(HttpSession session) => HasCapability(session, _options.CanUpload);
+        private bool CanModify(HttpSession session) => HasCapability(session, _options.CanModify);
+        private bool CanDelete(HttpSession session) => HasCapability(session, _options.CanDelete);
+        private bool CanManageTrash(HttpSession session) => HasCapability(session, _options.CanManageTrash);
+
+        /// <summary>
+        /// Applies the optional normalized-path access rule.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="relativePath"></param>
+        private bool CanAccessPath(HttpSession session, string relativePath) {
+            return _options.CanAccessPath?.Invoke(session, relativePath) != false;
+        }
+
+        /// <summary>
+        /// Returns the stable owner key associated with a request.
+        /// </summary>
+        /// <param name="session"></param>
+        private string GetScopeKey(HttpSession session) {
+            if (_options.ScopeKey != null) {
+                string configuredScopeKey = _options.ScopeKey(session);
+                if (string.IsNullOrWhiteSpace(configuredScopeKey)) {
+                    throw new InvalidOperationException($"{nameof(FileBrowserOptions)}.{nameof(FileBrowserOptions.ScopeKey)} returned an empty owner key.");
+                }
+                return configuredScopeKey;
+            }
+
+            HttpPrincipal principal = session.Principal;
+            string? scopeKey = principal.Identity.Identifier ?? principal.Email ?? principal.Name;
+            return string.IsNullOrWhiteSpace(scopeKey) ? "anonymous" : scopeKey;
         }
 
         /// <summary>

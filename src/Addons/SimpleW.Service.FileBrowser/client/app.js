@@ -7,6 +7,7 @@ const initialBase = scriptUrl.pathname.replace(/\/app\.js$/, "").replace(/\/$/, 
 let base = initialBase === "" ? "" : initialBase;
 let api = `${base}/api`;
 let eventsUrl = "";
+let eventsConnected = false;
 let current = "";
 let selected = new Set();
 let currentItems = [];
@@ -25,6 +26,14 @@ let reloadTimer = 0;
 let trashReloadTimer = 0;
 let cancelGeneration = 0;
 let operationRenderFrame = 0;
+let capabilities = {
+  canList: true,
+  canDownload: true,
+  canUpload: true,
+  canModify: true,
+  canDelete: true,
+  canManageTrash: true
+};
 
 // =============================================================================
 // Cached DOM elements
@@ -127,6 +136,7 @@ const operations = new Map();
 const uploadOperationIdsByPath = new Map();
 const uploadOperationIdsByUploadId = new Map();
 const activeRequests = new Map();
+const operationPollTimers = new Map();
 let stagedUploadItems = [];
 let stagedUploadSequence = 0;
 let uploadDestinationPath = "";
@@ -318,6 +328,38 @@ function trackQueuedOperation(response) {
     done: 0,
     total: 1
   });
+  if (!eventsConnected) pollOperation(response.operationId);
+}
+
+/** Polls one accepted operation until its retained terminal result is available. */
+async function pollOperation(id) {
+  clearTimeout(operationPollTimers.get(String(id)));
+  try {
+    const response = await fetch(`${api}/operations/${encodeURIComponent(id)}`);
+    const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
+    if (!response.ok || !json.ok) throw new Error(json.error || "operation_status_failed");
+    const status = json.state === "completed" ? "done" : (json.cancellationRequested && !json.isTerminal ? "cancelling" : json.state);
+    updateOperation(id, {
+      kind: json.operation,
+      path: json.path,
+      status,
+      done: json.isTerminal && status === "done" ? 1 : 0,
+      total: 1,
+      error: json.error || ""
+    });
+    if (!json.isTerminal) {
+      operationPollTimers.set(String(id), setTimeout(() => pollOperation(id), 500));
+    }
+    else {
+      operationPollTimers.delete(String(id));
+      if (operationChangesTrash(json.operation)) scheduleTrashReload();
+      scheduleReload(json.path);
+    }
+  }
+  catch (err) {
+    updateOperation(id, { status: "failed", error: err.message || "operation_status_failed" });
+    operationPollTimers.delete(String(id));
+  }
 }
 
 /** Applies a partial update to an existing tracked operation. */
@@ -422,6 +464,8 @@ function renderOperations() {
 
 /** Removes upload lookup references associated with a terminal operation. */
 function cleanupOperationReferences(id) {
+  clearTimeout(operationPollTimers.get(String(id)));
+  operationPollTimers.delete(String(id));
   for (const [path, operationId] of uploadOperationIdsByPath) {
     if (operationId === id) {
       uploadOperationIdsByPath.delete(path);
@@ -460,7 +504,7 @@ function toggleOperationsPanel() {
   setOperationsPanelVisible(!mainEl.classList.contains("operations-open"));
 }
 
-/** Requests cancellation of server operations, uploads and active HTTP transfers. */
+/** Requests cancellation of each owned server operation and upload. */
 async function cancelAllOperations() {
   const active = [...operations.values()].filter(isActiveOperation);
   if (!active.length) return;
@@ -474,14 +518,21 @@ async function cancelAllOperations() {
   }
   activeRequests.clear();
 
+  const operationIds = active
+    .map(operation => String(operation.id))
+    .filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id));
+  const uploadIds = [...uploadOperationIdsByUploadId.keys()];
+  await Promise.all([
+    ...operationIds.map(id => apiJson(`${api}/operations/${encodeURIComponent(id)}/cancel`, {}).catch(() => null)),
+    ...uploadIds.map(id => apiDelete(`${api}/uploads/${encodeURIComponent(id)}`).catch(() => null))
+  ]);
   const hasEvents = eventsUrl && typeof EventSource !== "undefined";
-  const response = await apiJson(`${api}/operations/cancel`, {});
   if (!hasEvents) {
     for (const operation of active) {
       updateOperation(operation.id, { status: "cancelled", error: "" });
     }
   }
-  setStatus(`Cancellation requested (${response.cancelledOperations || 0} operations, ${response.cancelledUploads || 0} uploads)`);
+  setStatus(`Cancellation requested (${operationIds.length} operations, ${uploadIds.length} uploads)`);
 }
 
 // =============================================================================
@@ -495,6 +546,14 @@ async function apiJson(url, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
+  const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
+  if (!response.ok || json.ok === false) throw new Error(json.error || response.statusText);
+  return json;
+}
+
+/** Sends a DELETE request and raises a normalized API error. */
+async function apiDelete(url) {
+  const response = await fetch(url, { method: "DELETE" });
   const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
   if (!response.ok || json.ok === false) throw new Error(json.error || response.statusText);
   return json;
@@ -713,10 +772,25 @@ async function loadConfig() {
   base = (json.prefix || base).replace(/\/$/, "");
   api = json.apiPrefix || `${base}/api`;
   eventsUrl = json.enableEvents ? (json.eventsPrefix || "") : "";
+  capabilities = { ...capabilities, ...(json.capabilities || {}) };
+  applyCapabilities();
   defaultPageSize = Number(json.defaultPageSize) || 100;
   maxPageSize = Number(json.maxPageSize) || 1000;
   pageSize = defaultPageSize;
   populatePageSizes();
+}
+
+/** Hides actions that the current scope is not allowed to invoke. */
+function applyCapabilities() {
+  document.getElementById("newFolder").hidden = !capabilities.canModify;
+  document.getElementById("upload").hidden = !capabilities.canUpload;
+  openTrashButton.hidden = !capabilities.canManageTrash;
+  downloadSelectedButton.hidden = !capabilities.canDownload;
+  archiveSelectedButton.hidden = !capabilities.canModify;
+  document.getElementById("rename").hidden = !capabilities.canModify;
+  document.getElementById("move").hidden = !capabilities.canModify;
+  document.getElementById("delete").hidden = !capabilities.canDelete;
+  selectionToggle.hidden = !(capabilities.canDownload || capabilities.canModify || capabilities.canDelete);
 }
 
 /** Builds allowed page-size choices from the server limits. */
@@ -832,7 +906,18 @@ function queueTrashReloadFallback() {
 function setupEvents() {
   if (!eventsUrl || typeof EventSource === "undefined") return;
   const es = new EventSource(eventsUrl);
-  es.addEventListener("filebrowser.connected", () => setStatus("Live updates connected"));
+  es.addEventListener("filebrowser.connected", () => {
+    eventsConnected = true;
+    setStatus("Live updates connected");
+  });
+  es.onerror = () => {
+    eventsConnected = false;
+    for (const operation of operations.values()) {
+      if (isActiveOperation(operation) && /^[0-9a-f-]{36}$/i.test(String(operation.id))) {
+        pollOperation(operation.id);
+      }
+    }
+  };
   es.addEventListener("filebrowser.operation.started", e => {
     const msg = parseEvent(e);
     trackOperation({
@@ -1083,14 +1168,18 @@ function renderRows() {
     const itemIcon = item.type === "directory"
       ? '<span class="folder-icon" aria-hidden="true"></span>'
       : '<span class="file-icon" aria-hidden="true"></span>';
-    const extractAction = item.type === "file" && item.name.toLowerCase().endsWith(".zip")
+    const archiveAction = capabilities.canModify ? '<button type="button" data-item-action="archive">Archive</button>' : "";
+    const extractAction = capabilities.canModify && item.type === "file" && item.name.toLowerCase().endsWith(".zip")
       ? '<button type="button" data-item-action="extract">Extract</button>'
       : "";
-    const itemActions = `<div class="item-row-actions" role="group"><button type="button" data-item-action="archive">Archive</button>${extractAction}<button type="button" data-item-action="rename">Rename</button><button type="button" data-item-action="move">Move</button><button type="button" data-item-action="delete">Delete</button></div>`;
+    const modifyActions = capabilities.canModify ? '<button type="button" data-item-action="rename">Rename</button><button type="button" data-item-action="move">Move</button>' : "";
+    const deleteAction = capabilities.canDelete ? '<button type="button" data-item-action="delete">Delete</button>' : "";
+    const itemActions = `<div class="item-row-actions" role="group">${archiveAction}${extractAction}${modifyActions}${deleteAction}</div>`;
     tr.innerHTML = `<td class="name"><input class="row-selection" type="checkbox">${itemIcon}<a href="#" class="file-name file-link"></a>${itemActions}</td><td>${item.type === "file" ? fmtSize(item.size) : "\u2014"}</td><td>${new Date(item.modifiedUtc).toLocaleString()}</td>`;
     tr.querySelector(".file-name").textContent = item.name;
     const checkbox = tr.querySelector(".row-selection");
     checkbox.checked = isSelected;
+    checkbox.hidden = !(capabilities.canDownload || capabilities.canModify || capabilities.canDelete);
     checkbox.setAttribute("aria-label", `Select ${item.name}`);
     checkbox.onclick = e => e.stopPropagation();
     checkbox.onchange = () => setRowSelection(tr, checkbox, item.path, checkbox.checked);
@@ -1120,9 +1209,12 @@ function renderRows() {
       tr.onclick = () => navigateTo(item.path).catch(err => setStatus(err.message));
     }
     else {
-      link.href = `${api}/download?${new URLSearchParams({ path: item.path })}`;
-      link.download = item.name;
-      link.onclick = e => e.stopPropagation();
+      link.href = capabilities.canDownload ? `${api}/download?${new URLSearchParams({ path: item.path })}` : "#";
+      if (capabilities.canDownload) link.download = item.name;
+      link.onclick = e => {
+        e.stopPropagation();
+        if (!capabilities.canDownload) e.preventDefault();
+      };
     }
     tr.classList.toggle("selected", isSelected);
     tr.setAttribute("aria-selected", String(isSelected));
@@ -1157,12 +1249,12 @@ function updateButtons() {
   if (hasSelection) selectionBar.removeAttribute("inert");
   else selectionBar.setAttribute("inert", "");
   selectionSummary.textContent = `${count} item${one ? "" : "s"} selected`;
-  downloadSelectedButton.disabled = selectedFiles.length === 0;
-  archiveSelectedButton.disabled = count === 0;
+  downloadSelectedButton.disabled = !capabilities.canDownload || selectedFiles.length === 0;
+  archiveSelectedButton.disabled = !capabilities.canModify || count === 0;
   downloadSelectedButton.title = selectedFiles.length < count ? "Folders will be skipped" : "Download selected files";
-  document.getElementById("rename").disabled = !one;
-  document.getElementById("move").disabled = count === 0;
-  document.getElementById("delete").disabled = count === 0;
+  document.getElementById("rename").disabled = !capabilities.canModify || !one;
+  document.getElementById("move").disabled = !capabilities.canModify || count === 0;
+  document.getElementById("delete").disabled = !capabilities.canDelete || count === 0;
   updateHeaderSelection();
 }
 
@@ -1197,6 +1289,7 @@ function selectAllCurrentItems() {
 
 /** Starts browser downloads for each selected file. */
 function downloadSelectedFiles() {
+  if (!capabilities.canDownload) return;
   const files = currentItems.filter(item => selected.has(item.path) && item.type === "file");
   if (!files.length) return;
 
@@ -2192,7 +2285,7 @@ async function startUpload(files, destinationPath = current) {
   uploadOperationIdsByUploadId.set(uploadId, new Set(entries.map(e => e.id)));
   if (generation !== cancelGeneration) {
     markEntriesCancelled(entries);
-    await apiJson(`${api}/operations/cancel`, {}).catch(() => null);
+    await apiDelete(`${api}/uploads/${encodeURIComponent(uploadId)}`).catch(() => null);
     throw new Error("upload_cancelled");
   }
 
@@ -2228,7 +2321,7 @@ async function startUpload(files, destinationPath = current) {
   }
   if (generation !== cancelGeneration) {
     markEntriesCancelled(entries);
-    await apiJson(`${api}/operations/cancel`, {}).catch(() => null);
+    await apiDelete(`${api}/uploads/${encodeURIComponent(uploadId)}`).catch(() => null);
     throw new Error("upload_cancelled");
   }
   const op = await apiJson(`${api}/uploads/${session.uploadId}/complete`, {});
@@ -2344,7 +2437,7 @@ loadConfig()
   .then(() => {
     readNavigationState();
     setupEvents();
-    loadTrash().catch(() => null);
+    if (capabilities.canManageTrash) loadTrash().catch(() => null);
     window.onpopstate = e => {
       clearTimeout(searchTimer);
       readNavigationState(e.state);

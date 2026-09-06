@@ -18,12 +18,54 @@ namespace SimpleW.Service.FileBrowser {
         public string Prefix { get; set; } = "/files";
 
         /// <summary>
-        /// Authorization callback. Return true to allow the request.
+        /// Common authorization callback. Return true to allow the request to proceed to any configured capability check.
         /// </summary>
         public Func<HttpSession, bool>? Authorize { get; set; }
 
         /// <summary>
-        /// Allows access without an authorization callback.
+        /// Returns the stable owner key used to isolate events, operations and uploads.
+        /// Defaults to the authenticated principal identifier, email or name, and to "anonymous" otherwise.
+        /// </summary>
+        public Func<HttpSession, string>? ScopeKey { get; set; }
+
+        /// <summary>
+        /// Allows directory listing and access to the browser UI.
+        /// Falls back to <see cref="Authorize"/> or <see cref="AllowAnonymous"/> when not configured.
+        /// </summary>
+        public Func<HttpSession, bool>? CanList { get; set; }
+
+        /// <summary>
+        /// Allows file downloads.
+        /// </summary>
+        public Func<HttpSession, bool>? CanDownload { get; set; }
+
+        /// <summary>
+        /// Allows creation and use of upload sessions.
+        /// </summary>
+        public Func<HttpSession, bool>? CanUpload { get; set; }
+
+        /// <summary>
+        /// Allows folders, files and archives to be created, renamed, moved or extracted.
+        /// </summary>
+        public Func<HttpSession, bool>? CanModify { get; set; }
+
+        /// <summary>
+        /// Allows entries to be moved to the trash.
+        /// </summary>
+        public Func<HttpSession, bool>? CanDelete { get; set; }
+
+        /// <summary>
+        /// Allows trash listing, restoration, permanent deletion and emptying.
+        /// </summary>
+        public Func<HttpSession, bool>? CanManageTrash { get; set; }
+
+        /// <summary>
+        /// Restricts access to a normalized browser-relative path after a capability check succeeds.
+        /// </summary>
+        public Func<HttpSession, string, bool>? CanAccessPath { get; set; }
+
+        /// <summary>
+        /// Allows access without an authorization callback. Explicit capability callbacks can still restrict individual actions.
         /// </summary>
         public bool AllowAnonymous { get; set; }
 
@@ -91,6 +133,11 @@ namespace SimpleW.Service.FileBrowser {
         /// Maximum number of upload sessions tracked at the same time.
         /// </summary>
         public int MaxConcurrentUploadSessions { get; set; } = 100;
+
+        /// <summary>
+        /// Duration for which completed, failed or cancelled operations remain queryable.
+        /// </summary>
+        public TimeSpan OperationHistoryTimeout { get; set; } = TimeSpan.FromMinutes(5);
 
         /// <summary>
         /// Default number of entries returned by one list request.
@@ -164,6 +211,9 @@ namespace SimpleW.Service.FileBrowser {
             if (MaxConcurrentUploadSessions <= 0) {
                 throw new ArgumentOutOfRangeException(nameof(MaxConcurrentUploadSessions), "Must be > 0.");
             }
+            if (OperationHistoryTimeout <= TimeSpan.Zero) {
+                throw new ArgumentOutOfRangeException(nameof(OperationHistoryTimeout), "Must be > 0.");
+            }
             if (DefaultPageSize <= 0) {
                 throw new ArgumentOutOfRangeException(nameof(DefaultPageSize), "Must be > 0.");
             }
@@ -173,8 +223,8 @@ namespace SimpleW.Service.FileBrowser {
             if (DefaultPageSize > MaxPageSize) {
                 throw new ArgumentException($"{nameof(DefaultPageSize)} must be lower than or equal to {nameof(MaxPageSize)}.");
             }
-            if (!AllowAnonymous && Authorize == null) {
-                throw new ArgumentException($"{nameof(Authorize)} must be configured unless {nameof(AllowAnonymous)} is true.");
+            if (!AllowAnonymous && Authorize == null && !HasCapabilityCallback()) {
+                throw new ArgumentException($"{nameof(Authorize)} or at least one capability callback must be configured unless {nameof(AllowAnonymous)} is true.");
             }
 
             NormalizedPath = NormalizeDirectory(Path);
@@ -193,6 +243,18 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             return this;
+        }
+
+        /// <summary>
+        /// Reports whether granular authorization has been configured.
+        /// </summary>
+        private bool HasCapabilityCallback() {
+            return CanList != null
+                || CanDownload != null
+                || CanUpload != null
+                || CanModify != null
+                || CanDelete != null
+                || CanManageTrash != null;
         }
 
         /// <summary>
