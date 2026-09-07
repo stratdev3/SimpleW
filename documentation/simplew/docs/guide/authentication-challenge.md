@@ -1,4 +1,6 @@
-# Authentication Challenge <Badge type="tip" text="v26.1.1-alpha" />
+# Authentication Challenge
+
+<img src="https://img.shields.io/badge/experimental-v26.1.1--alpha-7737d1?style=flat" height="20" />
 
 An authentication challenge tells a client how to continue when a module-wide authorization gate rejects a request.
 
