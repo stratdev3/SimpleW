@@ -218,6 +218,7 @@ export default defineConfig({
                 {
                     items: [
                         { text: 'Changelog', link: './changelog' },
+                        { text: 'Migration', link: '/version/migration' },
                         { text: 'FAQ', link: './faq' },
                     ]
                 },
