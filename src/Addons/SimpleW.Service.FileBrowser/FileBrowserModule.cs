@@ -126,6 +126,7 @@ namespace SimpleW.Service.FileBrowser {
             server.MapGet(Route("/api/config"), (HttpSession session) => ConfigAsync(session));
             server.MapGet(Route("/api/list"), (HttpSession session) => ListAsync(session));
             server.MapGet(Route("/api/download"), (HttpSession session) => DownloadAsync(session));
+            server.MapGet(Route("/api/checksum"), (HttpSession session) => ChecksumAsync(session));
             server.Map("HEAD", Route("/api/download"), (HttpSession session) => DownloadAsync(session));
             server.Map("POST", Route("/api/folders"), (HttpSession session) => CreateFolderAsync(session));
             server.Map("POST", Route("/api/rename"), (HttpSession session) => RenameAsync(session));
@@ -939,6 +940,92 @@ namespace SimpleW.Service.FileBrowser {
                           .File(file)
                           .Attachment(file.Name)
                           .SendAsync();
+        }
+
+        /// <summary>
+        /// Computes a file checksum on demand without buffering its contents.
+        /// </summary>
+        /// <param name="session"></param>
+        private async ValueTask ChecksumAsync(HttpSession session) {
+            session.Response.AddHeader("Cache-Control", "no-store");
+            AccessDecision access = CheckCapabilityAccess(session, _options.CanDownload);
+            if (access != AccessDecision.Allowed) {
+                await RejectAccessAsync(session, access).ConfigureAwait(false);
+                return;
+            }
+
+            session.Request.Query.TryGetValue("path", out string? rawPath);
+            if (!TryResolve(rawPath, allowRoot: false, out ResolvedPath resolved, out string? error)) {
+                await ErrorAsync(session, error == "path_unavailable" ? 403 : 400, error).ConfigureAwait(false);
+                return;
+            }
+            if (!CanAccessPath(session, resolved.RelativePath)) {
+                await ForbiddenAsync(session).ConfigureAwait(false);
+                return;
+            }
+
+            string algorithm = session.Request.Query.TryGetValue("algorithm", out string? rawAlgorithm)
+                                    ? (rawAlgorithm ?? string.Empty).Trim().ToLowerInvariant()
+                                    : "sha256";
+            if (algorithm != "sha256" && algorithm != "sha1" && algorithm != "md5") {
+                await ErrorAsync(session, 400, "invalid_algorithm").ConfigureAwait(false);
+                return;
+            }
+
+            string checksum;
+            try {
+                if ((File.GetAttributes(resolved.FullPath) & FileAttributes.Directory) != 0) {
+                    await ErrorAsync(session, 404, "file_not_found").ConfigureAwait(false);
+                    return;
+                }
+                if (!TryEnsureNoReparsePoints(resolved.FullPath, out error)) {
+                    await ErrorAsync(session, error == "path_unavailable" ? 403 : 400, error).ConfigureAwait(false);
+                    return;
+                }
+
+                FileInfo file = new(resolved.FullPath);
+                long size = file.Length;
+                DateTime modifiedUtc = file.LastWriteTimeUtc;
+                CancellationToken cancellationToken = session.RequestAborted;
+                await using FileStream stream = new(
+                    resolved.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    bufferSize: 64 * 1024, options: FileOptions.Asynchronous | FileOptions.SequentialScan
+                );
+                using HashAlgorithm hasher = algorithm switch {
+                    "sha1" => SHA1.Create(),
+                    "md5" => MD5.Create(),
+                    _ => SHA256.Create()
+                };
+                byte[] hash = await hasher.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+                file.Refresh();
+                if (!file.Exists || file.Length != size || file.LastWriteTimeUtc != modifiedUtc || stream.Length != size) {
+                    await ErrorAsync(session, 409, "file_changed").ConfigureAwait(false);
+                    return;
+                }
+                checksum = Convert.ToHexString(hash);
+            }
+            catch (OperationCanceledException) when (session.RequestAborted.IsCancellationRequested) {
+                return;
+            }
+            catch (Exception exception) when (exception is FileNotFoundException or DirectoryNotFoundException) {
+                await ErrorAsync(session, 404, "file_not_found").ConfigureAwait(false);
+                return;
+            }
+            catch (UnauthorizedAccessException) {
+                await ForbiddenAsync(session).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception exception) when (exception is IOException or CryptographicException) {
+                await ErrorAsync(session, 500, "checksum_failed").ConfigureAwait(false);
+                return;
+            }
+
+            await JsonAsync(session, 200, new {
+                ok = true,
+                path = resolved.RelativePath,
+                algorithm,
+                checksum
+            }).ConfigureAwait(false);
         }
 
         /// <summary>

@@ -82,6 +82,22 @@ Upload sessions expire after `UploadSessionTimeout` without activity, and at mos
 
 `UploadChunkBytes` must be lower than or equal to `SimpleWServerOptions.MaxRequestBodySize`, because SimpleW validates each request body before the module receives it.
 
+## File checksums
+
+Use **Checksum** on a file row or select one file and choose **Checksum** in the selection toolbar. The dialog calculates SHA-256 by default and also offers SHA-1 and MD5. **Copy** copies the uppercase hexadecimal checksum; the value remains selectable when clipboard access is unavailable. Calculation runs on demand, reads the file as a stream, and is not cached. Closing the dialog or changing the algorithm cancels the previous request.
+
+`GET /files/api/checksum?path=documents/report.pdf&algorithm=sha256` returns `{ "ok": true, "path": "documents/report.pdf", "algorithm": "sha256", "checksum": "..." }`. Routes are relative to the configured prefix. Accepted algorithms are `sha256`, `sha1`, and `md5`; omitting `algorithm` selects `sha256`. The endpoint uses the same authorization, `CanDownload`, and `CanAccessPath` checks as downloads and returns `Cache-Control: no-store`.
+
+Compare with the local file using the same algorithm, for example in PowerShell:
+
+```powershell
+Get-FileHash -LiteralPath 'C:\downloads\report.pdf' -Algorithm SHA256
+```
+
+Use `SHA1` or `MD5` when selected in the dialog. Matching checksums indicate matching file contents. This is a manual check of the current server file; uploads and downloads are not automatically verified.
+
+Errors use `{ "ok": false, "error": "..." }`: unsupported algorithms return `400 invalid_algorithm`, missing files or directories return `404 file_not_found`, denied access returns `403`, and other read failures return `500 checksum_failed`. If a size or modification-time change is detected during reading, the endpoint returns `409 file_changed`; retry once the file is stable. Invalid paths and reparse points are rejected using the existing path-validation errors.
+
 ## Listing, search, sorting, and pagination
 
 `GET /files/api/list` lists only the direct children of the requested directory. Results are paginated by default and directories always appear before files.

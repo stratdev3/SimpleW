@@ -18,6 +18,7 @@ It exposes a ready-to-use browser UI and an HTTP API to list files and directori
 ## Features
 
 - Browse files and directories below a configured root
+- Calculate and copy SHA-256, SHA-1, or MD5 checksums for individual files
 - Create folders, rename entries, and move files or directories
 - Move one or more entries to an internal trash directory, then restore or permanently delete them
 - Upload files and directory trees
@@ -237,6 +238,8 @@ The bundled UI uses the following endpoints. They can also be used by a custom c
 |---|---|---|---:|
 | `GET` | `/api/config` | None | `200` |
 | `GET` | `/api/list?path=reports` | Relative directory path; omit `path` for the root | `200` |
+| `GET` | `/api/download?path=reports/report.pdf` | Relative file path | `200` |
+| `GET` | `/api/checksum?path=reports/report.pdf&algorithm=sha256` | Relative file path; algorithm defaults to `sha256` | `200` |
 | `POST` | `/api/folders` | `{ "path": "reports/2026" }` | `202` |
 | `POST` | `/api/rename` | `{ "path": "reports/draft.txt", "name": "final.txt" }` | `202` |
 | `POST` | `/api/move` | `{ "sourcePath": "draft.txt", "destinationDirectory": "reports", "name": "final.txt" }` | `202` |
@@ -261,9 +264,40 @@ ZIP extraction runs in the same cancellable operation queue as rename, move, and
 
 `X-File-Path` can be replaced by a `path` query parameter on the two binary upload endpoints.
 
-::: info
-FileBrowser currently lists and manages filesystem entries but does not expose an endpoint for downloading file contents.
-:::
+## File checksums
+
+Choose **Checksum** on a file row, or select exactly one file and use **Checksum** in the selection toolbar. The dialog calculates **SHA-256** immediately. Select **SHA-1** or **MD5** to recalculate, then use **Copy** or select the value for manual copying. Loading and error messages appear in the dialog, with **Retry** after a failure. Closing the dialog or changing the algorithm cancels the previous request.
+
+`GET /api/checksum?path=reports/report.pdf&algorithm=sha256` returns:
+
+```json
+{
+  "ok": true,
+  "path": "reports/report.pdf",
+  "algorithm": "sha256",
+  "checksum": "..."
+}
+```
+
+`checksum` is an uppercase hexadecimal string. Supported algorithms are `sha256`, `sha1`, and `md5`; omitting `algorithm` selects `sha256`. The endpoint applies the same module authorization, `CanDownload`, and `CanAccessPath` checks as downloading, including path and reparse-point validation. The UI hides the action when downloading is not allowed.
+
+The server reads the file as a stream on demand, outside the mutation queue, without caching the checksum or loading the whole file into memory. Responses use `Cache-Control: no-store`. Errors follow the standard `{ "ok": false, "error": "..." }` envelope:
+
+| Status | Error | Meaning |
+|---|---|---|
+| `400` | `invalid_algorithm` | Unsupported algorithm. Invalid paths and reparse points use the existing path-validation errors. |
+| `403` | `forbidden` or `path_unavailable` | Access denied or path inaccessible. Module-wide denial retains the configured authentication challenge. |
+| `404` | `file_not_found` | File missing or the path identifies a directory. |
+| `409` | `file_changed` | A size or modification-time change was detected during reading; retry once the file is stable. |
+| `500` | `checksum_failed` | Another file-read or checksum calculation failure. |
+
+To compare a downloaded file or the local original of an uploaded file, calculate its checksum with the same algorithm:
+
+```powershell
+Get-FileHash -LiteralPath 'C:\downloads\report.pdf' -Algorithm SHA256
+```
+
+Use `SHA1` or `MD5` instead when selected in the dialog. Compare the `Hash` value with the server checksum. This verifies the current file contents manually; the feature does not automatically verify uploads or downloads.
 
 
 ## Upload protocol

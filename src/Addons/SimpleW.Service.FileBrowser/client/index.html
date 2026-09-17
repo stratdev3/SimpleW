@@ -39,6 +39,7 @@
         </div>
         <div class="selection-actions" role="toolbar" aria-label="Selection actions">
           <button id="downloadSelected" type="button">Download</button>
+          <button id="checksumSelected" type="button" disabled>Checksum</button>
           <button id="archiveSelected" type="button">Archive</button>
           <button id="rename" type="button" title="Rename selected item (F2)">Rename</button>
           <button id="move" type="button">Move</button>
@@ -97,6 +98,39 @@
   </aside>
 </main>
 <footer id="status" aria-live="polite">Ready</footer>
+</div>
+<div id="checksumModal" class="modal" hidden>
+  <div class="modal-backdrop" data-close-checksum></div>
+  <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="checksumTitle">
+    <header class="modal-header">
+      <h2 id="checksumTitle">Checksum</h2>
+      <button id="closeChecksum" class="icon-button modal-close" type="button" aria-label="Close" title="Close">
+        <span class="close-glyph" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="modal-context">
+      <span>File</span>
+      <strong id="checksumPath"></strong>
+    </div>
+    <div class="modal-form-field">
+      <label for="checksumAlgorithm">Algorithm</label>
+      <select id="checksumAlgorithm">
+        <option value="sha256">SHA-256</option>
+        <option value="sha1">SHA-1</option>
+        <option value="md5">MD5</option>
+      </select>
+    </div>
+    <div class="modal-form-field">
+      <label for="checksumValue">Checksum</label>
+      <textarea id="checksumValue" rows="3" readonly spellcheck="false" aria-describedby="checksumStatus"></textarea>
+    </div>
+    <p id="checksumStatus" class="modal-message" role="status" aria-live="polite"></p>
+    <div class="modal-actions">
+      <button id="retryChecksum" type="button" hidden>Retry</button>
+      <button id="copyChecksum" class="primary" type="button" disabled>Copy</button>
+      <button id="doneChecksum" type="button">Close</button>
+    </div>
+  </section>
 </div>
 <div id="newFolderModal" class="modal" hidden>
   <div class="modal-backdrop" data-close-new-folder></div>

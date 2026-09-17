@@ -582,7 +582,7 @@ namespace test {
                 HttpResponseMessage ui = await client.GetAsync($"http://{server.Address}:{server.Port}/files");
                 string html = await ui.Content.ReadAsStringAsync();
                 Check.That(ui.StatusCode).Is(HttpStatusCode.OK);
-                Check.That(html).Contains("SimpleW File Browser");
+                Check.That(html).Contains("File Browser");
                 Check.That(html).Contains("id=\"openTrash\"");
                 Check.That(html).Contains("id=\"trashCount\" class=\"button-count\" hidden");
                 Check.That(html).Contains("id=\"trashModal\" class=\"modal\" hidden");
@@ -874,7 +874,7 @@ namespace test {
                 HttpResponseMessage ui = await client.GetAsync($"http://{server.Address}:{server.Port}/");
                 string html = await ui.Content.ReadAsStringAsync();
                 Check.That(ui.StatusCode).Is(HttpStatusCode.OK);
-                Check.That(html).Contains("SimpleW File Browser");
+                Check.That(html).Contains("File Browser");
 
                 HttpResponseMessage js = await client.GetAsync($"http://{server.Address}:{server.Port}/app.js");
                 Check.That(js.StatusCode).Is(HttpStatusCode.OK);

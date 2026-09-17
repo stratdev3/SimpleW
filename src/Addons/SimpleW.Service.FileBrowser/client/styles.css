@@ -444,7 +444,8 @@ td:nth-child(3) { width: 1%; text-align: right; white-space: nowrap; }
   transition: opacity .12s ease;
 }
 .item-row-actions button { min-height: 28px; padding: 4px 7px; font-size: 12px; }
-tbody tr:not(.list-message):hover .item-row-actions {
+tbody tr:not(.list-message):hover .item-row-actions,
+tbody tr:not(.list-message):focus-within .item-row-actions {
   opacity: 1;
   pointer-events: auto;
 }
@@ -691,6 +692,8 @@ footer { padding: 10px 18px; color: var(--muted); border-top: 1px solid var(--li
 .modal-form-field small,
 .archive-name-field small { color: var(--muted); }
 .modal-form-field input,
+.modal-form-field select,
+.modal-form-field textarea,
 .archive-name-field input,
 .extract-folder-field input {
   width: 100%;
@@ -704,6 +707,8 @@ footer { padding: 10px 18px; color: var(--muted); border-top: 1px solid var(--li
 }
 .modal-form-field small.bad { color: var(--danger); }
 .modal-message { margin: 0; color: var(--muted); line-height: 1.5; }
+.modal-message.bad { color: var(--danger); }
+#checksumValue { font-family: monospace; overflow-wrap: anywhere; resize: vertical; }
 /* Trash and extraction dialogs extend the common modal framework. */
 .trash-modal-panel { width: min(760px, 100%); }
 .trash-intro { margin: 0; color: var(--muted); }

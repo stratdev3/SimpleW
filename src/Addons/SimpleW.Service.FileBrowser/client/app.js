@@ -60,6 +60,7 @@ const selectionBar = document.getElementById("selectionBar");
 const selectionSummary = document.getElementById("selectionSummary");
 const selectionToggle = document.getElementById("selectionToggle");
 const downloadSelectedButton = document.getElementById("downloadSelected");
+const checksumSelectedButton = document.getElementById("checksumSelected");
 const archiveSelectedButton = document.getElementById("archiveSelected");
 
 // Background operation panel.
@@ -84,6 +85,15 @@ const uploadStaging = document.getElementById("uploadStaging");
 const startUploadButton = document.getElementById("startUpload");
 const filesInput = document.getElementById("files");
 const folderInput = document.getElementById("folder");
+
+// File checksum dialog.
+const checksumModal = document.getElementById("checksumModal");
+const checksumPath = document.getElementById("checksumPath");
+const checksumAlgorithm = document.getElementById("checksumAlgorithm");
+const checksumValue = document.getElementById("checksumValue");
+const checksumStatus = document.getElementById("checksumStatus");
+const copyChecksumButton = document.getElementById("copyChecksum");
+const retryChecksumButton = document.getElementById("retryChecksum");
 
 // Trash management dialogs.
 const trashModal = document.getElementById("trashModal");
@@ -152,6 +162,9 @@ let archiveSourcePaths = [];
 let archiveDestinationDirectory = "";
 let extractArchivePath = "";
 let newFolderParentPath = "";
+let checksumTargetPath = "";
+let checksumRequest = null;
+let checksumReturnFocus = null;
 
 // =============================================================================
 // General UI helpers
@@ -160,6 +173,7 @@ let newFolderParentPath = "";
 /** Returns whether at least one application dialog is currently visible. */
 function isModalOpen() {
   return !newFolderModal.hidden
+    || !checksumModal.hidden
     || !uploadModal.hidden
     || !trashModal.hidden
     || !purgeModal.hidden
@@ -786,6 +800,7 @@ function applyCapabilities() {
   document.getElementById("upload").hidden = !capabilities.canUpload;
   openTrashButton.hidden = !capabilities.canManageTrash;
   downloadSelectedButton.hidden = !capabilities.canDownload;
+  checksumSelectedButton.hidden = !capabilities.canDownload;
   archiveSelectedButton.hidden = !capabilities.canModify;
   document.getElementById("rename").hidden = !capabilities.canModify;
   document.getElementById("move").hidden = !capabilities.canModify;
@@ -1174,7 +1189,10 @@ function renderRows() {
       : "";
     const modifyActions = capabilities.canModify ? '<button type="button" data-item-action="rename">Rename</button><button type="button" data-item-action="move">Move</button>' : "";
     const deleteAction = capabilities.canDelete ? '<button type="button" data-item-action="delete">Delete</button>' : "";
-    const itemActions = `<div class="item-row-actions" role="group">${archiveAction}${extractAction}${modifyActions}${deleteAction}</div>`;
+    const checksumAction = capabilities.canDownload && item.type === "file"
+      ? '<button type="button" data-item-action="checksum">Checksum</button>'
+      : "";
+    const itemActions = `<div class="item-row-actions" role="group">${checksumAction}${archiveAction}${extractAction}${modifyActions}${deleteAction}</div>`;
     tr.innerHTML = `<td class="name"><input class="row-selection" type="checkbox">${itemIcon}<a href="#" class="file-name file-link"></a>${itemActions}</td><td>${item.type === "file" ? fmtSize(item.size) : "\u2014"}</td><td>${new Date(item.modifiedUtc).toLocaleString()}</td>`;
     tr.querySelector(".file-name").textContent = item.name;
     const checkbox = tr.querySelector(".row-selection");
@@ -1186,6 +1204,7 @@ function renderRows() {
     const link = tr.querySelector(".file-link");
     tr.querySelector(".item-row-actions").setAttribute("aria-label", `Actions for ${item.name}`);
     const actionHandlers = {
+      checksum: () => openChecksumModal(item.path),
       archive: async () => openArchiveModal([item.path]),
       extract: async () => openExtractModal(item.path),
       rename: () => renameItem(item.path),
@@ -1250,6 +1269,7 @@ function updateButtons() {
   else selectionBar.setAttribute("inert", "");
   selectionSummary.textContent = `${count} item${one ? "" : "s"} selected`;
   downloadSelectedButton.disabled = !capabilities.canDownload || selectedFiles.length === 0;
+  checksumSelectedButton.disabled = !capabilities.canDownload || !one || selectedFiles.length !== 1;
   archiveSelectedButton.disabled = !capabilities.canModify || count === 0;
   downloadSelectedButton.title = selectedFiles.length < count ? "Folders will be skipped" : "Download selected files";
   document.getElementById("rename").disabled = !capabilities.canModify || !one;
@@ -1353,6 +1373,90 @@ function updateBrowserUploadDropTarget(target) {
 // =============================================================================
 // Action dialogs and path validation
 // =============================================================================
+
+/** Opens a fresh checksum dialog for one file. */
+function openChecksumModal(path) {
+  if (!capabilities.canDownload) return;
+  checksumReturnFocus = document.activeElement;
+  checksumTargetPath = path;
+  checksumPath.textContent = displayBrowserPath(path);
+  checksumPath.title = displayBrowserPath(path);
+  checksumAlgorithm.value = "sha256";
+  checksumModal.hidden = false;
+  checksumAlgorithm.focus();
+  calculateChecksum();
+}
+
+/** Cancels pending work and restores focus when the checksum dialog closes. */
+function closeChecksumModal() {
+  checksumRequest?.abort();
+  checksumRequest = null;
+  checksumTargetPath = "";
+  checksumValue.value = "";
+  copyChecksumButton.disabled = true;
+  checksumModal.hidden = true;
+  if (checksumReturnFocus?.isConnected) checksumReturnFocus.focus();
+  checksumReturnFocus = null;
+}
+
+/** Fetches a checksum and ignores results from superseded or closed dialogs. */
+async function calculateChecksum() {
+  if (checksumModal.hidden || !checksumTargetPath) return;
+  checksumRequest?.abort();
+  const request = new AbortController();
+  checksumRequest = request;
+  checksumValue.value = "";
+  copyChecksumButton.disabled = true;
+  if (document.activeElement === retryChecksumButton) checksumAlgorithm.focus();
+  retryChecksumButton.hidden = true;
+  checksumStatus.classList.remove("bad");
+  checksumStatus.textContent = "Calculating checksum...";
+  checksumValue.setAttribute("aria-busy", "true");
+  const query = new URLSearchParams({ path: checksumTargetPath, algorithm: checksumAlgorithm.value });
+  try {
+    const response = await fetch(`${api}/checksum?${query}`, { signal: request.signal, cache: "no-store" });
+    const json = await response.json();
+    if (checksumRequest !== request || checksumModal.hidden) return;
+    if (!response.ok || !json.ok) throw new Error(json.error || "checksum_failed");
+    checksumValue.value = json.checksum;
+    copyChecksumButton.disabled = false;
+    checksumStatus.textContent = "Compare this checksum with the local file using the same algorithm.";
+  }
+  catch (err) {
+    if (checksumRequest !== request || checksumModal.hidden || err.name === "AbortError") return;
+    const messages = {
+      invalid_algorithm: "This checksum algorithm is not supported.",
+      file_not_found: "The file no longer exists or is a folder.",
+      forbidden: "You do not have permission to read this file.",
+      path_unavailable: "The file cannot be accessed.",
+      file_changed: "The file changed during calculation. Please retry.",
+      checksum_failed: "The checksum could not be calculated. Please retry."
+    };
+    checksumStatus.textContent = messages[err.message] || "The checksum could not be loaded. Please retry.";
+    checksumStatus.classList.add("bad");
+    retryChecksumButton.hidden = false;
+  }
+  finally {
+    if (checksumRequest === request) checksumValue.setAttribute("aria-busy", "false");
+  }
+}
+
+/** Copies the checksum, retaining manual selection when clipboard access fails. */
+async function copyChecksum() {
+  if (copyChecksumButton.disabled || !checksumValue.value) return;
+  const request = checksumRequest;
+  const value = checksumValue.value;
+  try {
+    await navigator.clipboard.writeText(value);
+    if (checksumRequest === request && !checksumModal.hidden) checksumStatus.textContent = "Checksum copied.";
+  }
+  catch {
+    if (checksumRequest !== request || checksumModal.hidden) return;
+    checksumValue.focus();
+    checksumValue.select();
+    checksumStatus.textContent = "Clipboard unavailable. Copy the selected checksum manually.";
+  }
+}
 
 /** Opens the upload staging dialog for a destination directory. */
 function openUploadModal(destinationPath = current) {
@@ -1957,6 +2061,10 @@ nextPageButton.onclick = () => {
 // Selection and primary file actions.
 document.getElementById("newFolder").onclick = openNewFolderModal;
 downloadSelectedButton.onclick = downloadSelectedFiles;
+checksumSelectedButton.onclick = () => {
+  const files = currentItems.filter(item => selected.has(item.path) && item.type === "file");
+  if (selected.size === 1 && files.length === 1) openChecksumModal(files[0].path);
+};
 archiveSelectedButton.onclick = () => openArchiveModal([...selected]);
 document.getElementById("rename").onclick = () => runAction(renameSelected);
 document.getElementById("move").onclick = () => runAction(moveSelected);
@@ -1967,6 +2075,27 @@ selectionToggle.onchange = () => {
 };
 
 // Operation panel and modal-specific actions.
+document.getElementById("closeChecksum").onclick = closeChecksumModal;
+document.getElementById("doneChecksum").onclick = closeChecksumModal;
+document.querySelector("[data-close-checksum]").onclick = closeChecksumModal;
+checksumAlgorithm.onchange = calculateChecksum;
+retryChecksumButton.onclick = calculateChecksum;
+copyChecksumButton.onclick = copyChecksum;
+checksumModal.onkeydown = e => {
+  if (e.key !== "Tab") return;
+  const controls = [...checksumModal.querySelectorAll("button, select, textarea")]
+    .filter(control => !control.disabled && !control.hidden);
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  }
+  else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+};
 toggleOperations.onclick = toggleOperationsPanel;
 clearOperationsButton.onclick = clearOperationHistory;
 cancelOperationsButton.onclick = () => runAction(cancelAllOperations);
@@ -2058,7 +2187,11 @@ extractFolderName.onkeydown = e => {
 // Global keyboard shortcuts and escape handling.
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") {
-    if (!newFolderModal.hidden) {
+    if (!checksumModal.hidden) {
+      e.preventDefault();
+      closeChecksumModal();
+    }
+    else if (!newFolderModal.hidden) {
       e.preventDefault();
       closeNewFolderModal();
     }
