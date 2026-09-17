@@ -40,7 +40,7 @@ This major release completely rewrites `ISimpleWEngine` so alternative engines c
 
 ### breakingChange
 
-There is a [complete migration guide](https://simplew.net/guide/migrate-from-v26.0-to-v26.1.html).
+There is a [complete migration guide](https://simplew.net/version/migrate-from-v26.0-to-v26.1.html).
 
 - Replaced `SimpleWServer.IsStarted`, `SimpleWServer.IsStopping`, and `SimpleWServer.IsListenerReloading` with the thread-safe `SimpleWServer.State` lifecycle machine (`Stopped`, `Starting`, `Started`, `Reloading`, `Stopping`, and `Faulted`). Lifecycle operations are now serialized; recover a `Faulted` server with `StopAsync()` before restarting it.
 - Replaced `OnStarted` and `OnStopped` with `OnStateChanged(Action<SimpleWServer, SimpleWServerState>)` and `OnStateChanged(Func<SimpleWServer, SimpleWServerState, Task>)`. Filter the provided state when migrating an existing callback; async callbacks are now awaited in registration order.
@@ -71,7 +71,7 @@ Maintenance
 
 
 
-## v26.0.0 - _(2026-04-26)_
+## v26.0.0 / _(2026-04-26)_
 
 After months of rewrite, testing, release candidates, breaking changes, documentation work, and a few painful but necessary design decisions, **SimpleW v26 is finally ready**.
 
@@ -108,7 +108,7 @@ Now the real fun begins.
 
 ### breakingChange
 
-There is a [complete migration guide](https://simplew.net/guide/migrate-from-v16-to-v26.html).
+There is a [complete migration guide](https://simplew.net/version/migrate-from-v16-to-v26.html).
 
 ### feature / comparison
 
