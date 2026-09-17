@@ -302,6 +302,16 @@
   pointer-events: none;
 }
 
+html:not(.dark) .terminal-nav {
+  --terminal-text: #1f2937;
+  --terminal-active: #111827;
+  --terminal-context: #475569;
+  --cyan: #0e7490;
+  --auth-main: #854d0e;
+  --fw-main: #b91c1c;
+  --tls-main: #047857;
+}
+
 .terminal-stage {
   position: absolute;
   inset: 0;
@@ -326,7 +336,7 @@
   position: relative;
   height: var(--terminal-row);
   padding-left: 18px;
-  color: rgba(148, 163, 184, 0.66);
+  color: var(--terminal-context, rgba(148, 163, 184, 0.66));
 }
 
 .terminal-context-strong {

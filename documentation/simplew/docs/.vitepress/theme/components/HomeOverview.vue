@@ -649,6 +649,11 @@ async function moveFamily(offset) {
 .code-panel :deep(.token-number) { color: #f59e0b; }
 .code-panel :deep(.token-string) { color: #34d399; }
 
+html:not(.dark) .code-panel code { color: var(--vp-c-text-1); }
+html:not(.dark) .code-panel :deep(.token-keyword) { color: #7e22ce; }
+html:not(.dark) .code-panel :deep(.token-number) { color: #92400e; }
+html:not(.dark) .code-panel :deep(.token-string) { color: #047857; }
+
 .code-panel :deep(.code-focus) {
   display: block;
   margin: 0 -22px;
