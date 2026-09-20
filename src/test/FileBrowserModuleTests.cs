@@ -25,14 +25,15 @@ namespace test {
         }
 
         [Fact]
-        public void UseFileBrowserModule_Should_Require_Explicit_Authorization() {
-            string root = CreateRoot(nameof(UseFileBrowserModule_Should_Require_Explicit_Authorization));
+        public void UseFileBrowserModule_Should_Reject_Null_Authorization() {
+            string root = CreateRoot(nameof(UseFileBrowserModule_Should_Reject_Null_Authorization));
             var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             Check.ThatCode(() => {
                 server.UseFileBrowserModule(options => {
                     options.Path = root;
                     options.Prefix = "/files";
+                    options.Authorize = null!;
                 });
             }).Throws<ArgumentException>();
         }
@@ -45,7 +46,7 @@ namespace test {
             Check.ThatCode(() => {
                 server.UseFileBrowserModule(options => {
                     options.Path = root;
-                    options.AllowAnonymous = true;
+                    options.Authorize = (_, _) => true;
                     options.DefaultPageSize = 101;
                     options.MaxPageSize = 100;
                 });
@@ -60,7 +61,7 @@ namespace test {
             server.UseFileBrowserModule(options => {
                 options.Path = root;
                 options.Prefix = "/files";
-                options.Authorize = _ => false;
+                options.Authorize = (_, _) => false;
                 options.ServeUi = false;
             });
 
@@ -107,7 +108,7 @@ namespace test {
             server.UseFileBrowserModule(options => {
                 options.Path = root;
                 options.Prefix = "/files";
-                options.Authorize = _ => false;
+                options.Authorize = (_, _) => false;
             });
 
             await server.StartAsync();
@@ -157,7 +158,7 @@ namespace test {
                 options.Path = root;
                 options.Prefix = "/files";
                 options.ClientPath = clientRoot;
-                options.Authorize = _ => false;
+                options.Authorize = (_, _) => false;
             });
 
             await server.StartAsync();
@@ -174,8 +175,8 @@ namespace test {
         }
 
         [Fact]
-        public async Task Capability_And_Path_Denials_Should_Not_Invoke_Challenge() {
-            string root = CreateRoot(nameof(Capability_And_Path_Denials_Should_Not_Invoke_Challenge));
+        public async Task Action_Denials_Should_Not_Invoke_Challenge() {
+            string root = CreateRoot(nameof(Action_Denials_Should_Not_Invoke_Challenge));
             File.WriteAllText(Path.Combine(root, "private.txt"), "private");
             var server = new SimpleWServer(IPAddress.Loopback, 0);
             int challengeCount = 0;
@@ -190,10 +191,7 @@ namespace test {
                 options.Prefix = "/files";
                 options.ServeUi = false;
                 options.EnableEvents = false;
-                options.Authorize = _ => true;
-                options.CanList = _ => true;
-                options.CanDownload = _ => false;
-                options.CanAccessPath = (_, _) => false;
+                options.Authorize = (_, context) => context.Action == FileBrowserAction.AccessModule;
             });
 
             await server.StartAsync();
@@ -217,8 +215,8 @@ namespace test {
         }
 
         [Fact]
-        public async Task Granular_Capabilities_Should_Allow_ReadOnly_Path_Filtering() {
-            string root = CreateRoot(nameof(Granular_Capabilities_Should_Allow_ReadOnly_Path_Filtering));
+        public async Task Action_Authorization_Should_Allow_Listing_Without_Download() {
+            string root = CreateRoot(nameof(Action_Authorization_Should_Allow_Listing_Without_Download));
             Directory.CreateDirectory(Path.Combine(root, "public"));
             Directory.CreateDirectory(Path.Combine(root, "private"));
             var server = new SimpleWServer(IPAddress.Loopback, 0);
@@ -227,9 +225,10 @@ namespace test {
                 options.Prefix = "/files";
                 options.ServeUi = false;
                 options.EnableEvents = false;
-                options.CanList = _ => true;
-                options.CanDownload = _ => false;
-                options.CanAccessPath = (_, path) => path.Length == 0 || path.StartsWith("public", StringComparison.Ordinal);
+                options.Authorize = (_, context) => context.Action == FileBrowserAction.AccessModule
+                    || ((context.Action == FileBrowserAction.List)
+                        && context.Resources.All(resource => resource.Path is string path
+                            && (path.Length == 0 || path.StartsWith("public", StringComparison.Ordinal))));
             });
 
             await server.StartAsync();
@@ -240,7 +239,8 @@ namespace test {
 
                 Check.That(list.StatusCode).Is(HttpStatusCode.OK);
                 Check.That(json.RootElement.GetProperty("items").ToString()).Contains("public");
-                Check.That(json.RootElement.GetProperty("items").ToString()).DoesNotContain("private");
+                // Listing the parent exposes its entries, without granting access to their contents.
+                Check.That(json.RootElement.GetProperty("items").ToString()).Contains("private");
 
                 HttpResponseMessage download = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/download?path=public/file.txt");
                 Check.That(download.StatusCode).Is(HttpStatusCode.Forbidden);
@@ -915,7 +915,7 @@ namespace test {
             server.UseFileBrowserModule(options => {
                 options.Path = root;
                 options.Prefix = "/files";
-                options.Authorize = _ => false;
+                options.Authorize = (_, _) => false;
             });
 
             await server.StartAsync();
@@ -1528,7 +1528,6 @@ namespace test {
             server.UseFileBrowserModule(options => {
                 options.Path = root;
                 options.Prefix = "/files";
-                options.AllowAnonymous = true;
                 configure?.Invoke(options);
             });
             return server;

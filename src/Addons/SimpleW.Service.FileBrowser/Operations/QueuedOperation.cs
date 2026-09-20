@@ -1,5 +1,3 @@
-using System.Threading;
-
 namespace SimpleW.Service.FileBrowser {
 
     /// <summary>
@@ -17,6 +15,7 @@ namespace SimpleW.Service.FileBrowser {
         public string OwnerKey { get; }
         public string Kind { get; }
         public string Path { get; }
+        public FileBrowserAuthorizationContext Authorization { get; }
         public Func<CancellationToken, OperationResult> Work { get; }
         public CancellationToken Token => _cancellation.Token;
         public bool IsCancellationRequested => Volatile.Read(ref _cancellationRequested) != 0;
@@ -38,12 +37,14 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="kind"></param>
         /// <param name="path"></param>
         /// <param name="work"></param>
-        public QueuedOperation(Guid id, string ownerKey, string kind, string path, Func<CancellationToken, OperationResult> work) {
+        /// <param name="authorization"></param>
+        public QueuedOperation(Guid id, string ownerKey, string kind, string path, Func<CancellationToken, OperationResult> work, FileBrowserAuthorizationContext authorization) {
             Id = id;
             OwnerKey = ownerKey;
             Kind = kind;
             Path = path;
             Work = work;
+            Authorization = authorization;
             _state = (int)QueuedOperationState.Queued;
         }
 
@@ -78,6 +79,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <summary>
         /// Marks the operation as completed.
         /// </summary>
+        /// <param name="payload"></param>
         public void MarkCompleted(object? payload) {
             Payload = payload;
             CompletedAtUtc = DateTimeOffset.UtcNow;
@@ -87,6 +89,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <summary>
         /// Marks the operation as failed.
         /// </summary>
+        /// <param name="error"></param>
         public void MarkFailed(string error) {
             Error = error;
             CompletedAtUtc = DateTimeOffset.UtcNow;

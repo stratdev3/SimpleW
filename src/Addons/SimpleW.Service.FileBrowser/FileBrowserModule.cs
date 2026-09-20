@@ -8,12 +8,13 @@ using System.Threading.Channels;
 using SimpleW.Modules;
 using SimpleW.Observability;
 
+
 namespace SimpleW.Service.FileBrowser {
 
     /// <summary>
     /// Installs and operates the file browser HTTP API, UI, uploads and background file operations.
     /// </summary>
-    internal sealed class FileBrowserModule : IHttpModule {
+    internal sealed partial class FileBrowserModule : IHttpModule {
 
         #region constants and fields
 
@@ -77,7 +78,8 @@ namespace SimpleW.Service.FileBrowser {
                 server.UseServerSentEventsModule(sse => {
                     sse.Prefix = _options.NormalizedEventsPrefix;
                     sse.AutoJoinRoom = null;
-                    sse.Authorize = IsAuthorized;
+                    InstallTransportAuthorization(server, _options.NormalizedEventsPrefix);
+                    InstallTransportAuthorization(server, _options.NormalizedEventsPrefix + "/*");
                     sse.OnConnect = async (connection, context) => {
                         await connection.JoinAsync(GetEventsRoom(GetScopeKey(context.Session))).ConfigureAwait(false);
                         await connection.SendEventAsync(
@@ -113,7 +115,8 @@ namespace SimpleW.Service.FileBrowser {
                         staticFiles.Path = clientPath;
                         staticFiles.Prefix = _options.NormalizedPrefix;
                         staticFiles.DefaultDocument = "index.html";
-                        staticFiles.Authorize = IsAuthorized;
+                        InstallTransportAuthorization(server,
+                            _options.NormalizedPrefix == "/" ? "/*" : _options.NormalizedPrefix + "/*");
                     });
                     _log.Info($"serving UI from disk '{clientPath}'");
                 }
@@ -220,9 +223,9 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="path"></param>
         private static bool IsClientDirectory(string path) {
             return Directory.Exists(path)
-                && File.Exists(System.IO.Path.Combine(path, "index.html"))
-                && File.Exists(System.IO.Path.Combine(path, "app.js"))
-                && File.Exists(System.IO.Path.Combine(path, "styles.css"));
+                   && File.Exists(System.IO.Path.Combine(path, "index.html"))
+                   && File.Exists(System.IO.Path.Combine(path, "app.js"))
+                   && File.Exists(System.IO.Path.Combine(path, "styles.css"));
         }
 
         /// <summary>
@@ -293,7 +296,7 @@ namespace SimpleW.Service.FileBrowser {
         private static ClientAsset LoadEmbeddedClientAsset(string routeSuffix, string fileName, string contentType) {
             string resourceName = $"SimpleW.Service.FileBrowser.Client.{fileName}";
             using Stream stream = typeof(FileBrowserModule).Assembly.GetManifestResourceStream(resourceName)
-                ?? throw new InvalidOperationException($"Embedded FileBrowser client resource '{resourceName}' was not found.");
+                                  ?? throw new InvalidOperationException($"Embedded FileBrowser client resource '{resourceName}' was not found.");
             using MemoryStream buffer = new();
             stream.CopyTo(buffer);
             byte[] data = buffer.ToArray();
@@ -477,11 +480,44 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="session"></param>
         /// <param name="kind"></param>
         /// <param name="path"></param>
+        /// <param name="action"></param>
+        /// <param name="targets"></param>
         /// <param name="work"></param>
+        /// <param name="capture"></param>
+        /// <param name="uploadId"></param>
         /// <returns></returns>
-        private ValueTask EnqueueOperationAsync(HttpSession session, string kind, string path, Func<CancellationToken, OperationResult> work) {
+        private ValueTask EnqueueOperationAsync(
+            HttpSession session,
+            string kind,
+            string path,
+            FileBrowserAction action,
+            AuthorizationTarget[] targets,
+            Func<CancellationToken, IReadOnlyList<FileBrowserAuthorizationResource>,
+            OperationResult> work,
+            Func<AuthorizationSnapshot>? capture = null, 
+            Guid? uploadId = null
+        ) {
             Guid operationId = Guid.NewGuid();
-            QueuedOperation operation = new(operationId, GetScopeKey(session), kind, path, work);
+            capture ??= () => CaptureAuthorization(targets);
+            AuthorizationSnapshot snapshot;
+            try {
+                snapshot = capture();
+            }
+            catch (InvalidDataException exception) {
+                return ErrorAsync(session, 400, exception.Message);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) {
+                return ErrorAsync(session, 409, "authorization_scope_unavailable");
+            }
+            FileBrowserAuthorizationContext authorization = snapshot.Context(action, uploadId, operationId);
+            if (!Authorize(session, authorization)) {
+                return ForbiddenAsync(session);
+            }
+            QueuedOperation operation = new(operationId, GetScopeKey(session), kind, path, cancellationToken => {
+                cancellationToken.ThrowIfCancellationRequested();
+                snapshot.Verify(capture);
+                return work(cancellationToken, authorization.Resources);
+            }, authorization);
             if (!_trackedOperations.TryAdd(operationId, operation)) {
                 operation.Dispose();
                 return ErrorAsync(session, 503, "operation_queue_unavailable");
@@ -625,14 +661,6 @@ namespace SimpleW.Service.FileBrowser {
                 apiPrefix = Route("/api"),
                 eventsPrefix = _options.EnableEvents ? _options.NormalizedEventsPrefix : null,
                 enableEvents = _options.EnableEvents,
-                capabilities = new {
-                    canList = HasCapabilityAfterModuleAccess(session, _options.CanList),
-                    canDownload = HasCapabilityAfterModuleAccess(session, _options.CanDownload),
-                    canUpload = HasCapabilityAfterModuleAccess(session, _options.CanUpload),
-                    canModify = HasCapabilityAfterModuleAccess(session, _options.CanModify),
-                    canDelete = HasCapabilityAfterModuleAccess(session, _options.CanDelete),
-                    canManageTrash = HasCapabilityAfterModuleAccess(session, _options.CanManageTrash)
-                },
                 uploadChunkThresholdBytes = _options.UploadChunkThresholdBytes,
                 uploadChunkBytes = _options.UploadChunkBytes,
                 uploadSessionTimeoutSeconds = _options.UploadSessionTimeout.TotalSeconds,
@@ -653,7 +681,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ListAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanList);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -662,7 +690,7 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(rawPath, allowRoot: true, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
             }
-            if (!CanAccessPath(session, resolved.RelativePath)) {
+            if (!Authorize(session, FileBrowserAction.List, [Resource(resolved)])) {
                 return ForbiddenAsync(session);
             }
 
@@ -723,7 +751,7 @@ namespace SimpleW.Service.FileBrowser {
                 }
                 DirectoryInfo info = new(directory);
                 string itemPath = CombineRelative(resolved.RelativePath, info.Name);
-                if (CanAccessPath(session, itemPath) && (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase))) {
+                if (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) {
                     AddPageCandidate(
                         items,
                         new BrowserItem(info.Name, itemPath, "directory", 0, info.LastWriteTimeUtc),
@@ -739,7 +767,7 @@ namespace SimpleW.Service.FileBrowser {
                 }
                 FileInfo info = new(file);
                 string itemPath = CombineRelative(resolved.RelativePath, info.Name);
-                if (CanAccessPath(session, itemPath) && (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase))) {
+                if (search.Length == 0 || info.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) {
                     AddPageCandidate(
                         items,
                         new BrowserItem(info.Name, itemPath, "file", info.Length, info.LastWriteTimeUtc),
@@ -914,7 +942,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DownloadAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanDownload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -923,7 +951,7 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(rawPath, allowRoot: false, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
             }
-            if (!CanAccessPath(session, resolved.RelativePath)) {
+            if (!Authorize(session, FileBrowserAction.Download, [Resource(resolved)])) {
                 return ForbiddenAsync(session);
             }
 
@@ -948,7 +976,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="session"></param>
         private async ValueTask ChecksumAsync(HttpSession session) {
             session.Response.AddHeader("Cache-Control", "no-store");
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanDownload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
@@ -959,7 +987,7 @@ namespace SimpleW.Service.FileBrowser {
                 await ErrorAsync(session, error == "path_unavailable" ? 403 : 400, error).ConfigureAwait(false);
                 return;
             }
-            if (!CanAccessPath(session, resolved.RelativePath)) {
+            if (!Authorize(session, FileBrowserAction.Download, [Resource(resolved)])) {
                 await ForbiddenAsync(session).ConfigureAwait(false);
                 return;
             }
@@ -1033,7 +1061,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CreateFolderAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1045,14 +1073,12 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(request.Path, allowRoot: false, out ResolvedPath resolved, out string? error)) {
                 return ErrorAsync(session, 400, error);
             }
-            if (!CanAccessPath(session, resolved.RelativePath)) {
-                return ForbiddenAsync(session);
-            }
             if (File.Exists(resolved.FullPath) || Directory.Exists(resolved.FullPath)) {
                 return ErrorAsync(session, 409, "destination_exists");
             }
 
-            return EnqueueOperationAsync(session, "createFolder", resolved.RelativePath, cancellationToken => {
+            return EnqueueOperationAsync(session, "createFolder", resolved.RelativePath, FileBrowserAction.CreateFolder,
+                [Target(resolved, isDirectory: true, createParents: true)], (cancellationToken, authorizedResources) => {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (File.Exists(resolved.FullPath) || Directory.Exists(resolved.FullPath)) {
                     throw new IOException("destination_exists");
@@ -1073,7 +1099,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask RenameAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1085,9 +1111,6 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(request.Path, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
-            if (!CanAccessPath(session, source.RelativePath)) {
-                return ForbiddenAsync(session);
-            }
             if (!TryValidateName(request.Name, out string? nameError)) {
                 return ErrorAsync(session, 400, nameError);
             }
@@ -1095,9 +1118,6 @@ namespace SimpleW.Service.FileBrowser {
             string parent = System.IO.Path.GetDirectoryName(source.FullPath) ?? _options.NormalizedPath;
             string destinationFull = System.IO.Path.Combine(parent, request.Name!.Trim());
             string destinationRelative = CombineRelative(ParentRelative(source.RelativePath), request.Name!.Trim());
-            if (!CanAccessPath(session, destinationRelative)) {
-                return ForbiddenAsync(session);
-            }
             if (!TryEnsureInsideRoot(destinationFull)) {
                 return ErrorAsync(session, 400, "invalid_path");
             }
@@ -1109,7 +1129,8 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 404, "source_not_found");
             }
 
-            return EnqueueOperationAsync(session, "rename", source.RelativePath, cancellationToken => {
+            return EnqueueOperationAsync(session, "rename", source.RelativePath, FileBrowserAction.Rename,
+                [Target(source, destinationRelative, recursive: true)], (cancellationToken, authorizedResources) => {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (File.Exists(destinationFull) || Directory.Exists(destinationFull)) {
                     throw new IOException("destination_exists");
@@ -1142,7 +1163,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask MoveAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1154,14 +1175,8 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(request.SourcePath, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
-            if (!CanAccessPath(session, source.RelativePath)) {
-                return ForbiddenAsync(session);
-            }
             if (!TryResolve(request.DestinationDirectory, allowRoot: true, out ResolvedPath destinationDirectory, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
-            }
-            if (!CanAccessPath(session, destinationDirectory.RelativePath)) {
-                return ForbiddenAsync(session);
             }
             if (!Directory.Exists(destinationDirectory.FullPath)) {
                 return ErrorAsync(session, 404, "destination_directory_not_found");
@@ -1174,9 +1189,6 @@ namespace SimpleW.Service.FileBrowser {
 
             string destinationFull = System.IO.Path.Combine(destinationDirectory.FullPath, name);
             string destinationRelative = CombineRelative(destinationDirectory.RelativePath, name);
-            if (!CanAccessPath(session, destinationRelative)) {
-                return ForbiddenAsync(session);
-            }
             if (!TryEnsureInsideRoot(destinationFull)) {
                 return ErrorAsync(session, 400, "invalid_path");
             }
@@ -1192,7 +1204,8 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 409, "cannot_move_directory_into_itself");
             }
 
-            return EnqueueOperationAsync(session, "move", source.RelativePath, cancellationToken => {
+            return EnqueueOperationAsync(session, "move", source.RelativePath, FileBrowserAction.Move,
+                [Target(source, destinationRelative, recursive: true), Target(destinationDirectory, isDirectory: true)], (cancellationToken, authorizedResources) => {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (File.Exists(destinationFull) || Directory.Exists(destinationFull)) {
                     throw new IOException("destination_exists");
@@ -1230,7 +1243,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DeleteAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanDelete);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1258,17 +1271,10 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
                 return ErrorAsync(session, 400, trashError);
             }
-            Directory.CreateDirectory(_options.NormalizedTrashPath);
-            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out trashError)) {
-                return ErrorAsync(session, 400, trashError);
-            }
             List<ResolvedPath> sources = new();
             foreach (string rawPath in rawPaths.Distinct(StringComparer.Ordinal)) {
                 if (!TryResolve(rawPath, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                     return ErrorAsync(session, 400, sourceError);
-                }
-                if (!CanAccessPath(session, source.RelativePath)) {
-                    return ForbiddenAsync(session);
                 }
                 if (!File.Exists(source.FullPath) && !Directory.Exists(source.FullPath)) {
                     return ErrorAsync(session, 404, "source_not_found");
@@ -1278,7 +1284,8 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             string operationPath = sources.Count == 1 ? sources[0].RelativePath : ParentRelative(sources[0].RelativePath);
-            return EnqueueOperationAsync(session, "delete", operationPath, cancellationToken => {
+            return EnqueueOperationAsync(session, "delete", operationPath, FileBrowserAction.Delete,
+                sources.Select(source => Target(source, recursive: true)).ToArray(), (cancellationToken, authorizedResources) => {
                 List<object> deleted = new();
                 List<string> changedPaths = new();
 
@@ -1310,7 +1317,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ListTrashAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            AccessDecision access = CheckRequestAccess(session, FileBrowserAction.ListTrash);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1318,12 +1325,7 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
                 return ErrorAsync(session, 400, trashError);
             }
-            Directory.CreateDirectory(_options.NormalizedTrashPath);
-            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out trashError)) {
-                return ErrorAsync(session, 400, trashError);
-            }
             TrashEntry[] entries = ListTrashEntries()
-                .Where(entry => string.IsNullOrWhiteSpace(entry.OriginalPath) || CanAccessPath(session, entry.OriginalPath))
                 .OrderByDescending(entry => entry.DeletedUtc)
                 .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
@@ -1349,7 +1351,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask RestoreTrashAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1370,15 +1372,9 @@ namespace SimpleW.Service.FileBrowser {
 
             List<TrashRestorePlan> plans = new(entries.Count);
             foreach (TrashEntry entry in entries) {
-                if (!string.IsNullOrWhiteSpace(entry.OriginalPath) && !CanAccessPath(session, entry.OriginalPath)) {
-                    return ForbiddenAsync(session);
-                }
                 string? destinationPath = restoreElsewhere ? request.DestinationPath : entry.OriginalPath;
                 if (!TryResolve(destinationPath, allowRoot: false, out ResolvedPath destination, out string? destinationError)) {
                     return ErrorAsync(session, 400, destinationError);
-                }
-                if (!CanAccessPath(session, destination.RelativePath)) {
-                    return ForbiddenAsync(session);
                 }
                 if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
                     return ErrorAsync(session, 409, "destination_exists");
@@ -1387,7 +1383,8 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             string operationPath = plans.Count == 1 ? plans[0].Destination.RelativePath : ParentRelative(plans[0].Destination.RelativePath);
-            return EnqueueOperationAsync(session, "restore", operationPath, cancellationToken => {
+            return EnqueueOperationAsync(session, "restore", operationPath, FileBrowserAction.RestoreTrash,
+                plans.Select(plan => TrashTarget(plan.Entry, plan.Destination.RelativePath)).ToArray(), (cancellationToken, authorizedResources) => {
                 List<object> restored = new();
                 List<string> changedPaths = new();
                 foreach (TrashRestorePlan plan in plans) {
@@ -1438,7 +1435,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask DeleteTrashAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1449,11 +1446,9 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolveTrashEntries(request.Ids, requireRestorable: false, out List<TrashEntry> entries, out string? trashError)) {
                 return ErrorAsync(session, trashError == "trash_item_not_found" ? 404 : 400, trashError);
             }
-            if (entries.Any(entry => !string.IsNullOrWhiteSpace(entry.OriginalPath) && !CanAccessPath(session, entry.OriginalPath))) {
-                return ForbiddenAsync(session);
-            }
 
-            return EnqueueOperationAsync(session, "purge", "Trash", cancellationToken =>
+            return EnqueueOperationAsync(session, "purge", "Trash", FileBrowserAction.PurgeTrash,
+                entries.Select(entry => TrashTarget(entry)).ToArray(), (cancellationToken, authorizedResources) =>
                 PermanentlyDeleteTrashEntries(entries, cancellationToken));
         }
 
@@ -1462,7 +1457,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask EmptyTrashAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanManageTrash);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1470,15 +1465,11 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out string? trashError)) {
                 return ErrorAsync(session, 400, trashError);
             }
-            Directory.CreateDirectory(_options.NormalizedTrashPath);
-            if (!TryEnsureNoTrashReparsePoints(_options.NormalizedTrashPath, out trashError)) {
-                return ErrorAsync(session, 400, trashError);
-            }
-            List<TrashEntry> entries = ListTrashEntries()
-                .Where(entry => string.IsNullOrWhiteSpace(entry.OriginalPath) || CanAccessPath(session, entry.OriginalPath))
-                .ToList();
-            return EnqueueOperationAsync(session, "emptyTrash", "Trash", cancellationToken =>
-                PermanentlyDeleteTrashEntries(entries, cancellationToken));
+            List<TrashEntry> entries = ListTrashEntries().OrderBy(entry => entry.Id, StringComparer.Ordinal).ToList();
+            return EnqueueOperationAsync(session, "emptyTrash", "Trash", FileBrowserAction.EmptyTrash,
+                entries.Select(entry => TrashTarget(entry)).ToArray(), (cancellationToken, authorizedResources) =>
+                PermanentlyDeleteTrashEntries(entries, cancellationToken),
+                capture: () => CaptureEmptyTrash(entries));
         }
 
         /// <summary>
@@ -1699,7 +1690,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask ArchiveAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1721,9 +1712,6 @@ namespace SimpleW.Service.FileBrowser {
                 if (!TryResolve(rawPath, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                     return ErrorAsync(session, 400, sourceError);
                 }
-                if (!CanAccessPath(session, source.RelativePath)) {
-                    return ForbiddenAsync(session);
-                }
                 if (!File.Exists(source.FullPath) && !Directory.Exists(source.FullPath)) {
                     return ErrorAsync(session, 404, "source_not_found");
                 }
@@ -1737,9 +1725,6 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!string.Equals(System.IO.Path.GetExtension(destination.FullPath), ".zip", StringComparison.OrdinalIgnoreCase)) {
                 return ErrorAsync(session, 400, "archive_extension_required");
-            }
-            if (!CanAccessPath(session, destination.RelativePath)) {
-                return ForbiddenAsync(session);
             }
             if (File.Exists(destination.FullPath) || Directory.Exists(destination.FullPath)) {
                 return ErrorAsync(session, 409, "destination_exists");
@@ -1768,8 +1753,9 @@ namespace SimpleW.Service.FileBrowser {
                 }
             }
 
-            return EnqueueOperationAsync(session, "archive", destination.RelativePath, cancellationToken =>
-                CreateArchive(sources, destination, cancellationToken));
+            return EnqueueOperationAsync(session, "archive", destination.RelativePath, FileBrowserAction.Archive,
+                sources.Select(source => Target(source, destination.RelativePath, recursive: true, mapDestinationChildren: false)).Append(Target(destination, isDirectory: false)).ToArray(), (cancellationToken, authorizedResources) =>
+                CreateArchive(sources, destination, authorizedResources, cancellationToken));
         }
 
         /// <summary>
@@ -1779,7 +1765,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="destination"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        private OperationResult CreateArchive(IReadOnlyList<ResolvedPath> sources, ResolvedPath destination, CancellationToken cancellationToken) {
+        private OperationResult CreateArchive(IReadOnlyList<ResolvedPath> sources, ResolvedPath destination, IReadOnlyList<FileBrowserAuthorizationResource> authorizedResources, CancellationToken cancellationToken) {
             string tempArchivePath = System.IO.Path.Combine(_tempPath, $"archive-{Guid.NewGuid():N}.zip");
             try {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1801,14 +1787,29 @@ namespace SimpleW.Service.FileBrowser {
                             throw new InvalidDataException("invalid_source_name");
                         }
 
-                        if (File.Exists(source.FullPath)) {
-                            AddFileToArchive(archive, source.FullPath, rootName, archiveEntryNames, buffer, ref entryCount, cancellationToken);
-                        }
-                        else if (Directory.Exists(source.FullPath)) {
-                            AddDirectoryToArchive(archive, source.FullPath, rootName, archiveEntryNames, buffer, ref entryCount, cancellationToken);
-                        }
-                        else {
-                            throw new FileNotFoundException("source_not_found", source.FullPath);
+                        foreach (FileBrowserAuthorizationResource resource in authorizedResources) {
+                            if (resource.Path == null || resource.DestinationPath != destination.RelativePath
+                                || !(string.Equals(resource.Path, source.RelativePath, _pathComparison)
+                                    || resource.Path.StartsWith(source.RelativePath + "/", _pathComparison))) {
+                                continue;
+                            }
+                            cancellationToken.ThrowIfCancellationRequested();
+                            string fullPath = BrowserFullPath(resource.Path);
+                            string suffix = resource.Path.Length == source.RelativePath.Length
+                                ? string.Empty : resource.Path[(source.RelativePath.Length + 1)..];
+                            string entryPath = suffix.Length == 0 ? rootName : rootName + "/" + suffix;
+                            if (resource.IsDirectory == true) {
+                                EnsureNoReparsePoints(fullPath);
+                                if (!Directory.Exists(fullPath)) {
+                                    throw new IOException("authorization_scope_changed");
+                                }
+                                string directoryEntryPath = entryPath + "/";
+                                AddArchiveEntryName(directoryEntryPath, archiveEntryNames, ref entryCount);
+                                archive.CreateEntry(directoryEntryPath);
+                            }
+                            else {
+                                AddFileToArchive(archive, fullPath, entryPath, archiveEntryNames, buffer, ref entryCount, cancellationToken);
+                            }
                         }
                     }
                 }
@@ -1834,52 +1835,6 @@ namespace SimpleW.Service.FileBrowser {
                     TryDeleteFile(tempArchivePath);
                 }
                 throw;
-            }
-        }
-
-        /// <summary>
-        /// Adds a directory tree to an archive while enforcing entry and path limits.
-        /// </summary>
-        /// <param name="archive"></param>
-        /// <param name="directoryPath"></param>
-        /// <param name="entryPath"></param>
-        /// <param name="archiveEntryNames"></param>
-        /// <param name="buffer"></param>
-        /// <param name="entryCount"></param>
-        /// <param name="cancellationToken"></param>
-        /// <exception cref="InvalidDataException"></exception>
-        private void AddDirectoryToArchive(
-            ZipArchive archive,
-            string directoryPath,
-            string entryPath,
-            HashSet<string> archiveEntryNames,
-            byte[] buffer,
-            ref int entryCount,
-            CancellationToken cancellationToken) {
-
-            cancellationToken.ThrowIfCancellationRequested();
-            FileAttributes attributes = File.GetAttributes(directoryPath);
-            if ((attributes & FileAttributes.ReparsePoint) != 0) {
-                throw new InvalidDataException("archive_reparse_point_forbidden");
-            }
-
-            string directoryEntryPath = entryPath.Replace('\\', '/').TrimEnd('/') + "/";
-            AddArchiveEntryName(directoryEntryPath, archiveEntryNames, ref entryCount);
-            archive.CreateEntry(directoryEntryPath);
-
-            foreach (string childPath in Directory.EnumerateFileSystemEntries(directoryPath).OrderBy(path => path, StringComparer.OrdinalIgnoreCase)) {
-                cancellationToken.ThrowIfCancellationRequested();
-                string childEntryPath = directoryEntryPath + System.IO.Path.GetFileName(childPath);
-                FileAttributes childAttributes = File.GetAttributes(childPath);
-                if ((childAttributes & FileAttributes.ReparsePoint) != 0) {
-                    throw new InvalidDataException("archive_reparse_point_forbidden");
-                }
-                if ((childAttributes & FileAttributes.Directory) != 0) {
-                    AddDirectoryToArchive(archive, childPath, childEntryPath, archiveEntryNames, buffer, ref entryCount, cancellationToken);
-                }
-                else {
-                    AddFileToArchive(archive, childPath, childEntryPath, archiveEntryNames, buffer, ref entryCount, cancellationToken);
-                }
             }
         }
 
@@ -1944,7 +1899,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="session"></param>
         /// <returns></returns>
         private ValueTask ExtractAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanModify);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -1956,9 +1911,6 @@ namespace SimpleW.Service.FileBrowser {
             if (!TryResolve(request.Path, allowRoot: false, out ResolvedPath source, out string? sourceError)) {
                 return ErrorAsync(session, 400, sourceError);
             }
-            if (!CanAccessPath(session, source.RelativePath)) {
-                return ForbiddenAsync(session);
-            }
             if (!File.Exists(source.FullPath)) {
                 return ErrorAsync(session, 404, "source_not_found");
             }
@@ -1967,9 +1919,6 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!TryResolve(request.DestinationDirectory, allowRoot: true, out ResolvedPath destination, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
-            }
-            if (!CanAccessPath(session, destination.RelativePath)) {
-                return ForbiddenAsync(session);
             }
 
             if (request.CreateDestinationDirectory) {
@@ -1981,8 +1930,77 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 404, "destination_directory_not_found");
             }
 
-            return EnqueueOperationAsync(session, "extract", source.RelativePath, cancellationToken =>
-                ExtractArchive(source, destination, request.CreateDestinationDirectory, cancellationToken));
+            return EnqueueOperationAsync(session, "extract", source.RelativePath, FileBrowserAction.Extract,
+                [Target(source, destination.RelativePath), Target(destination, isDirectory: true)], (cancellationToken, authorizedResources) =>
+                ExtractArchive(source, destination, request.CreateDestinationDirectory, authorizedResources, cancellationToken),
+                capture: () => CaptureExtraction(source, destination));
+        }
+
+        /// <summary>Validates ZIP entries before any extraction writes or authorization of expanded targets.</summary>
+        private List<ArchiveEntryPlan> PlanExtraction(ZipArchive archive, ResolvedPath destination, CancellationToken cancellationToken) {
+            if (archive.Entries.Count > _options.MaxArchiveEntries) {
+                throw new InvalidDataException("archive_too_many_entries");
+            }
+
+            StringComparer pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            HashSet<string> plannedPaths = new(pathComparer);
+            HashSet<string> plannedFiles = new(pathComparer);
+            List<ArchiveEntryPlan> plan = new(archive.Entries.Count);
+            long declaredTotal = 0;
+
+            foreach (ZipArchiveEntry entry in archive.Entries) {
+                cancellationToken.ThrowIfCancellationRequested();
+                string archivePath = entry.FullName.Replace('\\', '/');
+                string[] segments = archivePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (segments.Length == 0) {
+                    continue;
+                }
+                if (segments.Any(segment => segment == "." || segment == "..")) {
+                    throw new InvalidDataException("archive_path_traversal_forbidden");
+                }
+
+                string entryFullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(destination.FullPath, System.IO.Path.Combine(segments)));
+                if (!IsInsideOrEqual(entryFullPath, destination.FullPath) || !TryEnsureInsideRoot(entryFullPath)) {
+                    throw new InvalidDataException("archive_path_outside_destination");
+                }
+                if (!plannedPaths.Add(entryFullPath)) {
+                    throw new InvalidDataException("duplicate_archive_entry");
+                }
+
+                bool isDirectory = archivePath.EndsWith("/", StringComparison.Ordinal) || string.IsNullOrEmpty(entry.Name);
+                if (isDirectory) {
+                    if (File.Exists(entryFullPath)) {
+                        throw new IOException("destination_exists");
+                    }
+                }
+                else {
+                    if (entry.Length > _options.MaxExtractedFileBytes) {
+                        throw new InvalidDataException("archive_entry_too_large");
+                    }
+                    if (entry.Length > _options.MaxExtractedBytes - declaredTotal) {
+                        throw new InvalidDataException("archive_too_large");
+                    }
+                    declaredTotal += entry.Length;
+                    if (File.Exists(entryFullPath) || Directory.Exists(entryFullPath)) {
+                        throw new IOException("destination_exists");
+                    }
+                    plannedFiles.Add(entryFullPath);
+                }
+
+                plan.Add(new ArchiveEntryPlan(entry, entryFullPath, isDirectory));
+            }
+
+            foreach (ArchiveEntryPlan item in plan) {
+                string? parent = System.IO.Path.GetDirectoryName(item.FullPath);
+                while (!string.IsNullOrEmpty(parent) && !string.Equals(parent, destination.FullPath, _pathComparison)) {
+                    if (plannedFiles.Contains(parent) || File.Exists(parent)) {
+                        throw new InvalidDataException("archive_path_conflict");
+                    }
+                    parent = System.IO.Path.GetDirectoryName(parent);
+                }
+            }
+
+            return plan;
         }
 
         /// <summary>
@@ -1997,7 +2015,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <exception cref="IOException"></exception>
         /// <exception cref="DirectoryNotFoundException"></exception>
         /// <exception cref="InvalidDataException"></exception>
-        private OperationResult ExtractArchive(ResolvedPath source, ResolvedPath destination, bool createDestinationDirectory, CancellationToken cancellationToken) {
+        private OperationResult ExtractArchive(ResolvedPath source, ResolvedPath destination, bool createDestinationDirectory, IReadOnlyList<FileBrowserAuthorizationResource> authorizedResources, CancellationToken cancellationToken) {
             bool createdDestination = false;
             try {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -2016,67 +2034,25 @@ namespace SimpleW.Service.FileBrowser {
                 EnsureNoReparsePoints(source.FullPath);
                 EnsureNoReparsePoints(destination.FullPath);
                 using ZipArchive archive = ZipFile.OpenRead(source.FullPath);
-                if (archive.Entries.Count > _options.MaxArchiveEntries) {
-                    throw new InvalidDataException("archive_too_many_entries");
-                }
-
-                StringComparer pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-                HashSet<string> plannedPaths = new(pathComparer);
-                HashSet<string> plannedFiles = new(pathComparer);
-                List<ArchiveEntryPlan> plan = new(archive.Entries.Count);
-                long declaredTotal = 0;
-
-                foreach (ZipArchiveEntry entry in archive.Entries) {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string archivePath = entry.FullName.Replace('\\', '/');
-                    string[] segments = archivePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                    if (segments.Length == 0) {
-                        continue;
-                    }
-                    if (segments.Any(segment => segment == "." || segment == "..")) {
-                        throw new InvalidDataException("archive_path_traversal_forbidden");
-                    }
-
-                    string entryFullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(destination.FullPath, System.IO.Path.Combine(segments)));
-                    if (!IsInsideOrEqual(entryFullPath, destination.FullPath) || !TryEnsureInsideRoot(entryFullPath)) {
-                        throw new InvalidDataException("archive_path_outside_destination");
-                    }
-                    if (!plannedPaths.Add(entryFullPath)) {
-                        throw new InvalidDataException("duplicate_archive_entry");
-                    }
-
-                    bool isDirectory = archivePath.EndsWith("/", StringComparison.Ordinal) || string.IsNullOrEmpty(entry.Name);
-                    if (isDirectory) {
-                        if (File.Exists(entryFullPath)) {
-                            throw new IOException("destination_exists");
-                        }
-                    }
-                    else {
-                        if (entry.Length > _options.MaxExtractedFileBytes) {
-                            throw new InvalidDataException("archive_entry_too_large");
-                        }
-                        if (entry.Length > _options.MaxExtractedBytes - declaredTotal) {
-                            throw new InvalidDataException("archive_too_large");
-                        }
-                        declaredTotal += entry.Length;
-                        if (File.Exists(entryFullPath) || Directory.Exists(entryFullPath)) {
-                            throw new IOException("destination_exists");
-                        }
-                        plannedFiles.Add(entryFullPath);
-                    }
-
-                    plan.Add(new ArchiveEntryPlan(entry, entryFullPath, isDirectory));
-                }
-
+                List<ArchiveEntryPlan> plan = PlanExtraction(archive, destination, cancellationToken);
+                HashSet<string> approvedFiles = authorizedResources.Where(resource => resource.IsDirectory == false && resource.DestinationPath == null)
+                    .Select(resource => resource.Path!).ToHashSet(StringComparer.Ordinal);
+                HashSet<string> approvedDirectories = authorizedResources.Where(resource => resource.IsDirectory == true && resource.DestinationPath == null)
+                    .Select(resource => resource.Path!).ToHashSet(StringComparer.Ordinal);
                 foreach (ArchiveEntryPlan item in plan) {
-                    string? parent = System.IO.Path.GetDirectoryName(item.FullPath);
-                    while (!string.IsNullOrEmpty(parent) && !string.Equals(parent, destination.FullPath, _pathComparison)) {
-                        if (plannedFiles.Contains(parent) || File.Exists(parent)) {
-                            throw new InvalidDataException("archive_path_conflict");
+                    string relativePath = System.IO.Path.GetRelativePath(_options.NormalizedPath, item.FullPath).Replace('\\', '/');
+                    if (!(item.IsDirectory ? approvedDirectories : approvedFiles).Contains(relativePath)) {
+                        throw new IOException("authorization_scope_changed");
+                    }
+                    string parent = ParentRelative(relativePath);
+                    while (parent.Length > 0 && !Directory.Exists(BrowserFullPath(parent))) {
+                        if (!approvedDirectories.Contains(parent)) {
+                            throw new IOException("authorization_scope_changed");
                         }
-                        parent = System.IO.Path.GetDirectoryName(parent);
+                        parent = ParentRelative(parent);
                     }
                 }
+
 
                 cancellationToken.ThrowIfCancellationRequested();
                 if (createDestinationDirectory) {
@@ -2178,6 +2154,10 @@ namespace SimpleW.Service.FileBrowser {
                 return ErrorAsync(session, 404, "operation_not_found");
             }
 
+            if (!Authorize(session, operation.Authorization)) {
+                return ForbiddenAsync(session);
+            }
+
             return WriteOperationAsync(session, 200, operation);
         }
 
@@ -2192,6 +2172,10 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!TryGetOperation(session, out QueuedOperation operation)) {
                 return ErrorAsync(session, 404, "operation_not_found");
+            }
+
+            if (!Authorize(session, operation.Authorization)) {
+                return ForbiddenAsync(session);
             }
 
             bool cancellationRequested = operation.Cancel();
@@ -2273,7 +2257,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CreateUploadAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
@@ -2308,9 +2292,6 @@ namespace SimpleW.Service.FileBrowser {
                 if (!TryResolve(file.Path, allowRoot: false, out ResolvedPath resolved, out string? error)) {
                     return ErrorAsync(session, 400, error);
                 }
-                if (!CanAccessPath(session, resolved.RelativePath)) {
-                    return ForbiddenAsync(session);
-                }
                 if (files.ContainsKey(resolved.RelativePath)) {
                     return ErrorAsync(session, 409, "duplicate_file_path");
                 }
@@ -2320,6 +2301,10 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             UploadSession upload = new(uploadId, GetScopeKey(session), files, total);
+            if (!AuthorizeUpload(session, upload)) {
+                upload.Dispose();
+                return ForbiddenAsync(session);
+            }
             if (!TryAddUpload(upload)) {
                 upload.Dispose();
                 return ErrorAsync(session, 429, "too_many_upload_sessions");
@@ -2339,7 +2324,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask GetUploadAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
@@ -2348,7 +2333,16 @@ namespace SimpleW.Service.FileBrowser {
                 await ErrorAsync(session, 400, "invalid_upload_id").ConfigureAwait(false);
                 return;
             }
-            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || upload == null || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || upload == null) {
+                await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
+                return;
+            }
+
+            if (!AuthorizeUpload(session, upload, includeParentDirectories: false)) {
+                await ForbiddenAsync(session).ConfigureAwait(false);
+                return;
+            }
+            if (!upload.TryTouch(_options.UploadSessionTimeout)) {
                 await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
                 return;
             }
@@ -2405,7 +2399,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask DeleteUploadAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
@@ -2414,7 +2408,15 @@ namespace SimpleW.Service.FileBrowser {
                 await ErrorAsync(session, 400, "invalid_upload_id").ConfigureAwait(false);
                 return;
             }
-            if (!TryRemoveOwnedUpload(session, uploadId, out UploadSession upload)) {
+            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || upload == null) {
+                await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
+                return;
+            }
+            if (!AuthorizeUpload(session, upload, includeParentDirectories: false)) {
+                await ForbiddenAsync(session).ConfigureAwait(false);
+                return;
+            }
+            if (!TryRemoveOwnedUpload(session, uploadId, out upload)) {
                 await ErrorAsync(session, 404, "upload_not_found").ConfigureAwait(false);
                 return;
             }
@@ -2440,7 +2442,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask UploadFileAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
@@ -2513,7 +2515,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private async ValueTask UploadChunkAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 await RejectAccessAsync(session, access).ConfigureAwait(false);
                 return;
@@ -2594,16 +2596,20 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="session"></param>
         private ValueTask CompleteUploadAsync(HttpSession session) {
-            AccessDecision access = CheckCapabilityAccess(session, _options.CanUpload);
+            AccessDecision access = CheckModuleAccess(session);
             if (access != AccessDecision.Allowed) {
                 return RejectAccessAsync(session, access);
             }
             if (!TryGetUploadId(session, out Guid uploadId)) {
                 return ErrorAsync(session, 400, "invalid_upload_id");
             }
-            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || upload == null || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out UploadSession? upload) || upload == null) {
                 return ErrorAsync(session, 404, "upload_not_found");
             }
+            if (DateTimeOffset.UtcNow - upload.LastActivityAtUtc >= _options.UploadSessionTimeout) {
+                return ErrorAsync(session, 404, "upload_not_found");
+            }
+
             if (upload.IsCancellationRequested) {
                 return ErrorAsync(session, 409, "upload_cancelled");
             }
@@ -2623,7 +2629,8 @@ namespace SimpleW.Service.FileBrowser {
                 }
             }
 
-            return EnqueueOperationAsync(session, "completeUpload", string.Empty, cancellationToken => {
+            return EnqueueOperationAsync(session, "completeUpload", string.Empty, FileBrowserAction.Upload,
+                UploadTargets(upload.Files.Values, createParents: true), (cancellationToken, authorizedResources) => {
                 List<string> changedPaths = new();
                 List<object> completedFiles = new();
                 upload.TryTouch(_options.UploadSessionTimeout);
@@ -2666,7 +2673,7 @@ namespace SimpleW.Service.FileBrowser {
                     Payload: new { uploadId, completed = true, files = completedFiles },
                     UploadCompletedPayloads: completedFiles.ToArray()
                 );
-            });
+            }, uploadId: upload.Id);
         }
 
         /// <summary>
@@ -2686,7 +2693,7 @@ namespace SimpleW.Service.FileBrowser {
                 errorResponse = ErrorAsync(session, 400, "invalid_upload_id");
                 return false;
             }
-            if (!TryGetOwnedUpload(session, uploadId, out upload) || upload == null || !upload.TryTouch(_options.UploadSessionTimeout)) {
+            if (!TryGetOwnedUpload(session, uploadId, out upload) || upload == null) {
                 errorResponse = ErrorAsync(session, 404, "upload_not_found");
                 return false;
             }
@@ -2700,6 +2707,14 @@ namespace SimpleW.Service.FileBrowser {
             }
             if (!upload.Files.TryGetValue(relativePath, out file)) {
                 errorResponse = ErrorAsync(session, 404, "file_not_declared");
+                return false;
+            }
+            if (!AuthorizeUpload(session, upload, file)) {
+                errorResponse = ForbiddenAsync(session);
+                return false;
+            }
+            if (!upload.TryTouch(_options.UploadSessionTimeout)) {
+                errorResponse = ErrorAsync(session, 404, "upload_not_found");
                 return false;
             }
             return true;
@@ -2786,8 +2801,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="upload"></param>
         private bool TryGetOwnedUpload(HttpSession session, Guid uploadId, out UploadSession? upload) {
             return _uploads.TryGetValue(uploadId, out upload)
-                && string.Equals(upload.OwnerKey, GetScopeKey(session), StringComparison.Ordinal)
-                && upload.Files.Keys.All(path => CanAccessPath(session, path));
+                && string.Equals(upload.OwnerKey, GetScopeKey(session), StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -2799,8 +2813,7 @@ namespace SimpleW.Service.FileBrowser {
         private bool TryRemoveOwnedUpload(HttpSession session, Guid uploadId, out UploadSession upload) {
             lock (_uploadsSync) {
                 if (!_uploads.TryGetValue(uploadId, out UploadSession? current)
-                    || !string.Equals(current.OwnerKey, GetScopeKey(session), StringComparison.Ordinal)
-                    || current.Files.Keys.Any(path => !CanAccessPath(session, path))) {
+                    || !string.Equals(current.OwnerKey, GetScopeKey(session), StringComparison.Ordinal)) {
                     upload = null!;
                     return false;
                 }
@@ -2920,59 +2933,6 @@ namespace SimpleW.Service.FileBrowser {
         #region authorization and paths
 
         /// <summary>
-        /// Evaluates module-wide access and distinguishes a global authorization challenge from a capability denial.
-        /// </summary>
-        /// <param name="session"></param>
-        private AccessDecision CheckModuleAccess(HttpSession session) {
-            if (_options.AllowAnonymous) {
-                return AccessDecision.Allowed;
-            }
-            if (_options.Authorize != null) {
-                return _options.Authorize(session) ? AccessDecision.Allowed : AccessDecision.Challenge;
-            }
-            bool hasCapability = _options.CanList?.Invoke(session) == true
-                || _options.CanDownload?.Invoke(session) == true
-                || _options.CanUpload?.Invoke(session) == true
-                || _options.CanModify?.Invoke(session) == true
-                || _options.CanDelete?.Invoke(session) == true
-                || _options.CanManageTrash?.Invoke(session) == true;
-            return hasCapability ? AccessDecision.Allowed : AccessDecision.Forbidden;
-        }
-
-        /// <summary>
-        /// Evaluates one granular capability after the optional module-wide authorization gate.
-        /// </summary>
-        /// <param name="session"></param>
-        /// <param name="capability"></param>
-        private AccessDecision CheckCapabilityAccess(HttpSession session, Func<HttpSession, bool>? capability) {
-            if (!_options.AllowAnonymous && _options.Authorize != null && !_options.Authorize(session)) {
-                return AccessDecision.Challenge;
-            }
-            if (capability != null && !capability(session)) {
-                return AccessDecision.Forbidden;
-            }
-            if (capability == null && !_options.AllowAnonymous && _options.Authorize == null) {
-                return AccessDecision.Forbidden;
-            }
-            return AccessDecision.Allowed;
-        }
-
-        /// <summary>
-        /// Evaluates a capability after <see cref="CheckModuleAccess"/> has accepted the request.
-        /// </summary>
-        private bool HasCapabilityAfterModuleAccess(HttpSession session, Func<HttpSession, bool>? capability) {
-            if (capability != null) {
-                return capability(session);
-            }
-            return _options.AllowAnonymous || _options.Authorize != null;
-        }
-
-        /// <summary>
-        /// Adapter used by the static-file and SSE modules, whose authorization contract is boolean.
-        /// </summary>
-        private bool IsAuthorized(HttpSession session) => CheckModuleAccess(session) == AccessDecision.Allowed;
-
-        /// <summary>
         /// Sends the configured challenge for a global authorization refusal, or the existing 403 response otherwise.
         /// </summary>
         private ValueTask RejectAccessAsync(HttpSession session, AccessDecision access) {
@@ -2981,15 +2941,6 @@ namespace SimpleW.Service.FileBrowser {
                 return challenge(session);
             }
             return ForbiddenAsync(session);
-        }
-
-        /// <summary>
-        /// Applies the optional normalized-path access rule.
-        /// </summary>
-        /// <param name="session"></param>
-        /// <param name="relativePath"></param>
-        private bool CanAccessPath(HttpSession session, string relativePath) {
-            return _options.CanAccessPath?.Invoke(session, relativePath) != false;
         }
 
         /// <summary>
@@ -3025,8 +2976,8 @@ namespace SimpleW.Service.FileBrowser {
             }
 
             string full = relativePath.Length == 0
-                ? _options.NormalizedPath
-                : System.IO.Path.Combine(_options.NormalizedPath, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
+                            ? _options.NormalizedPath
+                            : System.IO.Path.Combine(_options.NormalizedPath, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
 
             full = System.IO.Path.GetFullPath(full);
             if (!IsInsideOrEqual(full, _options.NormalizedPath)) {
@@ -3174,8 +3125,8 @@ namespace SimpleW.Service.FileBrowser {
         /// <returns></returns>
         private bool TryEnsureNoTrashReparsePoints(string fullPath, out string? error) {
             string trustedRoot = IsInsideOrEqual(_options.NormalizedTrashPath, _options.NormalizedPath)
-                ? _options.NormalizedPath
-                : _options.NormalizedTrashPath;
+                                    ? _options.NormalizedPath
+                                    : _options.NormalizedTrashPath;
             return TryEnsureNoReparsePoints(fullPath, trustedRoot, out error);
         }
 
@@ -3286,6 +3237,374 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         #endregion authorization and paths
+
+        #region authorization
+
+        /// <summary>
+        /// Authorize
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="action"></param>
+        /// <param name="resources"></param>
+        /// <param name="uploadId"></param>
+        /// <param name="operationId"></param>
+        /// <returns></returns>
+        private bool Authorize(
+            HttpSession session,
+            FileBrowserAction action,
+            IEnumerable<FileBrowserAuthorizationResource>? resources = null,
+            Guid? uploadId = null,
+            Guid? operationId = null
+        ) {
+            return Authorize(session, new FileBrowserAuthorizationContext(action, resources, uploadId, operationId));
+        }
+
+        /// <summary>
+        /// Authorize
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        private bool Authorize(HttpSession session, FileBrowserAuthorizationContext context) {
+            return _options.Authorize?.Invoke(session, context) ?? false;
+        }
+
+        /// <summary>
+        /// CheckModuleAccess
+        /// </summary>
+        /// <param name="session"></param>
+        /// <returns></returns>
+        private AccessDecision CheckModuleAccess(HttpSession session) {
+            return Authorize(session, FileBrowserAction.AccessModule) ? AccessDecision.Allowed : AccessDecision.Challenge;
+        }
+
+        /// <summary>
+        /// CheckRequestAccess
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="action"></param>
+        /// <returns></returns>
+        private AccessDecision CheckRequestAccess(HttpSession session, FileBrowserAction action) {
+            AccessDecision access = CheckModuleAccess(session);
+            return access != AccessDecision.Allowed
+                                ? access
+                                : Authorize(session, action) ? AccessDecision.Allowed : AccessDecision.Forbidden;
+        }
+
+        /// <summary>
+        /// Applies the common module gate once to the selected UI or SSE route.
+        /// </summary>
+        /// <param name="server"></param>
+        /// <param name="route"></param>
+        private void InstallTransportAuthorization(SimpleWServer server, string route) {
+            server.UseMiddleware((session, next) => {
+                if (!string.Equals(session.Request.RouteTemplate, route, StringComparison.Ordinal)) {
+                    return next();
+                }
+                AccessDecision access = CheckModuleAccess(session);
+                if (access == AccessDecision.Allowed) {
+                    return next();
+                }
+                if (access == AccessDecision.Challenge && session.Server.Challenge is HttpChallengeHandler challenge) {
+                    return challenge(session);
+                }
+                return session.Response.Status(403).Text("Forbidden").SendAsync();
+            });
+        }
+
+        /// <summary>
+        /// Resource
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="destination"></param>
+        /// <param name="isDirectory"></param>
+        /// <returns></returns>
+        private FileBrowserAuthorizationResource Resource(ResolvedPath path, string? destination = null, bool? isDirectory = null) {
+            return new(
+                path.RelativePath,
+                destination,
+                isDirectory ?? (Directory.Exists(path.FullPath)
+                                    ? true
+                                    : File.Exists(path.FullPath) ? false : null)
+            );
+        }
+
+        /// <summary>
+        /// Target
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="destination"></param>
+        /// <param name="recursive"></param>
+        /// <param name="isDirectory"></param>
+        /// <param name="createParents"></param>
+        /// <param name="mapDestinationChildren"></param>
+        /// <returns></returns>
+        private AuthorizationTarget Target(
+            ResolvedPath path,
+            string? destination = null,
+            bool recursive = false,
+            bool? isDirectory = null,
+            bool createParents = false,
+            bool mapDestinationChildren = true
+        ) {
+            return new(path.FullPath, Resource(path, destination, isDirectory), recursive, createParents, MapDestinationChildren: mapDestinationChildren);
+        }
+
+        /// <summary>
+        /// TrashTarget
+        /// </summary>
+        /// <param name="entry"></param>
+        /// <param name="destination"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidDataException"></exception>
+        private AuthorizationTarget TrashTarget(TrashEntry entry, string? destination = null) {
+            string? original = null;
+            if (entry.OriginalPath != null && !TryNormalizeRelative(entry.OriginalPath, false, out original, out _)) {
+                throw new InvalidDataException("invalid_trash_path");
+            }
+            return new(entry.PayloadPath, new(original, destination, entry.Type == "directory", entry.Id, ""),
+                Recursive: true, CreateParents: destination != null,
+                MetadataPath: entry.CanRestore ? System.IO.Path.Combine(entry.RootPath, TrashMetadataFileName) : null);
+        }
+
+        /// <summary>
+        /// UploadTargets
+        /// </summary>
+        /// <param name="files"></param>
+        /// <param name="createParents"></param>
+        /// <returns></returns>
+        private AuthorizationTarget[] UploadTargets(IEnumerable<UploadFileState> files, bool createParents = false) {
+            return files.Select(file => Target(
+                            new(file.RelativePath, file.TargetFullPath),
+                            isDirectory: false,
+                            createParents: createParents
+                        ))
+                        .ToArray();
+        }
+
+        /// <summary>
+        /// AuthorizeUpload
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="upload"></param>
+        /// <param name="file"></param>
+        /// <param name="includeParentDirectories">Expand paths that may be created; false for status and cancellation.</param>
+        /// <returns></returns>
+        private bool AuthorizeUpload(HttpSession session, UploadSession upload, UploadFileState? file = null, bool includeParentDirectories = true) {
+            AuthorizationTarget[] targets = UploadTargets(file == null ? upload.Files.Values : new[] { file }, createParents: includeParentDirectories);
+
+            FileBrowserAuthorizationContext context = includeParentDirectories
+                ? CaptureAuthorization(targets).Context(FileBrowserAction.Upload, upload.Id)
+                : new FileBrowserAuthorizationContext(FileBrowserAction.Upload, targets.Select(target => target.Resource), upload.Id);
+            return Authorize(session, context);
+        }
+
+        /// <summary>
+        /// Captures only filesystem data. Neither the snapshot nor its recapture delegate retains an HTTP session.
+        /// </summary>
+        /// <param name="targets"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidDataException"></exception>
+        private AuthorizationSnapshot CaptureAuthorization(IReadOnlyList<AuthorizationTarget> targets) {
+            List<FileBrowserAuthorizationResource> resources = new();
+            List<AuthorizationStamp> stamps = new();
+
+            foreach (AuthorizationTarget target in targets) {
+                AddTarget(target.FullPath, target.Resource, target.Recursive, target.MapDestinationChildren);
+                if (target.MetadataPath != null) {
+                    Watch(target.MetadataPath, trash: true);
+                    string container = System.IO.Path.GetDirectoryName(target.MetadataPath)!;
+                    foreach (string child in Directory.EnumerateFileSystemEntries(container)) {
+                        if (!string.Equals(child, target.FullPath, _pathComparison)
+                            && !string.Equals(child, target.MetadataPath, _pathComparison)) {
+                            throw new InvalidDataException("invalid_trash_container");
+                        }
+                    }
+                }
+                if (target.Resource.DestinationPath != null) {
+                    Watch(BrowserFullPath(target.Resource.DestinationPath), trash: false);
+                }
+                if (target.CreateParents) {
+                    string destination = target.Resource.DestinationPath ?? target.Resource.Path
+                        ?? throw new InvalidDataException("destination_required");
+                    AddParents(destination);
+                }
+            }
+            return new(resources.Distinct().ToArray(), stamps.Distinct().ToArray());
+
+            void AddTarget(string fullPath, FileBrowserAuthorizationResource resource, bool recursive, bool mapDestinationChildren) {
+                if (resource.Path != null && (!TryNormalizeRelative(resource.Path, true, out string normalized, out _)
+                    || !string.Equals(normalized, resource.Path, StringComparison.Ordinal))) {
+                    throw new InvalidDataException("invalid_path");
+                }
+                bool? kind = Watch(fullPath, resource.TrashId != null);
+                resources.Add(resource with { IsDirectory = resource.IsDirectory ?? kind });
+                if (resource.DestinationPath != null) {
+                    Watch(BrowserFullPath(resource.DestinationPath), trash: false);
+                }
+                if (!recursive || kind != true) {
+                    return;
+                }
+                // Enumerate one level at a time: validate each entry before descending into it.
+                foreach (string child in Directory.EnumerateFileSystemEntries(fullPath).OrderBy(path => path, StringComparer.Ordinal)) {
+                    string name = System.IO.Path.GetFileName(child);
+                    AddTarget(child, new FileBrowserAuthorizationResource(
+                        resource.Path == null ? null : CombineRelative(resource.Path, name),
+                        resource.DestinationPath == null ? null : mapDestinationChildren ? CombineRelative(resource.DestinationPath, name) : resource.DestinationPath,
+                        TrashId: resource.TrashId,
+                        TrashRelativePath: resource.TrashId == null ? null : CombineRelative(resource.TrashRelativePath, name)), true, mapDestinationChildren);
+                }
+            }
+
+            bool? Watch(string fullPath, bool trash) {
+                if (trash) {
+                    EnsureNoTrashReparsePoints(fullPath);
+                }
+                else {
+                    if (!TryEnsureInsideRoot(fullPath)) {
+                        throw new InvalidDataException("invalid_path");
+                    }
+                    EnsureNoReparsePoints(fullPath);
+                }
+                bool directory = Directory.Exists(fullPath);
+                bool file = !directory && File.Exists(fullPath);
+                bool? kind = directory ? true : file ? false : null;
+                // File changes matter for ZIP manifests and trash metadata; directory membership is captured recursively.
+                stamps.Add(new(fullPath, kind, file ? new FileInfo(fullPath).Length : 0, file ? File.GetLastWriteTimeUtc(fullPath).Ticks : 0));
+                return kind;
+            }
+
+            void AddParents(string path) {
+                string parent = ParentRelative(path);
+
+                while (parent.Length > 0) {
+                    string fullPath = BrowserFullPath(parent);
+                    bool? kind = Watch(fullPath, trash: false);
+                    if (kind == true) {
+                        break;
+                    }
+                    resources.Add(new(parent, IsDirectory: true));
+                    parent = ParentRelative(parent);
+                }
+
+            }
+
+        }
+
+        /// <summary>
+        /// BrowserFullPath
+        /// </summary>
+        /// <param name="relativePath"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidDataException"></exception>
+        private string BrowserFullPath(string relativePath) {
+            if (!TryResolve(relativePath, true, out ResolvedPath path, out string? error)) {
+                throw new InvalidDataException(error);
+            }
+            return path.FullPath;
+        }
+
+        /// <summary>
+        /// CaptureEmptyTrash
+        /// </summary>
+        /// <param name="entries"></param>
+        /// <returns></returns>
+        /// <exception cref="IOException"></exception>
+        private AuthorizationSnapshot CaptureEmptyTrash(IReadOnlyList<TrashEntry> entries) {
+            string[] currentIds = ListTrashEntries().Select(entry => entry.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
+
+            if (!entries.Select(entry => entry.Id).SequenceEqual(currentIds)) {
+                throw new IOException("authorization_scope_changed");
+            }
+            return CaptureAuthorization(entries.Select(entry => TrashTarget(entry)).ToArray());
+        }
+
+        /// <summary>
+        /// CaptureExtraction
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="destination"></param>
+        /// <returns></returns>
+        private AuthorizationSnapshot CaptureExtraction(ResolvedPath source, ResolvedPath destination) {
+            EnsureNoReparsePoints(source.FullPath);
+            using ZipArchive archive = ZipFile.OpenRead(source.FullPath);
+            List<ArchiveEntryPlan> entries = PlanExtraction(archive, destination, CancellationToken.None);
+            List<AuthorizationTarget> targets = [Target(source, destination.RelativePath), Target(destination, isDirectory: true, createParents: true)];
+
+            foreach (ArchiveEntryPlan entry in entries) {
+                string relativePath = System.IO.Path.GetRelativePath(_options.NormalizedPath, entry.FullPath).Replace('\\', '/');
+                targets.Add(Target(new(relativePath, entry.FullPath), isDirectory: entry.IsDirectory, createParents: true));
+            }
+
+            return CaptureAuthorization(targets);
+        }
+
+        /// <summary>
+        /// Authorization Target
+        /// </summary>
+        /// <param name="FullPath"></param>
+        /// <param name="Resource"></param>
+        /// <param name="Recursive"></param>
+        /// <param name="CreateParents"></param>
+        /// <param name="MetadataPath"></param>
+        /// <param name="MapDestinationChildren"></param>
+        private sealed record AuthorizationTarget(
+            string FullPath,
+            FileBrowserAuthorizationResource Resource,
+            bool Recursive = false,
+            bool CreateParents = false,
+            string? MetadataPath = null,
+            bool MapDestinationChildren = true
+        );
+
+        /// <summary>
+        /// Authorization Stamp
+        /// </summary>
+        /// <param name="FullPath"></param>
+        /// <param name="IsDirectory"></param>
+        /// <param name="Length"></param>
+        /// <param name="ModifiedTicks"></param>
+        private sealed record AuthorizationStamp(string FullPath, bool? IsDirectory, long Length, long ModifiedTicks);
+
+        /// <summary>
+        /// Authorization Snapshot
+        /// </summary>
+        /// <param name="Resources"></param>
+        /// <param name="Stamps"></param>
+        private sealed record AuthorizationSnapshot(FileBrowserAuthorizationResource[] Resources, AuthorizationStamp[] Stamps) {
+
+            /// <summary>
+            /// Context
+            /// </summary>
+            /// <param name="action"></param>
+            /// <param name="uploadId"></param>
+            /// <param name="operationId"></param>
+            /// <returns></returns>
+            public FileBrowserAuthorizationContext Context(FileBrowserAction action, Guid? uploadId = null, Guid? operationId = null) {
+                return new(action, Resources, uploadId, operationId);
+            }
+
+            /// <summary>
+            /// Verify
+            /// </summary>
+            /// <param name="capture"></param>
+            /// <exception cref="IOException"></exception>
+            public void Verify(Func<AuthorizationSnapshot> capture) {
+                try {
+                    AuthorizationSnapshot current = capture();
+                    if (Resources.SequenceEqual(current.Resources) && Stamps.SequenceEqual(current.Stamps)) {
+                        return;
+                    }
+                }
+                catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException) {
+                    throw new IOException("authorization_scope_changed", exception);
+                }
+                throw new IOException("authorization_scope_changed");
+            }
+
+        }
+
+        #endregion authorization
 
         #region request and response helpers
 

@@ -30,15 +30,8 @@ server.UseFileBrowserModule(options => {
     options.EventsPrefix = "/files/api/events";
     options.EnableEvents = true;
     // options.ClientPath = @"C:\custom-filebrowser-client";
-    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
     options.ScopeKey = session => session.Principal.Identity.Identifier!;
-    options.CanList = session => true;
-    options.CanDownload = session => true;
-    options.CanUpload = session => session.Principal.IsInRole("file-editor");
-    options.CanModify = session => session.Principal.IsInRole("file-editor");
-    options.CanDelete = session => session.Principal.IsInRole("file-editor");
-    options.CanManageTrash = session => session.Principal.IsInRole("file-admin");
-    options.CanAccessPath = (session, path) => !path.StartsWith("private/", StringComparison.OrdinalIgnoreCase);
     options.UploadChunkThresholdBytes = 100 * 1024 * 1024;
     options.UploadChunkBytes = 16 * 1024 * 1024;
     options.UploadSessionTimeout = TimeSpan.FromMinutes(30);
@@ -51,9 +44,9 @@ server.UseFileBrowserModule(options => {
 await server.RunAsync();
 ```
 
-By default, the module is closed. Configure `Authorize`, at least one capability callback, or set `AllowAnonymous = true`. When configured, `Authorize` is the common gate evaluated before explicit capabilities. Capability callbacks fall back to `Authorize`/`AllowAnonymous` when omitted, which keeps existing configurations compatible and makes read-only access possible with `CanList` and `CanDownload` only.
+`Authorize` defaults to `(_, _) => true`, allowing unrestricted public access without additional configuration. Assign a custom callback to restrict access based on the session and the action/resource context. See the fine-grained example below for a restrictive policy.
 
-Use `server.ConfigureChallenge(...)` when a rejected `Authorize` request must redirect to a login URL, return `401` with `WWW-Authenticate`, or produce another application-owned authentication response. The callback is shared with the other server modules and must send the response. When omitted, the existing `403` response is preserved. Capability and path denials remain `403` and do not invoke the server challenge.
+Use `server.ConfigureChallenge(...)` when a rejected `AccessModule` check must redirect to a login URL, return `401` with `WWW-Authenticate`, or produce another application-owned authentication response. The callback is shared with the other server modules and must send the response. When omitted, the existing `403` response is preserved. Concrete action denials remain `403` and do not invoke the server challenge.
 
 A browser navigation does not forward an `Authorization: Bearer` header from the page containing the link. A bearer-only application can use the server challenge to redirect to its own bootstrap endpoint, recover or request authentication there, establish a short-lived browser credential, and return to FileBrowser. The module does not put bearer tokens in URLs or prescribe a token transport.
 
@@ -82,11 +75,83 @@ Upload sessions expire after `UploadSessionTimeout` without activity, and at mos
 
 `UploadChunkBytes` must be lower than or equal to `SimpleWServerOptions.MaxRequestBodySize`, because SimpleW validates each request body before the module receives it.
 
+## Authorization
+
+### Fine-grained authorization
+
+`Authorize` is a synchronous `Func<HttpSession, FileBrowserAuthorizationContext, bool>` that defaults to `(_, _) => true`, allowing all actions. Its action describes a business permission; normalized resources provide path-level control. Every access decision uses this callback, including anonymous access. Assign a custom callback to restrict access; explicitly assigning `null` is invalid.
+
+Every endpoint request first checks `AccessModule` with an empty resource list. UI, configuration and SSE access use only that check. Other valid endpoint requests then check their business permission exactly once, using the complete resource context. Only an `AccessModule` refusal invokes the server challenge; other refusals return `403`. Malformed requests may fail validation before a resource context can be built.
+
+| Action | Permission |
+| --- | --- |
+| `AccessModule` | General access, browser UI, configuration and SSE connection. |
+| `List` | List the requested directory and return its contents without per-entry authorization. |
+| `ListTrash` | List the trash without per-entry authorization. |
+| `Download` | Download a file, including HEAD, or calculate its checksum. |
+| `Upload` | Create, inspect, receive, complete or cancel an upload. |
+| `CreateFolder` | Create a directory and any missing parents. |
+| `Rename` | Rename an entry and its descendants. |
+| `Move` | Move an entry and its descendants. |
+| `Delete` | Move entries to the trash. |
+| `RestoreTrash` | Restore entries from the trash. |
+| `PurgeTrash` | Permanently delete selected entries and their descendants. |
+| `EmptyTrash` | Permanently delete all trash entries and their descendants. |
+| `Archive` | Create a ZIP. |
+| `Extract` | Extract a ZIP. |
+
+`FileBrowserAuthorizationContext` exposes `Action`, an immutable `Resources` collection, and nullable `UploadId` and `OperationId`. Status and cancellation of an operation reuse its original business action and immutable resources: following or cancelling a rename therefore checks `Rename`. Owner isolation through `ScopeKey` is still required; foreign upload and operation ids remain `404`. The separate original-action property and the former technical enum values have been removed without aliases.
+
+Each immutable resource exposes `Path`, optional `DestinationPath`, nullable `IsDirectory`, and optional `TrashId`/`TrashRelativePath`. Paths use `/`, are relative to `options.Path`, and use `""` for the root. `Path` is the source or, for creation, the target. `DestinationPath` pairs sources with destinations for move, rename, restore, archive and extract. Archive descendants share the output ZIP path; extraction outputs have their own target `Path`. No physical or temporary storage path is exposed.
+
+For trash resources, `TrashRelativePath` is `""` at the payload root. `Path` is the original location when available; it is `null` for legacy entries without metadata, including their descendants. Authorize those entries explicitly by trash identity, or deny them. Restoration supplies the destination even when the original path is unknown.
+
+For modifications, the complete resource context is prepared in read-only preflight, including descendants and implicitly created parent directories. The business action is authorized once before any filesystem modification or queue submission. A refusal rejects the whole action, including `EmptyTrash`. There is no intermediate callback for explicit targets and no callback per descendant. Malformed, incomplete or unavailable requests can fail preflight before the business callback is reached.
+
+`List` receives only the requested directory. If authorized, its contents are returned with the existing search, sorting, pagination and security exclusions; child entries do not trigger authorization callbacks. `ListTrash` runs once with no resources and exposes the trash listing without permission filtering. Seeing an entry grants no download or modification permission: those actions are authorized independently when requested.
+
+Each upload request checks `Upload` exactly once with the affected file resources and its session id. Session-wide actions include all declared files; file and chunk requests include the relevant file. Status and cancellation do not inspect future destinations on disk. The completion request authorizes all files and any missing parent directories once, before queue submission.
+
+Queued work never retains `HttpSession`. A filesystem snapshot is verified internally before execution without calling `Authorize` again; a changed scope fails with `authorization_scope_changed`. ZIP creation reads only the approved manifest, and extraction checks the opened archive against approved outputs. Permissions are sampled per request, not continuously during accepted work or an open SSE connection. Filesystem checks do not provide an OS transaction against concurrent external changes or rollback for I/O errors. SSE rooms retain `ScopeKey` isolation; choose distinct scopes for users who must not share operation events.
+
+Separate HTTP requests are authorized independently, including each upload chunk and each listing refresh. Client refresh behavior is unchanged.
+
+The configuration endpoint does not return `capabilities`. The UI offers actions and displays server refusals; it does not query permissions per button.
+
+For example, authenticated users may list the root and read `shared`, editors may modify `shared`, and administrators may also manage trash and legacy entries. Listing the root shows all of its entry names, including entries outside `shared`; accessing those entries still requires the corresponding action permission:
+
+```csharp
+options.Authorize = (session, context) => {
+    if (context.Action == FileBrowserAction.AccessModule) {
+        return session.Principal.IsAuthenticated;
+    }
+    if (session.Principal.IsInRole("file-admin")) {
+        return true;
+    }
+
+    // Operation status/cancellation already carry the original business permission.
+    bool read = context.Action is FileBrowserAction.List or FileBrowserAction.Download;
+    bool edit = context.Action is FileBrowserAction.Upload or FileBrowserAction.CreateFolder
+        or FileBrowserAction.Rename or FileBrowserAction.Move or FileBrowserAction.Delete
+        or FileBrowserAction.Archive or FileBrowserAction.Extract;
+    if (!read && !(edit && session.Principal.IsInRole("file-editor"))) {
+        return false;
+    }
+
+    static bool InShared(string? path) => path != null
+        && (path.Length == 0 || path.Equals("shared", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("shared/", StringComparison.OrdinalIgnoreCase));
+
+    return context.Resources.All(resource => InShared(resource.Path)
+        && (resource.DestinationPath == null || InShared(resource.DestinationPath)));
+};
+```
+
 ## File checksums
 
 Use **Checksum** on a file row or select one file and choose **Checksum** in the selection toolbar. The dialog calculates SHA-256 by default and also offers SHA-1 and MD5. **Copy** copies the uppercase hexadecimal checksum; the value remains selectable when clipboard access is unavailable. Calculation runs on demand, reads the file as a stream, and is not cached. Closing the dialog or changing the algorithm cancels the previous request.
 
-`GET /files/api/checksum?path=documents/report.pdf&algorithm=sha256` returns `{ "ok": true, "path": "documents/report.pdf", "algorithm": "sha256", "checksum": "..." }`. Routes are relative to the configured prefix. Accepted algorithms are `sha256`, `sha1`, and `md5`; omitting `algorithm` selects `sha256`. The endpoint uses the same authorization, `CanDownload`, and `CanAccessPath` checks as downloads and returns `Cache-Control: no-store`.
+`GET /files/api/checksum?path=documents/report.pdf&algorithm=sha256` returns `{ "ok": true, "path": "documents/report.pdf", "algorithm": "sha256", "checksum": "..." }`. Routes are relative to the configured prefix. Accepted algorithms are `sha256`, `sha1`, and `md5`; omitting `algorithm` selects `sha256`. The endpoint uses `AccessModule` followed by `Download` with the normalized file resource and returns `Cache-Control: no-store`.
 
 Compare with the local file using the same algorithm, for example in PowerShell:
 

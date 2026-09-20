@@ -60,7 +60,7 @@ server.Configure(options => {
 server.UseFileBrowserModule(options => {
     options.Path = @"C:\uploads";
     options.Prefix = "/files";
-    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
     options.UploadChunkThresholdBytes = 16 * 1024 * 1024;
     options.UploadChunkBytes = 8 * 1024 * 1024;
 });
@@ -71,7 +71,7 @@ await server.RunAsync();
 Open `http://localhost:8080/files/` after the authentication layer has populated `session.Principal`.
 
 ::: warning
-The module is closed by default. Installation fails unless `Authorize` is configured or `AllowAnonymous` is explicitly set to `true`.
+The default `Authorize` callback allows unrestricted public access. Configure a custom callback to restrict access.
 :::
 
 
@@ -81,8 +81,7 @@ The module is closed by default. Installation fails unless `Authorize` is config
 |---|---:|---|
 | `Path` | Required | Root directory exposed by the browser. It is created when the module is installed if it does not exist. |
 | `Prefix` | `/files` | URL prefix shared by the UI and API. |
-| `Authorize` | `null` | Callback invoked for UI, API, and SSE requests. Return `true` to allow access. |
-| `AllowAnonymous` | `false` | Allows every request and takes precedence over `Authorize`. Use only for intentionally public or local instances. |
+| `Authorize` | `(_, _) => true` | Synchronous `(session, context) => bool` for module access and each concrete action/resource set. Allows all actions by default; must not be `null`. |
 | `ServeUi` | `true` | Serves the bundled or disk-based web UI. The API remains available when disabled. |
 | `ClientPath` | `null` | Explicit directory containing a custom UI. It overrides automatic Debug discovery and embedded resources. |
 | `EnableEvents` | `true` | Enables the FileBrowser Server-Sent Events endpoint. |
@@ -114,7 +113,7 @@ server.UseFileBrowserModule(options => {
     options.Path = "/srv/uploads";
     options.UploadChunkThresholdBytes = 16 * 1024 * 1024;
     options.UploadChunkBytes = 8 * 1024 * 1024;
-    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
 });
 ```
 
@@ -161,7 +160,7 @@ Use the same authorization callback for the UI, API, and event stream:
 ```csharp
 server.UseFileBrowserModule(options => {
     options.Path = "/srv/private-files";
-    options.Authorize = session =>
+    options.Authorize = (session, context) =>
         session.Principal.IsAuthenticated
         && session.Principal.IsInRole("file-admin");
 });
@@ -191,25 +190,96 @@ server.ConfigureChallenge(session => {
 
 server.UseFileBrowserModule(options => {
     options.Path = "/srv/private-files";
-    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
 });
 ```
 
-The server challenge runs only when the module-wide `Authorize` callback refuses a request. A denied `CanList`, `CanDownload`, `CanUpload`, `CanModify`, `CanDelete`, `CanManageTrash`, or `CanAccessPath` check still returns `403` and does not restart authentication.
+The server challenge runs only when `Authorize` refuses `AccessModule`. A concrete action refusal returns `403` and does not restart authentication.
 
 A normal browser navigation cannot copy an `Authorization: Bearer` header from the page containing the link. For bearer-only applications, use the server challenge to redirect to an application-owned bootstrap endpoint that can recover or request authentication, establish a short-lived browser session or another suitable credential, and then return to the FileBrowser URL. FileBrowser deliberately does not define a token query parameter or token transport.
 
 See the [authentication challenge guide](../guide/authentication-challenge.md#spa-bearer-tokens-and-browser-navigation) for the complete SPA navigation workflow and a scoped-cookie example.
 
-For a local development-only browser, anonymous access can be enabled explicitly:
+The default callback allows unrestricted public access and is equivalent to:
 
 ```csharp
-options.AllowAnonymous = true;
+options.Authorize = (_, _) => true;
 ```
 
 ::: danger
 Do not expose a writable filesystem root anonymously on an untrusted network.
 :::
+
+
+### Fine-grained authorization
+
+`Authorize` is a synchronous `Func<HttpSession, FileBrowserAuthorizationContext, bool>` that defaults to `(_, _) => true`, allowing all actions. Its action describes a business permission; normalized resources provide path-level control. Every access decision uses this callback, including anonymous access. Assign a custom callback to restrict access; explicitly assigning `null` is invalid.
+
+Every endpoint request first checks `AccessModule` with an empty resource list. UI, configuration and SSE access use only that check. Other valid endpoint requests then check their business permission exactly once, using the complete resource context. Only an `AccessModule` refusal invokes the server challenge; other refusals return `403`. Malformed requests may fail validation before a resource context can be built.
+
+| Action | Permission |
+| --- | --- |
+| `AccessModule` | General access, browser UI, configuration and SSE connection. |
+| `List` | List the requested directory and return its contents without per-entry authorization. |
+| `ListTrash` | List the trash without per-entry authorization. |
+| `Download` | Download a file, including HEAD, or calculate its checksum. |
+| `Upload` | Create, inspect, receive, complete or cancel an upload. |
+| `CreateFolder` | Create a directory and any missing parents. |
+| `Rename` | Rename an entry and its descendants. |
+| `Move` | Move an entry and its descendants. |
+| `Delete` | Move entries to the trash. |
+| `RestoreTrash` | Restore entries from the trash. |
+| `PurgeTrash` | Permanently delete selected entries and their descendants. |
+| `EmptyTrash` | Permanently delete all trash entries and their descendants. |
+| `Archive` | Create a ZIP. |
+| `Extract` | Extract a ZIP. |
+
+`FileBrowserAuthorizationContext` exposes `Action`, an immutable `Resources` collection, and nullable `UploadId` and `OperationId`. Status and cancellation of an operation reuse its original business action and immutable resources: following or cancelling a rename therefore checks `Rename`. Owner isolation through `ScopeKey` is still required; foreign upload and operation ids remain `404`. The separate original-action property and the former technical enum values have been removed without aliases.
+
+Each immutable resource exposes `Path`, optional `DestinationPath`, nullable `IsDirectory`, and optional `TrashId`/`TrashRelativePath`. Paths use `/`, are relative to `options.Path`, and use `""` for the root. `Path` is the source or, for creation, the target. `DestinationPath` pairs sources with destinations for move, rename, restore, archive and extract. Archive descendants share the output ZIP path; extraction outputs have their own target `Path`. No physical or temporary storage path is exposed.
+
+For trash resources, `TrashRelativePath` is `""` at the payload root. `Path` is the original location when available; it is `null` for legacy entries without metadata, including their descendants. Authorize those entries explicitly by trash identity, or deny them. Restoration supplies the destination even when the original path is unknown.
+
+For modifications, the complete resource context is prepared in read-only preflight, including descendants and implicitly created parent directories. The business action is authorized once before any filesystem modification or queue submission. A refusal rejects the whole action, including `EmptyTrash`. There is no intermediate callback for explicit targets and no callback per descendant. Malformed, incomplete or unavailable requests can fail preflight before the business callback is reached.
+
+`List` receives only the requested directory. If authorized, its contents are returned with the existing search, sorting, pagination and security exclusions; child entries do not trigger authorization callbacks. `ListTrash` runs once with no resources and exposes the trash listing without permission filtering. Seeing an entry grants no download or modification permission: those actions are authorized independently when requested.
+
+Each upload request checks `Upload` exactly once with the affected file resources and its session id. Session-wide actions include all declared files; file and chunk requests include the relevant file. Status and cancellation do not inspect future destinations on disk. The completion request authorizes all files and any missing parent directories once, before queue submission.
+
+Queued work never retains `HttpSession`. A filesystem snapshot is verified internally before execution without calling `Authorize` again; a changed scope fails with `authorization_scope_changed`. ZIP creation reads only the approved manifest, and extraction checks the opened archive against approved outputs. Permissions are sampled per request, not continuously during accepted work or an open SSE connection. Filesystem checks do not provide an OS transaction against concurrent external changes or rollback for I/O errors. SSE rooms retain `ScopeKey` isolation; choose distinct scopes for users who must not share operation events.
+
+Separate HTTP requests are authorized independently, including each upload chunk and each listing refresh. Client refresh behavior is unchanged.
+
+The configuration endpoint does not return `capabilities`. The UI offers actions and displays server refusals; it does not query permissions per button.
+
+For example, authenticated users may list the root and read `shared`, editors may modify `shared`, and administrators may also manage trash and legacy entries. Listing the root shows all of its entry names, including entries outside `shared`; accessing those entries still requires the corresponding action permission:
+
+```csharp
+options.Authorize = (session, context) => {
+    if (context.Action == FileBrowserAction.AccessModule) {
+        return session.Principal.IsAuthenticated;
+    }
+    if (session.Principal.IsInRole("file-admin")) {
+        return true;
+    }
+
+    // Operation status/cancellation already carry the original business permission.
+    bool read = context.Action is FileBrowserAction.List or FileBrowserAction.Download;
+    bool edit = context.Action is FileBrowserAction.Upload or FileBrowserAction.CreateFolder
+        or FileBrowserAction.Rename or FileBrowserAction.Move or FileBrowserAction.Delete
+        or FileBrowserAction.Archive or FileBrowserAction.Extract;
+    if (!read && !(edit && session.Principal.IsInRole("file-editor"))) {
+        return false;
+    }
+
+    static bool InShared(string? path) => path != null
+        && (path.Length == 0 || path.Equals("shared", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("shared/", StringComparison.OrdinalIgnoreCase));
+
+    return context.Resources.All(resource => InShared(resource.Path)
+        && (resource.DestinationPath == null || InShared(resource.DestinationPath)));
+};
+```
 
 
 ## File operations
@@ -279,7 +349,7 @@ Choose **Checksum** on a file row, or select exactly one file and use **Checksum
 }
 ```
 
-`checksum` is an uppercase hexadecimal string. Supported algorithms are `sha256`, `sha1`, and `md5`; omitting `algorithm` selects `sha256`. The endpoint applies the same module authorization, `CanDownload`, and `CanAccessPath` checks as downloading, including path and reparse-point validation. The UI hides the action when downloading is not allowed.
+`checksum` is an uppercase hexadecimal string. Supported algorithms are `sha256`, `sha1`, and `md5`; omitting `algorithm` selects `sha256`. The endpoint checks `AccessModule`, then `Download` with the normalized file resource, including path and reparse-point validation. The UI reports server refusals without computing per-file permissions.
 
 The server reads the file as a stream on demand, outside the mutation queue, without caching the checksum or loading the whole file into memory. Responses use `Cache-Control: no-store`. Errors follow the standard `{ "ok": false, "error": "..." }` envelope:
 
