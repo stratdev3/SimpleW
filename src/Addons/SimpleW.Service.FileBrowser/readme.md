@@ -30,7 +30,9 @@ server.UseFileBrowserModule(options => {
     options.EventsPrefix = "/files/api/events";
     options.EnableEvents = true;
     // options.ClientPath = @"C:\custom-filebrowser-client";
-    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated
+                                                ? AuthorizeResult.Allowed
+                                                : AuthorizeResult.Challenge;
     options.ScopeKey = session => session.Principal.Identity.Identifier!;
     options.UploadChunkThresholdBytes = 100 * 1024 * 1024;
     options.UploadChunkBytes = 16 * 1024 * 1024;
@@ -44,9 +46,9 @@ server.UseFileBrowserModule(options => {
 await server.RunAsync();
 ```
 
-`Authorize` defaults to `(_, _) => true`, allowing unrestricted public access without additional configuration. Assign a custom callback to restrict access based on the session and the action/resource context. See the fine-grained example below for a restrictive policy.
+`Authorize` defaults to `(_, _) => AuthorizeResult.Allowed`, allowing unrestricted public access without additional configuration. Assign a custom callback to restrict access based on the session and the action/resource context. See the fine-grained example below for a restrictive policy.
 
-Use `server.ConfigureChallenge(...)` when a rejected `AccessModule` check must redirect to a login URL, return `401` with `WWW-Authenticate`, or produce another application-owned authentication response. The callback is shared with the other server modules and must send the response. When omitted, the existing `403` response is preserved. Concrete action denials remain `403` and do not invoke the server challenge.
+Use `server.ConfigureChallenge(...)` when an `Authorize` callback returns `AuthorizeResult.Challenge` to redirect to a login URL, return `401` with `WWW-Authenticate`, or produce another application-owned authentication response. The callback is shared with the other server modules and must send the response. When omitted, the existing `403` response is preserved. Returning `Forbidden` denies module access or a concrete action with `403` without invoking the server challenge.
 
 A browser navigation does not forward an `Authorization: Bearer` header from the page containing the link. A bearer-only application can use the server challenge to redirect to its own bootstrap endpoint, recover or request authentication there, establish a short-lived browser credential, and return to FileBrowser. The module does not put bearer tokens in URLs or prescribe a token transport.
 
@@ -79,9 +81,9 @@ Upload sessions expire after `UploadSessionTimeout` without activity, and at mos
 
 ### Fine-grained authorization
 
-`Authorize` is a synchronous `Func<HttpSession, FileBrowserAuthorizationContext, bool>` that defaults to `(_, _) => true`, allowing all actions. Its action describes a business permission; normalized resources provide path-level control. Every access decision uses this callback, including anonymous access. Assign a custom callback to restrict access; explicitly assigning `null` is invalid.
+`Authorize` is a synchronous `Func<HttpSession, FileBrowserAuthorizationContext, AuthorizeResult>` that defaults to `(_, _) => AuthorizeResult.Allowed`, allowing all actions. Its action describes a business permission; normalized resources provide path-level control. Every access decision uses this callback, including anonymous access. Assign a custom callback to restrict access; explicitly assigning `null` is invalid.
 
-Every endpoint request first checks `AccessModule` with an empty resource list. UI, configuration and SSE access use only that check. Other valid endpoint requests then check their business permission exactly once, using the complete resource context. Only an `AccessModule` refusal invokes the server challenge; other refusals return `403`. Malformed requests may fail validation before a resource context can be built.
+Every endpoint request first checks `AccessModule` with an empty resource list. UI, configuration and SSE access use only that check. Other valid endpoint requests then check their business permission exactly once, using the complete resource context. Returning `AuthorizeResult.Challenge` from either check invokes the server challenge, or returns `403` if none is configured. `Forbidden` and unknown values return `403` without a challenge; only `Allowed` continues. Malformed requests may fail validation before a resource context can be built.
 
 | Action | Permission |
 | --- | --- |
@@ -123,10 +125,12 @@ For example, authenticated users may list the root and read `shared`, editors ma
 ```csharp
 options.Authorize = (session, context) => {
     if (context.Action == FileBrowserAction.AccessModule) {
-        return session.Principal.IsAuthenticated;
+        return session.Principal.IsAuthenticated
+            ? AuthorizeResult.Allowed
+            : AuthorizeResult.Challenge;
     }
     if (session.Principal.IsInRole("file-admin")) {
-        return true;
+        return AuthorizeResult.Allowed;
     }
 
     // Operation status/cancellation already carry the original business permission.
@@ -135,7 +139,7 @@ options.Authorize = (session, context) => {
         or FileBrowserAction.Rename or FileBrowserAction.Move or FileBrowserAction.Delete
         or FileBrowserAction.Archive or FileBrowserAction.Extract;
     if (!read && !(edit && session.Principal.IsInRole("file-editor"))) {
-        return false;
+        return AuthorizeResult.Forbidden;
     }
 
     static bool InShared(string? path) => path != null
@@ -143,7 +147,9 @@ options.Authorize = (session, context) => {
             || path.StartsWith("shared/", StringComparison.OrdinalIgnoreCase));
 
     return context.Resources.All(resource => InShared(resource.Path)
-        && (resource.DestinationPath == null || InShared(resource.DestinationPath)));
+        && (resource.DestinationPath == null || InShared(resource.DestinationPath)))
+        ? AuthorizeResult.Allowed
+        : AuthorizeResult.Forbidden;
 };
 ```
 
@@ -161,7 +167,7 @@ Get-FileHash -LiteralPath 'C:\downloads\report.pdf' -Algorithm SHA256
 
 Use `SHA1` or `MD5` when selected in the dialog. Matching checksums indicate matching file contents. This is a manual check of the current server file; uploads and downloads are not automatically verified.
 
-Errors use `{ "ok": false, "error": "..." }`: unsupported algorithms return `400 invalid_algorithm`, missing files or directories return `404 file_not_found`, denied access returns `403`, and other read failures return `500 checksum_failed`. If a size or modification-time change is detected during reading, the endpoint returns `409 file_changed`; retry once the file is stable. Invalid paths and reparse points are rejected using the existing path-validation errors.
+Errors use `{ "ok": false, "error": "..." }`: unsupported algorithms return `400 invalid_algorithm`, missing files or directories return `404 file_not_found`, `Forbidden` access decisions return `403` (an explicit `Challenge` uses the configured authentication response), and other read failures return `500 checksum_failed`. If a size or modification-time change is detected during reading, the endpoint returns `409 file_changed`; retry once the file is stable. Invalid paths and reparse points are rejected using the existing path-validation errors.
 
 ## Listing, search, sorting, and pagination
 

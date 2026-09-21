@@ -39,9 +39,9 @@ public string? RequiredSubProtocol { get; set; }
 
 ```csharp
 /// <summary>
-/// Optional authorization callback. Return false to reject the WebSocket handshake.
+/// Optional authorization callback. Return Allowed to continue, Challenge to request authentication, or Forbidden to deny.
 /// </summary>
-public Func<HttpSession, bool>? Authorize { get; set; }
+public Func<HttpSession, AuthorizeResult>? Authorize { get; set; }
 ```
 
 ```csharp
@@ -123,11 +123,13 @@ server.ConfigureChallenge(session => session.Response.Unauthorized().SendAsync()
 
 server.UseWebSocketModule(options => {
     options.Prefix = "/ws";
-    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.Authorize = session => session.Principal.IsAuthenticated
+                                        ? AuthorizeResult.Allowed
+                                        : AuthorizeResult.Challenge;
 });
 ```
 
-When `Authorize` returns `false`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`. In both cases, the HTTP session is not switched to WebSocket.
+When `Authorize` returns `AuthorizeResult.Challenge`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`. `Forbidden` and unknown enum values always return `403` without invoking the challenge. `Allowed` continues processing; an absent callback also allows access. For any rejected decision, the HTTP session is not switched to WebSocket.
 
 
 ## Envelope

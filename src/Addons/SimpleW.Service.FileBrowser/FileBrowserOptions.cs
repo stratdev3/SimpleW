@@ -18,11 +18,11 @@ namespace SimpleW.Service.FileBrowser {
         public string Prefix { get; set; } = "/files";
 
         /// <summary>
-        /// Authorizes module access and each concrete action with its normalized resources. Return false to deny.
-        /// Defaults to (_, _) => true, allowing unrestricted public access. Must not be null.
+        /// Authorizes module access and each concrete action with its normalized resources. Return Allowed, Challenge, or Forbidden.
+        /// Defaults to Allowed, allowing unrestricted public access. Must not be null.
         /// Each request checks AccessModule first, then its business action at most once with the complete resource context.
         /// </summary>
-        public Func<HttpSession, FileBrowserAuthorizationContext, bool> Authorize { get; set; } = (_, _) => true;
+        public Func<HttpSession, FileBrowserAuthorizationContext, AuthorizeResult> Authorize { get; set; } = (_, _) => AuthorizeResult.Allowed;
 
         /// <summary>
         /// Returns the stable owner key used to isolate events, operations and uploads.

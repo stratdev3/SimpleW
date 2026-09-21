@@ -46,22 +46,25 @@ namespace test {
             Check.ThatCode(() => {
                 server.UseFileBrowserModule(options => {
                     options.Path = root;
-                    options.Authorize = (_, _) => true;
+                    options.Authorize = (_, _) => AuthorizeResult.Allowed;
                     options.DefaultPageSize = 101;
                     options.MaxPageSize = 100;
                 });
             }).Throws<ArgumentException>();
         }
 
-        [Fact]
-        public async Task List_Should_Return_Forbidden_When_Authorize_Denies() {
+        [Theory]
+        [InlineData(AuthorizeResult.Forbidden)]
+        [InlineData(AuthorizeResult.Challenge)]
+        [InlineData((AuthorizeResult)99)]
+        public async Task List_Should_Return_Forbidden_When_Authorize_Denies(AuthorizeResult decision) {
             string root = CreateRoot(nameof(List_Should_Return_Forbidden_When_Authorize_Denies));
             var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseFileBrowserModule(options => {
                 options.Path = root;
                 options.Prefix = "/files";
-                options.Authorize = (_, _) => false;
+                options.Authorize = (_, _) => decision;
                 options.ServeUi = false;
             });
 
@@ -94,8 +97,11 @@ namespace test {
             }
         }
 
-        [Fact]
-        public async Task Server_Challenge_Should_Handle_Ui_Api_And_Events() {
+        [Theory]
+        [InlineData(AuthorizeResult.Challenge, HttpStatusCode.Found, true)]
+        [InlineData(AuthorizeResult.Forbidden, HttpStatusCode.Forbidden, false)]
+        [InlineData((AuthorizeResult)99, HttpStatusCode.Forbidden, false)]
+        public async Task Server_Challenge_Should_Handle_Ui_Api_And_Events(AuthorizeResult decision, HttpStatusCode expectedStatus, bool expectChallenge) {
             string root = CreateRoot(nameof(Server_Challenge_Should_Handle_Ui_Api_And_Events));
             var server = new SimpleWServer(IPAddress.Loopback, 0);
             HashSet<string> challengedPaths = new(StringComparer.Ordinal);
@@ -108,7 +114,7 @@ namespace test {
             server.UseFileBrowserModule(options => {
                 options.Path = root;
                 options.Prefix = "/files";
-                options.Authorize = (_, _) => false;
+                options.Authorize = (_, _) => decision;
             });
 
             await server.StartAsync();
@@ -125,13 +131,13 @@ namespace test {
 
                 foreach (string path in paths) {
                     using HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}{path}");
-                    Check.That(response.StatusCode).Is(HttpStatusCode.Found);
-                    Check.That(response.Headers.Location?.OriginalString).IsEqualTo("/auth/login");
+                    Check.That(response.StatusCode).Is(expectedStatus);
+                    Check.That(response.Headers.Location?.OriginalString).IsEqualTo(expectChallenge ? "/auth/login" : null);
                 }
 
-                Check.That(challengedPaths.Count).IsEqualTo(paths.Length);
+                Check.That(challengedPaths.Count).IsEqualTo(expectChallenge ? paths.Length : 0);
                 foreach (string path in paths) {
-                    Check.That(challengedPaths.Contains(path)).IsTrue();
+                    Check.That(challengedPaths.Contains(path)).IsEqualTo(expectChallenge);
                 }
             }
             finally {
@@ -139,9 +145,12 @@ namespace test {
             }
         }
 
-        [Fact]
-        public async Task Ui_ClientPath_Should_Use_Server_Challenge_When_Authorize_Denies() {
-            string root = CreateRoot(nameof(Ui_ClientPath_Should_Use_Server_Challenge_When_Authorize_Denies));
+        [Theory]
+        [InlineData(AuthorizeResult.Challenge, HttpStatusCode.Unauthorized, 1)]
+        [InlineData(AuthorizeResult.Forbidden, HttpStatusCode.Forbidden, 0)]
+        [InlineData((AuthorizeResult)99, HttpStatusCode.Forbidden, 0)]
+        public async Task Ui_ClientPath_Should_Challenge_Only_When_Requested(AuthorizeResult decision, HttpStatusCode expectedStatus, int expectedChallenges) {
+            string root = CreateRoot(nameof(Ui_ClientPath_Should_Challenge_Only_When_Requested));
             string clientRoot = Path.Combine(root, "custom-client");
             Directory.CreateDirectory(clientRoot);
             File.WriteAllText(Path.Combine(clientRoot, "index.html"), "<!doctype html><title>custom-client</title>");
@@ -158,7 +167,7 @@ namespace test {
                 options.Path = root;
                 options.Prefix = "/files";
                 options.ClientPath = clientRoot;
-                options.Authorize = (_, _) => false;
+                options.Authorize = (_, _) => decision;
             });
 
             await server.StartAsync();
@@ -166,17 +175,20 @@ namespace test {
                 using HttpClient client = new();
                 using HttpResponseMessage response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/app.js");
 
-                Check.That(response.StatusCode).Is(HttpStatusCode.Unauthorized);
-                Check.That(challengeCount).IsEqualTo(1);
+                Check.That(response.StatusCode).Is(expectedStatus);
+                Check.That(challengeCount).IsEqualTo(expectedChallenges);
             }
             finally {
                 await server.StopAsync();
             }
         }
 
-        [Fact]
-        public async Task Action_Denials_Should_Not_Invoke_Challenge() {
-            string root = CreateRoot(nameof(Action_Denials_Should_Not_Invoke_Challenge));
+        [Theory]
+        [InlineData(AuthorizeResult.Forbidden, HttpStatusCode.Forbidden, 0)]
+        [InlineData(AuthorizeResult.Challenge, HttpStatusCode.Unauthorized, 2)]
+        [InlineData((AuthorizeResult)99, HttpStatusCode.Forbidden, 0)]
+        public async Task Action_Should_Challenge_Only_When_Requested(AuthorizeResult decision, HttpStatusCode expectedStatus, int expectedChallenges) {
+            string root = CreateRoot(nameof(Action_Should_Challenge_Only_When_Requested));
             File.WriteAllText(Path.Combine(root, "private.txt"), "private");
             var server = new SimpleWServer(IPAddress.Loopback, 0);
             int challengeCount = 0;
@@ -191,7 +203,9 @@ namespace test {
                 options.Prefix = "/files";
                 options.ServeUi = false;
                 options.EnableEvents = false;
-                options.Authorize = (_, context) => context.Action == FileBrowserAction.AccessModule;
+                options.Authorize = (_, context) => context.Action == FileBrowserAction.AccessModule
+                    ? AuthorizeResult.Allowed
+                    : decision;
             });
 
             await server.StartAsync();
@@ -202,12 +216,12 @@ namespace test {
                 Check.That(config.StatusCode).Is(HttpStatusCode.OK);
 
                 using HttpResponseMessage list = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/list");
-                Check.That(list.StatusCode).Is(HttpStatusCode.Forbidden);
+                Check.That(list.StatusCode).Is(expectedStatus);
 
                 using HttpResponseMessage download = await client.GetAsync($"http://{server.Address}:{server.Port}/files/api/download?path=private.txt");
-                Check.That(download.StatusCode).Is(HttpStatusCode.Forbidden);
+                Check.That(download.StatusCode).Is(expectedStatus);
 
-                Check.That(challengeCount).IsEqualTo(0);
+                Check.That(challengeCount).IsEqualTo(expectedChallenges);
             }
             finally {
                 await server.StopAsync();
@@ -228,7 +242,9 @@ namespace test {
                 options.Authorize = (_, context) => context.Action == FileBrowserAction.AccessModule
                     || ((context.Action == FileBrowserAction.List)
                         && context.Resources.All(resource => resource.Path is string path
-                            && (path.Length == 0 || path.StartsWith("public", StringComparison.Ordinal))));
+                            && (path.Length == 0 || path.StartsWith("public", StringComparison.Ordinal))))
+                    ? AuthorizeResult.Allowed
+                    : AuthorizeResult.Forbidden;
             });
 
             await server.StartAsync();
@@ -915,7 +931,7 @@ namespace test {
             server.UseFileBrowserModule(options => {
                 options.Path = root;
                 options.Prefix = "/files";
-                options.Authorize = (_, _) => false;
+                options.Authorize = (_, _) => AuthorizeResult.Forbidden;
             });
 
             await server.StartAsync();

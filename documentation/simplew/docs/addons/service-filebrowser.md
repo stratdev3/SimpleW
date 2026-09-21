@@ -60,7 +60,9 @@ server.Configure(options => {
 server.UseFileBrowserModule(options => {
     options.Path = @"C:\uploads";
     options.Prefix = "/files";
-    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated
+                                                ? AuthorizeResult.Allowed
+                                                : AuthorizeResult.Challenge;
     options.UploadChunkThresholdBytes = 16 * 1024 * 1024;
     options.UploadChunkBytes = 8 * 1024 * 1024;
 });
@@ -81,7 +83,7 @@ The default `Authorize` callback allows unrestricted public access. Configure a 
 |---|---:|---|
 | `Path` | Required | Root directory exposed by the browser. It is created when the module is installed if it does not exist. |
 | `Prefix` | `/files` | URL prefix shared by the UI and API. |
-| `Authorize` | `(_, _) => true` | Synchronous `(session, context) => bool` for module access and each concrete action/resource set. Allows all actions by default; must not be `null`. |
+| `Authorize` | `(_, _) => AuthorizeResult.Allowed` | Synchronous `(session, context) => AuthorizeResult` for module access and each concrete action/resource set. Allows all actions by default; must not be `null`. |
 | `ServeUi` | `true` | Serves the bundled or disk-based web UI. The API remains available when disabled. |
 | `ClientPath` | `null` | Explicit directory containing a custom UI. It overrides automatic Debug discovery and embedded resources. |
 | `EnableEvents` | `true` | Enables the FileBrowser Server-Sent Events endpoint. |
@@ -113,7 +115,9 @@ server.UseFileBrowserModule(options => {
     options.Path = "/srv/uploads";
     options.UploadChunkThresholdBytes = 16 * 1024 * 1024;
     options.UploadChunkBytes = 8 * 1024 * 1024;
-    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated
+                                                ? AuthorizeResult.Allowed
+                                                : AuthorizeResult.Challenge;
 });
 ```
 
@@ -161,12 +165,15 @@ Use the same authorization callback for the UI, API, and event stream:
 server.UseFileBrowserModule(options => {
     options.Path = "/srv/private-files";
     options.Authorize = (session, context) =>
-        session.Principal.IsAuthenticated
-        && session.Principal.IsInRole("file-admin");
+        !session.Principal.IsAuthenticated
+            ? AuthorizeResult.Challenge
+            : session.Principal.IsInRole("file-admin")
+                ? AuthorizeResult.Allowed
+                : AuthorizeResult.Forbidden;
 });
 ```
 
-Unauthorized requests receive `403 Forbidden` with:
+API requests rejected with `Forbidden` receive `403 Forbidden` with:
 
 ```json
 {
@@ -190,11 +197,13 @@ server.ConfigureChallenge(session => {
 
 server.UseFileBrowserModule(options => {
     options.Path = "/srv/private-files";
-    options.Authorize = (session, context) => session.Principal.IsAuthenticated;
+    options.Authorize = (session, context) => session.Principal.IsAuthenticated
+                                                ? AuthorizeResult.Allowed
+                                                : AuthorizeResult.Challenge;
 });
 ```
 
-The server challenge runs only when `Authorize` refuses `AccessModule`. A concrete action refusal returns `403` and does not restart authentication.
+The server challenge runs only when `Authorize` returns `AuthorizeResult.Challenge`, for either `AccessModule` or a concrete action. Return `Forbidden` to deny permission without restarting authentication.
 
 A normal browser navigation cannot copy an `Authorization: Bearer` header from the page containing the link. For bearer-only applications, use the server challenge to redirect to an application-owned bootstrap endpoint that can recover or request authentication, establish a short-lived browser session or another suitable credential, and then return to the FileBrowser URL. FileBrowser deliberately does not define a token query parameter or token transport.
 
@@ -203,7 +212,7 @@ See the [authentication challenge guide](../guide/authentication-challenge.md#sp
 The default callback allows unrestricted public access and is equivalent to:
 
 ```csharp
-options.Authorize = (_, _) => true;
+options.Authorize = (_, _) => AuthorizeResult.Allowed;
 ```
 
 ::: danger
@@ -213,9 +222,9 @@ Do not expose a writable filesystem root anonymously on an untrusted network.
 
 ### Fine-grained authorization
 
-`Authorize` is a synchronous `Func<HttpSession, FileBrowserAuthorizationContext, bool>` that defaults to `(_, _) => true`, allowing all actions. Its action describes a business permission; normalized resources provide path-level control. Every access decision uses this callback, including anonymous access. Assign a custom callback to restrict access; explicitly assigning `null` is invalid.
+`Authorize` is a synchronous `Func<HttpSession, FileBrowserAuthorizationContext, AuthorizeResult>` that defaults to `(_, _) => AuthorizeResult.Allowed`, allowing all actions. Its action describes a business permission; normalized resources provide path-level control. Every access decision uses this callback, including anonymous access. Assign a custom callback to restrict access; explicitly assigning `null` is invalid.
 
-Every endpoint request first checks `AccessModule` with an empty resource list. UI, configuration and SSE access use only that check. Other valid endpoint requests then check their business permission exactly once, using the complete resource context. Only an `AccessModule` refusal invokes the server challenge; other refusals return `403`. Malformed requests may fail validation before a resource context can be built.
+Every endpoint request first checks `AccessModule` with an empty resource list. UI, configuration and SSE access use only that check. Other valid endpoint requests then check their business permission exactly once, using the complete resource context. Returning `AuthorizeResult.Challenge` from either check invokes the server challenge, or returns `403` if none is configured. `Forbidden` and unknown values return `403` without a challenge; only `Allowed` continues. Malformed requests may fail validation before a resource context can be built.
 
 | Action | Permission |
 | --- | --- |
@@ -257,10 +266,12 @@ For example, authenticated users may list the root and read `shared`, editors ma
 ```csharp
 options.Authorize = (session, context) => {
     if (context.Action == FileBrowserAction.AccessModule) {
-        return session.Principal.IsAuthenticated;
+        return session.Principal.IsAuthenticated
+                    ? AuthorizeResult.Allowed
+                    : AuthorizeResult.Challenge;
     }
     if (session.Principal.IsInRole("file-admin")) {
-        return true;
+        return AuthorizeResult.Allowed;
     }
 
     // Operation status/cancellation already carry the original business permission.
@@ -269,7 +280,7 @@ options.Authorize = (session, context) => {
         or FileBrowserAction.Rename or FileBrowserAction.Move or FileBrowserAction.Delete
         or FileBrowserAction.Archive or FileBrowserAction.Extract;
     if (!read && !(edit && session.Principal.IsInRole("file-editor"))) {
-        return false;
+        return AuthorizeResult.Forbidden;
     }
 
     static bool InShared(string? path) => path != null
@@ -277,7 +288,9 @@ options.Authorize = (session, context) => {
             || path.StartsWith("shared/", StringComparison.OrdinalIgnoreCase));
 
     return context.Resources.All(resource => InShared(resource.Path)
-        && (resource.DestinationPath == null || InShared(resource.DestinationPath)));
+        && (resource.DestinationPath == null || InShared(resource.DestinationPath)))
+        ? AuthorizeResult.Allowed
+        : AuthorizeResult.Forbidden;
 };
 ```
 

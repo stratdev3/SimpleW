@@ -69,9 +69,9 @@ namespace SimpleW.Modules {
             public bool CompressedDiskCache { get; set; } = false;
 
             /// <summary>
-            /// Optional authorization callback. Return false to reject the request before serving a file.
+            /// Optional authorization callback. Return Allowed to continue, Challenge to request authentication, or Forbidden to deny.
             /// </summary>
-            public Func<HttpSession, bool>? Authorize { get; set; }
+            public Func<HttpSession, AuthorizeResult>? Authorize { get; set; }
 
             /// <summary>
             /// Maximum size (in bytes) of a single file allowed to be stored in memory cache.
@@ -231,9 +231,10 @@ namespace SimpleW.Modules {
             /// <param name="session"></param>
             /// <returns></returns>
             private async ValueTask HandlerAsync(HttpSession session) {
-                if (_options.Authorize != null && !_options.Authorize(session)) {
+                AuthorizeResult access = _options.Authorize?.Invoke(session) ?? AuthorizeResult.Allowed;
+                if (access != AuthorizeResult.Allowed) {
                     HttpChallengeHandler? challenge = session.Server.Challenge;
-                    if (challenge != null) {
+                    if (access == AuthorizeResult.Challenge && challenge != null) {
                         await challenge(session).ConfigureAwait(false);
                     }
                     else {

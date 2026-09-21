@@ -57,9 +57,9 @@ public bool CompressedDiskCache { get; set; } = false;
 
 ```csharp
 /// <summary>
-/// Optional authorization callback. Return false to reject the request before serving a file.
+/// Optional authorization callback. Return Allowed to continue, Challenge to request authentication, or Forbidden to deny.
 /// </summary>
-public Func<HttpSession, bool>? Authorize { get; set; }
+public Func<HttpSession, AuthorizeResult>? Authorize { get; set; }
 ```
 
 ```csharp
@@ -115,10 +115,12 @@ server.UseStaticFilesModule(options => {
     options.MaxCachedFileBytes = 4 * 1024 * 1024;   // at most 4 MiB per cached file
     options.MaxCacheTotalBytes = 256 * 1024 * 1024; // at most 256 MiB in memory
     options.MaxCacheEntries = 10_000;                // at most 10,000 cached files
-    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.Authorize = session => session.Principal.IsAuthenticated
+                                        ? AuthorizeResult.Allowed
+                                        : AuthorizeResult.Challenge;
 });
 ```
 
-When `Authorize` returns `false`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`.
+When `Authorize` returns `AuthorizeResult.Challenge`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`. `Forbidden` and unknown enum values always return `403` without invoking the challenge. `Allowed` continues processing; an absent callback also allows access.
 
 See more [examples](../guide/staticfiles.md).

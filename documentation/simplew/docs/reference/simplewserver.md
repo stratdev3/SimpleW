@@ -554,7 +554,7 @@ See an [example](../guide/principal.md).
 
 ```csharp
 /// <summary>
-/// Handle an authentication challenge for a request rejected by a module authorization gate.
+/// Handle an authentication challenge explicitly requested by a module authorization callback.
 /// The handler must send the response.
 /// </summary>
 public delegate ValueTask HttpChallengeHandler(HttpSession session);
@@ -562,7 +562,7 @@ public delegate ValueTask HttpChallengeHandler(HttpSession session);
 
 ```csharp
 /// <summary>
-/// Authentication challenge invoked by modules when their authorization gate rejects a request.
+/// Authentication challenge invoked by modules when their authorization callback returns AuthorizeResult.Challenge.
 /// The handler must send the response.
 /// </summary>
 public HttpChallengeHandler? Challenge { get; private set; }
@@ -582,7 +582,7 @@ server.ConfigureChallenge(session =>
     session.Response.Redirect("/auth/login").SendAsync());
 ```
 
-The handler is not a global interceptor for arbitrary `401` or `403` responses. It is invoked only by modules whose `Authorize` callback rejects a request.
+The handler is not a global interceptor for arbitrary `401` or `403` responses. It is invoked only by modules whose `Authorize` callback returns `AuthorizeResult.Challenge`. `Forbidden` and unknown values return `403` directly; `Allowed` continues processing.
 
 See the [authentication challenge guide](../guide/authentication-challenge.md) for login redirects and SPA bearer-token navigation.
 

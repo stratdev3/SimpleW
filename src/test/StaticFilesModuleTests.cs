@@ -17,15 +17,18 @@ namespace test {
 
         #region no_cache
 
-        [Fact]
-        public async Task Get_StaticContent_Should_Return_Forbidden_When_Authorize_Denies() {
+        [Theory]
+        [InlineData(AuthorizeResult.Forbidden)]
+        [InlineData(AuthorizeResult.Challenge)]
+        [InlineData((AuthorizeResult)99)]
+        public async Task Get_StaticContent_Should_Return_Forbidden_When_Authorize_Denies(AuthorizeResult decision) {
 
             var server = new SimpleWServer(IPAddress.Loopback, 0);
 
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
                 options.Prefix = "/files";
-                options.Authorize = _ => false;
+                options.Authorize = _ => decision;
             });
 
             bool started = false;
@@ -46,8 +49,11 @@ namespace test {
             }
         }
 
-        [Fact]
-        public async Task Get_StaticContent_Should_Use_Server_Challenge_When_Authorize_Denies() {
+        [Theory]
+        [InlineData(AuthorizeResult.Challenge, HttpStatusCode.Unauthorized, 1)]
+        [InlineData(AuthorizeResult.Forbidden, HttpStatusCode.Forbidden, 0)]
+        [InlineData((AuthorizeResult)99, HttpStatusCode.Forbidden, 0)]
+        public async Task Get_StaticContent_Should_Challenge_Only_When_Requested(AuthorizeResult decision, HttpStatusCode expectedStatus, int expectedChallenges) {
 
             var server = new SimpleWServer(IPAddress.Loopback, 0);
             int challengeCount = 0;
@@ -60,7 +66,7 @@ namespace test {
             server.UseStaticFilesModule(options => {
                 options.Path = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
                 options.Prefix = "/files";
-                options.Authorize = _ => false;
+                options.Authorize = _ => decision;
             });
 
             bool started = false;
@@ -71,9 +77,9 @@ namespace test {
                 using var client = new HttpClient();
                 using var response = await client.GetAsync($"http://{server.Address}:{server.Port}/files/SimpleW.dll");
 
-                Check.That(response.StatusCode).Is(HttpStatusCode.Unauthorized);
-                Check.That(await response.Content.ReadAsStringAsync()).IsEqualTo("Authenticate");
-                Check.That(challengeCount).IsEqualTo(1);
+                Check.That(response.StatusCode).Is(expectedStatus);
+                Check.That(await response.Content.ReadAsStringAsync()).IsEqualTo(expectedChallenges == 1 ? "Authenticate" : "Forbidden");
+                Check.That(challengeCount).IsEqualTo(expectedChallenges);
             }
             finally {
                 if (started) {

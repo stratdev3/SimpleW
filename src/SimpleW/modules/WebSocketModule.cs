@@ -53,9 +53,9 @@ namespace SimpleW.Modules {
         public string? RequiredSubProtocol { get; set; }
 
         /// <summary>
-        /// Optional authorization callback. Return false to reject the WebSocket handshake.
+        /// Optional authorization callback. Return Allowed to continue, Challenge to request authentication, or Forbidden to deny.
         /// </summary>
-        public Func<HttpSession, bool>? Authorize { get; set; }
+        public Func<HttpSession, AuthorizeResult>? Authorize { get; set; }
 
         /// <summary>
         /// If set, periodically send ping to keep proxies/load balancers happy
@@ -219,9 +219,10 @@ namespace SimpleW.Modules {
                 return;
             }
 
-            if (_options.Authorize != null && !_options.Authorize(session)) {
+            AuthorizeResult access = _options.Authorize?.Invoke(session) ?? AuthorizeResult.Allowed;
+            if (access != AuthorizeResult.Allowed) {
                 HttpChallengeHandler? challenge = session.Server.Challenge;
-                if (challenge != null) {
+                if (access == AuthorizeResult.Challenge && challenge != null) {
                     await challenge(session).ConfigureAwait(false);
                 }
                 else {

@@ -109,7 +109,7 @@ namespace SimpleW.Service.FileBrowser {
     /// <summary>
     /// Immutable authorization input. Each valid request checks AccessModule, then its business action once.
     /// Recursive modifications include the complete resource set. Listing includes only the requested directory.
-    /// Return false to reject the entire action.
+    /// Return Forbidden to reject the entire action, or Challenge to request authentication.
     /// </summary>
     public sealed class FileBrowserAuthorizationContext {
 

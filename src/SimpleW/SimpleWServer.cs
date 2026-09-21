@@ -1204,7 +1204,7 @@ namespace SimpleW {
         #region authentication challenge
 
         /// <summary>
-        /// Authentication challenge invoked by modules when their authorization gate rejects a request.
+        /// Authentication challenge invoked by modules when their authorization callback returns AuthorizeResult.Challenge.
         /// The handler must send the response.
         /// </summary>
         public HttpChallengeHandler? Challenge { get; private set; }
@@ -1409,6 +1409,29 @@ namespace SimpleW {
         /// A lifecycle operation failed and cleanup is required.
         /// </summary>
         Faulted
+
+    }
+
+    /// <summary>
+    /// Result of a module or resource authorization check.
+    /// Only Allowed permits the operation; unknown values are treated as Forbidden.
+    /// </summary>
+    public enum AuthorizeResult {
+
+        /// <summary>
+        /// Reject the request with HTTP 403 without invoking the server challenge.
+        /// </summary>
+        Forbidden = 0,
+
+        /// <summary>
+        /// Continue processing the request.
+        /// </summary>
+        Allowed = 1,
+
+        /// <summary>
+        /// Invoke the server challenge, or respond with HTTP 403 when none is configured.
+        /// </summary>
+        Challenge = 2
 
     }
 

@@ -29,8 +29,10 @@ server.ConfigureChallenge(session => session.Response.Unauthorized().SendAsync()
 
 server.UseServerSentEventsModule(options => {
     options.Prefix = "/events";
-    options.Authorize = session => session.Principal.IsAuthenticated;
+    options.Authorize = session => session.Principal.IsAuthenticated
+                                        ? AuthorizeResult.Allowed
+                                        : AuthorizeResult.Challenge;
 });
 ```
 
-When `Authorize` returns `false`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`. In both cases, the HTTP session is not switched to SSE streaming.
+When `Authorize` returns `AuthorizeResult.Challenge`, the server-wide [`Challenge`](./simplewserver.md#configurechallenge) is invoked when configured and must send the response. Without it, the module responds with `403 Forbidden`. `Forbidden` and unknown enum values always return `403` without invoking the challenge. `Allowed` continues processing; an absent callback also allows access. For any rejected decision, the HTTP session is not switched to SSE streaming.

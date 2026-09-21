@@ -81,7 +81,7 @@ namespace SimpleW {
     #region authentication challenge
 
     /// <summary>
-    /// Handle an authentication challenge for a request rejected by a module authorization gate.
+    /// Handle an authentication challenge explicitly requested by a module authorization callback.
     /// The handler must send the response.
     /// </summary>
     /// <param name="session"></param>
