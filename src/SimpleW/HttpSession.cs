@@ -569,7 +569,9 @@ namespace SimpleW {
                                     await HandleErrorResponseAsync(ex, 500, "Internal Server Error", "HTTP process");
                                 }
                                 else if (Server.IsTelemetryEnabled && _currentActivity != null) {
-                                    Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
+                                    if (!_response.IsTelemetryDisabled) {
+                                        Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
+                                    }
                                     // we must close telemetry here in this flow !! closing into NotifyResponseSent() will leak memory !!
                                     CloseAndResetTelemetryWatches();
                                 }
@@ -1006,6 +1008,10 @@ namespace SimpleW {
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CloseAndResetTelemetryWatches() {
+            if (_response.IsTelemetryDisabled && _currentActivity != null) {
+                _currentActivity.IsAllDataRequested = false;                            // complete the activity normally
+                _currentActivity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;    // but prevent OpenTelemetry from exporting it
+            }
             Server.Telemetry?.StopActivity(_currentActivity);
             _currentActivity = null;
 
@@ -1041,9 +1047,11 @@ namespace SimpleW {
                     _requestTimingStarted = true;
                 }
                 _responseStartWatch = Telemetry.GetWatch();
-                _currentActivity ??= Server.Telemetry?.StartActivity(this, displayName, (statusCode >= 500));
-                Server.Telemetry?.UpdateActivityAddException(_currentActivity, ex);
-                Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
+                if (!_response.IsTelemetryDisabled) {
+                    _currentActivity ??= Server.Telemetry?.StartActivity(this, displayName, (statusCode >= 500));
+                    Server.Telemetry?.UpdateActivityAddException(_currentActivity, ex);
+                    Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
+                }
                 await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
                 CloseAndResetTelemetryWatches();
             }
@@ -1082,7 +1090,7 @@ namespace SimpleW {
                     pendingEx
                 );
             }
-            if (!Server.IsTelemetryEnabled) {
+            if (!Server.IsTelemetryEnabled || _response.IsTelemetryDisabled) {
                 return;
             }
             if (_currentActivity == null) {

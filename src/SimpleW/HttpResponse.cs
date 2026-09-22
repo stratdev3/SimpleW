@@ -155,6 +155,11 @@ namespace SimpleW {
         /// </summary>
         public string? Connection => _connection;
 
+        /// <summary>
+        /// Gets whether HTTP telemetry is disabled for the current exchange.
+        /// </summary>
+        internal bool IsTelemetryDisabled { get; private set; }
+
         #endregion exposed properties
 
         /// <summary>
@@ -727,6 +732,17 @@ namespace SimpleW {
         public HttpResponse NoContentLength() {
             _customContentLength = null;
             _suppressContentLength = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Disables SimpleW HTTP traces and request/response metrics for the current exchange, while preserving logs.
+        /// Call before sending the response. Telemetry already emitted cannot be retracted.
+        /// Reset() restores telemetry for the next request.
+        /// </summary>
+        /// <returns>The current response instance.</returns>
+        public HttpResponse DisableTelemetry() {
+            IsTelemetryDisabled = true;
             return this;
         }
 
@@ -1435,6 +1451,8 @@ namespace SimpleW {
             DisposeBody();
 
             _cookieCount = 0;
+
+            IsTelemetryDisabled = false;
 
             _sent = false;
             BytesSent = 0;
