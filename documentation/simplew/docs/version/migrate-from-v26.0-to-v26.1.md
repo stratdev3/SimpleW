@@ -65,7 +65,7 @@ if (server.State == SimpleWServerState.Faulted) {
 await server.StartAsync();
 ```
 
-See [Server lifecycle](./server.md#lifecycle-state).
+See [Server lifecycle](../guide/server.md#lifecycle-state).
 
 
 ### Lifecycle callbacks
@@ -128,7 +128,7 @@ server.UseEngine(options => {
 
 `server.Configure(...)` still configures HTTP and session settings such as request limits and session timeouts. Configure both option groups before starting the server.
 
-See [Replacing Core Components](./replacing-core-components.md#network-engine).
+See [Replacing Core Components](../guide/replacing-core-components.md#network-engine).
 
 
 ### TLS ownership
@@ -175,7 +175,7 @@ await server.ReloadListenerAsync(s => {
 
 Use `SimpleWEngine.UseHttps(...)` in the same way when installing a renewed certificate. Alternative engines expose their own TLS configuration mechanism.
 
-See [TLS Certificates](./tls-certificates.md).
+See [TLS Certificates](../guide/tls-certificates.md).
 
 
 ### HttpSession
@@ -252,7 +252,7 @@ server.ConfigureTelemetry(options => {
 
 Telemetry is created when the server starts and disposed when it stops. Configure it before starting the server; it follows every subsequent server lifecycle generation automatically.
 
-See [Observability](./observability.md).
+See [Observability](../guide/observability.md).
 
 
 ### Listener reload failures
@@ -279,7 +279,7 @@ catch (ListenerReloadException ex) {
 
 `InnerException` references `ReloadException`. A restored previous listener does not turn the requested reload into a successful operation.
 
-See [Listener reload](./server.md#reloading-the-listener-at-runtime).
+See [Listener reload](../guide/server.md#reloading-the-listener-at-runtime).
 
 
 ### Custom network engines
@@ -316,7 +316,7 @@ await server.CreateSessionAsync(transport);
 
 An accepted transport exposes its local and remote endpoints, encryption state, `Input`, `Output`, graceful close, abort, optional features, and disposal. Output implementations also own the single-writer invariant and must write the complete supplied buffer or throw.
 
-Read [Replacing Core Components](./replacing-core-components.md#network-engine) and the complete [`ISimpleWEngine` reference](../reference/isimplewengine.md) before migrating a custom engine.
+Read [Replacing Core Components](../guide/replacing-core-components.md#network-engine) and the complete [`ISimpleWEngine` reference](../reference/isimplewengine.md) before migrating a custom engine.
 
 
 ## Compatibility changes

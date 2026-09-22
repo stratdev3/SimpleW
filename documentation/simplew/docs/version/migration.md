@@ -44,15 +44,15 @@ Apply **the guides in chronological order**. **Do not skip an intermediate guide
 
 ### From v26.0 to v26.1
 
-The [v26.0 to v26.1 guide](../guide/migrate-from-v26.0-to-v26.1.md) covers the new network engine contract, server lifecycle state, TLS ownership, `HttpSession` transport changes and telemetry lifecycle.
+The [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md) covers the new network engine contract, server lifecycle state, TLS ownership, `HttpSession` transport changes and telemetry lifecycle.
 
 Most applications using only routes, controllers, requests and responses need mechanical changes. Custom engines and code accessing sockets or streams directly require more work.
 
 ### From v16 to v26
 
-The [v16 to v26.0 guide](../guide/migrate-from-v16-to-v26.md) covers the server, request, response, controller and extension API renames introduced by the v26 rewrite.
+The [v16 to v26.0 guide](./migrate-from-v16-to-v26.md) covers the server, request, response, controller and extension API renames introduced by the v26 rewrite.
 
-After completing it, continue with the [v26.0 to v26.1 guide](../guide/migrate-from-v26.0-to-v26.1.md).
+After completing it, continue with the [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md).
 
 
 ## From ASP.NET Core

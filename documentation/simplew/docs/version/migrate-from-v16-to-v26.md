@@ -24,10 +24,10 @@ How to replace old class/method/property with the new one.
 
 - `SimpleWServer.Start()` => `SimpleWServer.StartAsync()` or `SimpleWServer.RunAsync()` depending on the blocking context you want
 - `SimpleWServer.Stop()` => `SimpleWServer.StopAsync()`
-- `SimpleWSServer` => [`SimpleWEngineOptions.SslContext`](./tls-certificates.md) to setup ssl certificate
+- `SimpleWSServer` => [`SimpleWEngineOptions.SslContext`](../guide/tls-certificates.md) to setup ssl certificate
 - `SimpleWServer.AddDynamicContent()` => `SimpleWServer.MapControllers()` and `SimpleWServer.MapController()`
-- `SimpleWServer.AddStaticContent()` => [`SimpleWServer.UseStaticFilesModule()`](./staticfiles.md)
-- `SimpleWServer.AddCORS()` => [`SimpleWServer.UseCorsModule()`](./cors.md)
+- `SimpleWServer.AddStaticContent()` => [`SimpleWServer.UseStaticFilesModule()`](../guide/staticfiles.md)
+- `SimpleWServer.AddCORS()` => [`SimpleWServer.UseCorsModule()`](../guide/cors.md)
 - `SimpleWServer.EnableTelemetry` => `SimpleWServer.ConfigureTelemetry(options => options.Enabled = true)`
 
 
@@ -65,5 +65,5 @@ How to replace old class/method/property with the new one.
 
 - All the statistics properties from the `SimpleWServer` class (`ConnectedSessions`, `BytesPending`, `BytesSent`, `BytesReceived`) have been removed. They may appear in a future release, but not now.
 - `SimpleWServer.OptionSendBufferSize` property no longer exists.
-- `SimpleWServer.TrustXHeaders` property no longer exists (see [`SimpleWServer.ConfigureTelemetry()`](./observability.md) on how to add custom telemetry tags);
+- `SimpleWServer.TrustXHeaders` property no longer exists (see [`SimpleWServer.ConfigureTelemetry()`](../guide/observability.md) on how to add custom telemetry tags);
 - `Response.MakeAccessResponse()` method no longer exists.
