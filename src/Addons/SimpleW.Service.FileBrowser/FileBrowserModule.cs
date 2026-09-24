@@ -1767,6 +1767,7 @@ namespace SimpleW.Service.FileBrowser {
         /// </summary>
         /// <param name="sources"></param>
         /// <param name="destination"></param>
+        /// <param name="authorizedResources">Resources authorized during preflight for this queued operation.</param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         private OperationResult CreateArchive(IReadOnlyList<ResolvedPath> sources, ResolvedPath destination, IReadOnlyList<FileBrowserAuthorizationResource> authorizedResources, CancellationToken cancellationToken) {
@@ -2079,6 +2080,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <param name="source"></param>
         /// <param name="destination"></param>
         /// <param name="createDestinationDirectory"></param>
+        /// <param name="authorizedResources">Resources authorized during preflight for this queued operation.</param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         /// <exception cref="FileNotFoundException"></exception>

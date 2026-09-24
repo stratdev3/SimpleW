@@ -171,7 +171,9 @@ namespace SimpleW.Service.FileBrowser.Unrar {
                         throw new RarException(RarFailure.SecondaryVolume, "Extraction must start from the first RAR volume.");
                 }
                 else {
-                    RarException.Require(info.MultiVolume && previous!.MultiVolume && info.Format == previous.Format &&
+                    if (previous == null)
+                        throw RarException.Corrupt("Missing preceding RAR volume.");
+                    RarException.Require(info.MultiVolume && previous.MultiVolume && info.Format == previous.Format &&
                         info.Solid == previous.Solid && !info.First, "Inconsistent RAR volume series.");
                     RarException.Require(previous.Next || (!previous.HasEnd && entries.LastOrDefault()?.Last.SplitAfter == true),
                         "Unexpected extra RAR volume.");
