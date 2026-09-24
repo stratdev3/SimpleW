@@ -190,15 +190,15 @@ namespace SimpleW.Service.FileBrowser {
 
             NormalizedPath = NormalizeDirectory(Path);
             NormalizedTrashPath = NormalizeDirectory(string.IsNullOrWhiteSpace(TrashPath)
-                ? System.IO.Path.Combine(NormalizedPath, ".trash")
-                : TrashPath!);
+                                                        ? System.IO.Path.Combine(NormalizedPath, ".trash")
+                                                        : TrashPath!);
             NormalizedClientPath = string.IsNullOrWhiteSpace(ClientPath) ? null : NormalizeDirectory(ClientPath!);
             NormalizedPrefix = SimpleWExtension.NormalizePrefix(Prefix);
             NormalizedEventsPrefix = SimpleWExtension.NormalizePrefix(
-                string.IsNullOrWhiteSpace(EventsPrefix)
-                    ? (NormalizedPrefix == "/" ? "/api/events" : NormalizedPrefix + "/api/events")
-                    : EventsPrefix!
-            );
+                                         string.IsNullOrWhiteSpace(EventsPrefix)
+                                             ? (NormalizedPrefix == "/" ? "/api/events" : NormalizedPrefix + "/api/events")
+                                             : EventsPrefix!
+                                     );
             if (EnableEvents && NormalizedEventsPrefix == "/") {
                 throw new ArgumentException($"{nameof(EventsPrefix)} must not be '/'.", nameof(EventsPrefix));
             }

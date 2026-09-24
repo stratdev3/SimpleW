@@ -1898,7 +1898,7 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         /// <summary>
-        /// Validates and queues extraction of a ZIP archive.
+        /// Validates and queues extraction of an archive.
         /// </summary>
         /// <param name="session"></param>
         /// <returns></returns>
@@ -1918,8 +1918,12 @@ namespace SimpleW.Service.FileBrowser {
             if (!File.Exists(source.FullPath)) {
                 return ErrorAsync(session, 404, "source_not_found");
             }
-            if (!string.Equals(System.IO.Path.GetExtension(source.FullPath), ".zip", StringComparison.OrdinalIgnoreCase)) {
-                return ErrorAsync(session, 400, "unsupported_archive");
+            string extension = System.IO.Path.GetExtension(source.FullPath);
+            if (!string.Equals(extension, ".zip", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(extension, ".rar", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(extension, ".001", StringComparison.OrdinalIgnoreCase)) {
+                bool secondaryRarVolume = System.Text.RegularExpressions.Regex.IsMatch(extension, @"^\.(?:[r-z][0-9]{2}|[0-9]{3,})$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                return ErrorAsync(session, 400, secondaryRarVolume ? "rar_first_volume_required" : "unsupported_archive");
             }
             if (!TryResolve(request.DestinationDirectory, allowRoot: true, out ResolvedPath destination, out string? destinationError)) {
                 return ErrorAsync(session, 400, destinationError);
@@ -1940,8 +1944,59 @@ namespace SimpleW.Service.FileBrowser {
                 capture: () => CaptureExtraction(source, destination));
         }
 
-        /// <summary>Validates ZIP entries before any extraction writes or authorization of expanded targets.</summary>
-        private List<ArchiveEntryPlan> PlanExtraction(ZipArchive archive, ResolvedPath destination, CancellationToken cancellationToken) {
+        /// <summary>Opens only validated archive sources, with every RAR volume covered by authorization.</summary>
+        private ExtractionArchive OpenExtractionArchive(ResolvedPath source, CancellationToken cancellationToken, IReadOnlyList<FileBrowserAuthorizationResource>? authorizedResources = null) {
+            cancellationToken.ThrowIfCancellationRequested();
+            EnsureNoReparsePoints(source.FullPath);
+            bool zip = string.Equals(System.IO.Path.GetExtension(source.FullPath), ".zip", StringComparison.OrdinalIgnoreCase);
+            string[] paths;
+            if (zip) {
+                paths = [source.FullPath];
+            }
+            else if (authorizedResources == null) {
+                paths = ExtractionArchive.ResolveRarVolumes(source.FullPath, _options.MaxArchiveEntries, cancellationToken);
+            }
+            else {
+                // CaptureExtraction records source volumes in archive order. Reuse that frozen list after snapshot verification.
+                paths = authorizedResources.Where(resource => resource.IsDirectory == false && resource.DestinationPath != null && resource.Path != null)
+                    .Select(resource => BrowserFullPath(resource.Path!)).ToArray();
+                if (paths.Length == 0 || !string.Equals(paths[0], source.FullPath, _pathComparison)) {
+                    throw new IOException("authorization_scope_changed");
+                }
+            }
+            List<ResolvedPath> sources = new(paths.Length);
+            foreach (string path in paths) {
+                cancellationToken.ThrowIfCancellationRequested();
+                string relative = System.IO.Path.GetRelativePath(_options.NormalizedPath, path).Replace('\\', '/');
+                if (!TryResolve(relative, allowRoot: false, out ResolvedPath resolved, out string? error)) {
+                    throw new InvalidDataException(error ?? "archive_path_outside_destination");
+                }
+                if (!string.Equals(resolved.FullPath, System.IO.Path.GetFullPath(path), _pathComparison)) {
+                    throw new InvalidDataException("archive_path_invalid");
+                }
+                if (authorizedResources != null && !authorizedResources.Any(resource => resource.IsDirectory == false
+                    && resource.DestinationPath != null && string.Equals(resource.Path, resolved.RelativePath, StringComparison.Ordinal))) {
+                    throw new IOException("authorization_scope_changed");
+                }
+                sources.Add(resolved);
+            }
+            List<Stream> streams = new(sources.Count);
+            try {
+                foreach (ResolvedPath part in sources) {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    EnsureNoReparsePoints(part.FullPath);
+                    streams.Add(new FileStream(part.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read));
+                }
+            }
+            catch {
+                foreach (Stream stream in streams) { stream.Dispose(); }
+                throw;
+            }
+            return ExtractionArchive.Open(sources, streams, zip, _options, cancellationToken);
+        }
+
+        /// <summary>Validates archive entries before any extraction writes or authorization of expanded targets.</summary>
+        private List<ArchiveEntryPlan> PlanExtraction(ExtractionArchive archive, ResolvedPath destination, CancellationToken cancellationToken) {
             if (archive.Entries.Count > _options.MaxArchiveEntries) {
                 throw new InvalidDataException("archive_too_many_entries");
             }
@@ -1952,9 +2007,12 @@ namespace SimpleW.Service.FileBrowser {
             List<ArchiveEntryPlan> plan = new(archive.Entries.Count);
             long declaredTotal = 0;
 
-            foreach (ZipArchiveEntry entry in archive.Entries) {
+            foreach (ExtractionArchive.Entry entry in archive.Entries) {
                 cancellationToken.ThrowIfCancellationRequested();
                 string archivePath = entry.FullName.Replace('\\', '/');
+                if (archivePath.StartsWith('/') || System.IO.Path.IsPathRooted(archivePath) || archivePath.Contains(':')) {
+                    throw new InvalidDataException("archive_path_outside_destination");
+                }
                 string[] segments = archivePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 if (segments.Length == 0) {
                     continue;
@@ -1963,6 +2021,11 @@ namespace SimpleW.Service.FileBrowser {
                     throw new InvalidDataException("archive_path_traversal_forbidden");
                 }
 
+                foreach (string segment in segments) {
+                    if (segment.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0 || (OperatingSystem.IsWindows() && (segment.EndsWith(' ') || segment.EndsWith('.')))) {
+                        throw new InvalidDataException("archive_path_invalid");
+                    }
+                }
                 string entryFullPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(destination.FullPath, System.IO.Path.Combine(segments)));
                 if (!IsInsideOrEqual(entryFullPath, destination.FullPath) || !TryEnsureInsideRoot(entryFullPath)) {
                     throw new InvalidDataException("archive_path_outside_destination");
@@ -1971,13 +2034,16 @@ namespace SimpleW.Service.FileBrowser {
                     throw new InvalidDataException("duplicate_archive_entry");
                 }
 
-                bool isDirectory = archivePath.EndsWith("/", StringComparison.Ordinal) || string.IsNullOrEmpty(entry.Name);
+                bool isDirectory = entry.IsDirectory;
                 if (isDirectory) {
                     if (File.Exists(entryFullPath)) {
                         throw new IOException("destination_exists");
                     }
                 }
                 else {
+                    if (entry.Length < 0) {
+                        throw new InvalidDataException("invalid_archive");
+                    }
                     if (entry.Length > _options.MaxExtractedFileBytes) {
                         throw new InvalidDataException("archive_entry_too_large");
                     }
@@ -2008,7 +2074,7 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         /// <summary>
-        /// Extracts validated ZIP entries while protecting against traversal and archive bombs.
+        /// Extracts validated archive entries while protecting against traversal and archive bombs.
         /// </summary>
         /// <param name="source"></param>
         /// <param name="destination"></param>
@@ -2037,7 +2103,7 @@ namespace SimpleW.Service.FileBrowser {
 
                 EnsureNoReparsePoints(source.FullPath);
                 EnsureNoReparsePoints(destination.FullPath);
-                using ZipArchive archive = ZipFile.OpenRead(source.FullPath);
+                using ExtractionArchive archive = OpenExtractionArchive(source, cancellationToken, authorizedResources);
                 List<ArchiveEntryPlan> plan = PlanExtraction(archive, destination, cancellationToken);
                 HashSet<string> approvedFiles = authorizedResources.Where(resource => resource.IsDirectory == false && resource.DestinationPath == null)
                     .Select(resource => resource.Path!).ToHashSet(StringComparer.Ordinal);
@@ -2069,7 +2135,6 @@ namespace SimpleW.Service.FileBrowser {
                     createdDestination = true;
                 }
 
-                byte[] buffer = new byte[81920];
                 long extractedTotal = 0;
                 int extractedFiles = 0;
                 foreach (ArchiveEntryPlan item in plan) {
@@ -2078,6 +2143,7 @@ namespace SimpleW.Service.FileBrowser {
                         EnsureNoReparsePoints(item.FullPath);
                         Directory.CreateDirectory(item.FullPath);
                         EnsureNoReparsePoints(item.FullPath);
+                        item.Entry.ExtractTo(Stream.Null, cancellationToken);
                         continue;
                     }
 
@@ -2087,23 +2153,12 @@ namespace SimpleW.Service.FileBrowser {
                     EnsureNoReparsePoints(item.FullPath);
                     bool createdFile = false;
                     try {
-                        using Stream input = item.Entry.Open();
                         using FileStream output = new(item.FullPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
                         createdFile = true;
-                        long extractedEntry = 0;
-                        int read;
-                        while ((read = input.Read(buffer, 0, buffer.Length)) > 0) {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            if (read > _options.MaxExtractedFileBytes - extractedEntry) {
-                                throw new InvalidDataException("archive_entry_too_large");
-                            }
-                            if (read > _options.MaxExtractedBytes - extractedTotal) {
-                                throw new InvalidDataException("archive_too_large");
-                            }
-                            output.Write(buffer, 0, read);
-                            extractedEntry += read;
-                            extractedTotal += read;
-                        }
+                        using ExtractionOutputStream limitedOutput = new(output, _options.MaxExtractedFileBytes,
+                            _options.MaxExtractedBytes - extractedTotal, cancellationToken);
+                        item.Entry.ExtractTo(limitedOutput, cancellationToken);
+                        extractedTotal += limitedOutput.BytesWritten;
                         extractedFiles++;
                     }
                     catch {
@@ -3479,7 +3534,7 @@ namespace SimpleW.Service.FileBrowser {
                 bool directory = Directory.Exists(fullPath);
                 bool file = !directory && File.Exists(fullPath);
                 bool? kind = directory ? true : file ? false : null;
-                // File changes matter for ZIP manifests and trash metadata; directory membership is captured recursively.
+                // File changes matter for archive manifests, source volumes and trash metadata; directory membership is captured recursively.
                 stamps.Add(new(fullPath, kind, file ? new FileInfo(fullPath).Length : 0, file ? File.GetLastWriteTimeUtc(fullPath).Ticks : 0));
                 return kind;
             }
@@ -3537,9 +3592,10 @@ namespace SimpleW.Service.FileBrowser {
         /// <returns></returns>
         private AuthorizationSnapshot CaptureExtraction(ResolvedPath source, ResolvedPath destination) {
             EnsureNoReparsePoints(source.FullPath);
-            using ZipArchive archive = ZipFile.OpenRead(source.FullPath);
+            using ExtractionArchive archive = OpenExtractionArchive(source, CancellationToken.None);
             List<ArchiveEntryPlan> entries = PlanExtraction(archive, destination, CancellationToken.None);
-            List<AuthorizationTarget> targets = [Target(source, destination.RelativePath), Target(destination, isDirectory: true, createParents: true)];
+            List<AuthorizationTarget> targets = archive.Sources.Select(part => Target(part, destination.RelativePath)).ToList();
+            targets.Add(Target(destination, isDirectory: true, createParents: true));
 
             foreach (ArchiveEntryPlan entry in entries) {
                 string relativePath = System.IO.Path.GetRelativePath(_options.NormalizedPath, entry.FullPath).Replace('\\', '/');
@@ -3774,7 +3830,7 @@ namespace SimpleW.Service.FileBrowser {
         /// <summary>
         /// Describes one validated archive entry before it is extracted.
         /// </summary>
-        private sealed record ArchiveEntryPlan(ZipArchiveEntry Entry, string FullPath, bool IsDirectory);
+        private sealed record ArchiveEntryPlan(ExtractionArchive.Entry Entry, string FullPath, bool IsDirectory);
 
         /// <summary>
         /// Stores persistent metadata required to restore a managed trash entry.

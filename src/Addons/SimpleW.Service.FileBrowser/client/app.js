@@ -1184,7 +1184,7 @@ function renderRows() {
       ? '<span class="folder-icon" aria-hidden="true"></span>'
       : '<span class="file-icon" aria-hidden="true"></span>';
     const archiveAction = capabilities.canModify ? '<button type="button" data-item-action="archive">Archive</button>' : "";
-    const extractAction = capabilities.canModify && item.type === "file" && item.name.toLowerCase().endsWith(".zip")
+    const extractAction = capabilities.canModify && item.type === "file" && (item.name.toLowerCase().endsWith(".zip") || canExtractRarArchive(item.name))
       ? '<button type="button" data-item-action="extract">Extract</button>'
       : "";
     const modifyActions = capabilities.canModify ? '<button type="button" data-item-action="rename">Rename</button><button type="button" data-item-action="move">Move</button>' : "";
@@ -1767,14 +1767,21 @@ function updateExtractDestination() {
   confirmExtractButton.disabled = dedicatedFolder && !validFolderName;
 }
 
-/** Opens the extraction dialog for a ZIP archive. */
+/** Recognizes the first volume of supported RAR naming schemes. */
+function canExtractRarArchive(name) {
+  const part = name.match(/\.part([0-9]+)\.rar$/i);
+  if (part) return /^0*1$/.test(part[1]);
+  return /\.(rar|001)$/i.test(name);
+}
+
+/** Opens the extraction dialog for a ZIP or RAR archive. */
 function openExtractModal(path) {
   extractArchivePath = path;
   const leaf = path.split("/").pop() || "archive.zip";
   extractArchiveName.textContent = displayBrowserPath(path);
   extractArchiveName.title = displayBrowserPath(path);
   extractHerePreview.textContent = displayBrowserPath(parentOf(path));
-  extractFolderName.value = leaf.replace(/\.zip$/i, "") || "archive";
+  extractFolderName.value = leaf.replace(/(?:\.part0*1)?\.rar$|\.zip$|(?:\.rar)?\.001$/i, "") || "archive";
   extractToFolder.checked = true;
   updateExtractDestination();
   extractModal.hidden = false;

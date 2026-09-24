@@ -8,7 +8,7 @@
 
 `SimpleW.Service.FileBrowser` provides a small web file browser for SimpleW.
 
-It can list files and directories, create folders, rename, move, manage an internal trash directory, upload files or directories, and create or safely extract ZIP archives. Large files are uploaded in chunks.
+It can list files and directories, create folders, rename, move, manage an internal trash directory, upload files or directories, create ZIP archives, and safely extract ZIP or RAR archives. Large files are uploaded in chunks.
 
 ```csharp
 using System.Net;
@@ -100,7 +100,7 @@ Every endpoint request first checks `AccessModule` with an empty resource list. 
 | `PurgeTrash` | Permanently delete selected entries and their descendants. |
 | `EmptyTrash` | Permanently delete all trash entries and their descendants. |
 | `Archive` | Create a ZIP. |
-| `Extract` | Extract a ZIP. |
+| `Extract` | Extract a ZIP or RAR, authorizing every source volume and output. |
 
 `FileBrowserAuthorizationContext` exposes `Action`, an immutable `Resources` collection, and nullable `UploadId` and `OperationId`. Status and cancellation of an operation reuse its original business action and immutable resources: following or cancelling a rename therefore checks `Rename`. Owner isolation through `ScopeKey` is still required; foreign upload and operation ids remain `404`. The separate original-action property and the former technical enum values have been removed without aliases.
 
@@ -194,4 +194,18 @@ The response contains `keyCount`, `isTruncated`, and `nextContinuationToken` in 
 
 `POST /files/api/archive` queues creation of a ZIP from one or more relative file or directory paths. The archive is built in the module's internal temporary directory and moved to its final destination only after successful completion.
 
-`POST /files/api/extract` queues ZIP extraction with a relative archive path, a destination directory, and a `createDestinationDirectory` flag. Extraction rejects paths outside the destination, existing file conflicts, oversized entries, oversized expanded archives, and archives containing more than `MaxArchiveEntries` entries.
+`POST /files/api/extract` queues ZIP or RAR extraction with a relative archive path, a destination directory, and a `createDestinationDirectory` flag. Extraction rejects paths outside the destination, existing file conflicts, oversized entries, oversized expanded archives, and archives containing more than `MaxArchiveEntries` entries.
+
+RAR extraction uses the independent managed C# decoder under `Unrar`, including solid archives. It implements RAR4 compression from RAR 2.9 through 4.x (LZ/Huffman, PPMd and standard filters) and RAR5 compression version 0. No SharpCompress package or external executable is used. Archive creation remains ZIP-only. Encrypted archives, symbolic links and other RAR redirections are rejected.
+
+Historical RAR 1.5/2.0/2.6 codecs, custom RARVM programs, SFX and RAR7/version 1 compression are unsupported. The active decoder limits dictionary and PPMd memory to 256 MiB each. This implementation has only been reviewed statically; compilation and extraction compatibility have not been validated at runtime.
+
+Start multipart extraction from the first volume, with all parts in the same directory:
+
+- `name.part01.rar`, `name.part02.rar`, ... (also `part1` or `part001`).
+- `name.rar`, `name.r00`, `name.r01`, ... .
+- `name.001`, `name.002`, ... for numbered RAR volumes or binary fragments of a RAR archive. A `.001` extension alone does not identify a RAR; the server checks its signature.
+
+The server inventories headers before writing, checks volume continuity and entry completeness, authorizes every source volume, and verifies the captured scope again before extraction. Extraction opens only the source volumes captured in the authorized scope, without discovering additional volumes. It decodes entries in archive order for solid archives and verifies available CRC32/BLAKE2sp checksums. `MaxArchiveEntries` also bounds the number of source volumes. Missing parts fail with `incomplete_archive`; starting from a later `.partNN.rar` fails with `rar_first_volume_required`; encrypted archives fail with `encrypted_archive_unsupported`. Unsupported compression methods and invalid volume sets are rejected explicitly. Archives with an unknown expanded file size cannot pass the configured size limits.
+
+`Unrar` follows the SimpleW project's MIT license. Its implementation notes and limitations are documented in `Unrar/README.md`, which is also included in the NuGet package. The previous `Unrar` sources are excluded from compilation; there is no fallback to that decoder.

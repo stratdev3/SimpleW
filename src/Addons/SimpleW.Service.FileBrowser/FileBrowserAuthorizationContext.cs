@@ -76,12 +76,12 @@ namespace SimpleW.Service.FileBrowser {
         EmptyTrash = 16,
 
         /// <summary>
-        /// Create a ZIP from the specified sources.
+        /// Create an archive from the specified sources.
         /// </summary>
         Archive = 17,
 
         /// <summary>
-        /// Extract a ZIP into the specified destinations.
+        /// Extract an archive into the specified destinations, including all source volumes.
         /// </summary>
         Extract = 18,
 
