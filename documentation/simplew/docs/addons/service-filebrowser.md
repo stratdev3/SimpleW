@@ -25,6 +25,7 @@ It exposes a ready-to-use browser UI and an HTTP API to list files and directori
 - Split large files into configurable chunks
 - Execute file mutations asynchronously through an in-process queue
 - Publish operation and upload progress through Server-Sent Events
+- Optionally watch external disk changes and refresh connected browsers automatically
 - Serve the UI from embedded DLL resources, a Debug source directory, or a custom directory
 - Reject path traversal and hide internal trash and temporary upload directories
 
@@ -87,6 +88,7 @@ The default `Authorize` callback allows unrestricted public access. Configure a 
 | `ServeUi` | `true` | Serves the bundled or disk-based web UI. The API remains available when disabled. |
 | `ClientPath` | `null` | Explicit directory containing a custom UI. It overrides automatic Debug discovery and embedded resources. |
 | `EnableEvents` | `true` | Enables the FileBrowser Server-Sent Events endpoint. |
+| `EnableFileSystemWatcher` | `false` | Watches disk changes and refreshes connected browser views. Requires `EnableEvents = true`; otherwise no watcher is started. |
 | `EventsPrefix` | `Prefix + "/api/events"` | Custom SSE endpoint. With `Prefix = "/"`, the default is `/api/events`. |
 | `MaxFileBytes` | `10 GiB` | Maximum declared size of one logical file. |
 | `MaxUploadBytes` | `50 GiB` | Maximum combined size of all files in one upload session. Must be greater than or equal to `MaxFileBytes`. |
@@ -255,9 +257,9 @@ For modifications, the complete resource context is prepared in read-only prefli
 
 Each upload request checks `Upload` exactly once with the affected file resources and its session id. Session-wide actions include all declared files; file and chunk requests include the relevant file. Status and cancellation do not inspect future destinations on disk. The completion request authorizes all files and any missing parent directories once, before queue submission.
 
-Queued work never retains `HttpSession`. A filesystem snapshot is verified internally before execution without calling `Authorize` again; a changed scope fails with `authorization_scope_changed`. ZIP creation reads only the approved manifest, and extraction checks the opened archive against approved outputs. Permissions are sampled per request, not continuously during accepted work or an open SSE connection. Filesystem checks do not provide an OS transaction against concurrent external changes or rollback for I/O errors. SSE rooms retain `ScopeKey` isolation; choose distinct scopes for users who must not share operation events.
+Queued work never retains `HttpSession`. A filesystem snapshot is verified internally before execution without calling `Authorize` again; a changed scope fails with `authorization_scope_changed`. ZIP creation reads only the approved manifest, and extraction checks the opened archive against approved outputs. Permissions are sampled per request, not continuously during accepted work or an open SSE connection. Filesystem checks do not provide an OS transaction against concurrent external changes or rollback for I/O errors. Operation and upload SSE events retain `ScopeKey` isolation; choose distinct scopes for users who must not share operation events.
 
-Separate HTTP requests are authorized independently, including each upload chunk and each listing refresh. Client refresh behavior is unchanged.
+Separate HTTP requests are authorized independently, including each upload chunk and each automatic listing refresh.
 
 The configuration endpoint does not return `capabilities`. The UI offers actions and displays server refusals; it does not query permissions per button.
 
@@ -458,7 +460,7 @@ When `EnableEvents` is enabled, the UI opens an `EventSource` on `EventsPrefix`.
 
 | Event | Description |
 |---|---|
-| `filebrowser.connected` | Confirms that the SSE connection has joined the FileBrowser room. |
+| `filebrowser.connected` | Confirms connection; the UI resynchronizes its list and permitted trash view. |
 | `filebrowser.operation.started` | A queued mutation started. |
 | `filebrowser.operation.completed` | A mutation completed successfully. |
 | `filebrowser.operation.failed` | A mutation failed. |
@@ -466,10 +468,23 @@ When `EnableEvents` is enabled, the UI opens an `EventSource` on `EventsPrefix`.
 | `filebrowser.upload.progress` | A direct file or chunk was received. |
 | `filebrowser.upload.completed` | An uploaded file was moved to its final destination. |
 | `filebrowser.upload.cancelled` | An active upload session was cancelled. |
-| `filebrowser.changed` | A directory should be refreshed after a successful mutation. |
+| `filebrowser.changed` | A directory should be refreshed after a successful mutation, within the owner scope. |
+| `filebrowser.invalidated` | Optional watcher signal with boolean `files` and `trash` flags, shared across authorized connections to this module instance. |
 
 `POST /api/operations/cancel` requests cancellation for all pending or running FileBrowser operations and active upload sessions. Cancellation is best effort: a filesystem operation that has already completed cannot be rolled back.
 
+
+### Optional disk updates
+
+Set `EnableFileSystemWatcher = true` to observe changes made directly on disk, by other processes, or by other FileBrowser users. The option defaults to `false` and only runs when `EnableEvents` is also `true`. Disabling it does not disable existing operation or upload events.
+
+The module watches the exposed directory recursively, ignores `.filebrowser-tmp`, and tracks trash changes separately. An additional watcher is created only when `TrashPath` is outside the exposed directory. Watchers start and stop with the server, coalesce notifications in 300 ms windows, and retry failed monitoring approximately every 5 seconds after revalidating the watched root. An unavailable external trash directory does not stop the main watcher.
+
+The new `filebrowser.invalidated` event carries only `{"files":true,"trash":false}` (either or both flags can be true). It is shared across authorized SSE connections to this module instance, including different `ScopeKey` values. It reveals that filesystem activity occurred, but contains no paths, file names, owner identifiers, or operation details. Existing operation, upload and `filebrowser.changed` events remain owner-scoped. Clients reload through the ordinary APIs, which apply authorization again.
+
+The bundled UI refreshes automatically, preserving the current directory, search, sorting, pagination and selections that remain on the displayed page. Refreshes retain the existing list while loading and leave dialog inputs intact. If the displayed directory disappears, the UI tries its parents until it finds an existing directory or encounters an access denial. Every SSE connection, including reconnections, also resynchronizes the list and the permitted trash view; initial requests and incoming refreshes use the same scheduler.
+
+Disk notifications are best effort, not an audit log: duplicates and missed events are possible, especially during bursts or with filesystem/provider limitations. A reported buffer overflow requests a full refresh; recovery also requests resynchronization. There is no event replay or periodic full directory scan. Manual refresh remains available.
 
 ## Path and internal directory safety
 

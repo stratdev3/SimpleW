@@ -29,6 +29,7 @@ server.UseFileBrowserModule(options => {
     options.Prefix = "/files";
     options.EventsPrefix = "/files/api/events";
     options.EnableEvents = true;
+    // options.EnableFileSystemWatcher = true; // Optional live disk updates.
     // options.ClientPath = @"C:\custom-filebrowser-client";
     options.Authorize = (session, context) => session.Principal.IsAuthenticated
                                                 ? AuthorizeResult.Allowed
@@ -77,6 +78,18 @@ Upload sessions expire after `UploadSessionTimeout` without activity, and at mos
 
 `UploadChunkBytes` must be lower than or equal to `SimpleWServerOptions.MaxRequestBodySize`, because SimpleW validates each request body before the module receives it.
 
+### Optional disk updates
+
+Set `EnableFileSystemWatcher = true` to observe changes made directly on disk, by other processes, or by other FileBrowser users. The option defaults to `false` and only runs when `EnableEvents` is also `true`. Disabling it does not disable existing operation or upload events.
+
+The module watches the exposed directory recursively, ignores `.filebrowser-tmp`, and tracks trash changes separately. An additional watcher is created only when `TrashPath` is outside the exposed directory. Watchers start and stop with the server, coalesce notifications in 300 ms windows, and retry failed monitoring approximately every 5 seconds after revalidating the watched root. An unavailable external trash directory does not stop the main watcher.
+
+The new `filebrowser.invalidated` event carries only `{"files":true,"trash":false}` (either or both flags can be true). It is shared across authorized SSE connections to this module instance, including different `ScopeKey` values. It reveals that filesystem activity occurred, but contains no paths, file names, owner identifiers, or operation details. Existing operation, upload and `filebrowser.changed` events remain owner-scoped. Clients reload through the ordinary APIs, which apply authorization again.
+
+The bundled UI refreshes automatically, preserving the current directory, search, sorting, pagination and selections that remain on the displayed page. Refreshes retain the existing list while loading and leave dialog inputs intact. If the displayed directory disappears, the UI tries its parents until it finds an existing directory or encounters an access denial. Every SSE connection, including reconnections, also resynchronizes the list and the permitted trash view; initial requests and incoming refreshes use the same scheduler.
+
+Disk notifications are best effort, not an audit log: duplicates and missed events are possible, especially during bursts or with filesystem/provider limitations. A reported buffer overflow requests a full refresh; recovery also requests resynchronization. There is no event replay or periodic full directory scan. Manual refresh remains available.
+
 ## Authorization
 
 ### Fine-grained authorization
@@ -114,9 +127,9 @@ For modifications, the complete resource context is prepared in read-only prefli
 
 Each upload request checks `Upload` exactly once with the affected file resources and its session id. Session-wide actions include all declared files; file and chunk requests include the relevant file. Status and cancellation do not inspect future destinations on disk. The completion request authorizes all files and any missing parent directories once, before queue submission.
 
-Queued work never retains `HttpSession`. A filesystem snapshot is verified internally before execution without calling `Authorize` again; a changed scope fails with `authorization_scope_changed`. ZIP creation reads only the approved manifest, and extraction checks the opened archive against approved outputs. Permissions are sampled per request, not continuously during accepted work or an open SSE connection. Filesystem checks do not provide an OS transaction against concurrent external changes or rollback for I/O errors. SSE rooms retain `ScopeKey` isolation; choose distinct scopes for users who must not share operation events.
+Queued work never retains `HttpSession`. A filesystem snapshot is verified internally before execution without calling `Authorize` again; a changed scope fails with `authorization_scope_changed`. ZIP creation reads only the approved manifest, and extraction checks the opened archive against approved outputs. Permissions are sampled per request, not continuously during accepted work or an open SSE connection. Filesystem checks do not provide an OS transaction against concurrent external changes or rollback for I/O errors. Operation and upload SSE events retain `ScopeKey` isolation; choose distinct scopes for users who must not share operation events.
 
-Separate HTTP requests are authorized independently, including each upload chunk and each listing refresh. Client refresh behavior is unchanged.
+Separate HTTP requests are authorized independently, including each upload chunk and each automatic listing refresh.
 
 The configuration endpoint does not return `capabilities`. The UI offers actions and displays server refusals; it does not query permissions per button.
 

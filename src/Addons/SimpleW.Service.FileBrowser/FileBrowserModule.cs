@@ -82,6 +82,9 @@ namespace SimpleW.Service.FileBrowser {
                     InstallTransportAuthorization(server, _options.NormalizedEventsPrefix + "/*");
                     sse.OnConnect = async (connection, context) => {
                         await connection.JoinAsync(GetEventsRoom(GetScopeKey(context.Session))).ConfigureAwait(false);
+                        if (_options.EnableFileSystemWatcher) {
+                            await connection.JoinAsync(_invalidationRoom).ConfigureAwait(false);
+                        }
                         await connection.SendEventAsync(
                             SerializeEvent(new {
                                 ok = true,
@@ -98,9 +101,15 @@ namespace SimpleW.Service.FileBrowser {
             server.OnStateChanged(async (_, state) => {
                 if (state == SimpleWServerState.Started) {
                     StartOperations();
+                    StartFileSystemWatcher();
                 }
                 else if (state == SimpleWServerState.Stopped) {
-                    await StopOperationsAsync().ConfigureAwait(false);
+                    try {
+                        await StopFileSystemWatcherAsync().ConfigureAwait(false);
+                    }
+                    finally {
+                        await StopOperationsAsync().ConfigureAwait(false);
+                    }
                 }
             });
 

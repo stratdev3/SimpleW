@@ -46,6 +46,12 @@ namespace SimpleW.Service.FileBrowser {
         public bool EnableEvents { get; set; } = true;
 
         /// <summary>
+        /// Watches disk changes and invalidates connected browser views. Requires EnableEvents.
+        /// Disabled by default; operation and upload events remain independent of this option.
+        /// </summary>
+        public bool EnableFileSystemWatcher { get; set; } = false;
+
+        /// <summary>
         /// SSE endpoint used by the web UI. Defaults to Prefix + "/api/events".
         /// </summary>
         public string? EventsPrefix { get; set; }

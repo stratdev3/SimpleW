@@ -5,6 +5,8 @@
 
 ### feature
 
+- Add opt-in recursive disk monitoring with shared SSE invalidation, bounded notification batching and watcher recovery.
+- Refresh browser listings and trash automatically while preserving visible selections and dialog inputs; resynchronize after SSE reconnects.
 - Initial `SimpleW.Service.FileBrowser` package release for SimpleW v26.1.
 - Add a file browser and chunked upload module for SimpleW.
 - Add server-side search, sorting, and cursor-based pagination to directory listings.

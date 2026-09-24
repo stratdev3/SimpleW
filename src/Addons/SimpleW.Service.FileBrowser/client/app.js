@@ -23,7 +23,13 @@ let cursorHistory = [];
 let loadGeneration = 0;
 let searchTimer = 0;
 let reloadTimer = 0;
-let trashReloadTimer = 0;
+let reloadFilesPending = false;
+let reloadTrashPending = false;
+let automaticReloadRunning = false;
+let listingLoads = 0;
+let listingInitialized = false;
+let trashLoads = 0;
+let trashLoadGeneration = 0;
 let cancelGeneration = 0;
 let operationRenderFrame = 0;
 let capabilities = {
@@ -659,11 +665,21 @@ function renderTrashItems() {
 
 /** Loads the current trash contents. */
 async function loadTrash() {
-  const response = await fetch(`${api}/trash`);
-  const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
-  if (!response.ok || !json.ok) throw new Error(json.error || "trash_load_failed");
-  trashItems = Array.isArray(json.items) ? json.items : [];
-  renderTrashItems();
+  const generation = ++trashLoadGeneration;
+  trashLoads++;
+  reloadTrashPending = false;
+  try {
+    const response = await fetch(`${api}/trash`);
+    const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
+    if (generation !== trashLoadGeneration) return;
+    if (!response.ok || !json.ok) throw new Error(json.error || "trash_load_failed");
+    trashItems = Array.isArray(json.items) ? json.items : [];
+    renderTrashItems();
+  }
+  finally {
+    trashLoads--;
+    schedulePendingReload();
+  }
 }
 
 /** Opens the trash dialog and refreshes its contents. */
@@ -885,11 +901,54 @@ function shouldReload(path) {
   return !path || !current || path === current || current.startsWith(`${path}/`) || path.startsWith(`${current}/`);
 }
 
-/** Debounces a listing refresh caused by a file-system event. */
+/** Coalesces a listing refresh caused by an operation or a disk invalidation. */
 function scheduleReload(path) {
   if (!shouldReload(path)) return;
-  clearTimeout(reloadTimer);
-  reloadTimer = setTimeout(() => load().catch(err => setStatus(err.message)), 80);
+  reloadFilesPending = true;
+  schedulePendingReload();
+}
+
+/** Schedules bounded refresh work without postponing it on every incoming event. */
+function schedulePendingReload(delay = 80) {
+  if ((!reloadFilesPending && !reloadTrashPending) || reloadTimer || automaticReloadRunning || listingLoads || trashLoads) return;
+  reloadTimer = setTimeout(() => {
+    reloadTimer = 0;
+    void flushPendingReload();
+  }, delay);
+}
+
+/** Serializes automatic refreshes and leaves navigation and search requests in control. */
+async function flushPendingReload() {
+  if (automaticReloadRunning || listingLoads || trashLoads) return;
+  // The search debounce will start a load and resume pending work when it finishes.
+  if (searchInput.value.trim() !== search) return;
+  automaticReloadRunning = true;
+  try {
+    if (reloadFilesPending) {
+      reloadFilesPending = false;
+      try {
+        await load(current, { live: listingInitialized });
+      }
+      catch (err) {
+        setStatus(err.message || "list_failed");
+      }
+    }
+    if (reloadTrashPending && !listingLoads && !trashLoads) {
+      reloadTrashPending = false;
+      if (capabilities.canManageTrash) {
+        try {
+          await loadTrash();
+        }
+        catch (err) {
+          setStatus(err.message || "trash_load_failed");
+        }
+      }
+    }
+  }
+  finally {
+    automaticReloadRunning = false;
+    schedulePendingReload();
+  }
 }
 
 /** Schedules a delayed refresh when live events may be unavailable. */
@@ -907,8 +966,9 @@ function operationChangesTrash(kind) {
 
 /** Debounces a trash refresh after a relevant event. */
 function scheduleTrashReload(delay = 80) {
-  clearTimeout(trashReloadTimer);
-  trashReloadTimer = setTimeout(() => loadTrash().catch(err => setStatus(err.message || "trash_load_failed")), delay);
+  if (!capabilities.canManageTrash) return;
+  reloadTrashPending = true;
+  schedulePendingReload(delay);
 }
 
 /** Schedules a conservative trash refresh when live events may be unavailable. */
@@ -926,9 +986,12 @@ function setupEvents() {
   es.addEventListener("filebrowser.connected", () => {
     eventsConnected = true;
     setStatus("Live updates connected");
+    scheduleReload("");
+    scheduleTrashReload();
   });
   es.onerror = () => {
     eventsConnected = false;
+    setStatus("Live updates reconnecting");
     for (const operation of operations.values()) {
       if (isActiveOperation(operation) && /^[0-9a-f-]{36}$/i.test(String(operation.id))) {
         pollOperation(operation.id);
@@ -985,6 +1048,11 @@ function setupEvents() {
     });
     setStatus(`${operationLabel(msg.operation)} cancelled`);
   });
+  es.addEventListener("filebrowser.invalidated", e => {
+    const msg = parseEvent(e);
+    if (msg.files) scheduleReload("");
+    if (msg.trash) scheduleTrashReload();
+  });
   es.addEventListener("filebrowser.changed", e => {
     const msg = parseEvent(e);
     scheduleReload(msg.path || "");
@@ -1001,7 +1069,6 @@ function setupEvents() {
     const msg = parseEvent(e);
     markUploadCancelled(msg);
   });
-  es.onerror = () => setStatus("Live updates reconnecting");
 }
 
 // =============================================================================
@@ -1016,6 +1083,9 @@ async function load(path = current, options = {}) {
   const requestedHistory = options.cursorHistory ?? (samePath ? cursorHistory : []);
   const historyMode = options.historyMode || "replace";
   const generation = ++loadGeneration;
+  const live = options.live === true;
+  listingLoads++;
+  reloadFilesPending = false;
   const query = new URLSearchParams({
     path,
     search,
@@ -1025,27 +1095,45 @@ async function load(path = current, options = {}) {
   });
   if (requestedToken) query.set("continuationToken", requestedToken);
 
-  selected.clear();
-  updateButtons();
-  renderListMessage("Loading...");
-  pageSummary.textContent = "Loading...";
-  previousPageButton.disabled = true;
-  nextPageButton.disabled = true;
+  if (!live) {
+    selected.clear();
+    updateButtons();
+    renderListMessage("Loading...");
+    pageSummary.textContent = "Loading...";
+    previousPageButton.disabled = true;
+    nextPageButton.disabled = true;
+  }
 
   try {
     const response = await fetch(`${api}/list?${query}`);
     const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
-    if (generation !== loadGeneration || searchInput.value.trim() !== requestedSearch) return;
+    if (generation !== loadGeneration) return;
+    if (searchInput.value.trim() !== requestedSearch) {
+      reloadFilesPending = true;
+      return;
+    }
     if (!response.ok || !json.ok) {
       if (json.error === "invalid_continuation_token" && requestedToken && options.retryInvalidToken !== false) {
         return load(path, {
+          ...options,
           token: "",
           cursorHistory: [],
           historyMode: "replace",
           retryInvalidToken: false
         });
       }
-      throw new Error(json.error || "list_failed");
+      if (live && response.status === 404 && json.error === "directory_not_found" && path) {
+        const parent = path.split("/").slice(0, -1).join("/");
+        return load(parent, {
+          ...options,
+          token: "",
+          cursorHistory: [],
+          historyMode: "replace"
+        });
+      }
+      const error = new Error(json.error || "list_failed");
+      error.clearListing = response.status === 401 || response.status === 403 || json.error === "directory_not_found";
+      throw error;
     }
 
     const items = json.items || [];
@@ -1053,6 +1141,7 @@ async function load(path = current, options = {}) {
       const previousHistory = [...requestedHistory];
       const previousToken = previousHistory.pop() || "";
       return load(path, {
+        ...options,
         token: previousToken,
         cursorHistory: previousHistory,
         historyMode: "replace"
@@ -1065,10 +1154,17 @@ async function load(path = current, options = {}) {
     direction = json.direction || "asc";
     pageSize = Number(json.pageSize) || defaultPageSize;
     currentItems = items;
+    listingInitialized = true;
     continuationToken = requestedToken;
     nextContinuationToken = json.nextContinuationToken || "";
     cursorHistory = [...requestedHistory];
-    selected.clear();
+    if (live && samePath) {
+      const visiblePaths = new Set(items.map(item => item.path));
+      selected = new Set([...selected].filter(itemPath => visiblePaths.has(itemPath)));
+    }
+    else {
+      selected.clear();
+    }
     searchInput.value = search;
     clearSearchButton.hidden = !search;
     pageSizeSelect.value = String(pageSize);
@@ -1080,10 +1176,23 @@ async function load(path = current, options = {}) {
     setStatus(`${current || "/"} - ${currentItems.length} item${currentItems.length === 1 ? "" : "s"}`);
   }
   catch (err) {
-    if (generation !== loadGeneration || searchInput.value.trim() !== requestedSearch) return;
-    renderListMessage(`Unable to load files: ${err.message || "list_failed"}`, true);
+    if (generation !== loadGeneration) return;
+    if (searchInput.value.trim() !== requestedSearch) {
+      reloadFilesPending = true;
+      return;
+    }
+    if (!live || err.clearListing) {
+      currentItems = [];
+      selected.clear();
+      renderListMessage(`Unable to load files: ${err.message || "list_failed"}`, true);
+      updateButtons();
+    }
     updateListControls();
     throw err;
+  }
+  finally {
+    listingLoads--;
+    schedulePendingReload();
   }
 }
 
@@ -2078,7 +2187,10 @@ function applySearch() {
   clearTimeout(searchTimer);
   const value = searchInput.value.trim();
   clearSearchButton.hidden = !searchInput.value;
-  if (value === search) return;
+  if (value === search) {
+    schedulePendingReload();
+    return;
+  }
   search = value;
   reloadFromFirstPage("replace").catch(err => setStatus(err.message || "search_failed"));
 }
@@ -2684,7 +2796,7 @@ loadConfig()
   .then(() => {
     readNavigationState();
     setupEvents();
-    if (capabilities.canManageTrash) loadTrash().catch(() => null);
+    scheduleTrashReload();
     window.onpopstate = e => {
       clearTimeout(searchTimer);
       readNavigationState(e.state);
@@ -2694,10 +2806,6 @@ loadConfig()
         historyMode: "none"
       }).catch(err => setStatus(err.message || "list_failed"));
     };
-    return load(current, {
-      token: continuationToken,
-      cursorHistory,
-      historyMode: "replace"
-    });
+    scheduleReload("");
   })
   .catch(err => setStatus(err.message));
