@@ -626,7 +626,7 @@ namespace test {
                 Check.That(html).Contains("id=\"renameName\" type=\"text\"");
                 Check.That(html).Contains("id=\"confirmRename\" class=\"primary\" type=\"button\">Rename</button>");
                 Check.That(html).Contains("id=\"moveModal\" class=\"modal\" hidden");
-                Check.That(html).Contains("id=\"moveDestination\" type=\"text\"");
+                Check.That(html).Contains("<div id=\"moveDestination\" class=\"folder-picker\" role=\"group\" aria-labelledby=\"moveDestinationLabel\"");
                 Check.That(html).Contains("id=\"confirmMove\" class=\"primary\" type=\"button\">Move</button>");
                 Check.That(html).Contains("id=\"deleteModal\" class=\"modal\" hidden");
                 Check.That(html).Contains("id=\"confirmDelete\" class=\"primary\" type=\"button\">Delete</button>");

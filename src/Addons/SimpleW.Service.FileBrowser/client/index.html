@@ -284,9 +284,9 @@
       <strong id="moveSelectionSummary"></strong>
     </div>
     <div class="modal-form-field">
-      <label for="moveDestination">Destination folder</label>
-      <input id="moveDestination" type="text" autocomplete="off" placeholder="/">
-      <small>Destination: <strong id="moveDestinationPreview"></strong></small>
+      <span id="moveDestinationLabel" class="folder-picker-label">Destination folder</span>
+      <div id="moveDestination" class="folder-picker" role="group" aria-labelledby="moveDestinationLabel"></div>
+      <small aria-live="polite">Destination: <strong id="moveDestinationPreview"></strong></small>
     </div>
     <div class="modal-actions">
       <button id="cancelMove" type="button">Cancel</button>

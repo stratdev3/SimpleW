@@ -157,6 +157,8 @@ let purgeAllTrash = false;
 let restoreElsewhereTrashId = "";
 let renameTargetPath = "";
 let moveSourcePaths = [];
+let moveDestinationPath = null;
+let moveFolderRequest = null;
 let deleteSourcePaths = [];
 let archiveSourcePaths = [];
 let archiveDestinationDirectory = "";
@@ -1594,51 +1596,163 @@ function normalizedMoveDestination(value) {
   return value.trim().replace(/^\/+|\/+$/g, "");
 }
 
-/** Validates and previews the move destination. */
-function updateMoveDestination() {
-  const rawDestination = moveDestination.value.trim();
-  const destinationDirectory = normalizedMoveDestination(rawDestination);
-  const segments = destinationDirectory.split("/").filter(Boolean);
-  const validPath = !rawDestination.includes("\\")
-    && segments.every(segment => segment !== "." && segment !== "..");
-  const changesLocation = moveSourcePaths.some(path => parentOf(path) !== destinationDirectory);
-  const validDestination = validPath && changesLocation;
-  const preview = moveDestinationPreview.parentElement;
-  moveDestinationPreview.textContent = !validPath
-    ? "Enter a folder path without . or .."
-    : !changesLocation
-      ? "Choose a different folder"
-      : displayBrowserPath(destinationDirectory);
-  preview.classList.toggle("bad", !validDestination);
-  confirmMoveButton.disabled = !validDestination;
+/** Prevents moves into a selected entry or any of its descendants. */
+function isMoveDestinationBlocked(path) {
+  return moveSourcePaths.some(source => path === source || path.startsWith(`${source}/`));
 }
 
-/** Opens the move dialog for selected paths. */
+/** Validates and previews the selected destination folder. */
+function updateMoveDestination() {
+  const hasDestination = moveDestinationPath !== null;
+  const changesLocation = hasDestination && moveSourcePaths.every(path => parentOf(path) !== moveDestinationPath);
+  const blocked = hasDestination && isMoveDestinationBlocked(moveDestinationPath);
+  const validDestination = moveSourcePaths.length > 0 && changesLocation && !blocked;
+  moveDestinationPreview.textContent = !hasDestination
+    ? "Select a destination folder"
+    : blocked
+      ? "Cannot move a folder into itself"
+      : !changesLocation
+        ? "Choose a different folder"
+        : displayBrowserPath(moveDestinationPath);
+  moveDestinationPreview.parentElement.classList.toggle("bad", hasDestination && !validDestination);
+  confirmMoveButton.disabled = !validDestination;
+  for (const button of moveDestination.querySelectorAll("[data-folder-path]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.folderPath === moveDestinationPath));
+  }
+}
+
+/** Creates a folder button that selects its destination and toggles its children. */
+function createMoveFolder(path, name, signal) {
+  const node = document.createElement("li");
+  const row = document.createElement("div");
+  row.className = "folder-picker-row";
+  const choose = document.createElement("button");
+  choose.type = "button";
+  choose.className = "folder-picker-choice";
+  choose.dataset.folderPath = path;
+  choose.setAttribute("aria-pressed", "false");
+  choose.setAttribute("aria-expanded", "false");
+  const icon = document.createElement("span");
+  icon.className = "folder-icon";
+  icon.setAttribute("aria-hidden", "true");
+  const label = document.createElement("span");
+  label.textContent = name;
+  choose.append(icon, label);
+  choose.title = displayBrowserPath(path);
+  const blocked = isMoveDestinationBlocked(path);
+  choose.disabled = blocked;
+  if (blocked) choose.title = "Cannot move a folder into itself";
+  const children = document.createElement("ul");
+  children.hidden = true;
+  row.append(choose);
+  node.append(row, children);
+  let loaded = false;
+  let loading = false;
+  let token = "";
+
+  const moreRow = document.createElement("li");
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "folder-picker-more";
+  moreRow.append(more);
+
+  async function loadChildren() {
+    if (loading || signal.aborted) return;
+    loading = true;
+    more.disabled = true;
+    more.textContent = "Loading folders...";
+    children.append(moreRow);
+    children.setAttribute("aria-busy", "true");
+    try {
+      const query = new URLSearchParams({ path, sort: "name", direction: "asc", pageSize: String(maxPageSize) });
+      if (token) query.set("continuationToken", token);
+      const response = await fetch(`${api}/list?${query}`, { signal });
+      const json = await response.json().catch(() => ({ ok: false, error: "invalid_response" }));
+      if (signal.aborted) return;
+      if (!response.ok || !json.ok) throw new Error(json.error || "list_failed");
+      for (const item of json.items || []) {
+        if (item.type === "directory") {
+          children.insertBefore(createMoveFolder(item.path, item.name, signal).node, moreRow);
+        }
+      }
+      // Listings place directories before files, so later file-only pages can be skipped.
+      token = (json.items || []).some(item => item.type === "file") ? "" : (json.nextContinuationToken || "");
+      loaded = true;
+      moreRow.remove();
+      if (token) {
+        more.textContent = "Load more";
+        children.append(moreRow);
+      }
+      updateMoveDestination();
+    }
+    catch (err) {
+      if (signal.aborted) return;
+      more.textContent = `Unable to load folders (${err.message || "list_failed"}). Retry`;
+    }
+    finally {
+      loading = false;
+      more.disabled = false;
+      children.removeAttribute("aria-busy");
+    }
+  }
+
+  function expand() {
+    if (signal.aborted || blocked) return;
+    children.hidden = false;
+    choose.setAttribute("aria-expanded", "true");
+    icon.classList.add("folder-icon-open");
+    if (!loaded) void loadChildren();
+  }
+  choose.onclick = () => {
+    moveDestinationPath = path;
+    updateMoveDestination();
+    if (children.hidden) expand();
+    else {
+      children.hidden = true;
+      choose.setAttribute("aria-expanded", "false");
+      icon.classList.remove("folder-icon-open");
+    }
+  };
+  more.onclick = () => void loadChildren();
+  return { node, choose, expand };
+}
+
+/** Opens the move dialog with a lazily loaded destination hierarchy. */
 function openMoveModal(paths) {
   if (!paths.length) return;
+  moveFolderRequest?.abort();
+  moveFolderRequest = new AbortController();
   moveSourcePaths = [...paths];
+  moveDestinationPath = null;
   document.getElementById("moveTitle").textContent = paths.length === 1 ? "Move item" : "Move items";
   const label = paths.length === 1 ? displayBrowserPath(paths[0]) : `${paths.length} selected items`;
   moveSelectionSummary.textContent = label;
   moveSelectionSummary.title = label;
-  moveDestination.value = current;
+  const folders = document.createElement("ul");
+  const root = createMoveFolder("", "/", moveFolderRequest.signal);
+  folders.append(root.node);
+  moveDestination.replaceChildren(folders);
   updateMoveDestination();
   moveModal.hidden = false;
-  moveDestination.focus();
-  moveDestination.select();
+  root.expand();
+  root.choose.focus();
 }
 
-/** Closes and resets the move dialog. */
+/** Closes the move dialog and cancels outstanding folder listings. */
 function closeMoveModal() {
   moveModal.hidden = true;
+  moveFolderRequest?.abort();
+  moveFolderRequest = null;
   moveSourcePaths = [];
+  moveDestinationPath = null;
+  moveDestination.replaceChildren();
 }
 
 /** Queues moves for the validated source paths and destination. */
 async function performMove() {
   updateMoveDestination();
   if (confirmMoveButton.disabled) return;
-  const destinationDirectory = normalizedMoveDestination(moveDestination.value);
+  const destinationDirectory = moveDestinationPath;
   for (const sourcePath of moveSourcePaths) {
     const op = await apiJson(`${api}/move`, { sourcePath, destinationDirectory });
     trackQueuedOperation(op);
@@ -2157,13 +2271,6 @@ confirmMoveButton.onclick = () => runAction(performMove);
 document.getElementById("closeMove").onclick = closeMoveModal;
 document.getElementById("cancelMove").onclick = closeMoveModal;
 document.querySelector("[data-close-move]").onclick = closeMoveModal;
-moveDestination.oninput = updateMoveDestination;
-moveDestination.onkeydown = e => {
-  if (e.key === "Enter" && !confirmMoveButton.disabled) {
-    e.preventDefault();
-    runAction(performMove);
-  }
-};
 confirmDeleteButton.onclick = () => runAction(performDelete);
 document.getElementById("closeDelete").onclick = closeDeleteModal;
 document.getElementById("cancelDelete").onclick = closeDeleteModal;
