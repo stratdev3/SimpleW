@@ -18,7 +18,9 @@ By default, a SimpleW handler **runs to completion** even if the client disconne
 
 This is useful when the work should be tied to the HTTP request lifecycle. But for long-running operations such as imports, exports, reports, synchronization, or batch processing, keeping the work inside the handler means the client must keep the HTTP connection open until the final response is ready, typically a `200 OK`.
 
+::: info
 The background service solves a different problem: the handler can return quickly, usually with `202 Accepted`, while the actual work continues in an in-process background worker.
+:::
 
 
 ## Features

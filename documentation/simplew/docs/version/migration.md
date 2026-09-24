@@ -19,10 +19,6 @@ Choose the starting point that matches your application:
 | ASP.NET Core controllers | Use SimpleW controllers and make routing and body mapping explicit. |
 | ASP.NET Core with Generic Host and DI | Keep the familiar host, configuration, logging and service container with the official addons. |
 
-::: warning Not a drop-in replacement
-SimpleW has its own HTTP pipeline, routing, request and response types. Packages that depend on ASP.NET Core middleware, MVC filters, model binding, authentication handlers or `HttpContext` cannot be reused unchanged. Keep the underlying application and domain services, but adapt the web-facing layer.
-:::
-
 
 ## Plan the migration
 
@@ -56,6 +52,10 @@ After completing it, continue with the [v26.0 to v26.1 guide](./migrate-from-v26
 
 
 ## From ASP.NET Core
+
+::: warning Not a drop-in replacement
+SimpleW has its own HTTP pipeline, routing, request and response types. Packages that depend on ASP.NET Core middleware, MVC filters, model binding, authentication handlers or `HttpContext` cannot be reused unchanged. Keep the underlying application and domain services, but adapt the web-facing layer.
+:::
 
 There are two useful migration styles:
 
