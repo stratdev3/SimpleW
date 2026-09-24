@@ -482,14 +482,3 @@ When `EnableEvents` is enabled, the UI opens an `EventSource` on `EventsPrefix`.
 - Existing destinations are rejected by create, rename, and move operations.
 
 The module creates `Path`, `TrashPath`, and `Path/.filebrowser-tmp` during installation.
-
-
-## Run the bundled example
-
-The example application includes a local FileBrowser scenario:
-
-```sh
-example filebrowser --directory "C:\uploads" --browser
-```
-
-`--directory` selects the filesystem root and `--browser` opens `/files/`. The example enables anonymous access intentionally and prints a warning; use an authorization callback in an application exposed beyond local development.
