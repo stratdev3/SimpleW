@@ -133,7 +133,7 @@ button.danger:not(:disabled):hover {
   line-height: 1;
 }
 .badge[hidden] { display: none; }
-/* CSS-drawn toolbar glyphs share a fixed box and inherit the button color. */
+/* Toolbar glyphs share a fixed box and inherit the button color. */
 .operations-glyph,
 .cancel-glyph,
 .trash-glyph,
@@ -178,31 +178,10 @@ button.danger:not(:disabled):hover {
 .trash-glyph {
   width: 18px;
   height: 18px;
-  background:
-    linear-gradient(currentColor, currentColor) 6px 1px / 6px 2px no-repeat,
-    linear-gradient(currentColor, currentColor) 1px 4px / 16px 2px no-repeat;
-}
-.trash-glyph::before {
-  content: "";
-  position: absolute;
-  left: 3px;
-  top: 6px;
-  width: 12px;
-  height: 11px;
-  border: 2px solid currentColor;
-  border-top: 0;
-  border-radius: 0 0 3px 3px;
-}
-.trash-glyph::after {
-  content: "";
-  position: absolute;
-  left: 7px;
-  top: 8px;
-  width: 1px;
-  height: 6px;
-  background: currentColor;
-  box-shadow: 3px 0 0 currentColor;
-  border-radius: 1px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* =============================================================================
