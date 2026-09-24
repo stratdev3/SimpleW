@@ -9,11 +9,24 @@ Notes :
 
 
 ## Unreleased
-Maintenance
+
+Maintenance, new addons, and extended FileBrowser features.
 
 ### feature
 
-- feature(SimpleW): add a server-wide authentication challenge (#442)
+- feature(SimpleW): add a server-wide authentication challenge with `ConfigureChallenge()` for static files, SSE, WebSocket and FileBrowser authorization (#442)
+- feature(SimpleW): introduce `AuthorizeResult` to distinguish allowed access, authentication challenges and forbidden requests (#452)
+- feature(SimpleW): add `HttpResponse.DisableTelemetry()` to disable HTTP traces and request/response metrics for the current exchange while preserving logs (#443)
+- feature(SimpleW): add `FileLogSink` for buffered file logging, with UTC time and size rotation, configurable retention, and explicit flushing
+- chore(SimpleW.*): move addon projects under `src/Addons` (#430)
+
+### fix
+
+- fix(build): support per-project `SimpleWCompatVersion` overrides in CI/CD
+
+### breakingChange
+
+- Changed `Authorize` in static files, SSE and WebSocket options from `Func<HttpSession, bool>` to `Func<HttpSession, AuthorizeResult>`. Replace `true` with `AuthorizeResult.Allowed` and `false` with `AuthorizeResult.Forbidden`. Return `AuthorizeResult.Challenge` to invoke the handler registered with `server.ConfigureChallenge(...)`; that handler must send the response. Without a configured handler, a challenge returns HTTP 403 (#452).
 
 
 
