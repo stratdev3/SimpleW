@@ -35,7 +35,7 @@ server.UseFileBrowserModule(options => {
                                                 ? AuthorizeResult.Allowed
                                                 : AuthorizeResult.Challenge;
     options.ScopeKey = session => session.Principal.Identity.Identifier!;
-    options.UploadChunkThresholdBytes = 100 * 1024 * 1024;
+    options.UploadChunkThresholdBytes = 32 * 1024 * 1024;
     options.UploadChunkBytes = 16 * 1024 * 1024;
     options.UploadSessionTimeout = TimeSpan.FromMinutes(30);
     options.MaxConcurrentUploadSessions = 100;
@@ -76,7 +76,9 @@ File operations return `202 Accepted` and publish:
 
 Upload sessions expire after `UploadSessionTimeout` without activity, and at most `MaxConcurrentUploadSessions` sessions may be active at once. Old orphaned `.part` files are removed at startup and periodically. `GET /files/api/uploads/:id` returns each file's received byte ranges so a client can resume only the missing chunks. `DELETE /files/api/uploads/:id` cancels one session and removes its temporary files.
 
-`UploadChunkBytes` must be lower than or equal to `SimpleWServerOptions.MaxRequestBodySize`, because SimpleW validates each request body before the module receives it.
+Both `UploadChunkThresholdBytes` and `UploadChunkBytes` must be lower than or equal to `SimpleWSServerOptions.MaxRequestBodySize`, because SimpleW validates each request body before the module receives it. `UseFileBrowserModule(...)` throws `ArgumentOutOfRangeException` if either value exceeds the server limit. Configure that limit before installing the module, and keep it compatible if you change it afterward. Files at or below `UploadChunkThresholdBytes` are sent in a single request; larger files are split into chunks of at most `UploadChunkBytes`.
+
+The default upload threshold (100 MiB) and chunk size (16 MiB) exceed the default server request body limit (10 MiB). Set compatible values explicitly, as in the example above.
 
 ### Optional disk updates
 

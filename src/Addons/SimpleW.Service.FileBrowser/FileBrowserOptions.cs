@@ -83,13 +83,15 @@ namespace SimpleW.Service.FileBrowser {
 
         /// <summary>
         /// Files larger than this threshold are uploaded in chunks.
+        /// Must not exceed SimpleWSServerOptions.MaxRequestBodySize when the module is installed.
         /// </summary>
-        public long UploadChunkThresholdBytes { get; set; } = 100L * 1024 * 1024;
+        public long UploadChunkThresholdBytes { get; set; } = 10L * 1024 * 1024;
 
         /// <summary>
         /// Size of one uploaded chunk.
+        /// Must not exceed SimpleWSServerOptions.MaxRequestBodySize when the module is installed.
         /// </summary>
-        public long UploadChunkBytes { get; set; } = 16L * 1024 * 1024;
+        public long UploadChunkBytes { get; set; } = 8L * 1024 * 1024;
 
         /// <summary>
         /// Maximum inactivity duration before an upload session and its temporary files are removed.

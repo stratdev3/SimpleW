@@ -58,11 +58,11 @@ namespace SimpleW.Service.FileBrowser {
         }
 
         /// <summary>
-        /// Creates required directories and registers the UI, API, events and lifecycle callbacks.
+        /// Validates upload sizes against the server request body limit, creates required directories and registers the UI, API, events and lifecycle callbacks.
         /// </summary>
         /// <param name="server"></param>
         public void Install(SimpleWServer server) {
-
+            EnsureMaxRequestBodySize(server);
             EnsureNoReparsePoints(_options.NormalizedPath);
             Directory.CreateDirectory(_options.NormalizedPath);
             EnsureNoReparsePoints(_options.NormalizedPath);
@@ -3181,6 +3181,25 @@ namespace SimpleW.Service.FileBrowser {
                 string segment = separatorIndex < 0 ? relative : relative[..separatorIndex];
                 current = System.IO.Path.Combine(current, segment);
             }
+        }
+
+        /// <summary>
+        /// Ensures the upload threshold and chunk size do not exceed the server request body limit.
+        /// </summary>
+        /// <param name="server">The server whose configured request body limit is checked.</param>
+        /// <exception cref="ArgumentOutOfRangeException">The upload threshold or chunk size exceeds the server request body limit.</exception>
+        private void EnsureMaxRequestBodySize(SimpleWServer server) {
+            server.Configure(serverOptions => {
+                long maxRequestBodySize = serverOptions.MaxRequestBodySize;
+                if (_options.UploadChunkThresholdBytes > maxRequestBodySize) {
+                    throw new ArgumentOutOfRangeException(nameof(FileBrowserOptions.UploadChunkThresholdBytes), _options.UploadChunkThresholdBytes,
+                        $"Must be lower than or equal to {nameof(SimpleWSServerOptions)}.{nameof(SimpleWSServerOptions.MaxRequestBodySize)} ({maxRequestBodySize} bytes). Configure the server request body limit before installing the file browser module.");
+                }
+                if (_options.UploadChunkBytes > maxRequestBodySize) {
+                    throw new ArgumentOutOfRangeException(nameof(FileBrowserOptions.UploadChunkBytes), _options.UploadChunkBytes,
+                        $"Must be lower than or equal to {nameof(SimpleWSServerOptions)}.{nameof(SimpleWSServerOptions.MaxRequestBodySize)} ({maxRequestBodySize} bytes). Configure the server request body limit before installing the file browser module.");
+                }
+            });
         }
 
         /// <summary>
