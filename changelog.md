@@ -18,11 +18,9 @@ This maintenance release fixes and improves authorization and authentication cha
 - feature(SimpleW): introduce `AuthorizeResult` to distinguish allowed access, authentication challenges and forbidden requests (#452)
 - feature(SimpleW): add `HttpResponse.DisableTelemetry()` to disable HTTP traces and request/response metrics for the current exchange while preserving logs (#443)
 
-### fix
-
-- fix(build): support per-project `SimpleWCompatVersion` overrides in CI/CD
-
 ### breakingChange
+
+There is a [complete migration guide](https://simplew.net/version/migrate-from-v26.1-to-v26.1.1.html).
 
 - Changed `Authorize` in static files, SSE and WebSocket options from `Func<HttpSession, bool>` to `Func<HttpSession, AuthorizeResult>`. Replace `true` with `AuthorizeResult.Allowed` and `false` with `AuthorizeResult.Forbidden`. Return `AuthorizeResult.Challenge` to invoke the handler registered with `server.ConfigureChallenge(...)`; that handler must send the response. Without a configured handler, a challenge returns HTTP 403 (#452).
 
