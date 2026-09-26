@@ -5,17 +5,15 @@
 
 ### feature
 
-- Add managed ZIP/RAR extraction with multipart RAR support, source-volume authorization and expanded-size limits.
-- Add SHA-256, SHA-1 and MD5 file checksums.
-- Add opt-in recursive disk monitoring with shared SSE invalidation, bounded notification batching and watcher recovery.
-- Refresh browser listings and trash automatically while preserving visible selections and dialog inputs; resynchronize after SSE reconnects.
-- Initial `SimpleW.Service.FileBrowser` package release for SimpleW v26.1.
-- Add a file browser and chunked upload module for SimpleW.
-- Add server-side search, sorting, and cursor-based pagination to directory listings.
-- Add searchable, sortable, paginated navigation with shareable URL state to the embedded web UI.
-- Add secure file downloads from file-name links and refine the embedded file/search icons.
-- Isolate SSE events, uploads, and retained operation state by configurable owner scope.
-- Callbacks with action/resource authorization, recursive preflight and immutable queued scopes (breaking alpha API change).
-- Default `Authorize` to `(_, _) => AuthorizeResult.Allowed` and remove the `AllowAnonymous` option (breaking alpha API change).
-- Add per-operation status and cancellation endpoints with expiring terminal history.
-- Use the shared `AuthorizeResult` enum for module and action authorization: `Allowed`, `Challenge`, or `Forbidden` (breaking alpha API change). Invoke the server-wide challenge only when explicitly requested.
+- Embedded web UI for browsing files and directories, with search, sorting, cursor-based pagination and shareable navigation URLs.
+- File downloads, folder creation, renaming and moving files and directories.
+- Trash management with restoration, permanent deletion and emptying.
+- File and directory uploads with chunked transfers, resumable sessions, progress reporting and automatic cleanup of expired sessions.
+- ZIP archive creation and managed ZIP/RAR extraction, including multipart RAR archives, path validation and expanded-size limits.
+- SHA-256, SHA-1 and MD5 file checksums.
+- Module and action/resource authorization using `AuthorizeResult.Allowed`, `AuthorizeResult.Challenge` and `AuthorizeResult.Forbidden`, with server-wide authentication challenges.
+- Recursive authorization checks and captured resource scopes for queued operations.
+- Configurable owner scopes for SSE events, upload sessions and operation tracking.
+- Background file operations with status and cancellation endpoints and expiring terminal history.
+- Live SSE updates for operations and uploads, with automatic listing and trash refreshes that preserve selections and dialog inputs.
+- Optional recursive filesystem monitoring with batched notifications, watcher recovery and resynchronization after SSE reconnects.
