@@ -342,15 +342,12 @@ function scheduleOperationRender() {
 /** Starts tracking an operation accepted by the server queue. */
 function trackQueuedOperation(response) {
   if (!response || !response.operationId) return;
-  trackOperation({
+  const operation = trackOperation({
     id: response.operationId,
     kind: response.operation,
-    path: response.path,
-    status: "queued",
-    done: 0,
-    total: 1
+    path: response.path
   });
-  if (!eventsConnected) pollOperation(response.operationId);
+  if (!eventsConnected && isActiveOperation(operation)) pollOperation(response.operationId);
 }
 
 /** Polls one accepted operation until its retained terminal result is available. */
@@ -374,6 +371,9 @@ async function pollOperation(id) {
     }
     else {
       operationPollTimers.delete(String(id));
+      if (json.operation === "completeUpload" && status === "done") {
+        completeUploadedFiles(json.payload);
+      }
       if (operationChangesTrash(json.operation)) scheduleTrashReload();
       scheduleReload(json.path);
     }
@@ -1020,6 +1020,7 @@ function setupEvents() {
       total: 1,
       error: ""
     });
+    if (msg.operation === "completeUpload") completeUploadedFiles(msg.payload);
     setStatus(`${operationLabel(msg.operation)} completed`);
     if (operationChangesTrash(msg.operation)) scheduleTrashReload();
   });
@@ -1059,11 +1060,11 @@ function setupEvents() {
   });
   es.addEventListener("filebrowser.upload.progress", e => {
     const msg = parseEvent(e);
-    updateUploadProgress(msg.path, msg.receivedBytes, msg.totalBytes, msg.completed);
+    updateUploadProgress(msg.path, msg.receivedBytes, msg.totalBytes, msg.completed, msg.uploadId);
   });
   es.addEventListener("filebrowser.upload.completed", e => {
     const msg = parseEvent(e);
-    updateUploadProgress(msg.path, msg.size, msg.size, true);
+    updateUploadProgress(msg.path, msg.size, msg.size, true, msg.uploadId);
   });
   es.addEventListener("filebrowser.upload.cancelled", e => {
     const msg = parseEvent(e);
@@ -2731,12 +2732,32 @@ function sendBlob(url, entry, blob, offset, generation) {
   });
 }
 
+/** Applies the retained finalization result to each file in its upload session. */
+function completeUploadedFiles(payload) {
+  if (!Array.isArray(payload?.files)) return;
+  for (const file of payload.files) {
+    updateUploadProgress(file.path, file.size, file.size, true, payload.uploadId || file.uploadId);
+  }
+}
+
 /** Applies server-reported upload progress to the matching local operation. */
-function updateUploadProgress(path, receivedBytes, totalBytes, completed) {
+function updateUploadProgress(path, receivedBytes, totalBytes, completed, uploadId) {
   if (!path) return;
-  let id = uploadOperationIdsByPath.get(path);
-  if (!id) {
-    id = `upload:${path}`;
+  let id;
+  if (uploadId) {
+    const operationIds = uploadOperationIdsByUploadId.get(String(uploadId));
+    if (operationIds) {
+      id = [...operationIds].find(operationId => operations.get(operationId)?.path === path);
+      if (!id) return;
+    }
+    else {
+      id = `upload:${uploadId}:${path}`;
+    }
+  }
+  else {
+    id = uploadOperationIdsByPath.get(path) || `upload:${path}`;
+  }
+  if (!uploadOperationIdsByPath.has(path)) {
     uploadOperationIdsByPath.set(path, id);
   }
 
