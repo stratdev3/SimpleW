@@ -21,6 +21,7 @@ It exposes a ready-to-use browser UI and an HTTP API to list files and directori
 - Calculate and copy SHA-256, SHA-1, or MD5 checksums for individual files
 - Create folders, rename entries, and move files or directories
 - Move one or more entries to an internal trash directory, then restore or permanently delete them
+- Create ZIP archives and extract ZIP or RAR archives, including supported multipart RAR volumes
 - Upload files and directory trees
 - Split large files into configurable chunks
 - Execute file mutations asynchronously through an in-process queue
@@ -45,6 +46,36 @@ dotnet add package SimpleW.Service.FileBrowser
 See the [changelog](./service-filebrowser-changelog.md)
 
 
+## Configuration options
+
+| Option | Default | Description |
+|---|---:|---|
+| `Path` | Required | Root directory exposed by the browser. It is created when the module is installed if it does not exist. |
+| `Prefix` | `/files` | URL prefix shared by the UI and API. |
+| `Authorize` | `(_, _) => AuthorizeResult.Allowed` | Synchronous `(session, context) => AuthorizeResult` for module access and each concrete action/resource set. Allows all actions by default; must not be `null`. |
+| `ScopeKey` | `null` | Optional stable, non-empty owner key for uploads, operations and their SSE events. Defaults to the principal identifier, email or name, then `anonymous`. |
+| `ServeUi` | `true` | Serves the bundled or disk-based web UI. The API remains available when disabled. |
+| `ClientPath` | `null` | Explicit directory containing a custom UI. It overrides automatic Debug discovery and embedded resources. |
+| `EnableEvents` | `true` | Enables the FileBrowser Server-Sent Events endpoint. |
+| `EnableFileSystemWatcher` | `false` | Watches disk changes and refreshes connected browser views. Requires `EnableEvents = true`; otherwise no watcher is started. |
+| `EventsPrefix` | `Prefix + "/api/events"` | Custom SSE endpoint. With `Prefix = "/"`, the default is `/api/events`. |
+| `MaxFileBytes` | `10 GiB` | Maximum declared size of one logical file. |
+| `MaxUploadBytes` | `50 GiB` | Maximum combined size of all files in one upload session. Must be greater than or equal to `MaxFileBytes`. |
+| `MaxExtractedFileBytes` | `10 GiB` | Maximum expanded size of one file extracted from an archive. |
+| `MaxExtractedBytes` | `50 GiB` | Maximum combined expanded size of one archive. Must be greater than or equal to `MaxExtractedFileBytes`. |
+| `MaxArchiveEntries` | `10000` | Maximum number of entries allowed when creating or extracting one archive. |
+| `UploadChunkThresholdBytes` | `100 MiB` | Files larger than this value must use chunk upload. Set to `0` to chunk every non-empty file. |
+| `UploadChunkBytes` | `16 MiB` | Maximum body size of one chunk request. |
+| `UploadSessionTimeout` | 30 minutes | Inactivity timeout for upload sessions and their temporary files. |
+| `MaxConcurrentUploadSessions` | `100` | Maximum number of tracked upload sessions across all owners. |
+| `OperationHistoryTimeout` | 5 minutes | Retention of completed, failed or cancelled operations. |
+| `DefaultPageSize` | `100` | Default number of entries in a directory listing. |
+| `MaxPageSize` | `1000` | Maximum requested page size; must be at least `DefaultPageSize`. |
+| `TrashPath` | `Path/.trash` | Directory receiving deleted files and directories. It can be overridden with another directory. |
+
+`Path`, `TrashPath`, and `ClientPath` are normalized to absolute directory paths during installation.
+
+
 ## Minimal example
 
 ```csharp
@@ -61,9 +92,7 @@ server.Configure(options => {
 server.UseFileBrowserModule(options => {
     options.Path = @"C:\uploads";
     options.Prefix = "/files";
-    options.Authorize = (session, context) => session.Principal.IsAuthenticated
-                                                ? AuthorizeResult.Allowed
-                                                : AuthorizeResult.Challenge;
+    //options.Authorize = (session, context) => AuthorizeResult.Allowed;
     options.UploadChunkThresholdBytes = 16 * 1024 * 1024;
     options.UploadChunkBytes = 8 * 1024 * 1024;
 });
@@ -76,30 +105,6 @@ Open `http://localhost:8080/files/` after the authentication layer has populated
 ::: warning
 The default `Authorize` callback allows unrestricted public access. Configure a custom callback to restrict access.
 :::
-
-
-## Configuration options
-
-| Option | Default | Description |
-|---|---:|---|
-| `Path` | Required | Root directory exposed by the browser. It is created when the module is installed if it does not exist. |
-| `Prefix` | `/files` | URL prefix shared by the UI and API. |
-| `Authorize` | `(_, _) => AuthorizeResult.Allowed` | Synchronous `(session, context) => AuthorizeResult` for module access and each concrete action/resource set. Allows all actions by default; must not be `null`. |
-| `ServeUi` | `true` | Serves the bundled or disk-based web UI. The API remains available when disabled. |
-| `ClientPath` | `null` | Explicit directory containing a custom UI. It overrides automatic Debug discovery and embedded resources. |
-| `EnableEvents` | `true` | Enables the FileBrowser Server-Sent Events endpoint. |
-| `EnableFileSystemWatcher` | `false` | Watches disk changes and refreshes connected browser views. Requires `EnableEvents = true`; otherwise no watcher is started. |
-| `EventsPrefix` | `Prefix + "/api/events"` | Custom SSE endpoint. With `Prefix = "/"`, the default is `/api/events`. |
-| `MaxFileBytes` | `10 GiB` | Maximum declared size of one logical file. |
-| `MaxUploadBytes` | `50 GiB` | Maximum combined size of all files in one upload session. Must be greater than or equal to `MaxFileBytes`. |
-| `MaxExtractedFileBytes` | `10 GiB` | Maximum expanded size of one file extracted from an archive. |
-| `MaxExtractedBytes` | `50 GiB` | Maximum combined expanded size of one archive. Must be greater than or equal to `MaxExtractedFileBytes`. |
-| `MaxArchiveEntries` | `10000` | Maximum number of entries allowed when creating or extracting one archive. |
-| `UploadChunkThresholdBytes` | `100 MiB` | Files larger than this value must use chunk upload. Set to `0` to chunk every non-empty file. |
-| `UploadChunkBytes` | `16 MiB` | Maximum body size of one chunk request. |
-| `TrashPath` | `Path/.trash` | Directory receiving deleted files and directories. It can be overridden with another directory. |
-
-`Path`, `TrashPath`, and `ClientPath` are normalized to absolute directory paths during installation.
 
 
 ## Request body size
@@ -243,7 +248,7 @@ Every endpoint request first checks `AccessModule` with an empty resource list. 
 | `PurgeTrash` | Permanently delete selected entries and their descendants. |
 | `EmptyTrash` | Permanently delete all trash entries and their descendants. |
 | `Archive` | Create a ZIP. |
-| `Extract` | Extract a ZIP. |
+| `Extract` | Extract a ZIP or RAR, authorizing every source volume and output. |
 
 `FileBrowserAuthorizationContext` exposes `Action`, an immutable `Resources` collection, and nullable `UploadId` and `OperationId`. Status and cancellation of an operation reuse its original business action and immutable resources: following or cancelling a rename therefore checks `Rename`. Owner isolation through `ScopeKey` is still required; foreign upload and operation ids remain `404`. The separate original-action property and the former technical enum values have been removed without aliases.
 
@@ -315,6 +320,13 @@ The queue performs create, rename, move, delete, and upload finalization operati
 Deleting an entry does not erase it immediately. The module moves it into a uniquely named container below `TrashPath` and records its original relative path so it can be restored after a process restart. The bundled UI can list, restore, permanently delete, or empty these entries. Items created by older FileBrowser versions remain visible; because their original path was not recorded, the UI asks for a new destination when restoring them.
 
 
+## Operation tracking and owner scope
+
+Mutation responses include `operationId`, `statusUrl` and `cancelUrl`. Poll `GET /api/operations/:id` to read the state, result and expiry, including when SSE is disabled. `POST /api/operations/:id/cancel` requests cancellation of that operation only. Completed, failed and cancelled operations remain queryable for `OperationHistoryTimeout`; expired and foreign ids return `404`.
+
+`ScopeKey` must return a stable, non-empty value for each owner. By default, the module uses `session.Principal.Identity.Identifier`, then email or name, falling back to `anonymous`. Configure it explicitly when your authentication layer does not populate the principal or when users from different tenants could share identifiers. This scope isolates uploads, operations and their events; filesystem permissions still come from `Authorize`. Optional disk invalidation events are shared across authorized connections, as described below.
+
+
 ## HTTP API
 
 The bundled UI uses the following endpoints. They can also be used by a custom client.
@@ -335,8 +347,11 @@ The bundled UI uses the following endpoints. They can also be used by a custom c
 | `POST` | `/api/trash/empty` | No body required | `202` |
 | `POST` | `/api/archive` | `{ "paths": ["reports", "summary.txt"], "destinationPath": "backup.zip" }` | `202` |
 | `POST` | `/api/extract` | `{ "path": "bundle.zip", "destinationDirectory": "bundle", "createDestinationDirectory": true }` | `202` |
-| `POST` | `/api/operations/cancel` | No body required | `202` |
+| `GET` | `/api/operations/:id` | Owned operation id | `200` |
+| `POST` | `/api/operations/:id/cancel` | No body required | `202`, or `200` when cancellation is not newly requested |
 | `POST` | `/api/uploads` | `{ "files": [{ "path": "data.csv", "size": 1024 }] }` | `201` |
+| `GET` | `/api/uploads/:id` | Owned upload id; returns received ranges | `200` |
+| `DELETE` | `/api/uploads/:id` | Cancels an owned upload and removes temporary files | `200` |
 | `POST` | `/api/uploads/:id/files` | Binary body and `X-File-Path` header | `200` |
 | `POST` | `/api/uploads/:id/chunks` | Binary body with `X-File-Path` and `X-Chunk-Offset` headers | `200` |
 | `POST` | `/api/uploads/:id/complete` | No body required | `202` |
@@ -345,9 +360,20 @@ The routes in this table are relative to `Prefix`. With the default prefix, `/ap
 
 ZIP creation recursively includes selected directories, preserves empty directories, and refuses filesystem reparse points. The archive is written to the internal temporary directory and moved to `destinationPath` only when complete, so a cancelled or failed operation does not expose a partial ZIP.
 
-ZIP extraction runs in the same cancellable operation queue as rename, move, and delete. Set `createDestinationDirectory` to `false` to extract into an existing directory, or to `true` to require and create a new destination directory. Archive paths are constrained to that destination, existing files are never overwritten, and `MaxArchiveEntries`, `MaxExtractedFileBytes`, and `MaxExtractedBytes` limit decompression-bomb impact.
+ZIP and RAR extraction run in the same cancellable operation queue as rename, move, and delete. Set `createDestinationDirectory` to `false` to extract into an existing directory, or to `true` to require and create a new destination directory. Archive paths are constrained to that destination, existing files are never overwritten, and `MaxArchiveEntries`, `MaxExtractedFileBytes`, and `MaxExtractedBytes` limit decompression-bomb impact.
 
 `X-File-Path` can be replaced by a `path` query parameter on the two binary upload endpoints.
+
+### RAR extraction
+
+Start extraction from the first volume and keep all parts in the same directory. Supported naming schemes include `name.part01.rar` / `name.part02.rar`, `name.rar` / `name.r00`, and `name.001` / `name.002`. Numbered `.001` files must contain a RAR signature; arbitrary split files are not accepted.
+
+The managed decoder supports RAR4 compression from RAR 2.9 through 4.x and RAR5 compression version 0, including solid archives. Archive creation remains ZIP-only. Encrypted archives, symbolic links and other RAR redirections, historical RAR 1.5/2.0/2.6 codecs, custom RARVM programs, SFX and RAR7/version 1 compression are unsupported. Dictionary and PPMd memory are limited to 256 MiB each.
+
+Preflight inventories entries and all source volumes before authorization. Extraction uses only those approved volumes, checks available CRC32/BLAKE2sp checksums and applies the configured expanded-size limits. `MaxArchiveEntries` also limits the source-volume count.
+
+Missing volumes fail with `incomplete_archive`; starting at a later `.partNN.rar` fails with `rar_first_volume_required`; encrypted archives fail with `encrypted_archive_unsupported`. Unsupported methods and invalid archives are rejected explicitly.
+
 
 ## File checksums
 
@@ -385,9 +411,31 @@ Get-FileHash -LiteralPath 'C:\downloads\report.pdf' -Algorithm SHA256
 Use `SHA1` or `MD5` instead when selected in the dialog. Compare the `Hash` value with the server checksum. This verifies the current file contents manually; the feature does not automatically verify uploads or downloads.
 
 
+## Listing, search, sorting, and pagination
+
+`GET /files/api/list` lists only the direct children of the requested directory. Results are paginated by default and directories always appear before files.
+
+| Query parameter | Description | Default |
+| --- | --- | --- |
+| `path` | Relative directory to list. | Root directory |
+| `search` | Case-insensitive text contained in the item name. | Empty |
+| `sort` | `name`, `size`, or `modified`. | `name` |
+| `direction` | `asc` or `desc`. | `asc` |
+| `pageSize` | Number of entries, up to `MaxPageSize`. | `DefaultPageSize` |
+| `continuationToken` | Opaque token returned by the preceding page. | Empty |
+
+```text
+GET /files/api/list?path=documents&search=report&sort=modified&direction=desc&pageSize=100
+```
+
+The response contains `keyCount`, `isTruncated`, and `nextContinuationToken` in addition to `path`, `parent`, the effective search/sort parameters, and `items`. When `isTruncated` is true, pass `nextContinuationToken` unchanged as `continuationToken` to request the next page. Tokens are bound to the path, search, sort, direction, and page size that created them.
+
+
 ## Upload protocol
 
 A custom client uploads files in three stages.
+
+Upload sessions expire after `UploadSessionTimeout` without activity. `MaxConcurrentUploadSessions` limits all tracked sessions. `GET /api/uploads/:id` returns received byte ranges and completion state for each file, so clients can resume missing chunks while the session is active. `DELETE /api/uploads/:id` cancels the session and removes its temporary files. Upload sessions do not survive a process restart; orphaned temporary parts are cleaned at startup and periodically.
 
 ### 1. Create the upload session
 

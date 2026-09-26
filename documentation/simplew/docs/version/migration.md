@@ -12,8 +12,9 @@ Choose the starting point that matches your application:
 
 | Starting point | Recommended path |
 | --- | --- |
-| SimpleW v26.0 | Follow the [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md). |
-| SimpleW v16 | Follow the [v16 to v26.0 guide](./migrate-from-v16-to-v26.md), then the v26.0 to v26.1 guide. |
+| SimpleW v26.1 | Follow the [v26.1 to v26.1.1 guide](./migrate-from-v26.1-to-v26.1.1.md). |
+| SimpleW v26.0 | Follow the [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md), then the [v26.1 to v26.1.1 guide](./migrate-from-v26.1-to-v26.1.1.md). |
+| SimpleW v16 | Follow the [v16 to v26.0 guide](./migrate-from-v16-to-v26.md), then the v26.0 to v26.1 and v26.1 to v26.1.1 guides. |
 | EmbedIO | Replace the server and modules first, then migrate controllers and request/response code. |
 | ASP.NET Core Minimal APIs | Use delegate handlers for the closest SimpleW equivalent. |
 | ASP.NET Core controllers | Use SimpleW controllers and make routing and body mapping explicit. |
@@ -38,17 +39,25 @@ This approach keeps transport changes separate from business-logic changes and m
 
 Apply **the guides in chronological order**. **Do not skip an intermediate guide** when it matches your starting version, because a later guide assumes the earlier breaking changes have already been applied.
 
+
+### From v26.1 to v26.1.1
+
+The [v26.1 to v26.1.1 guide](./migrate-from-v26.1-to-v26.1.1.md) covers the change from boolean module authorization callbacks to `AuthorizeResult`, the server-wide authentication challenge and optional per-response telemetry suppression.
+
+Applications using `Authorize` on static files, SSE or WebSocket modules must update the callback return type. The guide includes before/after examples, explains when to return `Forbidden` or `Challenge`, and covers the authorization and HTTP API changes for applications upgrading an earlier FileBrowser addon.
+
+
 ### From v26.0 to v26.1
 
 The [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md) covers the new network engine contract, server lifecycle state, TLS ownership, `HttpSession` transport changes and telemetry lifecycle.
 
-Most applications using only routes, controllers, requests and responses need mechanical changes. Custom engines and code accessing sockets or streams directly require more work.
+Most applications using only routes, controllers, requests and responses need mechanical changes. Custom engines and code accessing sockets or streams directly require more work. After completing this step, continue with the [v26.1 to v26.1.1 guide](./migrate-from-v26.1-to-v26.1.1.md).
 
 ### From v16 to v26
 
 The [v16 to v26.0 guide](./migrate-from-v16-to-v26.md) covers the server, request, response, controller and extension API renames introduced by the v26 rewrite.
 
-After completing it, continue with the [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md).
+After completing it, continue with the [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md), then the [v26.1 to v26.1.1 guide](./migrate-from-v26.1-to-v26.1.1.md).
 
 
 ## From ASP.NET Core

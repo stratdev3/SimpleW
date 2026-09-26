@@ -10,15 +10,13 @@ Notes :
 
 ## Unreleased
 
-Maintenance, new addons, and extended FileBrowser features.
+This maintenance release fixes and improves authorization and authentication challenges. The previous behavior blurred permission denial and authentication requests; explicit `AuthorizeResult` decisions now make it clear when to allow access, return 403, or start an authentication flow.
 
 ### feature
 
 - feature(SimpleW): add a server-wide authentication challenge with `ConfigureChallenge()` for static files, SSE, WebSocket and FileBrowser authorization (#442)
 - feature(SimpleW): introduce `AuthorizeResult` to distinguish allowed access, authentication challenges and forbidden requests (#452)
 - feature(SimpleW): add `HttpResponse.DisableTelemetry()` to disable HTTP traces and request/response metrics for the current exchange while preserving logs (#443)
-- feature(SimpleW): add `FileLogSink` for buffered file logging, with UTC time and size rotation, configurable retention, and explicit flushing
-- chore(SimpleW.*): move addon projects under `src/Addons` (#430)
 
 ### fix
 

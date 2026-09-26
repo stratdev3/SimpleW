@@ -5,6 +5,8 @@
 
 ### feature
 
+- Add managed ZIP/RAR extraction with multipart RAR support, source-volume authorization and expanded-size limits.
+- Add SHA-256, SHA-1 and MD5 file checksums.
 - Add opt-in recursive disk monitoring with shared SSE invalidation, bounded notification batching and watcher recovery.
 - Refresh browser listings and trash automatically while preserving visible selections and dialog inputs; resynchronize after SSE reconnects.
 - Initial `SimpleW.Service.FileBrowser` package release for SimpleW v26.1.

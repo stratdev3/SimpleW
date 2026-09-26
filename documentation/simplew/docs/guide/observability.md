@@ -23,6 +23,27 @@ Telemetry is based on :
 - `System.Diagnostics.Metrics`
 - OpenTelemetry semantic conventions
 
+
+## Excluding individual requests
+
+Call `session.Response.DisableTelemetry()` before sending a response to exclude the current exchange from SimpleW HTTP traces and request/response metrics. For example, exclude a health endpoint in middleware:
+
+```csharp
+server.UseMiddleware(async (session, next) => {
+    if (session.Request.Path == "/health") {
+        session.Response.DisableTelemetry();
+    }
+    await next();
+});
+
+server.MapGet("/health", () => "OK");
+```
+
+Logs remain enabled. The setting resets for the next request, including on a keep-alive connection, and leaves the server telemetry configuration unchanged. Call it as early as possible: measurements or listener notifications already emitted cannot be retracted. This controls SimpleW HTTP telemetry, not application-created spans or addon-specific meters.
+
+See [`HttpResponse.DisableTelemetry()`](../reference/httpresponse.md#disabletelemetry).
+
+
 ## Telemetry Flow
 
 ```text

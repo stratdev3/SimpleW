@@ -201,6 +201,24 @@ public HttpResponse NoCompression()
 ```
 
 
+## DisableTelemetry
+
+```csharp
+public HttpResponse DisableTelemetry()
+```
+
+Disables SimpleW HTTP traces and request/response metrics for the current exchange while preserving logs. Returns the same response for fluent chaining:
+
+```csharp
+server.MapGet("/health", (HttpSession session) =>
+    session.Response.DisableTelemetry().Text("OK"));
+```
+
+Call it before sending the response, preferably in middleware before the handler when excluding a path. Measurements already emitted cannot be retracted. The flag resets for the next request on the connection and does not change the server-wide telemetry configuration.
+
+See [excluding individual requests](../guide/observability.md#excluding-individual-requests).
+
+
 ## SendAsync
 
 ```csharp

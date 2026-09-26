@@ -55,6 +55,33 @@ dotnet add package SimpleW.Service.Background
 See the [changelog](./service-background-changelog.md)
 
 
+## Configuration options
+
+| Option | Default | Description |
+|---|---:|---|
+| WorkerCount | `1` | Number of worker loops processing jobs in parallel. Values lower than `1` are normalized to `1`. |
+| Capacity | `1024` | Maximum number of queued jobs. When full, `TryEnqueue` returns `false` and `Enqueue` throws. |
+| CompletedJobRetention | `1000` | Maximum number of completed job snapshots kept in memory. Set to `0` to remove completed jobs immediately. |
+| ShutdownTimeout | `30s` | Maximum time to wait for worker and scheduler loops during server shutdown. |
+| TimeZone | `UTC` | Default time zone used by cron schedules. |
+| JobStore | `MemoryBackgroundJobStore` | Store used for job snapshots. Can be replaced by a custom implementation. |
+| EnableTelemetry | `false` | Enables module telemetry. The underlying `SimpleWServer.Telemetry` must also be enabled. |
+| DefaultJobOptions | See below | Default timeout and retry policy copied by every job and recurring occurrence. |
+| Schedules | `[]` | Cron schedules registered with `options.Schedule(...)`. |
+| Intervals | `[]` | Fixed-interval schedules registered with `options.ScheduleEvery(...)`. |
+
+Default job options:
+
+| Option | Default | Description |
+|---|---:|---|
+| Timeout | `null` | Maximum duration of one attempt. `null` disables the timeout. |
+| RetryCount | `0` | Number of additional attempts after the first failure. |
+| RetryDelay | `1s` | Delay before the first retry. |
+| RetryBackoffFactor | `2` | Multiplier applied after each failed attempt. |
+| RetryMaxDelay | `1m` | Maximum delay between attempts. |
+| RetryOnTimeout | `true` | Allows timed out attempts to use the retry policy. |
+
+
 ## Minimal example
 
 ```csharp
@@ -84,33 +111,6 @@ await server.RunAsync();
 ```
 
 The handler copies the data it needs, enqueues the work, and returns immediately.
-
-
-## Configuration options
-
-| Option | Default | Description |
-|---|---:|---|
-| WorkerCount | `1` | Number of worker loops processing jobs in parallel. Values lower than `1` are normalized to `1`. |
-| Capacity | `1024` | Maximum number of queued jobs. When full, `TryEnqueue` returns `false` and `Enqueue` throws. |
-| CompletedJobRetention | `1000` | Maximum number of completed job snapshots kept in memory. Set to `0` to remove completed jobs immediately. |
-| ShutdownTimeout | `30s` | Maximum time to wait for worker and scheduler loops during server shutdown. |
-| TimeZone | `UTC` | Default time zone used by cron schedules. |
-| JobStore | `MemoryBackgroundJobStore` | Store used for job snapshots. Can be replaced by a custom implementation. |
-| EnableTelemetry | `false` | Enables module telemetry. The underlying `SimpleWServer.Telemetry` must also be enabled. |
-| DefaultJobOptions | See below | Default timeout and retry policy copied by every job and recurring occurrence. |
-| Schedules | `[]` | Cron schedules registered with `options.Schedule(...)`. |
-| Intervals | `[]` | Fixed-interval schedules registered with `options.ScheduleEvery(...)`. |
-
-Default job options:
-
-| Option | Default | Description |
-|---|---:|---|
-| Timeout | `null` | Maximum duration of one attempt. `null` disables the timeout. |
-| RetryCount | `0` | Number of additional attempts after the first failure. |
-| RetryDelay | `1s` | Delay before the first retry. |
-| RetryBackoffFactor | `2` | Multiplier applied after each failed attempt. |
-| RetryMaxDelay | `1m` | Maximum delay between attempts. |
-| RetryOnTimeout | `true` | Allows timed out attempts to use the retry policy. |
 
 
 ## Register the module
