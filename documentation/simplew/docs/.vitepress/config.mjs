@@ -17,6 +17,10 @@ export default defineConfig({
         ['meta', { property: 'og:type', content: 'website' }],
         ['meta', { property: 'og:url', content: 'https://simplew.net' }],
         ['meta', { property: 'og:image', content: 'https://simplew.net/simplew-og.png' }],
+        // twitter
+        ['meta', { property: 'twitter:card', content: 'summary' }],
+        ['meta', { property: 'twitter:title', content: 'SimpleW | Lightweight Web Server for .NET' }],
+        ['meta', { property: 'twitter:description', content: 'A lightweight .NET web server with an embeddable core and powerful addons. Build standalone or embedded services without ASP.NET.' }],
     ],
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
