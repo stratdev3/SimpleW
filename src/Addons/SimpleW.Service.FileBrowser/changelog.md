@@ -1,7 +1,7 @@
 # Changelog
 
 
-## Unreleased
+## v26.1.1 - _(2026-09-26)_
 
 ### feature
 
