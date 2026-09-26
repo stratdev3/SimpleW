@@ -6,6 +6,7 @@ export default {
   '../../src/Addons/SimpleW.Engine.Ioxide/changelog.md': 'docs/addons/engine-ioxide-changelog.md',
   '../../src/Addons/SimpleW.Helper.BasicAuth/changelog.md': 'docs/addons/helper-basicauth-changelog.md',
   '../../src/Addons/SimpleW.Helper.DependencyInjection/changelog.md': 'docs/addons/helper-dependency-injection-changelog.md',
+  '../../src/Addons/SimpleW.Helper.FileLogSink/changelog.md': 'docs/addons/helper-filelogsink-changelog.md',
   '../../src/Addons/SimpleW.Helper.Hosting/changelog.md': 'docs/addons/helper-hosting-changelog.md',
   '../../src/Addons/SimpleW.Helper.Jwt/changelog.md': 'docs/addons/helper-jwt-changelog.md',
   '../../src/Addons/SimpleW.Helper.Log4net/changelog.md': 'docs/addons/helper-log4net-changelog.md',

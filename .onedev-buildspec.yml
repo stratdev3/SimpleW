@@ -82,6 +82,20 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: CommandStep
+    name: build SimpleW.Helper.FileLogSink
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        cd src/Addons/SimpleW.Helper.FileLogSink/
+        dotnet build -c @param:build_configuration@ SimpleW.Helper.FileLogSink.csproj
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
     name: build SimpleW.Helper.Hosting
     runInContainer: true
     image: mcr.microsoft.com/dotnet/sdk:10.0
@@ -358,6 +372,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.FileLogSink
+    sourcePath: src/Addons/SimpleW.Helper.FileLogSink/bin/@param:build_configuration@/
+    artifacts: '*/SimpleW.Helper.FileLogSink.dll'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
     sourcePath: src/Addons/SimpleW.Helper.Hosting/bin/@param:build_configuration@/
     artifacts: '*/SimpleW.Helper.Hosting.dll'
@@ -564,6 +584,22 @@ jobs:
         TS=$(date +"%Y%m%d")-@build_number@
         if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.DependencyInjection.csproj; fi
         dotnet pack -c Release SimpleW.Helper.DependencyInjection.csproj
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Helper.FileLogSink
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        cd src/Addons/SimpleW.Helper.FileLogSink
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.FileLogSink.csproj; fi
+        dotnet pack -c Release SimpleW.Helper.FileLogSink.csproj
     runAs: 0:0
     useTTY: false
     condition: SUCCESSFUL
@@ -868,6 +904,12 @@ jobs:
     condition: SUCCESSFUL
     optional: false
   - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.FileLogSink
+    sourcePath: src/Addons/SimpleW.Helper.FileLogSink/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
     name: publish artifact SimpleW.Helper.Hosting
     sourcePath: src/Addons/SimpleW.Helper.Hosting/bin/Release/
     artifacts: '*.*nupkg'
@@ -1020,6 +1062,20 @@ jobs:
       shell: sh
       commands: |
         cd src/Addons/SimpleW.Helper.DependencyInjection/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.FileLogSink to nuget.org
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        cd src/Addons/SimpleW.Helper.FileLogSink/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
@@ -1587,6 +1643,89 @@ jobs:
       shell: sh
       commands: |
         cd src/Addons/SimpleW.Helper.DependencyInjection/bin/Release
+        dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  paramSpecs:
+  - type: ChoiceParam
+    name: version
+    allowMultiple: false
+    allowEmpty: false
+    choiceProvider:
+      type: SpecifiedChoices
+      choices:
+      - value: alpha
+        color: '#0d87e9'
+      - value: beta
+        color: '#0d87e9'
+      - value: rc
+        color: '#0d87e9'
+      - value: release
+        color: '#0d87e9'
+    defaultValueProvider:
+      type: SpecifiedDefaultValue
+      value: beta
+  jobDependencies:
+  - jobName: CI
+    requireSuccessful: true
+    paramMatrix:
+    - valuesProvider:
+        type: SpecifiedValues
+        values:
+        - - Release
+      secret: false
+      name: build_configuration
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  includeUpstreamWhenRebuild: false
+  includeDownstreamWhenRebuild: false
+  timeout: 3600
+- name: CD nuget SimpleW.Helper.FileLogSink
+  steps:
+  - type: CheckoutStep
+    name: checkout code
+    cloneCredential:
+      type: DefaultCredential
+    withLfs: false
+    withSubmodules: false
+    cloneDepth: 1
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: pack SimpleW.Helper.FileLogSink
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        cd src/Addons/SimpleW.Helper.FileLogSink
+        TS=$(date +"%Y%m%d")-@build_number@
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<Version>([0-9]+\.[0-9]+\.[0-9]+)[^<]*</Version>#<Version>\\1-@param:version@.${TS}</Version>#g" SimpleW.Helper.FileLogSink.csproj; fi
+        if [ "@param:version@" != "release" ]; then sed -i -E "s#<SimpleWCompatVersion>\[([0-9]+\.[0-9]+\.[0-9]+)[^,]*,([0-9]+\.[0-9]+\.[0-9]+\))</SimpleWCompatVersion>#<SimpleWCompatVersion>[\1-@param:version@.*,\2</SimpleWCompatVersion>#g" ../Directory.Build.props ./*.csproj; fi
+        dotnet pack -c Release -p:UseLocalSimpleW=false SimpleW.Helper.FileLogSink.csproj
+    runAs: 0:0
+    useTTY: false
+    condition: SUCCESSFUL
+    optional: false
+  - type: PublishArtifactStep
+    name: publish artifact SimpleW.Helper.FileLogSink
+    sourcePath: src/Addons/SimpleW.Helper.FileLogSink/bin/Release/
+    artifacts: '*.*nupkg'
+    condition: SUCCESSFUL
+    optional: false
+  - type: CommandStep
+    name: deploy SimpleW.Helper.FileLogSink to nuget.org
+    runInContainer: true
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    interpreter:
+      type: PosixInterpreter
+      shell: sh
+      commands: |
+        cd src/Addons/SimpleW.Helper.FileLogSink/bin/Release
         dotnet nuget push *.nupkg --api-key @secret:nuget_token@ --source https://api.nuget.org/v3/index.json
     runAs: 0:0
     useTTY: false
