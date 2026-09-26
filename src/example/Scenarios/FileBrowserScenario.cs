@@ -32,7 +32,9 @@ internal sealed class FileBrowserScenario : IScenario {
         server.UseFileBrowserModule(options => {
             options.Path = browserDirectory;
             options.Prefix = "/files";
-            options.AllowAnonymous = true;
+            options.Authorize = (session, context) => {
+                return AuthorizeResult.Allowed;
+            };
             options.UploadChunkThresholdBytes = 16 * 1024 * 1024;
             options.UploadChunkBytes = 8 * 1024 * 1024;
         });
