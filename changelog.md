@@ -8,7 +8,7 @@ Notes :
 - No long-term support or backports for major versions, just stick to the latest update.
 
 
-## Unreleased
+## v26.1.1 / _(2026-09-26)_
 
 This maintenance release fixes and improves authorization and authentication challenges. The previous behavior blurred permission denial and authentication requests; explicit `AuthorizeResult` decisions now make it clear when to allow access, return 403, or start an authentication flow.
 
@@ -28,7 +28,7 @@ This maintenance release fixes and improves authorization and authentication cha
 
 
 
-## v26.1.0 - _(2026-08-29)_
+## v26.1.0 / _(2026-08-29)_
 
 This major release completely rewrites `ISimpleWEngine` so alternative engines can be provided as addons, and introduces Ioxide as the first alternative engine implementation.
 
