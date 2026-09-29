@@ -1,0 +1,10 @@
+# Changelog
+
+## Unreleased
+
+### feature
+
+- Add npm development server supervision with separate server/client logging and cleanup of owned processes.
+- Supply `VITE_SIMPLEW_API_URL` and optional development CORS rules for direct browser calls to SimpleW.
+- Serve compiled SPA files in production with an HTML navigation fallback that excludes API paths and missing assets.
+- Add publish targets for frontend dependency installation, compilation and copying assets to `wwwroot`.

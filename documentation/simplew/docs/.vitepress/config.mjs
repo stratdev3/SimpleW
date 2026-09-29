@@ -145,6 +145,7 @@ export default defineConfig({
                         { text: 'Hosting', link: '/addons/helper-hosting' },
                         { text: 'Jwt', link: '/addons/helper-jwt' },
                         { text: 'Log4net', link: '/addons/helper-log4net' },
+                        { text: 'NpmTooling', link: '/addons/helper-npmtooling' },
                         { text: 'OpenID', link: '/addons/helper-openid' },
                         { text: 'Razor', link: '/addons/helper-razor' },
                         { text: 'Serilog', link: '/addons/helper-serilog' },

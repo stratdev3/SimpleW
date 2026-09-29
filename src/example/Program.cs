@@ -23,7 +23,8 @@ namespace example {
         /// Force Arguments
         /// </summary>
         private static string[] _args = [
-            //"hello",
+            //"npm", "--client", @"c:\path\to\frontend",
+            //"filebrowser", "--directory", @"c:\www\spa",
             //"--port", "8080" // already default
             //"--log",
             //"--browser"
@@ -122,6 +123,7 @@ namespace example {
         private static IReadOnlyDictionary<string, IScenario> CreateScenarios() {
             IScenario[] scenarios = [
                 new HelloScenario(),
+            new NpmToolingScenario(),
             new HttpArenaScenario(),
             new RequestScenario(),
             new NewtonsoftJsonScenario(),
@@ -162,6 +164,7 @@ namespace example {
             ExampleConsole.BlankLine();
             ExampleConsole.Section("Examples");
             ExampleConsole.Command("example hello");
+            ExampleConsole.Command("example npm --client <path> --log --browser");
             ExampleConsole.Command("example hello --log");
             ExampleConsole.Command("example hello --ioxide --log");
             ExampleConsole.Command("example swagger --browser");

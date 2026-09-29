@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <_SimpleWNpmPackageTargetsAvailable>true</_SimpleWNpmPackageTargetsAvailable>
+    <SimpleWNpmTargetsPath>$(MSBuildThisFileDirectory)SimpleW.Helper.NpmTooling.targets</SimpleWNpmTargetsPath>
+  </PropertyGroup>
+</Project>

@@ -10,6 +10,7 @@ export default {
   '../../src/Addons/SimpleW.Helper.Hosting/changelog.md': 'docs/addons/helper-hosting-changelog.md',
   '../../src/Addons/SimpleW.Helper.Jwt/changelog.md': 'docs/addons/helper-jwt-changelog.md',
   '../../src/Addons/SimpleW.Helper.Log4net/changelog.md': 'docs/addons/helper-log4net-changelog.md',
+  '../../src/Addons/SimpleW.Helper.NpmTooling/changelog.md': 'docs/addons/helper-npmtooling-changelog.md',
   '../../src/Addons/SimpleW.Helper.OpenID/changelog.md': 'docs/addons/helper-openid-changelog.md',
   '../../src/Addons/SimpleW.Helper.Razor/changelog.md': 'docs/addons/helper-razor-changelog.md',
   '../../src/Addons/SimpleW.Helper.Serilog/changelog.md': 'docs/addons/helper-serilog-changelog.md',

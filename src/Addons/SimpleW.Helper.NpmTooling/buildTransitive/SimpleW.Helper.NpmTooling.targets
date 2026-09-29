@@ -1,0 +1,43 @@
+<Project>
+  <PropertyGroup>
+    <_SimpleWNpmTargetsImported>true</_SimpleWNpmTargetsImported>
+  </PropertyGroup>
+  <!-- Settings are resolved at publish time so Stack aliases work regardless of NuGet import order. -->
+  <Target Name="SimpleWNpmPrepareClient" BeforeTargets="ComputeFilesToPublish"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
+    <PropertyGroup>
+      <SimpleWNpmSourcePath Condition="'$(SimpleWNpmSourcePath)' == '' and '$(SimpleWStackSourcePath)' != ''">$(SimpleWStackSourcePath)</SimpleWNpmSourcePath>
+      <SimpleWNpmSourcePath Condition="'$(SimpleWNpmSourcePath)' == ''">$(MSBuildProjectDirectory)/../client</SimpleWNpmSourcePath>
+      <SimpleWNpmDistPath Condition="'$(SimpleWNpmDistPath)' == '' and '$(SimpleWStackDistPath)' != ''">$(SimpleWStackDistPath)</SimpleWNpmDistPath>
+      <SimpleWNpmDistPath Condition="'$(SimpleWNpmDistPath)' == ''">$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
+      <SimpleWNpmBuildClient Condition="'$(SimpleWNpmBuildClient)' == '' and '$(SimpleWStackBuildClient)' != ''">$(SimpleWStackBuildClient)</SimpleWNpmBuildClient>
+      <SimpleWNpmBuildClient Condition="'$(SimpleWNpmBuildClient)' == ''">true</SimpleWNpmBuildClient>
+      <SimpleWNpmApiBaseUrl Condition="'$(SimpleWNpmApiBaseUrl)' == ''">/api</SimpleWNpmApiBaseUrl>
+      <_NpmSource>$([System.IO.Path]::GetFullPath('$(SimpleWNpmSourcePath)', '$(MSBuildProjectDirectory)'))</_NpmSource>
+      <_NpmDist>$([System.IO.Path]::GetFullPath('$(SimpleWNpmDistPath)', '$(MSBuildProjectDirectory)'))</_NpmDist>
+    </PropertyGroup>
+    <Error Condition="'$(SimpleWNpmBuildClient)' == 'true' and !Exists('$(_NpmSource)/package.json')"
+           Text="SimpleW.Helper.NpmTooling: package.json missing in $(_NpmSource). Set SimpleWNpmSourcePath." />
+    <Exec Condition="'$(SimpleWNpmBuildClient)' == 'true' and Exists('$(_NpmSource)/package-lock.json')"
+          WorkingDirectory="$(_NpmSource)" Command="npm ci --include=dev" />
+    <Exec Condition="'$(SimpleWNpmBuildClient)' == 'true' and !Exists('$(_NpmSource)/package-lock.json')"
+          WorkingDirectory="$(_NpmSource)" Command="npm install --include=dev" />
+    <Exec Condition="'$(SimpleWNpmBuildClient)' == 'true'" WorkingDirectory="$(_NpmSource)"
+          EnvironmentVariables="VITE_SIMPLEW_API_URL=$(SimpleWNpmApiBaseUrl);NODE_ENV=production" Command="npm run build" />
+    <Error Condition="!Exists('$(_NpmDist)/index.html')"
+           Text="SimpleW.Helper.NpmTooling: $(_NpmDist)/index.html missing. Prepare the client or set SimpleWNpmDistPath." />
+    <ItemGroup>
+      <_SimpleWNpmAsset Include="$(_NpmDist)/**/*" />
+    </ItemGroup>
+  </Target>
+  <Target Name="SimpleWNpmPublishClient" AfterTargets="ComputeFilesToPublish" DependsOnTargets="SimpleWNpmPrepareClient"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_SimpleWNpmAsset)">
+        <RelativePath>wwwroot/%(_SimpleWNpmAsset.RecursiveDir)%(_SimpleWNpmAsset.Filename)%(_SimpleWNpmAsset.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>
