@@ -568,12 +568,12 @@ namespace SimpleW {
                                     Exception ex = new("The request pipeline completed without sending a response. A fallback 500 Internal Server Error response has been automatically generated.");
                                     await HandleErrorResponseAsync(ex, 500, "Internal Server Error", "HTTP process");
                                 }
-                                else if (Server.IsTelemetryEnabled && _currentActivity != null) {
-                                    if (!_response.IsTelemetryDisabled) {
+                                else if (IsObservability) {
+                                    if (Server.IsTelemetryEnabled && _currentActivity != null && !_response.IsTelemetryDisabled) {
                                         Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
                                     }
-                                    // we must close telemetry here in this flow !! closing into NotifyResponseSent() will leak memory !!
-                                    CloseAndResetTelemetryWatches();
+                                    // complete observability after dispatch, never inside NotifyResponseSent().
+                                    CompleteRequestObservability();
                                 }
                             }
 
@@ -1004,20 +1004,31 @@ namespace SimpleW {
         private bool _requestTimingStarted;
 
         /// <summary>
-        /// Close and Reset telemetry
+        /// Completes the activity and resets timing independently of telemetry or logging configuration.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void CloseAndResetTelemetryWatches() {
-            if (_response.IsTelemetryDisabled && _currentActivity != null) {
-                _currentActivity.IsAllDataRequested = false;                            // complete the activity normally
-                _currentActivity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;    // but prevent OpenTelemetry from exporting it
-            }
-            Server.Telemetry?.StopActivity(_currentActivity);
+        private void CompleteRequestObservability() {
+            CloseTelemetryActivity();
+
             _currentActivity = null;
 
             _requestStartWatch = 0;
             _responseStartWatch = 0;
             _requestTimingStarted = false;
+        }
+
+        /// <summary>
+        /// Closes an existing telemetry activity, respecting response-level suppression.
+        /// </summary>
+        private void CloseTelemetryActivity() {
+            if (_currentActivity == null) {
+                return;
+            }
+            if (_response.IsTelemetryDisabled) {
+                _currentActivity.IsAllDataRequested = false;                            // complete the activity normally
+                _currentActivity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;    // but prevent OpenTelemetry from exporting it
+            }
+            Server.Telemetry?.StopActivity(_currentActivity);
         }
 
         /// <summary>
@@ -1041,22 +1052,23 @@ namespace SimpleW {
         private async ValueTask HandleErrorResponseAsync(Exception ex, int statusCode, string statusText, string displayName) {
             _pendingResponseException = ex;
             CloseAfterResponse = true;
-            if (Server.IsTelemetryEnabled) {
-                if (!_requestTimingStarted) {
-                    _requestStartWatch = Telemetry.GetWatch();
-                    _requestTimingStarted = true;
+            try {
+                if (IsObservability) {
+                    if (!_requestTimingStarted) {
+                        _requestStartWatch = Telemetry.GetWatch();
+                        _requestTimingStarted = true;
+                    }
+                    _responseStartWatch = Telemetry.GetWatch();
                 }
-                _responseStartWatch = Telemetry.GetWatch();
-                if (!_response.IsTelemetryDisabled) {
+                if (Server.IsTelemetryEnabled && !_response.IsTelemetryDisabled) {
                     _currentActivity ??= Server.Telemetry?.StartActivity(this, displayName, (statusCode >= 500));
                     Server.Telemetry?.UpdateActivityAddException(_currentActivity, ex);
                     Server.Telemetry?.AddRequestMetrics(this, Telemetry.ElapsedMs(_requestStartWatch, _responseStartWatch));
                 }
                 await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
-                CloseAndResetTelemetryWatches();
             }
-            else {
-                await _response.Status(statusCode).Text(statusText).SendAsync().ConfigureAwait(false);
+            finally {
+                CompleteRequestObservability();
             }
         }
 
