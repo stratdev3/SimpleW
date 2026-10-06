@@ -219,8 +219,8 @@ namespace SimpleW.Modules {
                 }
 
                 // map GET + HEAD
-                server.MapGet(_options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
-                server.Map("HEAD", _options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
+                server.MapExecutor("GET", _options.PrefixWildCard, (session, _) => HandlerAsync(session));
+                server.MapExecutor("HEAD", _options.PrefixWildCard, (session, _) => HandlerAsync(session));
 
                 _log.Info($"installed with prefix {_options.Prefix}");
             }
