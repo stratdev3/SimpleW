@@ -645,7 +645,7 @@
 
         #region not found
 
-        private static readonly HttpRouteExecutor _notFoundExecutor = RouteExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync());
+        private static readonly HttpRouteExecutor _notFoundExecutor = static (session, _) => session.Response.Status(404).Text("Not Found").SendAsync();
 
         #endregion not found
 
