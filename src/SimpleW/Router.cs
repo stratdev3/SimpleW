@@ -1,4 +1,7 @@
-﻿namespace SimpleW {
+﻿using System.Diagnostics.CodeAnalysis;
+
+
+namespace SimpleW {
 
     /// <summary>
     /// Routes incoming HTTP requests to the appropriate handler.
@@ -245,6 +248,8 @@
         /// <param name="host"></param>
         /// <param name="path"></param>
         /// <param name="handler"></param>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         public void Map(string method, string? host, string path, Delegate handler) {
             ArgumentNullException.ThrowIfNull(method);
             ArgumentNullException.ThrowIfNull(path);
@@ -258,6 +263,8 @@
         /// <param name="method"></param>
         /// <param name="path"></param>
         /// <param name="handler"></param>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         public void Map(string method, string path, Delegate handler) {
             ArgumentNullException.ThrowIfNull(method);
             ArgumentNullException.ThrowIfNull(path);
@@ -268,6 +275,8 @@
         /// <summary>
         /// Maps a GET route to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         public void MapGet(string path, Delegate handler) => Map("GET", path, handler);
 
         /// <summary>
@@ -276,11 +285,15 @@
         /// <param name="host"></param>
         /// <param name="path"></param>
         /// <param name="handler"></param>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         public void MapGet(string host, string path, Delegate handler) => Map("GET", host, path, handler);
 
         /// <summary>
         /// Maps a POST route to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         public void MapPost(string path, Delegate handler) => Map("POST", path, handler);
 
         /// <summary>
@@ -289,6 +302,8 @@
         /// <param name="host"></param>
         /// <param name="path"></param>
         /// <param name="handler"></param>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         public void MapPost(string host, string path, Delegate handler) => Map("POST", host, path, handler);
 
         #endregion Map Method
@@ -619,6 +634,8 @@
         /// Register the fallback handler.
         /// </summary>
         /// <param name="handler"></param>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapFallback(HttpRouteExecutor) instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapFallback(HttpRouteExecutor) instead.")]
         public void MapFallback(Delegate handler) {
             ArgumentNullException.ThrowIfNull(handler);
             if (!_isRootRouter) {

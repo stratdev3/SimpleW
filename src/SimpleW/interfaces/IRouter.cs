@@ -1,3 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
+
+
 namespace SimpleW {
 
     /// <summary>
@@ -38,36 +41,50 @@ namespace SimpleW {
         /// <summary>
         /// Map Method/Path to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         void Map(string method, string path, Delegate handler);
 
         /// <summary>
         /// Map Method/Host/Path to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         void Map(string method, string? host, string path, Delegate handler);
 
         /// <summary>
         /// Map GET/Path to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         void MapGet(string path, Delegate handler);
 
         /// <summary>
         /// Map GET/Host/Path to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         void MapGet(string host, string path, Delegate handler);
 
         /// <summary>
         /// Map POST/Path to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         void MapPost(string path, Delegate handler);
 
         /// <summary>
         /// Map POST/Host/Path to a delegate.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use an HttpRouteExecutor overload instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use an HttpRouteExecutor overload instead.")]
         void MapPost(string host, string path, Delegate handler);
 
         /// <summary>
         /// Register the fallback handler.
         /// </summary>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapFallback(HttpRouteExecutor) instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapFallback(HttpRouteExecutor) instead.")]
         void MapFallback(Delegate handler);
 
         /// <summary>

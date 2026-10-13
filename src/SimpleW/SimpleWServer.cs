@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
@@ -769,6 +770,8 @@ namespace SimpleW {
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapExecutor instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapExecutor instead.")]
         public SimpleWServer Map(string method, string path, Delegate handler) {
             Router.Map(method, path, handler);
             return this;
@@ -782,6 +785,8 @@ namespace SimpleW {
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapExecutor instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapExecutor instead.")]
         public SimpleWServer Map(string method, string host, string path, Delegate handler) {
             Router.Map(method, host, path, handler);
             return this;
@@ -834,6 +839,8 @@ namespace SimpleW {
         ///     return new { message = $"Hello {name} !" };
         /// });
         /// </example>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapExecutor instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapExecutor instead.")]
         public SimpleWServer MapGet(string path, Delegate handler) {
             Router.MapGet(path, handler);
             return this;
@@ -847,6 +854,8 @@ namespace SimpleW {
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapExecutor instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapExecutor instead.")]
         public SimpleWServer MapGet(string host, string path, Delegate handler) {
             Router.MapGet(host, path, handler);
             return this;
@@ -858,6 +867,8 @@ namespace SimpleW {
         /// </summary>
         /// <param name="path"></param>
         /// <param name="handler"></param>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapExecutor instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapExecutor instead.")]
         public SimpleWServer MapPost(string path, Delegate handler) {
             Router.MapPost(path, handler);
             return this;
@@ -871,6 +882,8 @@ namespace SimpleW {
         /// <param name="path"></param>
         /// <param name="handler"></param>
         /// <returns></returns>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Use MapExecutor instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Use MapExecutor instead.")]
         public SimpleWServer MapPost(string host, string path, Delegate handler) {
             Router.MapPost(host, path, handler);
             return this;
@@ -886,6 +899,8 @@ namespace SimpleW {
         /// <typeparam name="TController"></typeparam>
         /// <param name="basePrefix">Optional base prefix like "/api". Can be null or empty.</param>
         /// <returns></returns>
+        [RequiresUnreferencedCode("Controller discovery and binding use reflection and may access members removed by trimming. Register routes explicitly with HttpRouteExecutor instead.")]
+        [RequiresDynamicCode("Controller binding may require generic instantiations unavailable under NativeAOT. Register routes explicitly with HttpRouteExecutor instead.")]
         public SimpleWServer MapController<TController>(string? basePrefix = null) where TController : Controller {
             RouteExecutorFactory.RegisterController(typeof(TController), Router, basePrefix, ControllerActionExecutorFactory);
             return this;
@@ -906,6 +921,8 @@ namespace SimpleW {
         /// );
         /// </code>
         /// </example>
+        [RequiresUnreferencedCode("Controller discovery and binding use reflection and may access members removed by trimming. Register routes explicitly with HttpRouteExecutor instead.")]
+        [RequiresDynamicCode("Controller binding may require generic instantiations unavailable under NativeAOT. Register routes explicitly with HttpRouteExecutor instead.")]
         public SimpleWServer MapControllers<TController>(string? basePrefix = null, IEnumerable<Type>? excludes = null) where TController : Controller {
             Type baseType = typeof(TController);
             HashSet<Type> excluded = new(excludes ?? Enumerable.Empty<Type>());
