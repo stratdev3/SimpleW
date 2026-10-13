@@ -32,6 +32,7 @@ That policy stays in your own custom middleware, which makes this package a good
 
 - .NET 8.0 or later
 - SimpleW (core server)
+- `Microsoft.IdentityModel.Protocols.OpenIdConnect` (automatically included)
 - An OpenID Connect provider such as Google, Microsoft Entra ID, Keycloak, Auth0, or another OIDC authority
 
 
