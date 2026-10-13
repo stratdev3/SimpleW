@@ -929,6 +929,35 @@ namespace SimpleW {
 
         #endregion map controllers
 
+        #region map executor
+
+        /// <summary>
+        /// Add HttpRouteExecutor for Method/Path
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="path"></param>
+        /// <param name="executor"></param>
+        /// <returns></returns>
+        public SimpleWServer MapExecutor(string method, string path, HttpRouteExecutor executor) {
+            Router.Map(method, path, executor);
+            return this;
+        }
+
+        /// <summary>
+        /// Add HttpRouteExecutor for Method/Host/Path
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="host"></param>
+        /// <param name="path"></param>
+        /// <param name="executor"></param>
+        /// <returns></returns>
+        public SimpleWServer MapExecutor(string method, string host, string path, HttpRouteExecutor executor) {
+            Router.Map(method, host, path, executor);
+            return this;
+        }
+
+        #endregion map executor
+
         #region session
 
         /// <summary>
