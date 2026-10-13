@@ -1095,11 +1095,9 @@ namespace test {
                 using HttpClient client = new();
 
                 await UploadDirectAsync(client, server, "nested/file.txt", "v1");
-                await WaitUntilAsync(() => File.Exists(Path.Combine(root, "nested", "file.txt")));
                 Check.That(File.ReadAllText(Path.Combine(root, "nested", "file.txt"))).IsEqualTo("v1");
 
                 await UploadDirectAsync(client, server, "nested/file.txt", "v2");
-                await WaitUntilAsync(() => File.ReadAllText(Path.Combine(root, "nested", "file.txt")) == "v2");
                 Check.That(File.ReadAllText(Path.Combine(root, "nested", "file.txt"))).IsEqualTo("v2");
             }
             finally {
@@ -1557,14 +1555,34 @@ namespace test {
             request.Headers.Add("X-File-Path", Uri.EscapeDataString(relativePath));
             request.Content = new ByteArrayContent(bytes);
 
-            HttpResponseMessage upload = await client.SendAsync(request);
+            using HttpResponseMessage upload = await client.SendAsync(request);
             Check.That(upload.StatusCode).Is(HttpStatusCode.OK);
 
-            HttpResponseMessage complete = await client.PostAsync(
+            using HttpResponseMessage complete = await client.PostAsync(
                 $"http://{server.Address}:{server.Port}/files/api/uploads/{uploadId}/complete",
                 JsonContent(new { })
             );
             Check.That(complete.StatusCode).Is(HttpStatusCode.Accepted);
+
+            using JsonDocument accepted = await ReadJsonAsync(complete);
+            Guid operationId = accepted.RootElement.GetProperty("operationId").GetGuid();
+
+            // A 202 response only queues the replacement. Reading the destination
+            // before it completes can prevent File.Move from replacing it on Windows.
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(3));
+            while (true) {
+                using HttpResponseMessage response = await client.GetAsync(
+                    $"http://{server.Address}:{server.Port}/files/api/operations/{operationId}", timeout.Token
+                );
+                Check.That(response.StatusCode).Is(HttpStatusCode.OK);
+                using JsonDocument status = await ReadJsonAsync(response);
+                string? state = status.RootElement.GetProperty("state").GetString();
+                if (state is "completed" or "failed" or "cancelled") {
+                    Assert.True(state == "completed", $"Upload operation {operationId} did not complete: {status.RootElement.GetRawText()}");
+                    return;
+                }
+                await Task.Delay(25, timeout.Token);
+            }
         }
 
         private static async Task<Guid> CreateUploadAsync(HttpClient client, SimpleWServer server, string relativePath, long size) {
