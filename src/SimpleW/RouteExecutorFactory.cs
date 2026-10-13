@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -18,6 +19,8 @@ namespace SimpleW {
         /// <param name="handler"></param>
         /// <returns></returns>
         /// <exception cref="NotSupportedException"></exception>
+        [RequiresUnreferencedCode("Handler binding uses reflection and may access members removed by trimming. Provide an HttpRouteExecutor directly instead.")]
+        [RequiresDynamicCode("Handler binding may require generic instantiations unavailable under NativeAOT. Provide an HttpRouteExecutor directly instead.")]
         public static HttpRouteExecutor Create(Delegate handler) {
             ArgumentNullException.ThrowIfNull(handler);
 
@@ -325,6 +328,8 @@ namespace SimpleW {
         /// <param name="controllerType"></param>
         /// <param name="method"></param>
         /// <returns></returns>
+        [RequiresUnreferencedCode("Controller discovery and binding use reflection and may access members removed by trimming. Register routes explicitly with HttpRouteExecutor instead.")]
+        [RequiresDynamicCode("Controller binding may require generic instantiations unavailable under NativeAOT. Register routes explicitly with HttpRouteExecutor instead.")]
         internal static HttpRouteExecutor CreateControllerActionExecutor(Type controllerType, MethodInfo method) {
             ArgumentNullException.ThrowIfNull(controllerType);
             ArgumentNullException.ThrowIfNull(method);
@@ -614,6 +619,8 @@ namespace SimpleW {
         /// <param name="basePrefix"></param>
         /// <param name="actionExecutorFactory"></param>
         /// <exception cref="ArgumentException"></exception>
+        [RequiresUnreferencedCode("Controller discovery and binding use reflection and may access members removed by trimming. Register routes explicitly with HttpRouteExecutor instead.")]
+        [RequiresDynamicCode("Controller binding may require generic instantiations unavailable under NativeAOT. Register routes explicitly with HttpRouteExecutor instead.")]
         public static void RegisterController(Type controllerType, IRouter router, string? basePrefix, ControllerActionExecutorFactory? actionExecutorFactory = null) {
             ArgumentNullException.ThrowIfNull(controllerType);
             ArgumentNullException.ThrowIfNull(router);
