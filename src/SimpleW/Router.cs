@@ -616,7 +616,7 @@
         private HandlerMetadataCollection _fallbackMetadata = HandlerMetadataCollection.Empty;
 
         /// <summary>
-        /// Registers the fallback handler.
+        /// Register the fallback handler.
         /// </summary>
         /// <param name="handler"></param>
         public void MapFallback(Delegate handler) {
@@ -626,6 +626,19 @@
             }
             _fallback = RouteExecutorFactory.Create(handler);
             _fallbackMetadata = RouteExecutorFactory.GetMetadata(handler);
+        }
+
+        /// <summary>
+        /// Registers the fallback executor.
+        /// </summary>
+        /// <param name="executor"></param>
+        public void MapFallback(HttpRouteExecutor executor) {
+            ArgumentNullException.ThrowIfNull(executor);
+            if (!_isRootRouter) {
+                throw new InvalidOperationException("Fallback must be registered on the root router only.");
+            }
+            _fallback = executor;
+            _fallbackMetadata = HandlerMetadataCollection.Empty;
         }
 
         #endregion fallback

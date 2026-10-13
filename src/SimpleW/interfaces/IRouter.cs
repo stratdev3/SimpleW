@@ -71,6 +71,11 @@ namespace SimpleW {
         void MapFallback(Delegate handler);
 
         /// <summary>
+        /// Register the fallback executor.
+        /// </summary>
+        void MapFallback(HttpRouteExecutor executor);
+
+        /// <summary>
         /// Dispatch one HTTP session.
         /// </summary>
         ValueTask DispatchAsync(HttpSession session);
