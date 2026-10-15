@@ -632,7 +632,8 @@
 
         #region not found
 
-        private static readonly HttpRouteExecutor _notFoundExecutor = RouteExecutorFactory.Create(static (HttpSession s) => s.Response.Status(404).Text("Not Found").SendAsync());
+        // a plain HttpRouteExecutor rather than RouteExecutorFactory.Create() : a Delegate handler is compiled from an expression tree, which fails under NativeAOT
+        private static readonly HttpRouteExecutor _notFoundExecutor = static (session, _) => session.Response.Status(404).Text("Not Found").SendAsync();
 
         #endregion not found
 

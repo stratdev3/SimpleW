@@ -127,10 +127,11 @@ namespace SimpleW.Modules {
         /// <param name="server"></param>
         /// <exception cref="InvalidOperationException"></exception>
         public void Install(SimpleWServer server) {
+            // map an HttpRouteExecutor rather than a Delegate : a Delegate handler is compiled from an expression tree, which fails under NativeAOT
             // accept prefix
-            server.MapGet(_options.Prefix, (HttpSession session) => HandlerAsync(session));
+            server.Router.Map("GET", _options.Prefix, (session, _) => HandlerAsync(session));
             // accept prefix wildcard as fallback (but will enforce exact match)
-            server.MapGet(_options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
+            server.Router.Map("GET", _options.PrefixWildCard, (session, _) => HandlerAsync(session));
 
             _log.Info($"installed with prefix {_options.Prefix}");
         }

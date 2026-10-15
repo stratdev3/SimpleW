@@ -219,8 +219,9 @@ namespace SimpleW.Modules {
                 }
 
                 // map GET + HEAD
-                server.MapGet(_options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
-                server.Map("HEAD", _options.PrefixWildCard, (HttpSession session) => HandlerAsync(session));
+                // map an HttpRouteExecutor rather than a Delegate : a Delegate handler is compiled from an expression tree, which fails under NativeAOT
+                server.Router.Map("GET", _options.PrefixWildCard, (session, _) => HandlerAsync(session));
+                server.Router.Map("HEAD", _options.PrefixWildCard, (session, _) => HandlerAsync(session));
 
                 _log.Info($"installed with prefix {_options.Prefix}");
             }
