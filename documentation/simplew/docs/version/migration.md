@@ -12,9 +12,7 @@ Choose the starting point that matches your application:
 
 | Starting point | Recommended path |
 | --- | --- |
-| SimpleW v26.1 | Follow the [v26.1 to v26.1.1 guide](./migrate-from-v26.1-to-v26.1.1.md). |
-| SimpleW v26.0 | Follow the [v26.0 to v26.1 guide](./migrate-from-v26.0-to-v26.1.md), then the [v26.1 to v26.1.1 guide](./migrate-from-v26.1-to-v26.1.1.md). |
-| SimpleW v16 | Follow the [v16 to v26.0 guide](./migrate-from-v16-to-v26.md), then the v26.0 to v26.1 and v26.1 to v26.1.1 guides. |
+| SimpleW | Follow migrations guides in chronological order |
 | EmbedIO | Replace the server and modules first, then migrate controllers and request/response code. |
 | ASP.NET Core Minimal APIs | Use delegate handlers for the closest SimpleW equivalent. |
 | ASP.NET Core controllers | Use SimpleW controllers and make routing and body mapping explicit. |
