@@ -1,4 +1,4 @@
-version: 53
+version: 56
 jobs:
 - name: CI
   steps:
@@ -520,14 +520,14 @@ jobs:
     paths: src/
     userMatch: anyone
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1396,14 +1396,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1478,14 +1478,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1561,14 +1561,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1644,14 +1644,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1727,14 +1727,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1810,14 +1810,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1893,14 +1893,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -1976,14 +1976,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2059,14 +2059,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2142,14 +2142,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2225,14 +2225,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2308,14 +2308,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2391,14 +2391,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2474,14 +2474,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2557,14 +2557,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2640,14 +2640,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2723,14 +2723,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2806,14 +2806,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2889,14 +2889,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -2972,14 +2972,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -3055,14 +3055,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -3138,14 +3138,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -3221,14 +3221,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -3304,14 +3304,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -3389,14 +3389,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -3406,6 +3406,7 @@ jobs:
   - type: PushRepository
     name: push
     remoteUrl: https://github.com/stratdev3/SimpleW
+    userName: '@secret:github_username@'
     passwordSecret: github_token
     force: true
     condition: SUCCESSFUL
@@ -3414,14 +3415,14 @@ jobs:
   - jobName: CI
     requireSuccessful: true
     paramMatrix:
-    - valuesProvider:
+    - name: build_configuration
+      valuesProvider:
         type: SpecifiedValues
         values:
         - - Release
       secret: false
-      name: build_configuration
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
@@ -3458,11 +3459,11 @@ jobs:
   - type: PublishSiteStep
     name: publish site
     sourcePath: documentation/simplew/docs/.vitepress/dist/
-    artifacts: '**'
+    siteFiles: '**'
     condition: SUCCESSFUL
     optional: false
   retryCondition: never
-  maxRetries: 3
+  maxAttempts: 4
   retryDelay: 30
   includeUpstreamWhenRebuild: false
   includeDownstreamWhenRebuild: false
