@@ -35,7 +35,7 @@ Development prerequisites: Node >= 22.12 and npm, available on the IDE's PATH. T
 
 ## API address
 
-The module passes `VITE_SIMPLEW_API_URL` to the npm process. Configure its address with the single `ApiUrl` option, which defaults to `/api`:
+The module passes the same API address to the npm process through two environment variables: `SIMPLEW_API_URL` for any frontend tool and `VITE_SIMPLEW_API_URL` for Vite. Configure their shared value with the single `ApiUrl` option, which defaults to `/api`:
 
 ```csharp
 options.ApiUrl = "/api"; // Default: active SimpleW origin + /api.
@@ -55,7 +55,7 @@ if (!apiBaseUrl) throw new Error('VITE_SIMPLEW_API_URL is missing.');
 const response = await fetch(`${apiBaseUrl}/hello`);
 ```
 
-Vite exposes this variable to client code natively. It is passed only to the child process, without changing the system environment or writing a configuration file. Other frontend tools can read this variable through their own configuration; the module does not require a plugin.
+Vite exposes `VITE_SIMPLEW_API_URL` to client code natively. Other frontend tools can read `process.env.SIMPLEW_API_URL` in their Node.js configuration and expose it to browser code using their own mechanism. Both variables are passed only to the child process, without changing the system environment or writing a configuration file; the module does not require a plugin.
 
 The frontend chooses its own host and port. The module discovers the actual local HTTP(S) URL from the development script's stdout or stderr, verifies that it responds, then opens that URL and enables CORS for its origin. No frontend URL is configured in C# and no frontend configuration file is rewritten. A different port chosen by the frontend is detected automatically.
 
@@ -116,7 +116,7 @@ The package contains `buildTransitive` files that run only when publishing an ex
 </PropertyGroup>
 ```
 
-Publishing installs dependencies, then runs `npm run build` with `VITE_SIMPLEW_API_URL` set from `SimpleWNpmApiBaseUrl` and `NODE_ENV=production`. Vite embeds this value in the compiled JavaScript. `/api` uses the domain and port where SimpleW serves the application; an absolute URL can also be used for a separate deployment, with CORS configured in the application.
+Publishing installs dependencies, then runs `npm run build` with both `SIMPLEW_API_URL` and `VITE_SIMPLEW_API_URL` set to the same value from `SimpleWNpmApiBaseUrl`, and `NODE_ENV=production`. Vite embeds `VITE_SIMPLEW_API_URL` in the compiled JavaScript. `/api` uses the domain and port where SimpleW serves the application; an absolute URL can also be used for a separate deployment, with CORS configured in the application.
 
 The dist files are added to the publish output under `wwwroot`, as external files even for a single-file publish. An npm failure or a missing dist/index.html fails publication. With `SimpleWNpmBuildClient=false`, npm is not called: a dist directory already built with the correct API address is required and copied unchanged.
 

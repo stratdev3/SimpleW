@@ -89,6 +89,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 }
                 NodeToolchain toolchain = await NodeToolchain.FindAsync(_options, token).ConfigureAwait(false);
                 Dictionary<string, string> environment = new() {
+                    ["SIMPLEW_API_URL"] = apiUrl,
                     ["VITE_SIMPLEW_API_URL"] = apiUrl,
                     ["NODE_ENV"] = "development"
                 };

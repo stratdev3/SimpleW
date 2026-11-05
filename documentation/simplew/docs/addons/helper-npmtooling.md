@@ -111,7 +111,7 @@ The detector recognizes `Local: ...` (including Vite's default output), `Loopbac
 
 The module opens the browser itself. If your frontend also opens it, disable that feature there (for example `server.open: false` with Vite).
 
-Use `VITE_SIMPLEW_API_URL` to call your API from the client. The module supplies this address and enables development CORS:
+The module supplies the same API address through two environment variables: `SIMPLEW_API_URL` for any frontend tool and `VITE_SIMPLEW_API_URL` for Vite. It also enables development CORS. With Vite, use `VITE_SIMPLEW_API_URL` to call your API from the client:
 
 ```js
 const response = await fetch(`${import.meta.env.VITE_SIMPLEW_API_URL}/hello`);
@@ -119,6 +119,8 @@ const data = await response.json();
 ```
 
 In the example above, this calls `http://127.0.0.1:8080/api/hello`.
+
+Other frontend tools can read `process.env.SIMPLEW_API_URL` in their Node.js configuration and expose it to browser code using their own mechanism. `SIMPLEW_API_URL` is not automatically available in browser code.
 
 Use `ApiUrl` to change the API address:
 
@@ -161,7 +163,7 @@ dotnet publish -c Release
 With the NuGet package installed, publication automatically:
 
 1. Installs dependencies with `npm ci --include=dev` or `npm install --include=dev`.
-2. Runs `npm run build`.
+2. Runs `npm run build` with both `SIMPLEW_API_URL` and `VITE_SIMPLEW_API_URL` set to the value of `SimpleWNpmApiBaseUrl`.
 3. Copies the contents of `dist` into `wwwroot` in the publish directory.
 
 Node.js and npm must be available on the publishing machine. These steps do not run during a regular `dotnet build`.

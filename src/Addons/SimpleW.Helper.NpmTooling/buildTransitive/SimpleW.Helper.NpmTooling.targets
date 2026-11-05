@@ -23,7 +23,7 @@
     <Exec Condition="'$(SimpleWNpmBuildClient)' == 'true' and !Exists('$(_NpmSource)/package-lock.json')"
           WorkingDirectory="$(_NpmSource)" Command="npm install --include=dev" />
     <Exec Condition="'$(SimpleWNpmBuildClient)' == 'true'" WorkingDirectory="$(_NpmSource)"
-          EnvironmentVariables="VITE_SIMPLEW_API_URL=$(SimpleWNpmApiBaseUrl);NODE_ENV=production" Command="npm run build" />
+          EnvironmentVariables="SIMPLEW_API_URL=$(SimpleWNpmApiBaseUrl);VITE_SIMPLEW_API_URL=$(SimpleWNpmApiBaseUrl);NODE_ENV=production" Command="npm run build" />
     <Error Condition="!Exists('$(_NpmDist)/index.html')"
            Text="SimpleW.Helper.NpmTooling: $(_NpmDist)/index.html missing. Prepare the client or set SimpleWNpmDistPath." />
     <ItemGroup>

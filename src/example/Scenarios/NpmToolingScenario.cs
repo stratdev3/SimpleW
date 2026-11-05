@@ -44,7 +44,7 @@ internal sealed class NpmToolingScenario : IScenario {
 
         ExampleConsole.Info($"Frontend sources: {clientPath}");
         ExampleConsole.Info("The frontend address will be detected automatically from its startup output.");
-        ExampleConsole.Info("The helper passes the actual API address through VITE_SIMPLEW_API_URL.");
+        ExampleConsole.Info("The helper passes the actual API address through SIMPLEW_API_URL and VITE_SIMPLEW_API_URL.");
         return ExampleServer.RunAsync(server, "http", arguments, cancellationToken);
     }
 
