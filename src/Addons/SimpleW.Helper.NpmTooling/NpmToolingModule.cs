@@ -18,17 +18,17 @@ namespace SimpleW.Helper.NpmTooling {
 
             string environment = options.Environment ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
             if (!string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase)) {
-                new SpaFiles(options.Spa).Install(server);
+                new SpaFiles(options).Install(server);
                 return;
             }
 
             DevelopmentServer development = new(server, options);
 
             // cors
-            if (options.Spa.EnableDevelopmentCors) {
+            if (options.EnableDevelopmentCors) {
                 server.UseCorsModule(cors => {
-                    cors.Prefix = options.Spa.ApiPrefix;
-                    cors.AllowedOrigins = [ new Uri(options.Spa.DevelopmentUrl).GetLeftPart(UriPartial.Authority) ];
+                    cors.Prefix = options.ApiPrefix;
+                    cors.AllowedOrigins = [ new Uri(options.DevelopmentUrl).GetLeftPart(UriPartial.Authority) ];
                     cors.AllowCredentials = false;
                     cors.AllowedHeaders = "Content-Type, Authorization";
                 });

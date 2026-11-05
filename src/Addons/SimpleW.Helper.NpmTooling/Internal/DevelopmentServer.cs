@@ -24,25 +24,25 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         public DevelopmentServer(SimpleWServer server, NpmOptions options) {
             _server = server;
             _options = options;
-            _source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.Spa.SourcePath, AppContext.BaseDirectory));
-            _url = ValidateUrl(options.Spa.DevelopmentUrl);
+            _source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.SourcePath, AppContext.BaseDirectory));
+            _url = ValidateUrl(options.DevelopmentUrl);
             if (!_url.IsLoopback) {
-                throw new ArgumentException("Spa.DevelopmentUrl must use a loopback host.");
+                throw new ArgumentException("DevelopmentUrl must use a loopback host.");
             }
-            if (options.Spa.StartupTimeout <= TimeSpan.Zero || options.Spa.InstallTimeout <= TimeSpan.Zero) {
+            if (options.StartupTimeout <= TimeSpan.Zero || options.InstallTimeout <= TimeSpan.Zero) {
                 throw new ArgumentException("Npm timeouts must be positive.");
             }
-            if (string.IsNullOrWhiteSpace(options.Spa.Script) || options.Spa.Script.StartsWith('-')) {
-                throw new ArgumentException("Spa.Script must name an npm script.");
+            if (string.IsNullOrWhiteSpace(options.Script) || options.Script.StartsWith('-')) {
+                throw new ArgumentException("Script must name an npm script.");
             }
-            string prefix = options.Spa.ApiPrefix;
+            string prefix = options.ApiPrefix;
             if (!prefix.StartsWith('/') || prefix.StartsWith("//", StringComparison.Ordinal)
                 || prefix.TrimEnd('/').Length < 2 || prefix.IndexOfAny(['?', '#', '\\']) >= 0
             ) {
-                throw new ArgumentException("Spa.ApiPrefix must be an absolute URL path such as /api.");
+                throw new ArgumentException("ApiPrefix must be an absolute URL path such as /api.");
             }
-            if (options.Spa.BackendUrl != null) {
-                ValidateUrl(options.Spa.BackendUrl);
+            if (options.BackendUrl != null) {
+                ValidateUrl(options.BackendUrl);
             }
         }
 
@@ -85,8 +85,8 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 using HttpClient http = new(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false }) {
                     Timeout = TimeSpan.FromSeconds(2)
                 };
-                string apiUrl = BackendUrl() + _options.Spa.ApiPrefix.TrimEnd('/');
-                if (!_options.Spa.LaunchDevelopmentServer) {
+                string apiUrl = BackendUrl() + _options.ApiPrefix.TrimEnd('/');
+                if (!_options.LaunchDevelopmentServer) {
                     Log($"Waiting for external frontend at {_url}. Configure VITE_SIMPLEW_API_URL={apiUrl} in its environment.");
                     await WaitUntilReadyAsync(http, null, token).ConfigureAwait(false);
                     OpenBrowser();
@@ -99,43 +99,43 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 }
 
                 if (!File.Exists(Path.Combine(_source, "package.json"))) {
-                    throw new FileNotFoundException($"Client package.json missing in '{_source}'. Configure Spa.SourcePath.");
+                    throw new FileNotFoundException($"Client package.json missing in '{_source}'. Configure SourcePath.");
                 }
                 if (await ProbeAsync(http, token).ConfigureAwait(false) != null) {
-                    throw new InvalidOperationException($"A server already responds at {_url}. Stop it or set Spa.LaunchDevelopmentServer=false to use an externally managed frontend.");
+                    throw new InvalidOperationException($"A server already responds at {_url}. Stop it or set LaunchDevelopmentServer=false to use an externally managed frontend.");
                 }
                 // A probe timeout does not prove a port is busy. The script must fail on bind conflicts
                 // (Vite: strictPort=true) instead of switching silently to another port.
-                NodeToolchain toolchain = await NodeToolchain.FindAsync(_options.Spa, token).ConfigureAwait(false);
+                NodeToolchain toolchain = await NodeToolchain.FindAsync(_options, token).ConfigureAwait(false);
                 Dictionary<string, string> environment = new() {
                     ["VITE_SIMPLEW_API_URL"] = apiUrl,
                     ["NODE_ENV"] = "development"
                 };
                 if (DependenciesMissing()) {
-                    if (!_options.Spa.InstallDependencies) {
-                        throw new InvalidOperationException($"Client dependencies are missing in '{_source}'. Enable Spa.InstallDependencies or install them separately.");
+                    if (!_options.InstallDependencies) {
+                        throw new InvalidOperationException($"Client dependencies are missing in '{_source}'. Enable InstallDependencies or install them separately.");
                     }
                     string install = File.Exists(Path.Combine(_source, "package-lock.json")) ? "ci" : "install";
                     Log($"npm {install} --include=dev in {_source}");
                     using CancellationTokenSource installTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-                    installTimeout.CancelAfter(_options.Spa.InstallTimeout);
+                    installTimeout.CancelAfter(_options.InstallTimeout);
                     await using NpmProcess installer = NpmProcess.Start(toolchain.Node, toolchain.NpmCli, _source,
                         [install, "--include=dev"], environment, _options.ClientLogger);
                     try { await installer.WaitAsync(installTimeout.Token).ConfigureAwait(false); }
                     catch (OperationCanceledException) when (!token.IsCancellationRequested) {
-                        throw new TimeoutException($"npm installation exceeded {_options.Spa.InstallTimeout}.");
+                        throw new TimeoutException($"npm installation exceeded {_options.InstallTimeout}.");
                     }
                     if (installer.ExitCode != 0) {
                         throw new InvalidOperationException($"npm {install} failed with exit code {installer.ExitCode}.");
                     }
                 }
                 token.ThrowIfCancellationRequested();
-                List<string> arguments = ["run", _options.Spa.Script];
-                if (_options.Spa.ScriptArguments.Count != 0) {
+                List<string> arguments = ["run", _options.Script];
+                if (_options.ScriptArguments.Count != 0) {
                     arguments.Add("--");
-                    arguments.AddRange(_options.Spa.ScriptArguments);
+                    arguments.AddRange(_options.ScriptArguments);
                 }
-                Log($"npm run {_options.Spa.Script} in {_source}; API: {apiUrl}");
+                Log($"npm run {_options.Script} in {_source}; API: {apiUrl}");
                 await using NpmProcess client = NpmProcess.Start(
                     toolchain.Node, toolchain.NpmCli, _source,
                     arguments, environment, _options.ClientLogger
@@ -165,7 +165,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <returns>A task that completes when the frontend returns an HTTP 2xx response.</returns>
         private async Task WaitUntilReadyAsync(HttpClient http, NpmProcess? client, CancellationToken token) {
             using CancellationTokenSource startup = CancellationTokenSource.CreateLinkedTokenSource(token);
-            startup.CancelAfter(_options.Spa.StartupTimeout);
+            startup.CancelAfter(_options.StartupTimeout);
             try {
                 while (true) {
                     ThrowIfExited(client);
@@ -178,7 +178,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 }
             }
             catch (OperationCanceledException) when (!token.IsCancellationRequested) {
-                throw new TimeoutException($"Frontend did not become ready at {_url} within {_options.Spa.StartupTimeout}. Check the script, host and port.");
+                throw new TimeoutException($"Frontend did not become ready at {_url} within {_options.StartupTimeout}. Check the script, host and port.");
             }
         }
 
@@ -219,9 +219,9 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// </summary>
         /// <returns>The HTTP(S) backend origin without the API prefix.</returns>
         private string BackendUrl() {
-            if (_options.Spa.BackendUrl != null)
-                return ValidateUrl(_options.Spa.BackendUrl).GetLeftPart(UriPartial.Authority);
-            IPAddress address = _server.Address ?? throw new InvalidOperationException("Set Spa.BackendUrl when using a Unix socket.");
+            if (_options.BackendUrl != null)
+                return ValidateUrl(_options.BackendUrl).GetLeftPart(UriPartial.Authority);
+            IPAddress address = _server.Address ?? throw new InvalidOperationException("Set BackendUrl when using a Unix socket.");
             if (address.Equals(IPAddress.Any)) {
                 address = IPAddress.Loopback;
             }
@@ -268,7 +268,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// Opens the frontend in the default browser when enabled, logging launch failures as warnings.
         /// </summary>
         private void OpenBrowser() {
-            if (!_options.Spa.OpenBrowser) {
+            if (!_options.OpenBrowser) {
                 return;
             }
             try { Process.Start(new ProcessStartInfo(_url.AbsoluteUri) { UseShellExecute = true }); }

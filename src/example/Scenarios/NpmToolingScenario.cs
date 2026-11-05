@@ -35,13 +35,13 @@ internal sealed class NpmToolingScenario : IScenario {
 
         server.UseNpmToolingModule(options => {
             options.Environment = "Development";
-            options.Spa.SourcePath = clientPath;
-            options.Spa.DevelopmentUrl = "http://localhost:5173";
-            options.Spa.ApiPrefix = "/api";
-            options.Spa.LaunchDevelopmentServer = true;
-            options.Spa.InstallDependencies = true;
-            options.Spa.EnableDevelopmentCors = true;
-            options.Spa.OpenBrowser = openBrowser;
+            options.SourcePath = clientPath;
+            options.DevelopmentUrl = "http://localhost:5173";
+            options.ApiPrefix = "/api";
+            options.LaunchDevelopmentServer = true;
+            options.InstallDependencies = true;
+            options.EnableDevelopmentCors = true;
+            options.OpenBrowser = openBrowser;
         });
 
         ExampleConsole.Info($"Frontend sources: {clientPath}");

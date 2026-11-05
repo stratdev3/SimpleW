@@ -15,17 +15,17 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <param name="options">Optional explicit paths that override tool discovery.</param>
         /// <param name="token">Cancellation token for the Node version check.</param>
         /// <returns>The toolchain to use for dependency installation and frontend startup.</returns>
-        public static async Task<NodeToolchain> FindAsync(NpmSpaOptions options, CancellationToken token) {
+        public static async Task<NodeToolchain> FindAsync(NpmOptions options, CancellationToken token) {
             string node = options.NodePath == null
                                 ? FindOnPath(OperatingSystem.IsWindows() ? "node.exe" : "node")
                                 : Path.GetFullPath(options.NodePath);
 
             if (!File.Exists(node)) {
-                throw new FileNotFoundException("Node >= 22.12 is required. Install Node.js or configure Spa.NodePath.", node);
+                throw new FileNotFoundException("Node >= 22.12 is required. Install Node.js or configure NodePath.", node);
             }
             string npmCli = options.NpmCliPath == null ? FindNpm(node) : Path.GetFullPath(options.NpmCliPath);
             if (!File.Exists(npmCli)) {
-                throw new FileNotFoundException("npm-cli.js was not found. Install npm or configure Spa.NpmCliPath.", npmCli);
+                throw new FileNotFoundException("npm-cli.js was not found. Install npm or configure NpmCliPath.", npmCli);
             }
 
             ProcessStartInfo info = new(node) {
@@ -106,7 +106,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                     }
                 }
             }
-            throw new FileNotFoundException("npm-cli.js was not found. Configure Spa.NpmCliPath for your Node installation.");
+            throw new FileNotFoundException("npm-cli.js was not found. Configure NpmCliPath for your Node installation.");
         }
 
     }

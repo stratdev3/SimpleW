@@ -24,8 +24,8 @@ var server = new SimpleWServer(IPAddress.Loopback, 8080);
 server.MapGet("/api/hello", () => new { message = "Hello" });
 server.UseNpmToolingModule(options => {
     options.Environment = "Development";
-    options.Spa.SourcePath = "../client"; // Relative to AppContext.BaseDirectory, or use an absolute path.
-    options.Spa.DevelopmentUrl = "http://localhost:5173";
+    options.SourcePath = "../client"; // Relative to AppContext.BaseDirectory, or use an absolute path.
+    options.DevelopmentUrl = "http://localhost:5173";
 });
 await server.RunAsync();
 ```
@@ -36,7 +36,7 @@ Development prerequisites: Node >= 22.12 and npm, available on the IDE's PATH. T
 
 ## API address
 
-The module passes `VITE_SIMPLEW_API_URL` to the npm process, for example `http://127.0.0.1:8080/api`. The origin comes from the active SimpleW listener, or from `Spa.BackendUrl` when specified. `Spa.ApiPrefix` is appended to that origin. An address bound to all interfaces is replaced with a loopback address for local development.
+The module passes `VITE_SIMPLEW_API_URL` to the npm process, for example `http://127.0.0.1:8080/api`. The origin comes from the active SimpleW listener, or from `BackendUrl` when specified. `ApiPrefix` is appended to that origin. An address bound to all interfaces is replaced with a loopback address for local development.
 
 In a SPA using Vite:
 
@@ -63,25 +63,25 @@ Keep any plugins required by the framework, such as `vue()`. Do not add an `/api
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `Environment` | DOTNET_ENVIRONMENT, otherwise Production | Select development or production |
-| `Spa.SourcePath` | `../client` | Directory containing package.json, relative to AppContext.BaseDirectory or absolute |
-| `Spa.ProductionPath` | `wwwroot` | Absolute path or path relative to the executable directory |
-| `Spa.DevelopmentUrl` | `http://localhost:5173` | HTTP(S) loopback origin, without credentials, subpath, query or fragment |
-| `Spa.BackendUrl` | Listener origin | Explicit API origin override; required for a Unix socket |
-| `Spa.ApiPrefix` | `/api` | REST prefix, CORS scope and exclusion from the SPA fallback |
-| `Spa.Script` | `dev` | npm script to run |
-| `Spa.ScriptArguments` | Empty list | Separate arguments after the npm `--` separator |
-| `Spa.LaunchDevelopmentServer` | `true` | Start the frontend or wait for an external frontend |
-| `Spa.EnableDevelopmentCors` | `true` | Install development CORS rules |
-| `Spa.InstallDependencies` | `true` | Install missing direct dependencies |
-| `Spa.OpenBrowser` | `true` | Open the frontend once it is available over HTTP |
-| `Spa.StartupTimeout` | 60 seconds | Maximum wait for an HTTP 2xx response at the frontend root |
-| `Spa.InstallTimeout` | 10 minutes | Dependency installation time limit |
-| `Spa.NodePath` / `Spa.NpmCliPath` | Automatic discovery | Explicit paths for custom installations |
+| `SourcePath` | `../client` | Directory containing package.json, relative to AppContext.BaseDirectory or absolute |
+| `ProductionPath` | `wwwroot` | Absolute path or path relative to the executable directory |
+| `DevelopmentUrl` | `http://localhost:5173` | HTTP(S) loopback origin, without credentials, subpath, query or fragment |
+| `BackendUrl` | Listener origin | Explicit API origin override; required for a Unix socket |
+| `ApiPrefix` | `/api` | REST prefix, CORS scope and exclusion from the SPA fallback |
+| `Script` | `dev` | npm script to run |
+| `ScriptArguments` | Empty list | Separate arguments after the npm `--` separator |
+| `LaunchDevelopmentServer` | `true` | Start the frontend or wait for an external frontend |
+| `EnableDevelopmentCors` | `true` | Install development CORS rules |
+| `InstallDependencies` | `true` | Install missing direct dependencies |
+| `OpenBrowser` | `true` | Open the frontend once it is available over HTTP |
+| `StartupTimeout` | 60 seconds | Maximum wait for an HTTP 2xx response at the frontend root |
+| `InstallTimeout` | 10 minutes | Dependency installation time limit |
+| `NodePath` / `NpmCliPath` | Automatic discovery | Explicit paths for custom installations |
 | `ServerLogger` / `ClientLogger` | SimpleW.Helper.NpmTooling.Server and .Client loggers | Separate supervision messages and npm output |
 
 Configure options before installing the module; do not change them while it is running. npm stderr output is logged as warnings; process failures are logged by the supervisor.
 
-Relative source paths are resolved from `AppContext.BaseDirectory` (the executable directory), independently of the working directory. For example, `../client` points to a sibling of the executable directory, not the server project directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; use an absolute source path or adjust the relative path accordingly. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `Spa.SourcePath`.
+Relative source paths are resolved from `AppContext.BaseDirectory` (the executable directory), independently of the working directory. For example, `../client` points to a sibling of the executable directory, not the server project directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; use an absolute source path or adjust the relative path accordingly. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `SourcePath`.
 
 ### CORS
 
@@ -118,7 +118,7 @@ Publishing installs dependencies, then runs `npm run build` with `VITE_SIMPLEW_A
 
 The dist files are added to the publish output under `wwwroot`, as external files even for a single-file publish. An npm failure or a missing dist/index.html fails publication. With `SimpleWNpmBuildClient=false`, npm is not called: a dist directory already built with the correct API address is required and copied unchanged.
 
-MSBuild does not read C# runtime options. For a custom prefix, configure both `Spa.ApiPrefix` and `SimpleWNpmApiBaseUrl`. Likewise, keep `Spa.SourcePath` and `SimpleWNpmSourcePath` consistent. The legacy names `SimpleWStackSourcePath`, `SimpleWStackDistPath` and `SimpleWStackBuildClient` are accepted for migration; explicitly set new properties take precedence.
+MSBuild does not read C# runtime options. For a custom prefix, configure both `ApiPrefix` and `SimpleWNpmApiBaseUrl`. Likewise, keep `SourcePath` and `SimpleWNpmSourcePath` consistent. The legacy names `SimpleWStackSourcePath`, `SimpleWStackDistPath` and `SimpleWStackBuildClient` are accepted for migration; explicitly set new properties take precedence.
 
 NuGet consumption imports the targets automatically. With ProjectReference, explicitly import `buildTransitive/SimpleW.Helper.NpmTooling.targets` into the executable project.
 

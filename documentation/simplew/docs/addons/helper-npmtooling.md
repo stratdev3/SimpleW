@@ -48,26 +48,26 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `Environment` | `null` | Uses `DOTNET_ENVIRONMENT`, then `Production`. |
-| `Spa.SourcePath` | `../client` | Directory containing package.json, relative to `AppContext.BaseDirectory` or absolute. |
-| `Spa.ProductionPath` | `wwwroot` | Compiled files, relative to the application directory. |
-| `Spa.ApiPrefix` | `/api` | API prefix, excluded from frontend navigation fallback. |
+| `SourcePath` | `../client` | Directory containing package.json, relative to `AppContext.BaseDirectory` or absolute. |
+| `ProductionPath` | `wwwroot` | Compiled files, relative to the application directory. |
+| `ApiPrefix` | `/api` | API prefix, excluded from frontend navigation fallback. |
 
 ### Development
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `Spa.DevelopmentUrl` | `http://localhost:5173` | Local frontend address to wait for and open. |
-| `Spa.BackendUrl` | `null` | Override the API origin; otherwise use the SimpleW listener. |
-| `Spa.Script` | `dev` | npm script to launch. |
-| `Spa.ScriptArguments` | Empty list | Extra script arguments, passed after `--`. |
-| `Spa.LaunchDevelopmentServer` | `true` | Set to `false` if you start the frontend yourself. |
-| `Spa.InstallDependencies` | `true` | Set to `false` to install dependencies yourself. |
-| `Spa.EnableDevelopmentCors` | `true` | Allow frontend API calls; disable if you manage CORS yourself. |
-| `Spa.OpenBrowser` | `true` | Open the browser when ready. |
-| `Spa.StartupTimeout` | 60 seconds | How long to wait for the frontend. |
-| `Spa.InstallTimeout` | 10 minutes | Maximum dependency installation time. |
-| `Spa.NodePath` | Auto-detected | Explicit Node executable path. |
-| `Spa.NpmCliPath` | Auto-detected | Explicit path to `npm-cli.js`. |
+| `DevelopmentUrl` | `http://localhost:5173` | Local frontend address to wait for and open. |
+| `BackendUrl` | `null` | Override the API origin; otherwise use the SimpleW listener. |
+| `Script` | `dev` | npm script to launch. |
+| `ScriptArguments` | Empty list | Extra script arguments, passed after `--`. |
+| `LaunchDevelopmentServer` | `true` | Set to `false` if you start the frontend yourself. |
+| `InstallDependencies` | `true` | Set to `false` to install dependencies yourself. |
+| `EnableDevelopmentCors` | `true` | Allow frontend API calls; disable if you manage CORS yourself. |
+| `OpenBrowser` | `true` | Open the browser when ready. |
+| `StartupTimeout` | 60 seconds | How long to wait for the frontend. |
+| `InstallTimeout` | 10 minutes | Maximum dependency installation time. |
+| `NodePath` | Auto-detected | Explicit Node executable path. |
+| `NpmCliPath` | Auto-detected | Explicit path to `npm-cli.js`. |
 
 ### Logging
 
@@ -93,14 +93,14 @@ var server = new SimpleWServer(IPAddress.Loopback, 8080);
 server.MapGet("/api/hello", () => new { message = "Hello!" });
 
 server.UseNpmToolingModule(options => {
-    options.Spa.SourcePath = "../client";
-    options.Spa.DevelopmentUrl = "http://localhost:5173";
+    options.SourcePath = "../client";
+    options.DevelopmentUrl = "http://localhost:5173";
 });
 
 await server.RunAsync();
 ```
 
-`SourcePath` is relative to `AppContext.BaseDirectory` (the executable directory), independently of the working directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; adjust the relative path for your layout or provide an absolute path to the directory containing `package.json`. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `Spa.SourcePath`.
+`SourcePath` is relative to `AppContext.BaseDirectory` (the executable directory), independently of the working directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; adjust the relative path for your layout or provide an absolute path to the directory containing `package.json`. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `SourcePath`.
 
 Set `DOTNET_ENVIRONMENT` to `Development` in your IDE's launch profile. The module uses this variable unless you set `options.Environment` explicitly. Any other value, or no value, selects production mode.
 
@@ -141,7 +141,7 @@ Start the C# application from your IDE with the development profile. You do not 
 
 If the frontend fails, the backend stays available. The frontend is not restarted automatically.
 
-To start the frontend yourself, set `Spa.LaunchDevelopmentServer = false` and supply `VITE_SIMPLEW_API_URL` in its environment. The module waits for it but does not stop it. See [Configuration options](#configuration-options) for other settings.
+To start the frontend yourself, set `LaunchDevelopmentServer = false` and supply `VITE_SIMPLEW_API_URL` in its environment. The module waits for it but does not stop it. See [Configuration options](#configuration-options) for other settings.
 
 ## Minimal Production Example
 
@@ -174,7 +174,7 @@ The defaults expect `../client` as the frontend directory and `/api` as the API 
 | `SimpleWNpmApiBaseUrl` | `/api` | API address passed to the frontend build. |
 | `SimpleWNpmBuildClient` | `true` | Set to `false` to copy an already built frontend without running npm. |
 
-Publish settings are separate from C# options: changing `Spa.SourcePath` does not change `SimpleWNpmSourcePath`. For a custom API prefix, set both `Spa.ApiPrefix` and `SimpleWNpmApiBaseUrl`.
+Publish settings are separate from C# options: changing `SourcePath` does not change `SimpleWNpmSourcePath`. For a custom API prefix, set both `ApiPrefix` and `SimpleWNpmApiBaseUrl`.
 
 ### Run
 

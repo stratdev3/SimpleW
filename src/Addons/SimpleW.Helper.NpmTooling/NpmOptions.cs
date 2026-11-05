@@ -14,11 +14,6 @@ namespace SimpleW.Helper.NpmTooling {
         public string? Environment { get; set; }
 
         /// <summary>
-        /// Frontend configuration.
-        /// </summary>
-        public NpmSpaOptions Spa { get; } = new();
-
-        /// <summary>
         /// Server lifecycle and supervision logger.
         /// </summary>
         public ILogger ServerLogger { get; set; } = new Logger("SimpleW.Helper.NpmTooling.Server");
@@ -27,13 +22,6 @@ namespace SimpleW.Helper.NpmTooling {
         /// Captured npm stdout and stderr logger.
         /// </summary>
         public ILogger ClientLogger { get; set; } = new Logger("SimpleW.Helper.NpmTooling.Client");
-
-    }
-
-    /// <summary>
-    /// Development and production frontend options.
-    /// </summary>
-    public sealed class NpmSpaOptions {
 
         /// <summary>
         /// Client directory containing package.json, relative to AppContext.BaseDirectory or absolute.
