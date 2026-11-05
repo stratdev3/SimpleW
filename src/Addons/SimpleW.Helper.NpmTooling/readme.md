@@ -24,8 +24,7 @@ var server = new SimpleWServer(IPAddress.Loopback, 8080);
 server.MapGet("/api/hello", () => new { message = "Hello" });
 server.UseNpmToolingModule(options => {
     options.Environment = "Development";
-    options.ContentRootPath = System.IO.Directory.GetCurrentDirectory(); // Server project directory.
-    options.Spa.SourcePath = "../client";
+    options.Spa.SourcePath = "../client"; // Relative to AppContext.BaseDirectory, or use an absolute path.
     options.Spa.DevelopmentUrl = "http://localhost:5173";
 });
 await server.RunAsync();
@@ -64,8 +63,7 @@ Keep any plugins required by the framework, such as `vue()`. Do not add an `/api
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `Environment` | DOTNET_ENVIRONMENT, otherwise Production | Select development or production |
-| `ContentRootPath` | Current working directory | Base path for resolving the client directory |
-| `Spa.SourcePath` | `../client` | Root directory containing package.json |
+| `Spa.SourcePath` | `../client` | Directory containing package.json, relative to AppContext.BaseDirectory or absolute |
 | `Spa.ProductionPath` | `wwwroot` | Absolute path or path relative to the executable directory |
 | `Spa.DevelopmentUrl` | `http://localhost:5173` | HTTP(S) loopback origin, without credentials, subpath, query or fragment |
 | `Spa.BackendUrl` | Listener origin | Explicit API origin override; required for a Unix socket |
@@ -82,6 +80,8 @@ Keep any plugins required by the framework, such as `vue()`. Do not add an `/api
 | `ServerLogger` / `ClientLogger` | SimpleW.Helper.NpmTooling.Server and .Client loggers | Separate supervision messages and npm output |
 
 Configure options before installing the module; do not change them while it is running. npm stderr output is logged as warnings; process failures are logged by the supervisor.
+
+Relative source paths are resolved from `AppContext.BaseDirectory` (the executable directory), independently of the working directory. For example, `../client` points to a sibling of the executable directory, not the server project directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; use an absolute source path or adjust the relative path accordingly. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `Spa.SourcePath`.
 
 ### CORS
 

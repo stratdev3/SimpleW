@@ -48,8 +48,7 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `Environment` | `null` | Uses `DOTNET_ENVIRONMENT`, then `Production`. |
-| `ContentRootPath` | Current working directory | Base directory for `Spa.SourcePath`. |
-| `Spa.SourcePath` | `../client` | Frontend source directory. |
+| `Spa.SourcePath` | `../client` | Directory containing package.json, relative to `AppContext.BaseDirectory` or absolute. |
 | `Spa.ProductionPath` | `wwwroot` | Compiled files, relative to the application directory. |
 | `Spa.ApiPrefix` | `/api` | API prefix, excluded from frontend navigation fallback. |
 
@@ -82,7 +81,7 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 
 ### C# server
 
-In `Program.cs`, register the module before starting the server. This example assumes a `client` folder next to your server project:
+In `Program.cs`, register the module before starting the server. This example assumes a `client` folder next to the executable directory:
 
 ```csharp
 using System.Net;
@@ -101,7 +100,7 @@ server.UseNpmToolingModule(options => {
 await server.RunAsync();
 ```
 
-`SourcePath` is relative to the working directory. Start from the server project directory, or provide an absolute path.
+`SourcePath` is relative to `AppContext.BaseDirectory` (the executable directory), independently of the working directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; adjust the relative path for your layout or provide an absolute path to the directory containing `package.json`. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `Spa.SourcePath`.
 
 Set `DOTNET_ENVIRONMENT` to `Development` in your IDE's launch profile. The module uses this variable unless you set `options.Environment` explicitly. Any other value, or no value, selects production mode.
 

@@ -24,7 +24,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         public DevelopmentServer(SimpleWServer server, NpmOptions options) {
             _server = server;
             _options = options;
-            _source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.Spa.SourcePath, Path.GetFullPath(options.ContentRootPath)));
+            _source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.Spa.SourcePath, AppContext.BaseDirectory));
             _url = ValidateUrl(options.Spa.DevelopmentUrl);
             if (!_url.IsLoopback) {
                 throw new ArgumentException("Spa.DevelopmentUrl must use a loopback host.");

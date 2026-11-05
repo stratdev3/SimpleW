@@ -14,11 +14,6 @@ namespace SimpleW.Helper.NpmTooling {
         public string? Environment { get; set; }
 
         /// <summary>
-        /// Base directory used to resolve Spa.SourcePath.
-        /// </summary>
-        public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
-
-        /// <summary>
         /// Frontend configuration.
         /// </summary>
         public NpmSpaOptions Spa { get; } = new();
@@ -41,7 +36,7 @@ namespace SimpleW.Helper.NpmTooling {
     public sealed class NpmSpaOptions {
 
         /// <summary>
-        /// Client directory relative to ContentRootPath, or an absolute path.
+        /// Client directory containing package.json, relative to AppContext.BaseDirectory or absolute.
         /// </summary>
         public string SourcePath { get; set; } = "../client";
 

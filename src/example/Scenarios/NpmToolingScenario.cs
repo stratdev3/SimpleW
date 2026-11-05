@@ -35,7 +35,6 @@ internal sealed class NpmToolingScenario : IScenario {
 
         server.UseNpmToolingModule(options => {
             options.Environment = "Development";
-            options.ContentRootPath = AppContext.BaseDirectory;
             options.Spa.SourcePath = clientPath;
             options.Spa.DevelopmentUrl = "http://localhost:5173";
             options.Spa.ApiPrefix = "/api";
