@@ -28,7 +28,7 @@ namespace SimpleW.Helper.NpmTooling {
             if (options.EnableDevelopmentCors) {
                 server.UseCorsModule(cors => {
                     cors.Prefix = options.ApiPrefix;
-                    cors.AllowedOrigins = [ new Uri(options.DevelopmentUrl).GetLeftPart(UriPartial.Authority) ];
+                    cors.OriginValidator = development.IsOriginAllowed;
                     cors.AllowCredentials = false;
                     cors.AllowedHeaders = "Content-Type, Authorization";
                 });

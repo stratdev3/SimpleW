@@ -34,11 +34,6 @@ namespace SimpleW.Helper.NpmTooling {
         public string ProductionPath { get; set; } = "wwwroot";
 
         /// <summary>
-        /// Local frontend HTTP(S) origin, also used for the browser and CORS.
-        /// </summary>
-        public string DevelopmentUrl { get; set; } = "http://localhost:5173";
-
-        /// <summary>
         /// Override for the backend origin; otherwise derived from the actual listener.
         /// </summary>
         public string? BackendUrl { get; set; }
@@ -52,11 +47,6 @@ namespace SimpleW.Helper.NpmTooling {
         /// Arguments passed to the script after npm's -- separator.
         /// </summary>
         public List<string> ScriptArguments { get; } = new();
-
-        /// <summary>
-        /// False waits for an externally managed frontend without starting npm.
-        /// </summary>
-        public bool LaunchDevelopmentServer { get; set; } = true;
 
         /// <summary>
         /// Allow the frontend origin on the API prefix in Development, without credentials.
@@ -74,7 +64,7 @@ namespace SimpleW.Helper.NpmTooling {
         public bool OpenBrowser { get; set; } = true;
 
         /// <summary>
-        /// Maximum time to wait for a successful frontend HTTP response.
+        /// Maximum time to discover the frontend URL from its output and receive a successful HTTP response.
         /// </summary>
         public TimeSpan StartupTimeout { get; set; } = TimeSpan.FromSeconds(60);
 

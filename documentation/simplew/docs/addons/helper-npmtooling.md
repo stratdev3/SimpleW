@@ -56,15 +56,13 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `DevelopmentUrl` | `http://localhost:5173` | Local frontend address to wait for and open. |
 | `BackendUrl` | `null` | Override the API origin; otherwise use the SimpleW listener. |
 | `Script` | `dev` | npm script to launch. |
 | `ScriptArguments` | Empty list | Extra script arguments, passed after `--`. |
-| `LaunchDevelopmentServer` | `true` | Set to `false` if you start the frontend yourself. |
 | `InstallDependencies` | `true` | Set to `false` to install dependencies yourself. |
 | `EnableDevelopmentCors` | `true` | Allow frontend API calls; disable if you manage CORS yourself. |
 | `OpenBrowser` | `true` | Open the browser when ready. |
-| `StartupTimeout` | 60 seconds | How long to wait for the frontend. |
+| `StartupTimeout` | 60 seconds | How long to discover the URL and wait for the frontend to respond. |
 | `InstallTimeout` | 10 minutes | Maximum dependency installation time. |
 | `NodePath` | Auto-detected | Explicit Node executable path. |
 | `NpmCliPath` | Auto-detected | Explicit path to `npm-cli.js`. |
@@ -94,7 +92,6 @@ server.MapGet("/api/hello", () => new { message = "Hello!" });
 
 server.UseNpmToolingModule(options => {
     options.SourcePath = "../client";
-    options.DevelopmentUrl = "http://localhost:5173";
 });
 
 await server.RunAsync();
@@ -108,18 +105,11 @@ Set `DOTNET_ENVIRONMENT` to `Development` in your IDE's launch profile. The modu
 
 For a Vite frontend, ensure `package.json` contains a `dev` script: `"dev": "vite"`.
 
-Your frontend must listen at `DevelopmentUrl`. With Vite, add these settings to your existing `vite.config.js` configuration:
+Keep the host and port in your frontend configuration. NpmTooling reads the actual local HTTP(S) address announced by the script on stdout or stderr, including a different port selected by the frontend when one is occupied. You do not configure this address in C#.
 
-```js
-server: {
-    host: 'localhost',
-    port: 5173,
-    strictPort: true,
-    open: false
-}
-```
+The detector recognizes `Local: ...` (including Vite's default output), `Loopback: ...` and announcements such as `Listening on http://localhost:3000/`. It handles terminal colors, IPv4/IPv6 and application base paths. Only loopback URLs are used; wildcard bind addresses are converted to loopback. Unrelated log links and network URLs are ignored. Keep startup address logging enabled: a silent server or an unrecognized custom format will time out with a diagnostic instead of guessing a port. HTTPS requires a certificate trusted by the backend machine.
 
-`strictPort` prevents Vite from silently choosing another port. The module opens the browser itself.
+The module opens the browser itself. If your frontend also opens it, disable that feature there (for example `server.open: false` with Vite).
 
 Use `VITE_SIMPLEW_API_URL` to call your API from the client. The module supplies this address and enables development CORS:
 
@@ -136,12 +126,12 @@ Start the C# application from your IDE with the development profile. You do not 
 
 1. Installs missing dependencies with `npm ci --include=dev` if a lockfile exists, otherwise `npm install --include=dev`.
 2. Runs `npm run dev` and sends its output to SimpleW logs.
-3. Waits for the frontend to respond, then opens `http://localhost:5173` in the browser.
+3. Detects the announced URL, waits for HTTP 2xx at that address, enables CORS for its exact origin and opens it in the browser.
 4. Stops the frontend processes when SimpleW stops.
 
 If the frontend fails, the backend stays available. The frontend is not restarted automatically.
 
-To start the frontend yourself, set `LaunchDevelopmentServer = false` and supply `VITE_SIMPLEW_API_URL` in its environment. The module waits for it but does not stop it. See [Configuration options](#configuration-options) for other settings.
+In Development, NpmTooling always launches and owns the frontend. CORS allows no origin before readiness and clears the detected origin when the frontend exits or stops. A discovery/readiness timeout stops the owned processes and logs whether the address was missing or unreachable. See [Configuration options](#configuration-options) for other settings.
 
 ## Minimal Production Example
 

@@ -20,11 +20,12 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <param name="process">Supervisor with redirected stdout and stderr.</param>
         /// <param name="job">Windows process ownership handle, or null on other platforms.</param>
         /// <param name="logger">Logger receiving npm output.</param>
-        private NpmProcess(Process process, WindowsJob? job, ILogger logger) {
+        /// <param name="observeOutput">Optional observer of stdout and stderr, attached before npm starts.</param>
+        private NpmProcess(Process process, WindowsJob? job, ILogger logger, Action<string>? observeOutput) {
             _process = process;
             _job = job;
-            _output = PumpAsync(process.StandardOutput, logger, isError: false);
-            _error = PumpAsync(process.StandardError, logger, isError: true);
+            _output = PumpAsync(process.StandardOutput, logger, isError: false, observeOutput);
+            _error = PumpAsync(process.StandardError, logger, isError: true, observeOutput);
         }
 
         /// <summary>
@@ -53,9 +54,10 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <param name="arguments">Separate npm command arguments.</param>
         /// <param name="environment">Environment variables applied to the child process.</param>
         /// <param name="logger">Logger receiving npm stdout and stderr.</param>
+        /// <param name="observeOutput">Optional observer called for each nonempty output line.</param>
         /// <returns>The owned process wrapper, which must be disposed to stop remaining descendants.</returns>
         public static NpmProcess Start(string node, string npmCli, string directory, IEnumerable<string> arguments,
-            IReadOnlyDictionary<string, string> environment, ILogger logger) {
+            IReadOnlyDictionary<string, string> environment, ILogger logger, Action<string>? observeOutput = null) {
             ProcessStartInfo info = new(node) {
                 WorkingDirectory = directory,
                 UseShellExecute = false,
@@ -82,7 +84,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 if (OperatingSystem.IsWindows()) {
                     job = new WindowsJob(process);
                 }
-                NpmProcess result = new(process, job, logger);
+                NpmProcess result = new(process, job, logger, observeOutput);
                 process.StandardInput.WriteLine("start");
                 process.StandardInput.Flush();
                 return result;
@@ -132,11 +134,14 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <param name="reader">Redirected stdout or stderr reader.</param>
         /// <param name="logger">Destination logger for process output.</param>
         /// <param name="isError">True logs stderr as warnings; false logs stdout as information.</param>
+        /// <param name="observeOutput">Optional observer, independent of consumer logging.</param>
         /// <returns>A task that completes when the output stream closes.</returns>
-        private static async Task PumpAsync(StreamReader reader, ILogger logger, bool isError) {
+        private static async Task PumpAsync(StreamReader reader, ILogger logger, bool isError, Action<string>? observeOutput) {
             while (await reader.ReadLineAsync().ConfigureAwait(false) is { } line) {
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
+                try { observeOutput?.Invoke(line); }
+                catch { /* Keep draining output if an observer fails. */ }
                 try {
                     // stderr also carries npm/Vite warnings; process failures are logged by the supervisor.
                     if (isError)

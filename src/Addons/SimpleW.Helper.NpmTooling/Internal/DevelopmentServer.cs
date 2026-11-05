@@ -12,12 +12,12 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         private readonly SimpleWServer _server;
         private readonly NpmOptions _options;
         private readonly string _source;
-        private readonly Uri _url;
+        private string? _origin;
         private CancellationTokenSource? _cancellation;
         private Task? _lifetime;
 
         /// <summary>
-        /// Resolves the frontend directory and validates development URLs, script settings and timeouts.
+        /// Resolves the frontend directory and validates script settings, the backend override and timeouts.
         /// </summary>
         /// <param name="server">Server whose listener supplies the default API origin.</param>
         /// <param name="options">Frontend configuration and loggers used throughout supervision.</param>
@@ -25,10 +25,6 @@ namespace SimpleW.Helper.NpmTooling.Internal {
             _server = server;
             _options = options;
             _source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.SourcePath, AppContext.BaseDirectory));
-            _url = ValidateUrl(options.DevelopmentUrl);
-            if (!_url.IsLoopback) {
-                throw new ArgumentException("DevelopmentUrl must use a loopback host.");
-            }
             if (options.StartupTimeout <= TimeSpan.Zero || options.InstallTimeout <= TimeSpan.Zero) {
                 throw new ArgumentException("Npm timeouts must be positive.");
             }
@@ -63,6 +59,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// </summary>
         /// <returns>A task that completes when supervision and cleanup have finished.</returns>
         public async Task StopAsync() {
+            Volatile.Write(ref _origin, null);
             if (_lifetime == null) {
                 return;
             }
@@ -76,7 +73,14 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         }
 
         /// <summary>
-        /// Runs a managed frontend or monitors an external one, logging failures without stopping the backend.
+        /// Allows only the discovered frontend origin while its managed process is ready.
+        /// </summary>
+        /// <param name="origin">Origin supplied by the browser.</param>
+        /// <returns>True when it matches the active frontend origin exactly, ignoring case.</returns>
+        public bool IsOriginAllowed(string origin) => string.Equals(Volatile.Read(ref _origin), origin, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Runs a managed frontend and discovers its address, logging failures without stopping the backend.
         /// </summary>
         /// <param name="token">Cancellation requested when the SimpleW server stops.</param>
         /// <returns>A task representing the frontend supervision lifetime.</returns>
@@ -86,26 +90,9 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                     Timeout = TimeSpan.FromSeconds(2)
                 };
                 string apiUrl = BackendUrl() + _options.ApiPrefix.TrimEnd('/');
-                if (!_options.LaunchDevelopmentServer) {
-                    Log($"Waiting for external frontend at {_url}. Configure VITE_SIMPLEW_API_URL={apiUrl} in its environment.");
-                    await WaitUntilReadyAsync(http, null, token).ConfigureAwait(false);
-                    OpenBrowser();
-                    while (true) {
-                        await Task.Delay(TimeSpan.FromSeconds(2), token).ConfigureAwait(false);
-                        if (!IsSuccessful(await ProbeAsync(http, token).ConfigureAwait(false))) {
-                            throw new InvalidOperationException("The externally managed frontend is no longer available. Its process has not been modified.");
-                        }
-                    }
-                }
-
                 if (!File.Exists(Path.Combine(_source, "package.json"))) {
                     throw new FileNotFoundException($"Client package.json missing in '{_source}'. Configure SourcePath.");
                 }
-                if (await ProbeAsync(http, token).ConfigureAwait(false) != null) {
-                    throw new InvalidOperationException($"A server already responds at {_url}. Stop it or set LaunchDevelopmentServer=false to use an externally managed frontend.");
-                }
-                // A probe timeout does not prove a port is busy. The script must fail on bind conflicts
-                // (Vite: strictPort=true) instead of switching silently to another port.
                 NodeToolchain toolchain = await NodeToolchain.FindAsync(_options, token).ConfigureAwait(false);
                 Dictionary<string, string> environment = new() {
                     ["VITE_SIMPLEW_API_URL"] = apiUrl,
@@ -136,16 +123,24 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                     arguments.AddRange(_options.ScriptArguments);
                 }
                 Log($"npm run {_options.Script} in {_source}; API: {apiUrl}");
+                FrontendAddressDiscovery discovery = new();
                 await using NpmProcess client = NpmProcess.Start(
                     toolchain.Node, toolchain.NpmCli, _source,
-                    arguments, environment, _options.ClientLogger
+                    arguments, environment, _options.ClientLogger, discovery.Observe
                 );
-                await WaitUntilReadyAsync(http, client, token).ConfigureAwait(false);
-                Log($"Frontend ready: {_url}; direct API requests: {apiUrl}");
-                OpenBrowser();
-                await client.WaitAsync(token).ConfigureAwait(false);
-                if (!token.IsCancellationRequested) {
-                    throw new InvalidOperationException($"Client stopped unexpectedly (exit code {client.ExitCode}). Restart the backend to start it again.");
+                try {
+                    Uri url = await WaitUntilReadyAsync(http, client, discovery, token).ConfigureAwait(false);
+                    Volatile.Write(ref _origin, url.GetLeftPart(UriPartial.Authority));
+                    token.ThrowIfCancellationRequested();
+                    Log($"Frontend ready: {url}; direct API requests: {apiUrl}");
+                    OpenBrowser(url);
+                    await client.WaitAsync(token).ConfigureAwait(false);
+                    if (!token.IsCancellationRequested) {
+                        throw new InvalidOperationException($"Client stopped unexpectedly (exit code {client.ExitCode}). Restart the backend to start it again.");
+                    }
+                }
+                finally {
+                    Volatile.Write(ref _origin, null);
                 }
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) {
@@ -157,37 +152,42 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         }
 
         /// <summary>
-        /// Polls the frontend until it responds successfully, the managed process exits or startup times out.
+        /// Discovers announced URLs and probes them until one responds, the process exits or startup times out.
         /// </summary>
-        /// <param name="http">HTTP client used to probe the configured frontend origin.</param>
-        /// <param name="client">Managed process to watch for early exit, or null for an external frontend.</param>
+        /// <param name="http">HTTP client used to probe announced frontend URLs.</param>
+        /// <param name="client">Managed process to watch for early exit.</param>
+        /// <param name="discovery">Collector attached before the development script starts.</param>
         /// <param name="token">Cancellation requested when supervision stops.</param>
-        /// <returns>A task that completes when the frontend returns an HTTP 2xx response.</returns>
-        private async Task WaitUntilReadyAsync(HttpClient http, NpmProcess? client, CancellationToken token) {
+        /// <returns>The announced URL that returned an HTTP 2xx response, including its base path.</returns>
+        private async Task<Uri> WaitUntilReadyAsync(HttpClient http, NpmProcess client, FrontendAddressDiscovery discovery, CancellationToken token) {
             using CancellationTokenSource startup = CancellationTokenSource.CreateLinkedTokenSource(token);
             startup.CancelAfter(_options.StartupTimeout);
             try {
                 while (true) {
                     ThrowIfExited(client);
-                    bool ready = IsSuccessful(await ProbeAsync(http, startup.Token).ConfigureAwait(false));
+                    Uri[] candidates = discovery.Snapshot();
+                    HttpStatusCode?[] statuses = await Task.WhenAll(candidates.Select(url => ProbeAsync(http, url, startup.Token))).ConfigureAwait(false);
                     ThrowIfExited(client);
-                    if (ready) {
-                        return;
+                    for (int i = 0; i < candidates.Length; i++) {
+                        if (IsSuccessful(statuses[i])) return candidates[i];
                     }
                     await Task.Delay(250, startup.Token).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException) when (!token.IsCancellationRequested) {
-                throw new TimeoutException($"Frontend did not become ready at {_url} within {_options.StartupTimeout}. Check the script, host and port.");
+                Uri[] candidates = discovery.Snapshot();
+                throw new TimeoutException(candidates.Length == 0
+                    ? $"No local frontend URL was announced within {_options.StartupTimeout}. The development script must print its HTTP(S) address, for example 'Local: http://localhost:<port>/'. Check the frontend logs and ensure startup output is enabled."
+                    : $"Frontend URLs were detected but none returned HTTP 2xx within {_options.StartupTimeout}: {string.Join(", ", candidates.Select(url => url.AbsoluteUri))}. Check the frontend logs and HTTPS certificate trust if applicable.");
             }
         }
 
         /// <summary>
         /// Reports a managed process that exited before the frontend became ready.
         /// </summary>
-        /// <param name="client">Process to inspect, or null when the frontend is externally managed.</param>
-        private static void ThrowIfExited(NpmProcess? client) {
-            if (client?.HasExited == true) {
+        /// <param name="client">Process to inspect.</param>
+        private static void ThrowIfExited(NpmProcess client) {
+            if (client.HasExited) {
                 throw new InvalidOperationException($"npm exited before the frontend was ready (code {client.ExitCode}).");
             }
         }
@@ -200,17 +200,18 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         private static bool IsSuccessful(HttpStatusCode? status) => status.HasValue && (int)status.Value is >= 200 and <= 299;
 
         /// <summary>
-        /// Requests the frontend root without reading its response body.
+        /// Requests an announced frontend URL without reading its response body.
         /// </summary>
         /// <param name="http">HTTP client used for the readiness request.</param>
+        /// <param name="url">Announced frontend URL, including any base path.</param>
         /// <param name="token">Cancellation token for the request; caller cancellation is propagated.</param>
         /// <returns>The response status, or null for an HTTP connection failure or a request timeout.</returns>
-        private async Task<HttpStatusCode?> ProbeAsync(HttpClient http, CancellationToken token) {
+        private static async Task<HttpStatusCode?> ProbeAsync(HttpClient http, Uri url, CancellationToken token) {
             try {
-                using HttpResponseMessage response = await http.GetAsync(_url, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
+                using HttpResponseMessage response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
                 return response.StatusCode;
             }
-            catch (HttpRequestException) { return null; }
+            catch (System.Net.Http.HttpRequestException) { return null; }
             catch (OperationCanceledException) when (!token.IsCancellationRequested) { return null; }
         }
 
@@ -267,12 +268,13 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <summary>
         /// Opens the frontend in the default browser when enabled, logging launch failures as warnings.
         /// </summary>
-        private void OpenBrowser() {
+        /// <param name="url">Ready frontend URL, including any base path.</param>
+        private void OpenBrowser(Uri url) {
             if (!_options.OpenBrowser) {
                 return;
             }
-            try { Process.Start(new ProcessStartInfo(_url.AbsoluteUri) { UseShellExecute = true }); }
-            catch (Exception ex) { Log($"Cannot open the browser. Open {_url} manually.", LogLevel.Warning, ex); }
+            try { Process.Start(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true }); }
+            catch (Exception ex) { Log($"Cannot open the browser. Open {url} manually.", LogLevel.Warning, ex); }
         }
 
         /// <summary>

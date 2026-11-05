@@ -25,7 +25,6 @@ server.MapGet("/api/hello", () => new { message = "Hello" });
 server.UseNpmToolingModule(options => {
     options.Environment = "Development";
     options.SourcePath = "../client"; // Relative to AppContext.BaseDirectory, or use an absolute path.
-    options.DevelopmentUrl = "http://localhost:5173";
 });
 await server.RunAsync();
 ```
@@ -48,15 +47,11 @@ const response = await fetch(`${apiBaseUrl}/hello`);
 
 Vite exposes this variable to client code natively. It is passed only to the child process, without changing the system environment or writing a configuration file. Other frontend tools can read this variable through their own configuration; the module does not require a plugin.
 
-The development script must listen at the address configured in `DevelopmentUrl`. The module does not configure the script's port for it. Example Vite configuration:
+The frontend chooses its own host and port. The module discovers the actual local HTTP(S) URL from the development script's stdout or stderr, verifies that it responds, then opens that URL and enables CORS for its origin. No frontend URL is configured in C# and no frontend configuration file is rewritten. A different port chosen by the frontend is detected automatically.
 
-```js
-export default {
-    server: { host: 'localhost', port: 5173, strictPort: true, open: false }
-};
-```
+Startup announcements such as `Local: http://localhost:5173/` (Vite's default output), `Loopback: ...`, or `Listening on http://127.0.0.1:3000/` are recognized, including terminal colors, IPv6 and application base paths. Only loopback URLs are accepted; wildcard bind addresses `0.0.0.0` and `[::]` are converted to their loopback counterparts. Arbitrary URLs in npm command echoes, documentation links and network announcements are ignored. The development script must keep its address announcement enabled; custom/silent log formats are not universally discoverable. HTTPS certificates must be trusted by the machine running the backend.
 
-Keep any plugins required by the framework, such as `vue()`. Do not add an `/api` proxy for this integration. To use another port, update both the frontend server and `DevelopmentUrl`, or use `ScriptArguments` if the script accepts port arguments.
+Keep your existing frontend configuration and plugins. If the frontend also opens a browser, disable that feature there (for example `server.open: false` in Vite) to let NpmTooling open it once. Do not add an `/api` proxy for this integration.
 
 ## Options
 
@@ -65,16 +60,14 @@ Keep any plugins required by the framework, such as `vue()`. Do not add an `/api
 | `Environment` | DOTNET_ENVIRONMENT, otherwise Production | Select development or production |
 | `SourcePath` | `../client` | Directory containing package.json, relative to AppContext.BaseDirectory or absolute |
 | `ProductionPath` | `wwwroot` | Absolute path or path relative to the executable directory |
-| `DevelopmentUrl` | `http://localhost:5173` | HTTP(S) loopback origin, without credentials, subpath, query or fragment |
 | `BackendUrl` | Listener origin | Explicit API origin override; required for a Unix socket |
 | `ApiPrefix` | `/api` | REST prefix, CORS scope and exclusion from the SPA fallback |
 | `Script` | `dev` | npm script to run |
 | `ScriptArguments` | Empty list | Separate arguments after the npm `--` separator |
-| `LaunchDevelopmentServer` | `true` | Start the frontend or wait for an external frontend |
 | `EnableDevelopmentCors` | `true` | Install development CORS rules |
 | `InstallDependencies` | `true` | Install missing direct dependencies |
 | `OpenBrowser` | `true` | Open the frontend once it is available over HTTP |
-| `StartupTimeout` | 60 seconds | Maximum wait for an HTTP 2xx response at the frontend root |
+| `StartupTimeout` | 60 seconds | Maximum time to discover the URL and receive HTTP 2xx at its announced path |
 | `InstallTimeout` | 10 minutes | Dependency installation time limit |
 | `NodePath` / `NpmCliPath` | Automatic discovery | Explicit paths for custom installations |
 | `ServerLogger` / `ClientLogger` | SimpleW.Helper.NpmTooling.Server and .Client loggers | Separate supervision messages and npm output |
@@ -85,7 +78,7 @@ Relative source paths are resolved from `AppContext.BaseDirectory` (the executab
 
 ### CORS
 
-In development, the module allows only the exact `DevelopmentUrl` origin on `ApiPrefix`, using SimpleW's existing CORS module. Common REST requests and OPTIONS preflights are supported; allowed headers are `Content-Type, Authorization`. Credentials are disabled, and no wildcard origin is added.
+In development, the module allows only the discovered frontend origin on `ApiPrefix`, using SimpleW's existing CORS module. No origin is allowed until the frontend is ready; the origin is cleared on shutdown or process exit. Common REST requests and OPTIONS preflights are supported; allowed headers are `Content-Type, Authorization`. Credentials are disabled, and no wildcard origin is added.
 
 If the application already configures CORS, set `EnableDevelopmentCors=false` and manage the rules in the application, particularly for cross-origin cookies. The module does not add CORS in production. It neither creates nor moves API routes: those remain defined by the application.
 
@@ -95,9 +88,9 @@ If a direct dependency is missing from the client's `node_modules`, the module r
 
 The module invokes npm-cli.js through Node, without a shell, passing arguments separately. Its embedded supervisor monitors a pipe owned by the C# process. Windows also uses a Job Object; Unix uses a dedicated process group. Only processes created by the module are cleaned up, including when the debugger forcibly stops the backend. Processes are never terminated by program name or port number.
 
-An HTTP server already responding at `DevelopmentUrl` is reported as a conflict. A probe timeout alone does not prevent startup: the script must reject an occupied port, for example with `strictPort=true` in Vite. HTTP availability does not identify a project. Without a private protocol, the module cannot verify the identity of a server that appears concurrently; the script remains responsible for handling port binding conflicts.
+In Development, the module always launches and owns the frontend. The frontend handles occupied ports according to its own configuration: it can fail or select another port, whose announced URL will be discovered. NpmTooling does not scan ports or attach to a separately launched server. Startup announcements are trusted as coming from the configured script; HTTP availability alone does not prove process ownership.
 
-For a manually started frontend, set `LaunchDevelopmentServer=false`. In this mode, the module installs nothing, does not look for Node and does not start or terminate any frontend process. It waits for the URL, optionally opens the browser and monitors availability. The developer must supply `VITE_SIMPLEW_API_URL` when starting the frontend.
+If startup times out, the supervisor distinguishes between no recognized local URL and announced URLs that never became ready. It logs the failure and stops its owned processes. There is no fallback to a hard-coded port or wildcard CORS origin.
 
 Installations and probes support cancellation. A failure leaves the backend available without automatically restarting the client. After correcting the problem, restart the server. Reloading a listener does not create a second frontend; changing the API origin requires a full restart to refresh the environment variable.
 
@@ -130,4 +123,4 @@ The module occupies the router's root fallback. Avoid another fallback or a glob
 
 ## Validation to perform later
 
-This extraction has been reviewed statically; no build, dotnet, test or npm commands were run. Before release, validate F5, AJAX requests and CORS preflights, custom prefixes and ports, an external frontend, an occupied port, installation cancellation, forced shutdown on Windows and Unix, publishing with the injected variable, publishing without npm and consuming the NuGet package in an independent application.
+Automated discovery and process tests cover startup output, dynamic ports, base paths, CORS, timeouts, early exit, cancellation and cleanup. Before release, also validate F5, occupied-port fallback with your frontend, HTTPS, installation cancellation, forced debugger shutdown on Windows and Unix, publishing with the injected variable, publishing without npm and consuming the NuGet package in an independent application.

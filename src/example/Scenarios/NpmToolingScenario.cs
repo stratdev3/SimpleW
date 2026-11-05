@@ -36,16 +36,14 @@ internal sealed class NpmToolingScenario : IScenario {
         server.UseNpmToolingModule(options => {
             options.Environment = "Development";
             options.SourcePath = clientPath;
-            options.DevelopmentUrl = "http://localhost:5173";
             options.ApiPrefix = "/api";
-            options.LaunchDevelopmentServer = true;
             options.InstallDependencies = true;
             options.EnableDevelopmentCors = true;
             options.OpenBrowser = openBrowser;
         });
 
         ExampleConsole.Info($"Frontend sources: {clientPath}");
-        ExampleConsole.Info("Frontend: http://localhost:5173 (available after npm startup).");
+        ExampleConsole.Info("The frontend address will be detected automatically from its startup output.");
         ExampleConsole.Info("The helper passes the actual API address through VITE_SIMPLEW_API_URL.");
         return ExampleServer.RunAsync(server, "http", arguments, cancellationToken);
     }
