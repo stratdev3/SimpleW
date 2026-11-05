@@ -36,7 +36,7 @@ internal sealed class NpmToolingScenario : IScenario {
         server.UseNpmToolingModule(options => {
             options.Environment = "Development";
             options.SourcePath = clientPath;
-            options.ApiPrefix = "/api";
+            options.ApiUrl = "/api";
             options.InstallDependencies = true;
             options.EnableDevelopmentCors = true;
             options.OpenBrowser = openBrowser;

@@ -11,34 +11,28 @@ namespace SimpleW.Helper.NpmTooling.Internal {
     internal sealed class DevelopmentServer {
         private readonly SimpleWServer _server;
         private readonly NpmOptions _options;
+        private readonly ApiAddress _api;
         private readonly string _source;
         private string? _origin;
         private CancellationTokenSource? _cancellation;
         private Task? _lifetime;
 
         /// <summary>
-        /// Resolves the frontend directory and validates script settings, the backend override and timeouts.
+        /// Resolves the frontend directory and validates script settings and timeouts.
         /// </summary>
         /// <param name="server">Server whose listener supplies the default API origin.</param>
         /// <param name="options">Frontend configuration and loggers used throughout supervision.</param>
-        public DevelopmentServer(SimpleWServer server, NpmOptions options) {
+        /// <param name="api">Validated API address.</param>
+        public DevelopmentServer(SimpleWServer server, NpmOptions options, ApiAddress api) {
             _server = server;
             _options = options;
+            _api = api;
             _source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.SourcePath, AppContext.BaseDirectory));
             if (options.StartupTimeout <= TimeSpan.Zero || options.InstallTimeout <= TimeSpan.Zero) {
                 throw new ArgumentException("Npm timeouts must be positive.");
             }
             if (string.IsNullOrWhiteSpace(options.Script) || options.Script.StartsWith('-')) {
                 throw new ArgumentException("Script must name an npm script.");
-            }
-            string prefix = options.ApiPrefix;
-            if (!prefix.StartsWith('/') || prefix.StartsWith("//", StringComparison.Ordinal)
-                || prefix.TrimEnd('/').Length < 2 || prefix.IndexOfAny(['?', '#', '\\']) >= 0
-            ) {
-                throw new ArgumentException("ApiPrefix must be an absolute URL path such as /api.");
-            }
-            if (options.BackendUrl != null) {
-                ValidateUrl(options.BackendUrl);
             }
         }
 
@@ -89,7 +83,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 using HttpClient http = new(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false }) {
                     Timeout = TimeSpan.FromSeconds(2)
                 };
-                string apiUrl = BackendUrl() + _options.ApiPrefix.TrimEnd('/');
+                string apiUrl = _api.Resolve(_server);
                 if (!File.Exists(Path.Combine(_source, "package.json"))) {
                     throw new FileNotFoundException($"Client package.json missing in '{_source}'. Configure SourcePath.");
                 }
@@ -216,23 +210,6 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         }
 
         /// <summary>
-        /// Resolves the API origin from the override or active listener, replacing wildcard addresses with loopback.
-        /// </summary>
-        /// <returns>The HTTP(S) backend origin without the API prefix.</returns>
-        private string BackendUrl() {
-            if (_options.BackendUrl != null)
-                return ValidateUrl(_options.BackendUrl).GetLeftPart(UriPartial.Authority);
-            IPAddress address = _server.Address ?? throw new InvalidOperationException("Set BackendUrl when using a Unix socket.");
-            if (address.Equals(IPAddress.Any)) {
-                address = IPAddress.Loopback;
-            }
-            if (address.Equals(IPAddress.IPv6Any)) {
-                address = IPAddress.IPv6Loopback;
-            }
-            return new UriBuilder(_server.Engine.IsEncrypted ? "https" : "http", address.ToString(), _server.Port).Uri.GetLeftPart(UriPartial.Authority);
-        }
-
-        /// <summary>
         /// Checks the client's node_modules directory for each declared dependency and development dependency.
         /// </summary>
         /// <returns>True if any direct dependency lacks a package.json file; installed versions are not compared.</returns>
@@ -249,20 +226,6 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 }
             }
             return false;
-        }
-
-        /// <summary>
-        /// Validates an HTTP(S) origin without credentials, a subpath, a query or a fragment.
-        /// </summary>
-        /// <param name="value">Absolute origin to parse.</param>
-        /// <returns>The validated URI.</returns>
-        private static Uri ValidateUrl(string value) {
-            if (!Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) || uri.Scheme is not ("http" or "https")
-                || uri.AbsolutePath != "/" || uri.Query.Length != 0 || uri.Fragment.Length != 0 || uri.UserInfo.Length != 0
-            ) {
-                throw new ArgumentException($"Expected an HTTP(S) origin without credentials or a path, got '{value}'.");
-            }
-            return uri;
         }
 
         /// <summary>

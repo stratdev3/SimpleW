@@ -16,18 +16,19 @@ namespace SimpleW.Helper.NpmTooling {
         /// <param name="server">Server configured before its listener starts.</param>
         public void Install(SimpleWServer server) {
 
+            ApiAddress api = new(options.ApiUrl);
             string environment = options.Environment ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
             if (!string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase)) {
-                new SpaFiles(options).Install(server);
+                new SpaFiles(options, api).Install(server);
                 return;
             }
 
-            DevelopmentServer development = new(server, options);
+            DevelopmentServer development = new(server, options, api);
 
             // cors
             if (options.EnableDevelopmentCors) {
                 server.UseCorsModule(cors => {
-                    cors.Prefix = options.ApiPrefix;
+                    cors.Prefix = api.PathPrefix;
                     cors.OriginValidator = development.IsOriginAllowed;
                     cors.AllowCredentials = false;
                     cors.AllowedHeaders = "Content-Type, Authorization";

@@ -50,13 +50,12 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 | `Environment` | `null` | Uses `DOTNET_ENVIRONMENT`, then `Production`. |
 | `SourcePath` | `../client` | Directory containing package.json, relative to `AppContext.BaseDirectory` or absolute. |
 | `ProductionPath` | `wwwroot` | Compiled files, relative to the application directory. |
-| `ApiPrefix` | `/api` | API prefix, excluded from frontend navigation fallback. |
+| `ApiUrl` | `/api` | API path relative to the active SimpleW origin, or a complete HTTP(S) URL used unchanged. Its path determines CORS scope and SPA fallback exclusion. |
 
 ### Development
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `BackendUrl` | `null` | Override the API origin; otherwise use the SimpleW listener. |
 | `Script` | `dev` | npm script to launch. |
 | `ScriptArguments` | Empty list | Extra script arguments, passed after `--`. |
 | `InstallDependencies` | `true` | Set to `false` to install dependencies yourself. |
@@ -79,7 +78,7 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 
 ### C# server
 
-In `Program.cs`, register the module before starting the server. This example assumes a `client` folder next to the executable directory:
+In `Program.cs`, register the module before starting the server:
 
 ```csharp
 using System.Net;
@@ -91,15 +90,16 @@ var server = new SimpleWServer(IPAddress.Loopback, 8080);
 server.MapGet("/api/hello", () => new { message = "Hello!" });
 
 server.UseNpmToolingModule(options => {
-    options.SourcePath = "../client";
+    options.Environment = "Development";
+    options.SourcePath = @"C:\projects\my-app\client";
 });
 
 await server.RunAsync();
 ```
 
-`SourcePath` is relative to `AppContext.BaseDirectory` (the executable directory), independently of the working directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; adjust the relative path for your layout or provide an absolute path to the directory containing `package.json`. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `SourcePath`.
+Set `options.SourcePath` to the full (absolute) path of the folder containing your frontend's `package.json`, not to the file itself.
 
-Set `DOTNET_ENVIRONMENT` to `Development` in your IDE's launch profile. The module uses this variable unless you set `options.Environment` explicitly. Any other value, or no value, selects production mode.
+`options.Environment = "Development"` enables development mode: the module starts your frontend with `npm run dev` when SimpleW starts. This example sets the mode directly in C#, so no IDE configuration is needed.
 
 ### JavaScript client
 
@@ -119,6 +119,17 @@ const data = await response.json();
 ```
 
 In the example above, this calls `http://127.0.0.1:8080/api/hello`.
+
+Use `ApiUrl` to change the API address:
+
+```csharp
+options.ApiUrl = "/services"; // Resolves to the active SimpleW origin + /services.
+options.ApiUrl = "https://backend.example/services"; // Used unchanged, with no additional /api.
+```
+
+The default is `/api`. A path uses the actual SimpleW listener address and port, with wildcard addresses mapped to loopback. A full HTTP(S) URL preserves the supplied path and trailing slash; it is also the way to supply an HTTP endpoint when SimpleW uses a Unix socket. Credentials, whitespace, queries and fragments are not accepted.
+
+The path in `ApiUrl` defines the CORS scope on SimpleW and the API namespace excluded from SPA fallback. A root address (`/` or a URL without a path) does not reserve the entire SPA namespace; explicit backend routes retain priority. The option does not create or rewrite routes. An API hosted on another server needs its own CORS configuration there.
 
 ### Start the application
 
@@ -164,10 +175,10 @@ The defaults expect `../client` as the frontend directory and `/api` as the API 
 | `SimpleWNpmApiBaseUrl` | `/api` | API address passed to the frontend build. |
 | `SimpleWNpmBuildClient` | `true` | Set to `false` to copy an already built frontend without running npm. |
 
-Publish settings are separate from C# options: changing `SourcePath` does not change `SimpleWNpmSourcePath`. For a custom API prefix, set both `ApiPrefix` and `SimpleWNpmApiBaseUrl`.
+Publish settings are separate from C# options: changing `SourcePath` does not change `SimpleWNpmSourcePath`. Keep `ApiUrl` and `SimpleWNpmApiBaseUrl` consistent for the target environment; both accept a path or a complete HTTP(S) URL.
 
 ### Run
 
-Deploy the publish directory, including `wwwroot`, and start the application with `DOTNET_ENVIRONMENT=Production` or with the variable unset. Node.js and npm are no longer needed.
+Deploy the publish directory, including `wwwroot`, and start the application.
 
 SimpleW serves the frontend from `wwwroot` beside the application. It requires an `index.html` there. For browser navigation such as `/dashboard`, it returns `index.html` so the frontend can handle the route. Unknown API routes and missing assets still return 404.

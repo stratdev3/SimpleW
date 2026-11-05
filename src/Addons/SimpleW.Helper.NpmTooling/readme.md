@@ -35,7 +35,17 @@ Development prerequisites: Node >= 22.12 and npm, available on the IDE's PATH. T
 
 ## API address
 
-The module passes `VITE_SIMPLEW_API_URL` to the npm process, for example `http://127.0.0.1:8080/api`. The origin comes from the active SimpleW listener, or from `BackendUrl` when specified. `ApiPrefix` is appended to that origin. An address bound to all interfaces is replaced with a loopback address for local development.
+The module passes `VITE_SIMPLEW_API_URL` to the npm process. Configure its address with the single `ApiUrl` option, which defaults to `/api`:
+
+```csharp
+options.ApiUrl = "/api"; // Default: active SimpleW origin + /api.
+options.ApiUrl = "/services"; // Active SimpleW origin + /services.
+options.ApiUrl = "https://backend.example/services"; // Used unchanged; nothing is appended.
+```
+
+For a path, the module uses the actual listener address and port after startup; wildcard bind addresses are replaced with loopback addresses. For a complete HTTP(S) URL, it preserves the supplied value, including its path and trailing slash. An absolute URL is required when the backend listens on a Unix socket. Credentials, whitespace, queries and fragments are not accepted in this API base address.
+
+The path part also determines the development CORS scope and the API namespace excluded from production SPA fallback. For example, `https://backend.example/services` reserves `/services` and its descendants. A root address (`/` or a URL with no path) has no dedicated API namespace to exclude from SPA fallback; explicit backend routes still take precedence. This option does not create or rewrite routes. If the URL targets another server, that server must allow frontend requests through its own CORS configuration.
 
 In a SPA using Vite:
 
@@ -60,8 +70,7 @@ Keep your existing frontend configuration and plugins. If the frontend also open
 | `Environment` | DOTNET_ENVIRONMENT, otherwise Production | Select development or production |
 | `SourcePath` | `../client` | Directory containing package.json, relative to AppContext.BaseDirectory or absolute |
 | `ProductionPath` | `wwwroot` | Absolute path or path relative to the executable directory |
-| `BackendUrl` | Listener origin | Explicit API origin override; required for a Unix socket |
-| `ApiPrefix` | `/api` | REST prefix, CORS scope and exclusion from the SPA fallback |
+| `ApiUrl` | `/api` | API path resolved against the active listener, or a complete HTTP(S) URL used unchanged; its path determines CORS scope and SPA fallback exclusion |
 | `Script` | `dev` | npm script to run |
 | `ScriptArguments` | Empty list | Separate arguments after the npm `--` separator |
 | `EnableDevelopmentCors` | `true` | Install development CORS rules |
@@ -78,7 +87,7 @@ Relative source paths are resolved from `AppContext.BaseDirectory` (the executab
 
 ### CORS
 
-In development, the module allows only the discovered frontend origin on `ApiPrefix`, using SimpleW's existing CORS module. No origin is allowed until the frontend is ready; the origin is cleared on shutdown or process exit. Common REST requests and OPTIONS preflights are supported; allowed headers are `Content-Type, Authorization`. Credentials are disabled, and no wildcard origin is added.
+In development, the module allows only the discovered frontend origin on the path derived from `ApiUrl`, using SimpleW's existing CORS module. No origin is allowed until the frontend is ready; the origin is cleared on shutdown or process exit. Common REST requests and OPTIONS preflights are supported; allowed headers are `Content-Type, Authorization`. Credentials are disabled, and no wildcard origin is added.
 
 If the application already configures CORS, set `EnableDevelopmentCors=false` and manage the rules in the application, particularly for cross-origin cookies. The module does not add CORS in production. It neither creates nor moves API routes: those remain defined by the application.
 
@@ -111,7 +120,7 @@ Publishing installs dependencies, then runs `npm run build` with `VITE_SIMPLEW_A
 
 The dist files are added to the publish output under `wwwroot`, as external files even for a single-file publish. An npm failure or a missing dist/index.html fails publication. With `SimpleWNpmBuildClient=false`, npm is not called: a dist directory already built with the correct API address is required and copied unchanged.
 
-MSBuild does not read C# runtime options. For a custom prefix, configure both `ApiPrefix` and `SimpleWNpmApiBaseUrl`. Likewise, keep `SourcePath` and `SimpleWNpmSourcePath` consistent. The legacy names `SimpleWStackSourcePath`, `SimpleWStackDistPath` and `SimpleWStackBuildClient` are accepted for migration; explicitly set new properties take precedence.
+MSBuild does not read C# runtime options. Keep `ApiUrl` and `SimpleWNpmApiBaseUrl` consistent for the target environment; both accept an API path or a complete HTTP(S) URL. Likewise, keep `SourcePath` and `SimpleWNpmSourcePath` consistent. The legacy names `SimpleWStackSourcePath`, `SimpleWStackDistPath` and `SimpleWStackBuildClient` are accepted for migration; explicitly set new properties take precedence.
 
 NuGet consumption imports the targets automatically. With ProjectReference, explicitly import `buildTransitive/SimpleW.Helper.NpmTooling.targets` into the executable project.
 

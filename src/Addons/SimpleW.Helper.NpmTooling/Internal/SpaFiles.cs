@@ -13,14 +13,11 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <summary>
         /// Resolves the production root and requires a safe index.html before installing the fallback.
         /// </summary>
-        /// <param name="options">Production asset directory and API prefix.</param>
-        public SpaFiles(NpmOptions options) {
+        /// <param name="options">Production asset directory.</param>
+        /// <param name="api">Validated API address and derived path prefix.</param>
+        public SpaFiles(NpmOptions options, ApiAddress api) {
             _root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.ProductionPath, AppContext.BaseDirectory));
-            _apiPrefix = options.ApiPrefix.TrimEnd('/');
-
-            if (!_apiPrefix.StartsWith('/') || _apiPrefix.Length < 2) {
-                throw new ArgumentException("ApiPrefix must be an absolute URL path such as /api.");
-            }
+            _apiPrefix = api.PathPrefix;
             if (!TryResolve("index.html", out string index) || !File.Exists(index)) {
                 throw new DirectoryNotFoundException($"SimpleW.Helper.NpmTooling: compiled client missing or unsafe at '{_root}'. Publish the client first.");
             }
@@ -81,12 +78,13 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         }
 
         /// <summary>
-        /// Checks the API prefix boundary without treating similarly named routes as API paths.
+        /// Checks a dedicated API prefix without treating similar names or the whole SPA root as API paths.
         /// </summary>
         /// <param name="path">Request path to compare with the configured API prefix.</param>
         /// <returns>True for the API prefix itself or a path below it, ignoring case.</returns>
-        private bool IsApi(string path) => path.Equals(_apiPrefix, StringComparison.OrdinalIgnoreCase)
-                                           || path.StartsWith(_apiPrefix + '/', StringComparison.OrdinalIgnoreCase);
+        private bool IsApi(string path) => _apiPrefix != "/"
+                                          && (path.Equals(_apiPrefix, StringComparison.OrdinalIgnoreCase)
+                                              || path.StartsWith(_apiPrefix + '/', StringComparison.OrdinalIgnoreCase));
 
         /// <summary>
         /// Checks for an explicit text/html media range that is not disabled by a nonpositive quality value.

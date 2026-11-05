@@ -14,16 +14,6 @@ namespace SimpleW.Helper.NpmTooling {
         public string? Environment { get; set; }
 
         /// <summary>
-        /// Server lifecycle and supervision logger.
-        /// </summary>
-        public ILogger ServerLogger { get; set; } = new Logger("SimpleW.Helper.NpmTooling.Server");
-
-        /// <summary>
-        /// Captured npm stdout and stderr logger.
-        /// </summary>
-        public ILogger ClientLogger { get; set; } = new Logger("SimpleW.Helper.NpmTooling.Client");
-
-        /// <summary>
         /// Client directory containing package.json, relative to AppContext.BaseDirectory or absolute.
         /// </summary>
         public string SourcePath { get; set; } = "../client";
@@ -34,9 +24,31 @@ namespace SimpleW.Helper.NpmTooling {
         public string ProductionPath { get; set; } = "wwwroot";
 
         /// <summary>
-        /// Override for the backend origin; otherwise derived from the actual listener.
+        /// API path relative to the active SimpleW origin, or a complete HTTP(S) URL used unchanged.
         /// </summary>
-        public string? BackendUrl { get; set; }
+        public string ApiUrl { get; set; } = "/api";
+
+        /// <summary>
+        /// Allow the frontend origin on the API prefix in Development, without credentials.
+        /// </summary>
+        public bool EnableDevelopmentCors { get; set; } = true;
+
+        /// <summary>
+        /// Open the frontend URL when it becomes available.
+        /// </summary>
+        public bool OpenBrowser { get; set; } = true;
+
+        /// <summary>
+        /// Server lifecycle and supervision logger.
+        /// </summary>
+        public ILogger ServerLogger { get; set; } = new Logger("SimpleW.Helper.NpmTooling.Server");
+
+        /// <summary>
+        /// Captured npm stdout and stderr logger.
+        /// </summary>
+        public ILogger ClientLogger { get; set; } = new Logger("SimpleW.Helper.NpmTooling.Client");
+
+        #region node
 
         /// <summary>
         /// Script name passed to npm run.
@@ -49,19 +61,9 @@ namespace SimpleW.Helper.NpmTooling {
         public List<string> ScriptArguments { get; } = new();
 
         /// <summary>
-        /// Allow the frontend origin on the API prefix in Development, without credentials.
-        /// </summary>
-        public bool EnableDevelopmentCors { get; set; } = true;
-
-        /// <summary>
         /// Install missing direct dependencies before starting the development script.
         /// </summary>
         public bool InstallDependencies { get; set; } = true;
-
-        /// <summary>
-        /// Open the frontend URL when it becomes available.
-        /// </summary>
-        public bool OpenBrowser { get; set; } = true;
 
         /// <summary>
         /// Maximum time to discover the frontend URL from its output and receive a successful HTTP response.
@@ -74,11 +76,6 @@ namespace SimpleW.Helper.NpmTooling {
         public TimeSpan InstallTimeout { get; set; } = TimeSpan.FromMinutes(10);
 
         /// <summary>
-        /// REST API prefix appended to the backend origin and excluded from SPA fallback.
-        /// </summary>
-        public string ApiPrefix { get; set; } = "/api";
-
-        /// <summary>
         /// Optional Node executable path.
         /// </summary>
         public string? NodePath { get; set; }
@@ -87,6 +84,8 @@ namespace SimpleW.Helper.NpmTooling {
         /// Optional npm-cli.js path; npm is invoked with Node without a shell.
         /// </summary>
         public string? NpmCliPath { get; set; }
+
+        #endregion node
 
     }
 
