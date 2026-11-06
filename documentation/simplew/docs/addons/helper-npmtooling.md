@@ -12,23 +12,23 @@
 
 ## Features
 
-Divided in two modes:
+NpmTooling supports local development and deployment:
 
-- **Development: helps you developping your full stack web app.**
+- **Development: runs your frontend while you develop locally.**
   - Starts the frontend through npm and stops it with SimpleW.
-  - Capture npm logs and open the browser.
-- **Production: helps you packaging the whole web app.**
-  - Build and copy frontend files during publication.
-  - Serve the published frontend and its navigation routes.
+  - Captures npm logs and opens the browser.
+- **Build and Deploy: builds your application and serves it after deployment.**
+  - Builds and copies frontend files during publication.
+  - Serves the compiled frontend and its navigation routes when the deployed application runs.
 
 ## Requirements
 
 | Usage | Requirements |
 | --- | --- |
 | SimpleW application | .NET 8, 9 or 10 and SimpleW 26.1.x. |
-| Development | Node.js 22.12 or later, npm, and an existing frontend with a `dev` script. |
-| Publication | Node.js and npm on `PATH`, and a frontend `build` script. |
-| Production | Published static files. Node.js and npm are not needed. |
+| Local development | Node.js 22.12 or later, npm, and an existing frontend with a `dev` script. |
+| Publication (build for deployment) | Node.js and npm on the publishing machine's `PATH`, and a frontend `build` script. |
+| Running the deployed application | Published static files and the module's `Production` mode. Node.js and npm are not needed on the deployment machine. |
 
 ## Installation
 
@@ -41,18 +41,18 @@ See the [changelog](./helper-npmtooling-changelog.md).
 
 ## Configuration options
 
-Set these in the `UseNpmToolingModule(options => { ... })` callback, before starting SimpleW. Publication properties are listed under [Minimal Production Example](#minimal-production-example).
+Set these options in the `UseNpmToolingModule(options => { ... })` callback before starting SimpleW. Publication properties are listed under [Build and Deploy](#build-and-deploy).
 
 ### Environment and paths
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `Environment` | `null` | Uses `DOTNET_ENVIRONMENT`, then `Production`. |
-| `SourcePath` | `../client` | Directory containing package.json, relative to `AppContext.BaseDirectory` or absolute. |
-| `ProductionPath` | `wwwroot` | Compiled files, relative to the application directory. |
+| `Environment` | `NpmEnvironment.AutoDetect` | Automatic: `Production` for an application marked by `dotnet publish`, otherwise `Development`. Use `NpmEnvironment.Development` or `NpmEnvironment.Production` to force a mode. |
+| `SourcePath` | `../client` | Path to the directory containing `package.json`, either absolute or relative to `AppContext.BaseDirectory`. |
+| `ProductionPath` | `wwwroot` | Directory containing compiled files, relative to the application directory. |
 | `ApiUrl` | `/api` | API path relative to the active SimpleW origin, or a complete HTTP(S) URL used unchanged. Its path determines CORS scope and SPA fallback exclusion. |
 
-### Development
+### Development options
 
 | Option | Default | Purpose |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 | `InstallDependencies` | `true` | Set to `false` to install dependencies yourself. |
 | `EnableDevelopmentCors` | `true` | Allow frontend API calls; disable if you manage CORS yourself. |
 | `OpenBrowser` | `true` | Open the browser when ready. |
-| `StartupTimeout` | 60 seconds | How long to discover the URL and wait for the frontend to respond. |
+| `StartupTimeout` | 60 seconds | Maximum time allowed to discover the URL and wait for the frontend to respond. |
 | `InstallTimeout` | 10 minutes | Maximum dependency installation time. |
 | `NodePath` | Auto-detected | Explicit Node executable path. |
 | `NpmCliPath` | Auto-detected | Explicit path to `npm-cli.js`. |
@@ -74,11 +74,13 @@ Set these in the `UseNpmToolingModule(options => { ... })` callback, before star
 | `ClientLogger` | `SimpleW.Helper.NpmTooling.Client` | npm output. |
 
 
-## Minimal Development Example
+## Development
+
+In development mode, NpmTooling manages npm and the frontend development server so you can focus on writing code in your IDE.
 
 ### C# server
 
-In `Program.cs`, register the module before starting the server:
+In `Program.cs`, register the module before starting the server. Use this same configuration for local development and deployment:
 
 ```csharp
 using System.Net;
@@ -90,28 +92,23 @@ var server = new SimpleWServer(IPAddress.Loopback, 8080);
 server.MapGet("/api/hello", () => new { message = "Hello!" });
 
 server.UseNpmToolingModule(options => {
-    options.Environment = "Development";
+    // Folder containing your frontend's package.json.
     options.SourcePath = @"C:\projects\my-app\client";
+    // If your frontend calls the backend API, provide its relative or absolute URL.
+    options.ApiUrl = "/api";
 });
 
 await server.RunAsync();
 ```
 
-Set `options.SourcePath` to the full (absolute) path of the folder containing your frontend's `package.json`, not to the file itself.
-
-`options.Environment = "Development"` enables development mode: the module starts your frontend with `npm run dev` when SimpleW starts. This example sets the mode directly in C#, so no IDE configuration is needed.
-
 ### JavaScript client
 
-For a Vite frontend, ensure `package.json` contains a `dev` script: `"dev": "vite"`.
+NpmTooling manages your frontend; no changes are needed to run it through the module.
 
-Keep the host and port in your frontend configuration. NpmTooling reads the actual local HTTP(S) address announced by the script on stdout or stderr, including a different port selected by the frontend when one is occupied. You do not configure this address in C#.
+If your frontend calls an API provided by the C# server, it needs the API's base URL.
+To avoid hardcoding that URL, NpmTooling provides an environment variable: `VITE_SIMPLEW_API_URL`.
 
-The detector recognizes `Local: ...` (including Vite's default output), `Loopback: ...` and announcements such as `Listening on http://localhost:3000/`. It handles terminal colors, IPv4/IPv6 and application base paths. Only loopback URLs are used; wildcard bind addresses are converted to loopback. Unrelated log links and network URLs are ignored. Keep startup address logging enabled: a silent server or an unrecognized custom format will time out with a diagnostic instead of guessing a port. HTTPS requires a certificate trusted by the backend machine.
-
-The module opens the browser itself. If your frontend also opens it, disable that feature there (for example `server.open: false` with Vite).
-
-The module supplies the same API address through two environment variables: `SIMPLEW_API_URL` for any frontend tool and `VITE_SIMPLEW_API_URL` for Vite. It also enables development CORS. With Vite, use `VITE_SIMPLEW_API_URL` to call your API from the client:
+Example:
 
 ```js
 const response = await fetch(`${import.meta.env.VITE_SIMPLEW_API_URL}/hello`);
@@ -120,67 +117,137 @@ const data = await response.json();
 
 In the example above, this calls `http://127.0.0.1:8080/api/hello`.
 
-Other frontend tools can read `process.env.SIMPLEW_API_URL` in their Node.js configuration and expose it to browser code using their own mechanism. `SIMPLEW_API_URL` is not automatically available in browser code.
+If you change `ApiUrl` on the server side, your frontend receives the updated address the next time it is started by NpmTooling.
 
-Use `ApiUrl` to change the API address:
+### Run locally
+
+Build and start the C# application from your IDE in either Debug or Release. No environment variable or special launch profile is required.
+
+<ZoomableImage
+  src="https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/modules/SimpleW.Helper.NpmTooling-Development-Debug.gif"
+  alt="Debugging a frontend with SimpleW NpmTooling in development mode"
+/>
+
+
+## Build and Deploy
+
+`dotnet publish` builds the frontend and copies it into the published application. NpmTooling then serves those files automatically. It uses the [`staticFileModule`](../guide/staticfiles.md) behind the hood.
+
+### C# server
+
+In `Program.cs`:
 
 ```csharp
-options.ApiUrl = "/services"; // Resolves to the active SimpleW origin + /services.
-options.ApiUrl = "https://backend.example/services"; // Used unchanged, with no additional /api.
+using System.Net;
+using SimpleW;
+using SimpleW.Helper.NpmTooling;
+
+var server = new SimpleWServer(IPAddress.Loopback, 8080);
+
+server.MapGet("/api/hello", () => new { message = "Hello!" });
+
+server.UseNpmToolingModule(options => {
+    options.ProductionPath = "wwwroot";
+    options.ApiUrl = "/api";
+});
+
+await server.RunAsync();
 ```
 
-The default is `/api`. A path uses the actual SimpleW listener address and port, with wildcard addresses mapped to loopback. A full HTTP(S) URL preserves the supplied path and trailing slash; it is also the way to supply an HTTP endpoint when SimpleW uses a Unix socket. Credentials, whitespace, queries and fragments are not accepted.
+`ProductionPath` points to the compiled frontend beside the executable. No additional `StaticFilesModule` registration is needed.
 
-The path in `ApiUrl` defines the CORS scope on SimpleW and the API namespace excluded from SPA fallback. A root address (`/` or a URL without a path) does not reserve the entire SPA namespace; explicit backend routes retain priority. The option does not create or rewrite routes. An API hosted on another server needs its own CORS configuration there.
+In the server's `.csproj`, add this inside `<Project>`:
 
-### Start the application
+```xml
+<PropertyGroup>
+  <SimpleWNpmSourcePath>C:\projects\my-app\client</SimpleWNpmSourcePath>
+  <SimpleWNpmDistPath>$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
+  <SimpleWNpmApiBaseUrl>/api</SimpleWNpmApiBaseUrl>
+  <SimpleWNpmBuildClient>true</SimpleWNpmBuildClient>
+</PropertyGroup>
+```
 
-Start the C# application from your IDE with the development profile. You do not need to run npm separately. The module:
+`SimpleWNpmSourcePath` is the full path to the folder containing `package.json`. `SimpleWNpmDistPath` is the frontend build's output folder. The NuGet package imports the targets automatically.
 
-1. Installs missing dependencies with `npm ci --include=dev` if a lockfile exists, otherwise `npm install --include=dev`.
-2. Runs `npm run dev` and sends its output to SimpleW logs.
-3. Detects the announced URL, waits for HTTP 2xx at that address, enables CORS for its exact origin and opens it in the browser.
-4. Stops the frontend processes when SimpleW stops.
+### JavaScript client
 
-If the frontend fails, the backend stays available. The frontend is not restarted automatically.
+In your client code:
 
-In Development, NpmTooling always launches and owns the frontend. CORS allows no origin before readiness and clears the detected origin when the frontend exits or stops. A discovery/readiness timeout stops the owned processes and logs whether the address was missing or unreachable. See [Configuration options](#configuration-options) for other settings.
+```js
+const response = await fetch(`${import.meta.env.VITE_SIMPLEW_API_URL}/hello`);
+const data = await response.json();
+```
 
-## Minimal Production Example
+`SimpleWNpmApiBaseUrl` supplies the API address during the build through `VITE_SIMPLEW_API_URL`. Vite embeds this value in the JavaScript: `/api` makes this request call `/api/hello` on the same domain. To change it, update the property and publish again.
 
-Keep the same module registration. Production uses compiled HTML, CSS and JavaScript files; it does not run a Node server.
+### Publish the application
 
-### Publish
-
-Your frontend needs a `build` script that generates `dist/index.html` and its assets. For Vite, use `"build": "vite build"` in `package.json`.
-
-From the server project, run:
+From the server project:
 
 ```sh
-dotnet publish -c Release
+dotnet publish -c Release -o ./publish
 ```
 
-With the NuGet package installed, publication automatically:
+NpmTooling installs frontend dependencies, runs `npm run build`, and copies the generated files into `publish/wwwroot`. Node.js and npm are required on the publishing machine.
 
-1. Installs dependencies with `npm ci --include=dev` or `npm install --include=dev`.
-2. Runs `npm run build` with both `SIMPLEW_API_URL` and `VITE_SIMPLEW_API_URL` set to the value of `SimpleWNpmApiBaseUrl`.
-3. Copies the contents of `dist` into `wwwroot` in the publish directory.
+`-o` selects the publish directory; the frontend destination is its `wwwroot` subfolder. Set `SimpleWNpmBuildClient=false` to copy an already built frontend without running npm.
 
-Node.js and npm must be available on the publishing machine. These steps do not run during a regular `dotnet build`.
+### Run the deployed application
 
-The defaults expect `../client` as the frontend directory and `/api` as the API address. To change them, use these properties in the server's `.csproj`:
+Deploy the entire `publish` directory and start the executable.
 
-| Property | Default | Purpose |
-| --- | --- | --- |
-| `SimpleWNpmSourcePath` | `$(MSBuildProjectDirectory)/../client` | Frontend source directory. |
-| `SimpleWNpmDistPath` | `$(SimpleWNpmSourcePath)/dist` | Compiled frontend directory. |
-| `SimpleWNpmApiBaseUrl` | `/api` | API address passed to the frontend build. |
-| `SimpleWNpmBuildClient` | `true` | Set to `false` to copy an already built frontend without running npm. |
+```sh
+dotnet MyWebApp.dll
+```
 
-Publish settings are separate from C# options: changing `SourcePath` does not change `SimpleWNpmSourcePath`. Keep `ApiUrl` and `SimpleWNpmApiBaseUrl` consistent for the target environment; both accept a path or a complete HTTP(S) URL.
+With this example, open `http://localhost:8080/` on the server machine. Adjust the listening address if clients connect from other machines.
 
-### Run
+NpmTooling serves `wwwroot` and handles SPA navigation. Node.js and npm are not needed on the deployment machine.
 
-Deploy the publish directory, including `wwwroot`, and start the application.
+## One Configuration for Both
 
-SimpleW serves the frontend from `wwwroot` beside the application. It requires an `index.html` there. For browser navigation such as `/dashboard`, it returns `index.html` so the frontend can handle the route. Unknown API routes and missing assets still return 404.
+Use a single setup for both local development and deployment.
+
+### C# server
+
+In `Program.cs`:
+
+```csharp
+using System.Net;
+using SimpleW;
+using SimpleW.Helper.NpmTooling;
+
+var server = new SimpleWServer(IPAddress.Loopback, 8080);
+
+server.MapGet("/api/hello", () => new { message = "Hello!" });
+
+server.UseNpmToolingModule(options => {
+    options.SourcePath = @"C:\projects\my-app\client";
+    options.ProductionPath = "wwwroot";
+    options.ApiUrl = "/api";
+});
+
+await server.RunAsync();
+```
+
+In the server's `.csproj`, inside `<Project>`:
+
+```xml
+<PropertyGroup>
+  <SimpleWNpmSourcePath>C:\projects\my-app\client</SimpleWNpmSourcePath>
+  <SimpleWNpmDistPath>$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
+  <SimpleWNpmApiBaseUrl>/api</SimpleWNpmApiBaseUrl>
+  <SimpleWNpmBuildClient>true</SimpleWNpmBuildClient>
+</PropertyGroup>
+```
+
+Use the full path to the folder containing `package.json` in both source paths. `ApiUrl` supplies the API address during development; `SimpleWNpmApiBaseUrl` supplies it during the frontend build.
+
+### JavaScript client
+
+Use the same API call in both modes:
+
+```js
+const response = await fetch(`${import.meta.env.VITE_SIMPLEW_API_URL}/hello`);
+const data = await response.json();
+```

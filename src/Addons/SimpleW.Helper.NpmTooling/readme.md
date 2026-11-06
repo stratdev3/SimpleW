@@ -23,13 +23,16 @@ using SimpleW.Helper.NpmTooling;
 var server = new SimpleWServer(IPAddress.Loopback, 8080);
 server.MapGet("/api/hello", () => new { message = "Hello" });
 server.UseNpmToolingModule(options => {
-    options.Environment = "Development";
-    options.SourcePath = "../client"; // Relative to AppContext.BaseDirectory, or use an absolute path.
+    options.SourcePath = @"C:\projects\my-app\client";
+    options.ProductionPath = "wwwroot";
+    options.ApiUrl = "/api";
 });
 await server.RunAsync();
 ```
 
-If no environment is specified explicitly, the module reads `DOTNET_ENVIRONMENT`, falling back to `Production`. Only `Development`, matched case-insensitively, enables npm. Call `UseNpmToolingModule` once, before starting the server. The IDE still launches the C# server, so backend breakpoints remain available.
+Use this same registration for development and deployment. `options.Environment` defaults to `NpmEnvironment.AutoDetect`: the module reads `SimpleW.Published` metadata from the application's entry assembly. The value `true` selects `Production`; a missing marker, any other value or a missing entry assembly selects `Development`. Set `NpmEnvironment.Development` to run npm or `NpmEnvironment.Production` to serve compiled files explicitly. Call `UseNpmToolingModule` once, before starting the server. The IDE still launches the C# server, so backend breakpoints remain available.
+
+Regular builds write `SimpleW.Published=false`; `dotnet publish` writes `true`, regardless of Debug/Release. The marker stays with the binary if copied or launched directly from `bin`. A subsequent regular build restores `false`. Automatic publication detection is supported for the `dotnet publish` CLI; IDE publishing has not been verified.
 
 Development prerequisites: Node >= 22.12 and npm, available on the IDE's PATH. The module targets .NET 8, 9 and 10 and SimpleW 26.1.x. It supports frontends that produce static files; it does not host a Node SSR server in production.
 
@@ -67,7 +70,7 @@ Keep your existing frontend configuration and plugins. If the frontend also open
 
 | Option | Default | Purpose |
 | --- | --- | --- |
-| `Environment` | DOTNET_ENVIRONMENT, otherwise Production | Select development or production |
+| `Environment` | `NpmEnvironment.AutoDetect` | `Production` for a marked published application, otherwise `Development`. Use `NpmEnvironment.Development` or `NpmEnvironment.Production` to force a mode. |
 | `SourcePath` | `../client` | Directory containing package.json, relative to AppContext.BaseDirectory or absolute |
 | `ProductionPath` | `wwwroot` | Absolute path or path relative to the executable directory |
 | `ApiUrl` | `/api` | API path resolved against the active listener, or a complete HTTP(S) URL used unchanged; its path determines CORS scope and SPA fallback exclusion |
@@ -83,7 +86,7 @@ Keep your existing frontend configuration and plugins. If the frontend also open
 
 Configure options before installing the module; do not change them while it is running. npm stderr output is logged as warnings; process failures are logged by the supervisor.
 
-Relative source paths are resolved from `AppContext.BaseDirectory` (the executable directory), independently of the working directory. For example, `../client` points to a sibling of the executable directory, not the server project directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; use an absolute source path or adjust the relative path accordingly. When migrating from `ContentRootPath`, replace the base and relative source path with a single absolute `SourcePath`.
+Relative source paths are resolved from `AppContext.BaseDirectory` (the executable directory), independently of the working directory. For example, `../client` points to a sibling of the executable directory, not the server project directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; use an absolute source path or adjust the relative path accordingly.
 
 ### CORS
 
@@ -105,7 +108,7 @@ Installations and probes support cancellation. A failure leaves the backend avai
 
 ## Publishing
 
-The package contains `buildTransitive` files that run only when publishing an executable, never during a regular build or IDE project load.
+The package contains `buildTransitive` targets that generate the application's publication marker before compilation, independently of `GenerateAssemblyInfo`. They exclude libraries and IDE design-time builds. Frontend installation, compilation and copying run only when publishing an executable.
 
 ```xml
 <PropertyGroup>
@@ -120,9 +123,11 @@ Publishing installs dependencies, then runs `npm run build` with both `SIMPLEW_A
 
 The dist files are added to the publish output under `wwwroot`, as external files even for a single-file publish. An npm failure or a missing dist/index.html fails publication. With `SimpleWNpmBuildClient=false`, npm is not called: a dist directory already built with the correct API address is required and copied unchanged.
 
-MSBuild does not read C# runtime options. Keep `ApiUrl` and `SimpleWNpmApiBaseUrl` consistent for the target environment; both accept an API path or a complete HTTP(S) URL. Likewise, keep `SourcePath` and `SimpleWNpmSourcePath` consistent. The legacy names `SimpleWStackSourcePath`, `SimpleWStackDistPath` and `SimpleWStackBuildClient` are accepted for migration; explicitly set new properties take precedence.
+MSBuild does not read C# runtime options. Keep `ApiUrl` and `SimpleWNpmApiBaseUrl` consistent for the target environment; both accept an API path or a complete HTTP(S) URL. Likewise, keep `SourcePath` and `SimpleWNpmSourcePath` consistent.
 
-NuGet consumption imports the targets automatically. With ProjectReference, explicitly import `buildTransitive/SimpleW.Helper.NpmTooling.targets` into the executable project.
+The `SimpleW.Helper.NpmTooling` NuGet package imports the targets automatically.
+
+Publication validates the metadata of the actual application binary without executing it, before running npm. `dotnet publish --no-build` requires a binary already marked `SimpleW.Published=true`; a missing or unmarked binary fails with `SWNPM001`. Run `dotnet publish` without `--no-build` to compile a marked binary. This check applies even with `SimpleWNpmBuildClient=false` or an explicit C# environment override.
 
 ## Production
 

@@ -17,8 +17,8 @@ namespace SimpleW.Helper.NpmTooling {
         public void Install(SimpleWServer server) {
 
             ApiAddress api = new(options.ApiUrl);
-            string environment = options.Environment ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
-            if (!string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase)) {
+            NpmEnvironment environment = NpmEnvironmentResolver.Resolve(options.Environment, System.Reflection.Assembly.GetEntryAssembly());
+            if (environment != NpmEnvironment.Development) {
                 new SpaFiles(options, api).Install(server);
                 return;
             }

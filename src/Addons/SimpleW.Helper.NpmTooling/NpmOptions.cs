@@ -9,9 +9,9 @@ namespace SimpleW.Helper.NpmTooling {
     public sealed class NpmOptions {
 
         /// <summary>
-        /// Explicit environment, otherwise DOTNET_ENVIRONMENT or Production.
+        /// Frontend hosting mode. AutoDetect uses Production for published applications and Development for regular builds.
         /// </summary>
-        public string? Environment { get; set; }
+        public NpmEnvironment Environment { get; set; } = NpmEnvironment.AutoDetect;
 
         /// <summary>
         /// Client directory containing package.json, relative to AppContext.BaseDirectory or absolute.

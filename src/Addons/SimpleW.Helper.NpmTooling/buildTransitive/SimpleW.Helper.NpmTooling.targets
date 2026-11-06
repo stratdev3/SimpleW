@@ -2,8 +2,87 @@
   <PropertyGroup>
     <_SimpleWNpmTargetsImported>true</_SimpleWNpmTargetsImported>
   </PropertyGroup>
+  <!-- Compile into the consuming executable, including when GenerateAssemblyInfo is disabled.
+       Writing false on ordinary builds invalidates a previous publish's incremental output. -->
+  <Target Name="SimpleWNpmGeneratePublicationMarker" BeforeTargets="BeforeCompile;CoreCompile"
+          DependsOnTargets="PrepareForBuild"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
+    <PropertyGroup>
+      <_SimpleWNpmPublished>false</_SimpleWNpmPublished>
+      <_SimpleWNpmPublished Condition="'$(_IsPublishing)' == 'true'">true</_SimpleWNpmPublished>
+      <_SimpleWNpmMarkerFile>$(IntermediateOutputPath)SimpleW.NpmTooling.Publication.g$(DefaultLanguageSourceExtension)</_SimpleWNpmMarkerFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <_SimpleWNpmMarkerAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>SimpleW.Published</_Parameter1>
+        <_Parameter2>$(_SimpleWNpmPublished)</_Parameter2>
+      </_SimpleWNpmMarkerAttribute>
+    </ItemGroup>
+    <WriteCodeFragment AssemblyAttributes="@(_SimpleWNpmMarkerAttribute)" Language="$(Language)"
+                       OutputFile="$(_SimpleWNpmMarkerFile)" />
+    <ItemGroup>
+      <Compile Include="$(_SimpleWNpmMarkerFile)" />
+      <FileWrites Include="$(_SimpleWNpmMarkerFile)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- MetadataLoadContext is supplied by the SDK. Never load or execute the application
+       in MSBuild's execution context, and never rely on an obj stamp when skipping compilation. -->
+  <UsingTask TaskName="SimpleWValidateNpmPublication" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <AssemblyPath ParameterType="System.String" Required="true" />
+      <SdkToolsPath ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Reflection" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        bool published = false;
+        try {
+          string path = Path.GetFullPath(AssemblyPath);
+          if (File.Exists(path)) {
+            string[] platform = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "").Split(Path.PathSeparator);
+            // Bind the SDK's metadata-only reader at runtime: inline task compilation uses
+            // netstandard reference assemblies, whereas recent SDK readers target newer .NET.
+            var reader = Assembly.LoadFrom(Path.Combine(SdkToolsPath, "System.Reflection.MetadataLoadContext.dll"));
+            var resolver = Activator.CreateInstance(reader.GetType("System.Reflection.PathAssemblyResolver"),
+              new object[] { platform.Where(File.Exists).Concat(Directory.GetFiles(Path.GetDirectoryName(path), "*.dll")) });
+            var contextType = reader.GetType("System.Reflection.MetadataLoadContext");
+            using (var context = (IDisposable)Activator.CreateInstance(contextType,
+              new object[] { resolver, typeof(object).Assembly.GetName().Name })) {
+              var assembly = (Assembly)contextType.GetMethod("LoadFromAssemblyPath").Invoke(context, new object[] { path });
+              published = assembly.GetCustomAttributesData().Any(attribute =>
+                attribute.AttributeType.FullName == "System.Reflection.AssemblyMetadataAttribute" &&
+                attribute.ConstructorArguments.Count == 2 &&
+                (string)attribute.ConstructorArguments[0].Value == "SimpleW.Published" &&
+                (string)attribute.ConstructorArguments[1].Value == "true");
+            }
+          }
+        }
+        catch (Exception exception) {
+          Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Low,
+            "Cannot read publication metadata: {0}", exception.Message);
+        }
+        if (!published) {
+          Log.LogError(null, "SWNPM001", null, AssemblyPath, 0, 0, 0, 0,
+            "SimpleW.Helper.NpmTooling: '{0}' is missing or does not contain the SimpleW.Published=true marker. Run dotnet publish without --no-build to compile a marked application before publishing.", AssemblyPath);
+          return false;
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="SimpleWNpmValidatePublication"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
+    <SimpleWValidateNpmPublication AssemblyPath="$(TargetPath)" SdkToolsPath="$(MSBuildToolsPath)" />
+  </Target>
+
   <!-- Settings are resolved at publish time so Stack aliases work regardless of NuGet import order. -->
   <Target Name="SimpleWNpmPrepareClient" BeforeTargets="ComputeFilesToPublish"
+          DependsOnTargets="SimpleWNpmValidatePublication"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
     <PropertyGroup>
       <SimpleWNpmSourcePath Condition="'$(SimpleWNpmSourcePath)' == '' and '$(SimpleWStackSourcePath)' != ''">$(SimpleWStackSourcePath)</SimpleWNpmSourcePath>

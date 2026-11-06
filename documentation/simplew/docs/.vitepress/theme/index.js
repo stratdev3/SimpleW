@@ -5,6 +5,7 @@ import './custom.css'
 import Layout from './components/Layout.vue'
 import AddonMeta from './components/AddonMeta.vue'
 import HomeOverview from './components/HomeOverview.vue'
+import ZoomableImage from './components/ZoomableImage.vue'
 
 /** @type {import('vitepress').Theme} */
 export default {
@@ -13,5 +14,6 @@ export default {
   enhanceApp({ app, router, siteData }) {
     app.component('AddonMeta', AddonMeta)
     app.component('HomeOverview', HomeOverview)
+    app.component('ZoomableImage', ZoomableImage)
   }
 }

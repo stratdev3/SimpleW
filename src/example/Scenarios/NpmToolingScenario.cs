@@ -34,7 +34,6 @@ internal sealed class NpmToolingScenario : IScenario {
         });
 
         server.UseNpmToolingModule(options => {
-            options.Environment = "Development";
             options.SourcePath = clientPath;
             options.ApiUrl = "/api";
             options.InstallDependencies = true;
