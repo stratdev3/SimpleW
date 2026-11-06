@@ -13,10 +13,10 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// <summary>
         /// Resolves the production root and requires a safe index.html before installing the fallback.
         /// </summary>
-        /// <param name="options">Production asset directory.</param>
+        /// <param name="configuration">Frontend settings embedded during compilation.</param>
         /// <param name="api">Validated API address and derived path prefix.</param>
-        public SpaFiles(NpmOptions options, ApiAddress api) {
-            _root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.ProductionPath, AppContext.BaseDirectory));
+        public SpaFiles(NpmBuildConfiguration configuration, ApiAddress api) {
+            _root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(configuration.PublishPath, AppContext.BaseDirectory));
             _apiPrefix = api.PathPrefix;
             if (!TryResolve("index.html", out string index) || !File.Exists(index)) {
                 throw new DirectoryNotFoundException($"SimpleW.Helper.NpmTooling: compiled client missing or unsafe at '{_root}'. Publish the client first.");

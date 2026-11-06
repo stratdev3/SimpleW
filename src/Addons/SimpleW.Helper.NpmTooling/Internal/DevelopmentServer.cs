@@ -22,12 +22,13 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         /// </summary>
         /// <param name="server">Server whose listener supplies the default API origin.</param>
         /// <param name="options">Frontend configuration and loggers used throughout supervision.</param>
+        /// <param name="configuration">Shared frontend settings embedded during compilation.</param>
         /// <param name="api">Validated API address.</param>
-        public DevelopmentServer(SimpleWServer server, NpmOptions options, ApiAddress api) {
+        public DevelopmentServer(SimpleWServer server, NpmOptions options, NpmBuildConfiguration configuration, ApiAddress api) {
             _server = server;
             _options = options;
             _api = api;
-            _source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.SourcePath, AppContext.BaseDirectory));
+            _source = Path.TrimEndingDirectorySeparator(configuration.SourcePath);
             if (options.StartupTimeout <= TimeSpan.Zero || options.InstallTimeout <= TimeSpan.Zero) {
                 throw new ArgumentException("Npm timeouts must be positive.");
             }
@@ -85,7 +86,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
                 };
                 string apiUrl = _api.Resolve(_server);
                 if (!File.Exists(Path.Combine(_source, "package.json"))) {
-                    throw new FileNotFoundException($"Client package.json missing in '{_source}'. Configure SourcePath.");
+                    throw new FileNotFoundException($"Client package.json missing in '{_source}'. Configure SimpleWNpmSourcePath in the application's .csproj and rebuild.");
                 }
                 NodeToolchain toolchain = await NodeToolchain.FindAsync(_options, token).ConfigureAwait(false);
                 Dictionary<string, string> environment = new() {

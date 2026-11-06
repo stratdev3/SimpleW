@@ -10,18 +10,10 @@ internal sealed class NpmToolingScenario : IScenario {
 
     public string Description => "Start an existing Vite frontend with direct AJAX calls to SimpleW.";
 
-    public string Usage => " --client <path>";
+    public string Usage => "";
 
     public Task RunAsync(ExampleArguments arguments, CancellationToken cancellationToken) {
-        arguments.EnsureAllowed("client");
-
-        string clientPath = Path.GetFullPath(arguments.Require("client"));
-        if (!Directory.Exists(clientPath)) {
-            throw new ExampleCliException($"Frontend directory '{clientPath}' does not exist.");
-        }
-        if (!File.Exists(Path.Combine(clientPath, "package.json"))) {
-            throw new ExampleCliException($"Frontend directory '{clientPath}' must contain a package.json file.");
-        }
+        arguments.EnsureAllowed();
 
         // The npm helper opens the frontend only after it is ready.
         bool openBrowser = arguments.BrowserEnabled;
@@ -34,14 +26,9 @@ internal sealed class NpmToolingScenario : IScenario {
         });
 
         server.UseNpmToolingModule(options => {
-            options.SourcePath = clientPath;
-            options.ApiUrl = "/api";
-            options.InstallDependencies = true;
-            options.EnableDevelopmentCors = true;
             options.OpenBrowser = openBrowser;
         });
 
-        ExampleConsole.Info($"Frontend sources: {clientPath}");
         ExampleConsole.Info("The frontend address will be detected automatically from its startup output.");
         ExampleConsole.Info("The helper passes the actual API address through SIMPLEW_API_URL and VITE_SIMPLEW_API_URL.");
         return ExampleServer.RunAsync(server, "http", arguments, cancellationToken);

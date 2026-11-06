@@ -14,21 +14,6 @@ namespace SimpleW.Helper.NpmTooling {
         public NpmEnvironment Environment { get; set; } = NpmEnvironment.AutoDetect;
 
         /// <summary>
-        /// Client directory containing package.json, relative to AppContext.BaseDirectory or absolute.
-        /// </summary>
-        public string SourcePath { get; set; } = "../client";
-
-        /// <summary>
-        /// Compiled assets directory, relative to AppContext.BaseDirectory or absolute.
-        /// </summary>
-        public string ProductionPath { get; set; } = "wwwroot";
-
-        /// <summary>
-        /// API path relative to the active SimpleW origin, or a complete HTTP(S) URL used unchanged.
-        /// </summary>
-        public string ApiUrl { get; set; } = "/api";
-
-        /// <summary>
         /// Allow the frontend origin on the API prefix in Development, without credentials.
         /// </summary>
         public bool EnableDevelopmentCors { get; set; } = true;

@@ -164,7 +164,7 @@ namespace example {
             ExampleConsole.BlankLine();
             ExampleConsole.Section("Examples");
             ExampleConsole.Command("example hello");
-            ExampleConsole.Command("example npm --client <path> --log --browser");
+            ExampleConsole.Command("example npm --log --browser");
             ExampleConsole.Command("example hello --log");
             ExampleConsole.Command("example hello --ioxide --log");
             ExampleConsole.Command("example swagger --browser");

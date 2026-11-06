@@ -16,14 +16,15 @@ namespace SimpleW.Helper.NpmTooling {
         /// <param name="server">Server configured before its listener starts.</param>
         public void Install(SimpleWServer server) {
 
-            ApiAddress api = new(options.ApiUrl);
-            NpmEnvironment environment = NpmEnvironmentResolver.Resolve(options.Environment, System.Reflection.Assembly.GetEntryAssembly());
+            NpmBuildConfiguration configuration = NpmBuildConfiguration.Read(System.Reflection.Assembly.GetEntryAssembly());
+            ApiAddress api = new(configuration.ApiBaseUrl);
+            NpmEnvironment environment = NpmEnvironmentResolver.Resolve(options.Environment, configuration.IsPublished);
             if (environment != NpmEnvironment.Development) {
-                new SpaFiles(options, api).Install(server);
+                new SpaFiles(configuration, api).Install(server);
                 return;
             }
 
-            DevelopmentServer development = new(server, options, api);
+            DevelopmentServer development = new(server, options, configuration, api);
 
             // cors
             if (options.EnableDevelopmentCors) {

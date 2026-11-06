@@ -41,21 +41,25 @@ See the [changelog](./helper-npmtooling-changelog.md).
 
 ## Configuration options
 
-Set these options in the `UseNpmToolingModule(options => { ... })` callback before starting SimpleW. Publication properties are listed under [Build and Deploy](#build-and-deploy).
+Configure paths and the API URL in the server's `.csproj`. The NuGet package embeds them in the application at each build; rebuild after changing them. See [Build and Deploy](#build-and-deploy) for publication.
 
-### Environment and paths
+### Project properties
+
+| Property | Default | Purpose |
+| --- | --- | --- |
+| `SimpleWNpmSourcePath` | `../client` | Folder containing `package.json`, absolute or relative to the `.csproj`. |
+| `SimpleWNpmDistPath` | `$(SimpleWNpmSourcePath)/dist` | Frontend build output, absolute or relative to the `.csproj`. Used during publication only. |
+| `SimpleWNpmPublishPath` | `wwwroot` | Destination subfolder inside the published application, also used when serving files. Absolute paths and paths outside that directory are rejected. |
+| `SimpleWNpmApiBaseUrl` | `/api` | API path or complete HTTP(S) URL, shared by development and the frontend build. Its path determines CORS scope and SPA fallback exclusion. |
+| `SimpleWNpmBuildClient` | `true` | Build the frontend during publication; `false` copies an already built frontend. |
+
+### C# options
+
+The remaining options use the optional `UseNpmToolingModule(options => { ... })` callback.
 
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `Environment` | `NpmEnvironment.AutoDetect` | Automatic: `Production` for an application marked by `dotnet publish`, otherwise `Development`. Use `NpmEnvironment.Development` or `NpmEnvironment.Production` to force a mode. |
-| `SourcePath` | `../client` | Path to the directory containing `package.json`, either absolute or relative to `AppContext.BaseDirectory`. |
-| `ProductionPath` | `wwwroot` | Directory containing compiled files, relative to the application directory. |
-| `ApiUrl` | `/api` | API path relative to the active SimpleW origin, or a complete HTTP(S) URL used unchanged. Its path determines CORS scope and SPA fallback exclusion. |
-
-### Development options
-
-| Option | Default | Purpose |
-| --- | --- | --- |
 | `Script` | `dev` | npm script to launch. |
 | `ScriptArguments` | Empty list | Extra script arguments, passed after `--`. |
 | `InstallDependencies` | `true` | Set to `false` to install dependencies yourself. |
@@ -65,13 +69,10 @@ Set these options in the `UseNpmToolingModule(options => { ... })` callback befo
 | `InstallTimeout` | 10 minutes | Maximum dependency installation time. |
 | `NodePath` | Auto-detected | Explicit Node executable path. |
 | `NpmCliPath` | Auto-detected | Explicit path to `npm-cli.js`. |
-
-### Logging
-
-| Option | Default logger | Purpose |
-| --- | --- | --- |
 | `ServerLogger` | `SimpleW.Helper.NpmTooling.Server` | Startup, shutdown and supervision errors. |
 | `ClientLogger` | `SimpleW.Helper.NpmTooling.Client` | npm output. |
+
+Mode selection is independent of Debug/Release. The publication marker stays with the binary, including when copied or started from `bin`; a regular build resets it. Automatic publication detection supports the `dotnet publish` CLI; IDE publishing has not been verified.
 
 
 ## Development
@@ -91,14 +92,22 @@ var server = new SimpleWServer(IPAddress.Loopback, 8080);
 
 server.MapGet("/api/hello", () => new { message = "Hello!" });
 
-server.UseNpmToolingModule(options => {
-    // Folder containing your frontend's package.json.
-    options.SourcePath = @"C:\projects\my-app\client";
-    // If your frontend calls the backend API, provide its relative or absolute URL.
-    options.ApiUrl = "/api";
-});
+// just load the module
+server.UseNpmToolingModule();
 
 await server.RunAsync();
+```
+
+In the server's `.csproj`, inside `<Project>`:
+
+```xml
+<PropertyGroup>
+  <!-- full path of the folder containing package.json -->
+  <SimpleWNpmSourcePath>C:\projects\my-app\client</SimpleWNpmSourcePath>
+  <!-- if your client consume the server's API, set the relative or absolute URL.
+       This URL will be passed as VITE_SIMPLEW_API_URL environment var. -->
+  <SimpleWNpmApiBaseUrl>/api</SimpleWNpmApiBaseUrl>
+</PropertyGroup>
 ```
 
 ### JavaScript client
@@ -117,7 +126,7 @@ const data = await response.json();
 
 In the example above, this calls `http://127.0.0.1:8080/api/hello`.
 
-If you change `ApiUrl` on the server side, your frontend receives the updated address the next time it is started by NpmTooling.
+If you change `SimpleWNpmApiBaseUrl`, rebuild and restart the C# application so the frontend receives the updated address.
 
 ### Run locally
 
@@ -131,7 +140,7 @@ Build and start the C# application from your IDE in either Debug or Release. No 
 
 ## Build and Deploy
 
-`dotnet publish` builds the frontend and copies it into the published application. NpmTooling then serves those files automatically. It uses the [`staticFileModule`](../guide/staticfiles.md) behind the hood.
+`dotnet publish` prepares the application and frontend files for deployment. When the published application runs, NpmTooling serves those files through the [`StaticFilesModule`](../guide/staticfiles.md). This is `Production` mode, including on staging servers.
 
 ### C# server
 
@@ -146,15 +155,12 @@ var server = new SimpleWServer(IPAddress.Loopback, 8080);
 
 server.MapGet("/api/hello", () => new { message = "Hello!" });
 
-server.UseNpmToolingModule(options => {
-    options.ProductionPath = "wwwroot";
-    options.ApiUrl = "/api";
-});
+server.UseNpmToolingModule();
 
 await server.RunAsync();
 ```
 
-`ProductionPath` points to the compiled frontend beside the executable. No additional `StaticFilesModule` registration is needed.
+No additional `StaticFilesModule` registration is needed.
 
 In the server's `.csproj`, add this inside `<Project>`:
 
@@ -162,12 +168,12 @@ In the server's `.csproj`, add this inside `<Project>`:
 <PropertyGroup>
   <SimpleWNpmSourcePath>C:\projects\my-app\client</SimpleWNpmSourcePath>
   <SimpleWNpmDistPath>$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
+  <SimpleWNpmPublishPath>wwwroot</SimpleWNpmPublishPath>
   <SimpleWNpmApiBaseUrl>/api</SimpleWNpmApiBaseUrl>
   <SimpleWNpmBuildClient>true</SimpleWNpmBuildClient>
 </PropertyGroup>
 ```
 
-`SimpleWNpmSourcePath` is the full path to the folder containing `package.json`. `SimpleWNpmDistPath` is the frontend build's output folder. The NuGet package imports the targets automatically.
 
 ### JavaScript client
 
@@ -178,9 +184,12 @@ const response = await fetch(`${import.meta.env.VITE_SIMPLEW_API_URL}/hello`);
 const data = await response.json();
 ```
 
-`SimpleWNpmApiBaseUrl` supplies the API address during the build through `VITE_SIMPLEW_API_URL`. Vite embeds this value in the JavaScript: `/api` makes this request call `/api/hello` on the same domain. To change it, update the property and publish again.
-
 ### Publish the application
+
+<ZoomableImage
+  src="https://raw.githubusercontent.com/stratdev3/storage/refs/heads/master/simplew/modules/SimpleW.Helper.NpmTooling-Publish-Release.gif"
+  alt="Publishing a frontend with SimpleW NpmTooling in release mode"
+/>
 
 From the server project:
 
@@ -190,7 +199,9 @@ dotnet publish -c Release -o ./publish
 
 NpmTooling installs frontend dependencies, runs `npm run build`, and copies the generated files into `publish/wwwroot`. Node.js and npm are required on the publishing machine.
 
-`-o` selects the publish directory; the frontend destination is its `wwwroot` subfolder. Set `SimpleWNpmBuildClient=false` to copy an already built frontend without running npm.
+`-o` selects the publish directory; `SimpleWNpmPublishPath` selects its frontend subfolder. Set `SimpleWNpmBuildClient=false` to copy an already built frontend without running npm.
+
+`--no-build` requires a previously published binary with matching source path, publish path and API URL. Otherwise, publication stops before npm; run `dotnet publish` without `--no-build`.
 
 ### Run the deployed application
 
@@ -202,52 +213,8 @@ dotnet MyWebApp.dll
 
 With this example, open `http://localhost:8080/` on the server machine. Adjust the listening address if clients connect from other machines.
 
-NpmTooling serves `wwwroot` and handles SPA navigation. Node.js and npm are not needed on the deployment machine.
+NpmTooling serves `wwwroot` in this example and handles SPA navigation. The folder is resolved beside the executable, so you can move the entire deployment. Node.js and npm are not needed on the deployment machine.
 
-## One Configuration for Both
-
-Use a single setup for both local development and deployment.
-
-### C# server
-
-In `Program.cs`:
-
-```csharp
-using System.Net;
-using SimpleW;
-using SimpleW.Helper.NpmTooling;
-
-var server = new SimpleWServer(IPAddress.Loopback, 8080);
-
-server.MapGet("/api/hello", () => new { message = "Hello!" });
-
-server.UseNpmToolingModule(options => {
-    options.SourcePath = @"C:\projects\my-app\client";
-    options.ProductionPath = "wwwroot";
-    options.ApiUrl = "/api";
-});
-
-await server.RunAsync();
-```
-
-In the server's `.csproj`, inside `<Project>`:
-
-```xml
-<PropertyGroup>
-  <SimpleWNpmSourcePath>C:\projects\my-app\client</SimpleWNpmSourcePath>
-  <SimpleWNpmDistPath>$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
-  <SimpleWNpmApiBaseUrl>/api</SimpleWNpmApiBaseUrl>
-  <SimpleWNpmBuildClient>true</SimpleWNpmBuildClient>
-</PropertyGroup>
-```
-
-Use the full path to the folder containing `package.json` in both source paths. `ApiUrl` supplies the API address during development; `SimpleWNpmApiBaseUrl` supplies it during the frontend build.
-
-### JavaScript client
-
-Use the same API call in both modes:
-
-```js
-const response = await fetch(`${import.meta.env.VITE_SIMPLEW_API_URL}/hello`);
-const data = await response.json();
-```
+:::tip INFO
+Use this configuration when you need both local development and deployment. With the default `AutoDetect` mode, running a regular build starts the frontend through npm; running the published application serves the compiled files. No configuration changes are needed between the two.
+:::

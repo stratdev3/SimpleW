@@ -49,7 +49,7 @@ namespace SimpleW.Helper.NpmTooling.Internal {
             if (_absolute) {
                 return _value;
             }
-            IPAddress address = server.Address ?? throw new InvalidOperationException("Set ApiUrl to a complete HTTP(S) URL when using a Unix socket.");
+            IPAddress address = server.Address ?? throw new InvalidOperationException("Set SimpleWNpmApiBaseUrl to a complete HTTP(S) URL in the application's .csproj when using a Unix socket.");
             if (address.Equals(IPAddress.Any)) {
                 address = IPAddress.Loopback;
             }
@@ -61,10 +61,10 @@ namespace SimpleW.Helper.NpmTooling.Internal {
         }
 
         /// <summary>
-        /// Reports an invalid public option consistently in development and production.
+        /// Reports an invalid project property consistently in development and production.
         /// </summary>
         /// <returns>The configuration exception.</returns>
-        private static ArgumentException InvalidAddress() => new("ApiUrl must be a path such as /api or a complete HTTP(S) URL, without credentials, whitespace, a query or a fragment.", "ApiUrl");
+        private static ArgumentException InvalidAddress() => new("SimpleWNpmApiBaseUrl must be a path such as /api or a complete HTTP(S) URL, without credentials, whitespace, a query or a fragment.", "SimpleWNpmApiBaseUrl");
 
     }
 

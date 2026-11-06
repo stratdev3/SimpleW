@@ -22,15 +22,25 @@ using SimpleW.Helper.NpmTooling;
 
 var server = new SimpleWServer(IPAddress.Loopback, 8080);
 server.MapGet("/api/hello", () => new { message = "Hello" });
-server.UseNpmToolingModule(options => {
-    options.SourcePath = @"C:\projects\my-app\client";
-    options.ProductionPath = "wwwroot";
-    options.ApiUrl = "/api";
-});
+server.UseNpmToolingModule();
 await server.RunAsync();
 ```
 
-Use this same registration for development and deployment. `options.Environment` defaults to `NpmEnvironment.AutoDetect`: the module reads `SimpleW.Published` metadata from the application's entry assembly. The value `true` selects `Production`; a missing marker, any other value or a missing entry assembly selects `Development`. Set `NpmEnvironment.Development` to run npm or `NpmEnvironment.Production` to serve compiled files explicitly. Call `UseNpmToolingModule` once, before starting the server. The IDE still launches the C# server, so backend breakpoints remain available.
+In the server's `.csproj`, inside `<Project>`:
+
+```xml
+<PropertyGroup>
+  <SimpleWNpmSourcePath>C:\projects\my-app\client</SimpleWNpmSourcePath>
+  <SimpleWNpmDistPath>$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
+  <SimpleWNpmPublishPath>wwwroot</SimpleWNpmPublishPath>
+  <SimpleWNpmApiBaseUrl>/api</SimpleWNpmApiBaseUrl>
+  <SimpleWNpmBuildClient>true</SimpleWNpmBuildClient>
+</PropertyGroup>
+```
+
+Set `SimpleWNpmSourcePath` to the full path of the folder containing `package.json`. The NuGet package imports its targets automatically and embeds the shared settings at each build. Rebuild after changing them; the module reads them once when installed. No settings file is needed.
+
+Use this setup for development and deployment. `options.Environment` defaults to `NpmEnvironment.AutoDetect`: regular builds run npm, and published applications serve compiled files. To force a mode, use `server.UseNpmToolingModule(options => options.Environment = NpmEnvironment.Development)` or `NpmEnvironment.Production`. Register the module once, before starting the server.
 
 Regular builds write `SimpleW.Published=false`; `dotnet publish` writes `true`, regardless of Debug/Release. The marker stays with the binary if copied or launched directly from `bin`. A subsequent regular build restores `false`. Automatic publication detection is supported for the `dotnet publish` CLI; IDE publishing has not been verified.
 
@@ -38,15 +48,9 @@ Development prerequisites: Node >= 22.12 and npm, available on the IDE's PATH. T
 
 ## API address
 
-The module passes the same API address to the npm process through two environment variables: `SIMPLEW_API_URL` for any frontend tool and `VITE_SIMPLEW_API_URL` for Vite. Configure their shared value with the single `ApiUrl` option, which defaults to `/api`:
+The module passes the same API address to the npm process through two environment variables: `SIMPLEW_API_URL` for any frontend tool and `VITE_SIMPLEW_API_URL` for Vite. Configure their shared value with `SimpleWNpmApiBaseUrl` in the `.csproj`. It accepts an API path such as `/api` (the default) or a complete HTTP(S) URL such as `https://backend.example/services`.
 
-```csharp
-options.ApiUrl = "/api"; // Default: active SimpleW origin + /api.
-options.ApiUrl = "/services"; // Active SimpleW origin + /services.
-options.ApiUrl = "https://backend.example/services"; // Used unchanged; nothing is appended.
-```
-
-For a path, the module uses the actual listener address and port after startup; wildcard bind addresses are replaced with loopback addresses. For a complete HTTP(S) URL, it preserves the supplied value, including its path and trailing slash. An absolute URL is required when the backend listens on a Unix socket. Credentials, whitespace, queries and fragments are not accepted in this API base address.
+In development, a path is resolved against the active SimpleW listener; wildcard bind addresses become loopback addresses. During publication, the path is passed unchanged to the frontend build, so `/api` uses the deployed application's origin. A complete HTTP(S) URL is always used unchanged and is required for a Unix socket listener. Credentials, whitespace, queries and fragments are not accepted.
 
 The path part also determines the development CORS scope and the API namespace excluded from production SPA fallback. For example, `https://backend.example/services` reserves `/services` and its descendants. A root address (`/` or a URL with no path) has no dedicated API namespace to exclude from SPA fallback; explicit backend routes still take precedence. This option does not create or rewrite routes. If the URL targets another server, that server must allow frontend requests through its own CORS configuration.
 
@@ -66,14 +70,25 @@ Startup announcements such as `Local: http://localhost:5173/` (Vite's default ou
 
 Keep your existing frontend configuration and plugins. If the frontend also opens a browser, disable that feature there (for example `server.open: false` in Vite) to let NpmTooling open it once. Do not add an `/api` proxy for this integration.
 
-## Options
+## Project properties
+
+| Property | Default | Purpose |
+| --- | --- | --- |
+| `SimpleWNpmSourcePath` | `../client` | Folder containing `package.json`, absolute or relative to the `.csproj`. |
+| `SimpleWNpmDistPath` | `$(SimpleWNpmSourcePath)/dist` | Frontend build output, absolute or relative to the `.csproj`; used only during publication. |
+| `SimpleWNpmPublishPath` | `wwwroot` | Relative frontend subfolder inside the published application. Absolute paths and paths outside that directory are rejected. |
+| `SimpleWNpmApiBaseUrl` | `/api` | API path or complete HTTP(S) URL shared by development and publication. |
+| `SimpleWNpmBuildClient` | `true` | Run the frontend build during publication; `false` copies an already built frontend. |
+
+The source path is embedded as an absolute path. The published frontend folder is resolved relative to `AppContext.BaseDirectory`, so the deployment can be moved as a whole.
+
+## C# options
+
+Use the optional `UseNpmToolingModule(options => { ... })` callback for these settings:
 
 | Option | Default | Purpose |
 | --- | --- | --- |
 | `Environment` | `NpmEnvironment.AutoDetect` | `Production` for a marked published application, otherwise `Development`. Use `NpmEnvironment.Development` or `NpmEnvironment.Production` to force a mode. |
-| `SourcePath` | `../client` | Directory containing package.json, relative to AppContext.BaseDirectory or absolute |
-| `ProductionPath` | `wwwroot` | Absolute path or path relative to the executable directory |
-| `ApiUrl` | `/api` | API path resolved against the active listener, or a complete HTTP(S) URL used unchanged; its path determines CORS scope and SPA fallback exclusion |
 | `Script` | `dev` | npm script to run |
 | `ScriptArguments` | Empty list | Separate arguments after the npm `--` separator |
 | `EnableDevelopmentCors` | `true` | Install development CORS rules |
@@ -86,11 +101,9 @@ Keep your existing frontend configuration and plugins. If the frontend also open
 
 Configure options before installing the module; do not change them while it is running. npm stderr output is logged as warnings; process failures are logged by the supervisor.
 
-Relative source paths are resolved from `AppContext.BaseDirectory` (the executable directory), independently of the working directory. For example, `../client` points to a sibling of the executable directory, not the server project directory. In a typical development build, the executable is under `bin/Debug/netX.0/`; use an absolute source path or adjust the relative path accordingly.
-
 ### CORS
 
-In development, the module allows only the discovered frontend origin on the path derived from `ApiUrl`, using SimpleW's existing CORS module. No origin is allowed until the frontend is ready; the origin is cleared on shutdown or process exit. Common REST requests and OPTIONS preflights are supported; allowed headers are `Content-Type, Authorization`. Credentials are disabled, and no wildcard origin is added.
+In development, the module allows only the discovered frontend origin on the path derived from `SimpleWNpmApiBaseUrl`, using SimpleW's existing CORS module. No origin is allowed until the frontend is ready; the origin is cleared on shutdown or process exit. Common REST requests and OPTIONS preflights are supported; allowed headers are `Content-Type, Authorization`. Credentials are disabled, and no wildcard origin is added.
 
 If the application already configures CORS, set `EnableDevelopmentCors=false` and manage the rules in the application, particularly for cross-origin cookies. The module does not add CORS in production. It neither creates nor moves API routes: those remain defined by the application.
 
@@ -108,33 +121,22 @@ Installations and probes support cancellation. A failure leaves the backend avai
 
 ## Publishing
 
-The package contains `buildTransitive` targets that generate the application's publication marker before compilation, independently of `GenerateAssemblyInfo`. They exclude libraries and IDE design-time builds. Frontend installation, compilation and copying run only when publishing an executable.
+The NuGet targets embed the shared configuration and publication marker before compilation, independently of `GenerateAssemblyInfo`. They exclude libraries and IDE design-time builds. Frontend installation, compilation and copying run only when publishing an executable:
 
-```xml
-<PropertyGroup>
-  <SimpleWNpmSourcePath>$(MSBuildProjectDirectory)/../client</SimpleWNpmSourcePath>
-  <SimpleWNpmDistPath>$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
-  <SimpleWNpmBuildClient>true</SimpleWNpmBuildClient>
-  <SimpleWNpmApiBaseUrl>/api</SimpleWNpmApiBaseUrl>
-</PropertyGroup>
+```sh
+dotnet publish -c Release -o ./publish
 ```
 
 Publishing installs dependencies, then runs `npm run build` with both `SIMPLEW_API_URL` and `VITE_SIMPLEW_API_URL` set to the same value from `SimpleWNpmApiBaseUrl`, and `NODE_ENV=production`. Vite embeds `VITE_SIMPLEW_API_URL` in the compiled JavaScript. `/api` uses the domain and port where SimpleW serves the application; an absolute URL can also be used for a separate deployment, with CORS configured in the application.
 
-The dist files are added to the publish output under `wwwroot`, as external files even for a single-file publish. An npm failure or a missing dist/index.html fails publication. With `SimpleWNpmBuildClient=false`, npm is not called: a dist directory already built with the correct API address is required and copied unchanged.
+The dist files are copied to `SimpleWNpmPublishPath` inside the publish output (`publish/wwwroot` in this example), as external files even for a single-file publish. An npm failure or a missing dist/index.html fails publication. With `SimpleWNpmBuildClient=false`, npm is not called: a dist directory already built with the correct API address is required and copied unchanged.
 
-MSBuild does not read C# runtime options. Keep `ApiUrl` and `SimpleWNpmApiBaseUrl` consistent for the target environment; both accept an API path or a complete HTTP(S) URL. Likewise, keep `SourcePath` and `SimpleWNpmSourcePath` consistent.
+Publication validates the application's metadata without executing it, before running npm. `dotnet publish --no-build` requires an already published binary with matching source path, publish path and API URL. Otherwise, run `dotnet publish` without `--no-build`. Validation also applies with `SimpleWNpmBuildClient=false` or an explicit C# environment override.
 
-The `SimpleW.Helper.NpmTooling` NuGet package imports the targets automatically.
-
-Publication validates the metadata of the actual application binary without executing it, before running npm. `dotnet publish --no-build` requires a binary already marked `SimpleW.Published=true`; a missing or unmarked binary fails with `SWNPM001`. Run `dotnet publish` without `--no-build` to compile a marked binary. This check applies even with `SimpleWNpmBuildClient=false` or an explicit C# environment override.
+Deploy the whole `publish` directory and run `dotnet MyWebApp.dll`. NpmTooling serves the configured frontend folder automatically; no additional `StaticFilesModule` registration is needed.
 
 ## Production
 
 The module serves assets and reserves the index.html fallback for GET/HEAD navigation requests that accept HTML. API routes, missing assets and methods other than GET/HEAD do not become HTML pages. The public directory must contain index.html; links, junctions, path traversal and hidden paths are rejected. Keep assets immutable while serving them and publish to a clean output directory.
 
 The module occupies the router's root fallback. Avoid another fallback or a global static route that would hide it. Vue routes containing a dot in their final segment do not receive the SPA fallback. Production requires neither Node, npm nor Vite.
-
-## Validation to perform later
-
-Automated discovery and process tests cover startup output, dynamic ports, base paths, CORS, timeouts, early exit, cancellation and cleanup. Before release, also validate F5, occupied-port fallback with your frontend, HTTPS, installation cancellation, forced debugger shutdown on Windows and Unix, publishing with the injected variable, publishing without npm and consuming the NuGet package in an independent application.

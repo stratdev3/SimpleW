@@ -2,10 +2,38 @@
   <PropertyGroup>
     <_SimpleWNpmTargetsImported>true</_SimpleWNpmTargetsImported>
   </PropertyGroup>
+  <!-- Resolve shared settings for both compilation and publication. -->
+  <Target Name="SimpleWNpmResolveConfiguration"
+          Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
+    <PropertyGroup>
+      <SimpleWNpmSourcePath Condition="'$(SimpleWNpmSourcePath)' == '' and '$(SimpleWStackSourcePath)' != ''">$(SimpleWStackSourcePath)</SimpleWNpmSourcePath>
+      <SimpleWNpmSourcePath Condition="'$(SimpleWNpmSourcePath)' == ''">$(MSBuildProjectDirectory)/../client</SimpleWNpmSourcePath>
+      <SimpleWNpmDistPath Condition="'$(SimpleWNpmDistPath)' == '' and '$(SimpleWStackDistPath)' != ''">$(SimpleWStackDistPath)</SimpleWNpmDistPath>
+      <SimpleWNpmDistPath Condition="'$(SimpleWNpmDistPath)' == ''">$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
+      <SimpleWNpmPublishPath Condition="'$(SimpleWNpmPublishPath)' == ''">wwwroot</SimpleWNpmPublishPath>
+      <SimpleWNpmBuildClient Condition="'$(SimpleWNpmBuildClient)' == '' and '$(SimpleWStackBuildClient)' != ''">$(SimpleWStackBuildClient)</SimpleWNpmBuildClient>
+      <SimpleWNpmBuildClient Condition="'$(SimpleWNpmBuildClient)' == ''">true</SimpleWNpmBuildClient>
+      <SimpleWNpmApiBaseUrl Condition="'$(SimpleWNpmApiBaseUrl)' == ''">/api</SimpleWNpmApiBaseUrl>
+      <!-- MSBuild path functions also work under Visual Studio's .NET Framework host. -->
+      <_NpmSource>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(SimpleWNpmSourcePath)'))</_NpmSource>
+      <_NpmDist>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(SimpleWNpmDistPath)'))</_NpmDist>
+      <_NpmPublishInput>$(SimpleWNpmPublishPath.Replace('\', '/'))</_NpmPublishInput>
+    </PropertyGroup>
+    <Error Condition="$([System.IO.Path]::IsPathRooted('$(_NpmPublishInput)')) or $(_NpmPublishInput.Contains(':'))"
+           Text="SimpleW.Helper.NpmTooling: SimpleWNpmPublishPath must be a relative subdirectory inside the publish directory." />
+    <PropertyGroup>
+      <_NpmPublishFullPath>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(_NpmPublishInput)'))</_NpmPublishFullPath>
+      <_NpmPublishPath>$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)', '$(_NpmPublishFullPath)'))</_NpmPublishPath>
+      <_NpmPublishPath>$(_NpmPublishPath.Replace('\', '/'))</_NpmPublishPath>
+    </PropertyGroup>
+    <Error Condition="'$(_NpmPublishPath)' == '' or '$(_NpmPublishPath)' == '.' or '$(_NpmPublishPath)' == './' or '$(_NpmPublishPath)' == '..' or $(_NpmPublishPath.StartsWith('../')) or $([System.IO.Path]::IsPathRooted('$(_NpmPublishPath)'))"
+           Text="SimpleW.Helper.NpmTooling: SimpleWNpmPublishPath must be a relative subdirectory inside the publish directory." />
+  </Target>
+
   <!-- Compile into the consuming executable, including when GenerateAssemblyInfo is disabled.
        Writing false on ordinary builds invalidates a previous publish's incremental output. -->
   <Target Name="SimpleWNpmGeneratePublicationMarker" BeforeTargets="BeforeCompile;CoreCompile"
-          DependsOnTargets="PrepareForBuild"
+          DependsOnTargets="PrepareForBuild;SimpleWNpmResolveConfiguration"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
     <PropertyGroup>
       <_SimpleWNpmPublished>false</_SimpleWNpmPublished>
@@ -17,12 +45,30 @@
         <_Parameter1>SimpleW.Published</_Parameter1>
         <_Parameter2>$(_SimpleWNpmPublished)</_Parameter2>
       </_SimpleWNpmMarkerAttribute>
+      <_SimpleWNpmMarkerAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>SimpleW.Npm.SourcePath</_Parameter1>
+        <_Parameter2>$(_NpmSource)</_Parameter2>
+      </_SimpleWNpmMarkerAttribute>
+      <_SimpleWNpmMarkerAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>SimpleW.Npm.PublishPath</_Parameter1>
+        <_Parameter2>$(_NpmPublishPath)</_Parameter2>
+      </_SimpleWNpmMarkerAttribute>
+      <_SimpleWNpmMarkerAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>SimpleW.Npm.ApiBaseUrl</_Parameter1>
+        <_Parameter2>$(SimpleWNpmApiBaseUrl)</_Parameter2>
+      </_SimpleWNpmMarkerAttribute>
     </ItemGroup>
     <WriteCodeFragment AssemblyAttributes="@(_SimpleWNpmMarkerAttribute)" Language="$(Language)"
-                       OutputFile="$(_SimpleWNpmMarkerFile)" />
+                       OutputFile="$(_SimpleWNpmMarkerFile).tmp" />
+    <!-- Preserve the compiler input's timestamp when the generated settings have not changed. -->
+    <ReadLinesFromFile File="$(_SimpleWNpmMarkerFile).tmp">
+      <Output TaskParameter="Lines" ItemName="_SimpleWNpmMarkerLines" />
+    </ReadLinesFromFile>
+    <WriteLinesToFile File="$(_SimpleWNpmMarkerFile)" Lines="@(_SimpleWNpmMarkerLines)"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="UTF-8" />
     <ItemGroup>
       <Compile Include="$(_SimpleWNpmMarkerFile)" />
-      <FileWrites Include="$(_SimpleWNpmMarkerFile)" />
+      <FileWrites Include="$(_SimpleWNpmMarkerFile);$(_SimpleWNpmMarkerFile).tmp" />
     </ItemGroup>
   </Target>
 
@@ -33,6 +79,9 @@
     <ParameterGroup>
       <AssemblyPath ParameterType="System.String" Required="true" />
       <SdkToolsPath ParameterType="System.String" Required="true" />
+      <SourcePath ParameterType="System.String" Required="true" />
+      <PublishPath ParameterType="System.String" Required="true" />
+      <ApiBaseUrl ParameterType="System.String" Required="true" />
     </ParameterGroup>
     <Task>
       <Using Namespace="System" />
@@ -41,6 +90,7 @@
       <Using Namespace="System.Reflection" />
       <Code Type="Fragment" Language="cs"><![CDATA[
         bool published = false;
+        bool configurationMatches = false;
         try {
           string path = Path.GetFullPath(AssemblyPath);
           if (File.Exists(path)) {
@@ -54,11 +104,19 @@
             using (var context = (IDisposable)Activator.CreateInstance(contextType,
               new object[] { resolver, typeof(object).Assembly.GetName().Name })) {
               var assembly = (Assembly)contextType.GetMethod("LoadFromAssemblyPath").Invoke(context, new object[] { path });
-              published = assembly.GetCustomAttributesData().Any(attribute =>
+              var metadata = assembly.GetCustomAttributesData().Where(attribute =>
                 attribute.AttributeType.FullName == "System.Reflection.AssemblyMetadataAttribute" &&
-                attribute.ConstructorArguments.Count == 2 &&
+                attribute.ConstructorArguments.Count == 2).ToArray();
+              published = metadata.Any(attribute =>
                 (string)attribute.ConstructorArguments[0].Value == "SimpleW.Published" &&
                 (string)attribute.ConstructorArguments[1].Value == "true");
+              configurationMatches = new[] {
+                new { Key = "SimpleW.Npm.SourcePath", Value = SourcePath },
+                new { Key = "SimpleW.Npm.PublishPath", Value = PublishPath },
+                new { Key = "SimpleW.Npm.ApiBaseUrl", Value = ApiBaseUrl }
+              }.All(expected => metadata.Any(attribute =>
+                (string)attribute.ConstructorArguments[0].Value == expected.Key &&
+                (string)attribute.ConstructorArguments[1].Value == expected.Value));
             }
           }
         }
@@ -71,30 +129,25 @@
             "SimpleW.Helper.NpmTooling: '{0}' is missing or does not contain the SimpleW.Published=true marker. Run dotnet publish without --no-build to compile a marked application before publishing.", AssemblyPath);
           return false;
         }
+        if (!configurationMatches) {
+          Log.LogError(null, "SWNPM002", null, AssemblyPath, 0, 0, 0, 0,
+            "SimpleW.Helper.NpmTooling: '{0}' does not contain the current SimpleWNpmSourcePath, SimpleWNpmPublishPath and SimpleWNpmApiBaseUrl settings. Run dotnet publish without --no-build to compile the current configuration before publishing.", AssemblyPath);
+          return false;
+        }
       ]]></Code>
     </Task>
   </UsingTask>
 
   <Target Name="SimpleWNpmValidatePublication"
+          DependsOnTargets="SimpleWNpmResolveConfiguration"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
-    <SimpleWValidateNpmPublication AssemblyPath="$(TargetPath)" SdkToolsPath="$(MSBuildToolsPath)" />
+    <SimpleWValidateNpmPublication AssemblyPath="$(TargetPath)" SdkToolsPath="$(MSBuildToolsPath)"
+                                   SourcePath="$(_NpmSource)" PublishPath="$(_NpmPublishPath)" ApiBaseUrl="$(SimpleWNpmApiBaseUrl)" />
   </Target>
 
-  <!-- Settings are resolved at publish time so Stack aliases work regardless of NuGet import order. -->
   <Target Name="SimpleWNpmPrepareClient" BeforeTargets="ComputeFilesToPublish"
           DependsOnTargets="SimpleWNpmValidatePublication"
           Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
-    <PropertyGroup>
-      <SimpleWNpmSourcePath Condition="'$(SimpleWNpmSourcePath)' == '' and '$(SimpleWStackSourcePath)' != ''">$(SimpleWStackSourcePath)</SimpleWNpmSourcePath>
-      <SimpleWNpmSourcePath Condition="'$(SimpleWNpmSourcePath)' == ''">$(MSBuildProjectDirectory)/../client</SimpleWNpmSourcePath>
-      <SimpleWNpmDistPath Condition="'$(SimpleWNpmDistPath)' == '' and '$(SimpleWStackDistPath)' != ''">$(SimpleWStackDistPath)</SimpleWNpmDistPath>
-      <SimpleWNpmDistPath Condition="'$(SimpleWNpmDistPath)' == ''">$(SimpleWNpmSourcePath)/dist</SimpleWNpmDistPath>
-      <SimpleWNpmBuildClient Condition="'$(SimpleWNpmBuildClient)' == '' and '$(SimpleWStackBuildClient)' != ''">$(SimpleWStackBuildClient)</SimpleWNpmBuildClient>
-      <SimpleWNpmBuildClient Condition="'$(SimpleWNpmBuildClient)' == ''">true</SimpleWNpmBuildClient>
-      <SimpleWNpmApiBaseUrl Condition="'$(SimpleWNpmApiBaseUrl)' == ''">/api</SimpleWNpmApiBaseUrl>
-      <_NpmSource>$([System.IO.Path]::GetFullPath('$(SimpleWNpmSourcePath)', '$(MSBuildProjectDirectory)'))</_NpmSource>
-      <_NpmDist>$([System.IO.Path]::GetFullPath('$(SimpleWNpmDistPath)', '$(MSBuildProjectDirectory)'))</_NpmDist>
-    </PropertyGroup>
     <Error Condition="'$(SimpleWNpmBuildClient)' == 'true' and !Exists('$(_NpmSource)/package.json')"
            Text="SimpleW.Helper.NpmTooling: package.json missing in $(_NpmSource). Set SimpleWNpmSourcePath." />
     <Exec Condition="'$(SimpleWNpmBuildClient)' == 'true' and Exists('$(_NpmSource)/package-lock.json')"
@@ -113,7 +166,7 @@
           Condition="'$(DesignTimeBuild)' != 'true' and '$(IsCrossTargetingBuild)' != 'true' and ('$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe')">
     <ItemGroup>
       <ResolvedFileToPublish Include="@(_SimpleWNpmAsset)">
-        <RelativePath>wwwroot/%(_SimpleWNpmAsset.RecursiveDir)%(_SimpleWNpmAsset.Filename)%(_SimpleWNpmAsset.Extension)</RelativePath>
+        <RelativePath>$(_NpmPublishPath)/%(_SimpleWNpmAsset.RecursiveDir)%(_SimpleWNpmAsset.Filename)%(_SimpleWNpmAsset.Extension)</RelativePath>
         <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </ResolvedFileToPublish>
